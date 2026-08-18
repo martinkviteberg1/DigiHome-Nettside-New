@@ -13,7 +13,7 @@
    ═════════════════════════════════════════════════════════════════════════════ */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { MessageCircle, X, Loader2, ArrowUp, Trash2, AtSign, Reply, ArrowLeft, CornerDownRight, Pencil, Link2, Plus, Search, MessagesSquare, ClipboardList, Paperclip, Smile, Pin, FileText, Download, ExternalLink, ChevronLeft, ChevronRight, Image as BildeIkon } from 'lucide-react';
+import { MessageCircle, X, Loader2, ArrowUp, Trash2, AtSign, Reply, ArrowLeft, CornerDownRight, Pencil, Link2, Plus, Search, MessagesSquare, ClipboardList, Paperclip, Smile, Pin, FileText, Download, ExternalLink, ChevronLeft, ChevronRight, Image as BildeIkon, Maximize2, Minimize2, BellRing, BellOff, Volume2, VolumeX } from 'lucide-react';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
 const AVATAR_FARGER = ['#6d28d9', '#0a7d55', '#b3562e', '#1d4ed8', '#9a6b1c', '#be185d', '#0e7490', '#4d7c0f'];
@@ -34,6 +34,9 @@ const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /* Emoji-utvalget for reaksjoner — må matche CHAT_EMOJIS i lib/chat.js */
 const EMOJIS = ['👍', '❤️', '😂', '🎉', '✅', '👀', '🙏', '🔥'];
+
+/* Kuratert utvalg for skrivefeltets emoji-velger */
+const TEKST_EMOJIS = ['😀', '😄', '😂', '🤣', '😊', '😉', '😍', '🤩', '😎', '🤔', '😅', '😬', '🙃', '😴', '🥳', '🫡', '👍', '👎', '👏', '🙌', '🤝', '💪', '🙏', '👀', '❤️', '💜', '🔥', '✨', '🎉', '✅', '❌', '⚡', '💡', '📌', '📎', '🏠', '🔑', '💰', '📈', '☕'];
 
 const erBilde = (type) => /^image\//i.test(String(type || ''));
 const erPdf = (type) => /^application\/pdf/i.test(String(type || ''));
@@ -125,6 +128,19 @@ function PdfVisning({ url, navn }) {
   );
 }
 
+/* Utdrag rundt første søketreff: {foer, treff, etter} — for uthevet visning */
+const sokUtdrag = (tekst, q) => {
+  const t = String(tekst || '');
+  const i = t.toLowerCase().indexOf(String(q || '').toLowerCase());
+  if (i < 0) return { foer: t.slice(0, 110), treff: '', etter: '' };
+  const start = Math.max(0, i - 40);
+  return {
+    foer: (start > 0 ? '…' : '') + t.slice(start, i),
+    treff: t.slice(i, i + q.length),
+    etter: t.slice(i + q.length, i + q.length + 70),
+  };
+};
+
 /* Grupperer meldinger: dag-separatorer + fortsettelser (samme avsender < 5 min).
    Brukes både i hovedstrømmen og i trådvisningen. */const grupperMeldinger = (meldinger) => {
   const ut = [];
@@ -142,19 +158,76 @@ function PdfVisning({ url, navn }) {
 };
 
 /* Meldingstekst med uthevede @-tagger */
+const URL_RE = /(https?:\/\/[^\s<>"')\]]+)/g;
+const foersteUrl = (t) => { const m = String(t || '').match(URL_RE); return m ? m[0].replace(/[.,;:!?]+$/, '') : null; };
+
 function MeldingTekst({ text, mentions }) {
   const deler = useMemo(() => {
     const navn = (mentions || []).map((m) => m.name).filter(Boolean).sort((a, b) => b.length - a.length);
-    if (!navn.length) return [{ t: text }];
-    const re = new RegExp(`(@(?:${navn.map(escRe).join('|')}))`, 'g');
-    return String(text).split(re).map((del) => (del.startsWith('@') && navn.includes(del.slice(1)) ? { t: del, tag: true } : { t: del }));
+    const grunn = navn.length
+      ? String(text).split(new RegExp(`(@(?:${navn.map(escRe).join('|')}))`, 'g'))
+        .map((del) => (del.startsWith('@') && navn.includes(del.slice(1)) ? { t: del, tag: true } : { t: del }))
+      : [{ t: String(text || '') }];
+    // Linkifiser URL-er i vanlige tekstsegmenter (aldri inne i tagger)
+    const ut = [];
+    for (const d of grunn) {
+      if (d.tag) { ut.push(d); continue; }
+      for (const b of String(d.t).split(URL_RE)) {
+        if (/^https?:\/\//.test(b)) {
+          const hale = (b.match(/[.,;:!?]+$/) || [''])[0];
+          ut.push({ t: b.slice(0, b.length - hale.length), lenke: true });
+          if (hale) ut.push({ t: hale });
+        } else if (b) ut.push({ t: b });
+      }
+    }
+    return ut;
   }, [text, mentions]);
   return (
     <p className="whitespace-pre-wrap break-words text-[13.5px] leading-[1.55] text-[#26221e]">
-      {deler.map((d, i) => (d.tag
-        ? <span key={i} className="rounded-[6px] bg-gradient-to-r from-[#f0ebfa] to-[#ece4fb] px-1.5 py-[1px] font-semibold text-[#6d28d9]">{d.t}</span>
-        : <React.Fragment key={i}>{d.t}</React.Fragment>))}
+      {deler.map((d, i) => {
+        if (d.tag) return <span key={i} className="rounded-[6px] bg-gradient-to-r from-[#f0ebfa] to-[#ece4fb] px-1.5 py-[1px] font-semibold text-[#6d28d9]">{d.t}</span>;
+        if (d.lenke) {
+          return (
+            <a key={i} href={d.t} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+              className="break-all font-medium text-[#6d28d9] underline decoration-[#c9b8f2] underline-offset-2 transition-colors hover:decoration-[#6d28d9]">
+              {d.t.replace(/^https?:\/\/(www\.)?/, '').slice(0, 64)}{d.t.replace(/^https?:\/\/(www\.)?/, '').length > 64 ? '…' : ''}
+            </a>
+          );
+        }
+        return <React.Fragment key={i}>{d.t}</React.Fragment>;
+      })}
     </p>
+  );
+}
+
+/* Lenke-forhåndsvisning under meldingen — hentes server-side (SSRF-sikret,
+   cachet i Mongo) og huskes i minnet per url så polling aldri refetcher. */
+const unfurlMinne = new Map();
+function LenkeKort({ url, token }) {
+  const [meta, setMeta] = useState(unfurlMinne.get(url) || null);
+  useEffect(() => {
+    if (unfurlMinne.has(url)) { setMeta(unfurlMinne.get(url)); return undefined; }
+    let alive = true;
+    fetch(`/api/admin/chat/unfurl?url=${encodeURIComponent(url)}&key=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((j) => { unfurlMinne.set(url, j && j.tittel ? j : null); if (alive) setMeta(j && j.tittel ? j : null); })
+      .catch(() => { unfurlMinne.set(url, null); });
+    return () => { alive = false; };
+  }, [url, token]);
+  if (!meta?.tittel) return null;
+  return (
+    <a href={url} target="_blank" rel="noreferrer" data-testid="chat-lenkekort" onClick={(e) => e.stopPropagation()}
+      className="mt-1.5 flex max-w-[310px] items-stretch overflow-hidden rounded-[12px] bg-white text-left transition-all hover:-translate-y-px active:scale-[0.99]"
+      style={{ boxShadow: '0 1px 5px rgba(20,16,40,0.07), inset 0 0 0 1px rgba(0,0,0,0.05)' }}>
+      <span className="block min-w-0 flex-1 px-3 py-2">
+        <span className="block text-[9.5px] font-bold uppercase tracking-[0.07em] text-[#a6a19a]">{meta.host}</span>
+        <span className="mt-0.5 block truncate text-[12px] font-bold leading-snug text-[#1c1917]">{meta.tittel}</span>
+        {meta.beskrivelse && (
+          <span className="mt-0.5 block text-[10.5px] leading-snug text-[#8a857d]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{meta.beskrivelse}</span>
+        )}
+      </span>
+      {meta.bilde && <img src={meta.bilde} alt="" loading="lazy" className="w-[78px] shrink-0 object-cover" onError={(e) => { e.target.style.display = 'none'; }} />}
+    </a>
   );
 }
 
@@ -211,6 +284,33 @@ export default function ChatBoble({ token, user }) {
   const filInputRef = useRef(null);
   const skriverSistRef = useRef(0); // throttle for «skriver…»-heartbeat
   const dragTellerRef = useRef(0); // dragenter/-leave-balanse (barneelementer)
+  const [visSok, setVisSok] = useState(false); // meldingssøk aktivt
+  const [sokTekst, setSokTekst] = useState('');
+  const [sokTreff, setSokTreff] = useState(null);
+  const [sokLaster, setSokLaster] = useState(false);
+  const [varslerPaa, setVarslerPaa] = useState(false); // desktop-varsler (Notification API)
+  const [lydPaa, setLydPaa] = useState(false); // pling ved nye meldinger
+  const [visEmojiTekst, setVisEmojiTekst] = useState(false); // emoji-velger for skrivefeltet
+  const [fullskjerm, setFullskjerm] = useState(false); // panelet utvidet til fullskjerm
+  const forrigeUlestRef = useRef(0);
+  const origTittelRef = useRef(null);
+
+  /* Innstillinger huskes lokalt (per nettleser) */
+  useEffect(() => {
+    try {
+      setLydPaa(localStorage.getItem('dhChatLyd') === '1');
+      setVarslerPaa(typeof Notification !== 'undefined' && Notification.permission === 'granted' && localStorage.getItem('dhChatVarsler') !== '0');
+    } catch (e) {}
+  }, []);
+
+  /* Fane-teller: «(2) …» i fanetittelen når det finnes uleste meldinger */
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    if (origTittelRef.current === null) origTittelRef.current = document.title;
+    const grunn = origTittelRef.current;
+    document.title = ulest > 0 && !aapen ? `(${ulest}) ${grunn}` : grunn;
+    return () => { document.title = grunn; };
+  }, [ulest, aapen]);
   const [viser, setViser] = useState(null); // {vedlegg, index, avsender, tidspunkt, zoom} — filviseren
 
   /* Filviseren: Esc lukker, piltaster blar mellom vedlegg, zoom nullstilles */
@@ -296,18 +396,57 @@ export default function ChatBoble({ token, user }) {
     } catch (e) {}
   }, [api]);
 
-  /* Uleste-status: poll hvert 15. sek når lukket */
+  /* Diskret to-tonet pling (WebAudio — ingen lydfil nødvendig) */
+  const pling = useCallback(() => {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(880, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(1318, ctx.currentTime + 0.12);
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.09, ctx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+      o.start();
+      o.stop(ctx.currentTime + 0.45);
+      setTimeout(() => ctx.close().catch(() => {}), 600);
+    } catch (e) {}
+  }, []);
+
+  /* Uleste-status: poll hvert 15. sek når lukket — nye meldinger gir
+     fanetittel-teller, valgfritt desktop-varsel og valgfri pling */
   useEffect(() => {
     if (!token) return undefined;
     let alive = true;
     const hent = async () => {
       if (aapenRef.current) return;
-      try { const j = await api('status'); if (alive) setUlest(j.ulest || 0); } catch (e) {}
+      try {
+        const j = await api('status');
+        if (!alive) return;
+        const nyUlest = j.ulest || 0;
+        // Kun ved ØKNING (nye meldinger siden sist sjekk) varsles det
+        if (nyUlest > forrigeUlestRef.current) {
+          try {
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && localStorage.getItem('dhChatVarsler') !== '0') {
+              const kropp = j.sisteUlest ? `${j.sisteUlest.userName}: ${j.sisteUlest.text}` : `${nyUlest} nye meldinger`;
+              const n = new Notification('DigiHome Teamchat', { body: kropp, tag: 'dh-chat', silent: true });
+              n.onclick = () => { try { window.focus(); } catch (e) {} setAapen(true); n.close(); };
+            }
+          } catch (e) {}
+          try { if (localStorage.getItem('dhChatLyd') === '1') pling(); } catch (e) {}
+        }
+        forrigeUlestRef.current = nyUlest;
+        setUlest(nyUlest);
+      } catch (e) {}
     };
     hent();
     const iv = setInterval(hent, 15000);
     return () => { alive = false; clearInterval(iv); };
-  }, [token, api]);
+  }, [token, api, pling]);
 
   /* Åpen: last meldinger + brukere, merk lest (svaret gir «Nytt siden sist»-punktet),
      poll oppdateringer hvert 8. sek — hovedstrøm m/ trådtellere + evt. åpen tråd */
@@ -651,6 +790,79 @@ export default function ChatBoble({ token, user }) {
     setTimeout(() => hoppTilMelding(id), 160);
   }, [traad, traadLaster, pendingMelding, hoppTilMelding]);
 
+  /* Meldingssøk: debounce 300 ms, min. 2 tegn */
+  useEffect(() => {
+    if (!visSok) return undefined;
+    const q = sokTekst.trim();
+    if (q.length < 2) { setSokTreff(null); setSokLaster(false); return undefined; }
+    let alive = true;
+    setSokLaster(true);
+    const t = setTimeout(async () => {
+      try {
+        const j = await api(`sok?q=${encodeURIComponent(q)}`);
+        if (alive) setSokTreff(j.treff || []);
+      } catch (e) {}
+      if (alive) setSokLaster(false);
+    }, 300);
+    return () => { alive = false; clearTimeout(t); };
+  }, [visSok, sokTekst, api]);
+
+  /* Gå til søketreff: hopp + puls i hovedstrømmen, eller åpne tråden det
+     ligger i. Gamle rotmeldinger (utenfor de siste 100) åpnes som trådvisning. */
+  const gaaTilTreff = (t) => {
+    setVisSok(false); setSokTekst(''); setSokTreff(null); setFane('chat');
+    if (t.threadId) {
+      setPendingMelding(t.id);
+      aapneTraad(t.threadId);
+      return;
+    }
+    if (traadRef.current) lukkTraad();
+    if (meldinger.some((m) => m.id === t.id)) {
+      setTimeout(() => hoppTilMelding(t.id), 140);
+    } else {
+      setPendingMelding(t.id);
+      aapneTraad(t.id);
+    }
+  };
+
+  /* Desktop-varsler av/på (be om tillatelse ved første aktivering) */
+  const toggleVarsler = async () => {
+    try {
+      if (typeof Notification === 'undefined') { setFeil('Nettleseren støtter ikke varsler'); return; }
+      if (varslerPaa) {
+        localStorage.setItem('dhChatVarsler', '0');
+        setVarslerPaa(false);
+        return;
+      }
+      const svar = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+      if (svar === 'granted') {
+        localStorage.setItem('dhChatVarsler', '1');
+        setVarslerPaa(true);
+      } else {
+        setFeil('Varsler er blokkert i nettleseren — tillat dem i adresselinjen');
+      }
+    } catch (e) {}
+  };
+
+  const toggleLyd = () => {
+    const ny = !lydPaa;
+    try { localStorage.setItem('dhChatLyd', ny ? '1' : '0'); } catch (e) {}
+    setLydPaa(ny);
+    if (ny) pling();
+  };
+
+  /* Emoji inn i skrivefeltet — på markørposisjonen */
+  const settInnEmoji = (emo) => {
+    const el = inputRef.current;
+    const pos = el?.selectionStart ?? tekst.length;
+    setTekst((t) => t.slice(0, pos) + emo + t.slice(pos));
+    setVisEmojiTekst(false);
+    requestAnimationFrame(() => {
+      el?.focus();
+      try { el.setSelectionRange(pos + emo.length, pos + emo.length); } catch (e) {}
+    });
+  };
+
   /* @-tagging: finn aktiv «@query» rett før markøren */
   const oppdaterTekst = (e) => {
     const v = e.target.value;
@@ -758,6 +970,9 @@ export default function ChatBoble({ token, user }) {
   const erAdminRolle = ['owner', 'admin'].includes(user?.role);
   const minId = user?.id;
 
+  /* Fullskjerm: innholdet sentreres med behagelig lesebredde */
+  const midtstill = fullskjerm ? 'mx-auto w-full max-w-[860px]' : '';
+
   /* Hovedstrømmen gruppert — med «Nytt siden sist»-linjen satt inn foran første
      melding fra andre etter forrige lesetidspunkt */
   const grupper = useMemo(() => {
@@ -847,6 +1062,7 @@ export default function ChatBoble({ token, user }) {
           <>
             {rad.text && <MeldingTekst text={rad.text} mentions={rad.mentions} />}
             {rad.redigertAt && <span className="text-[9px] italic text-[#c2beb8]"> (redigert)</span>}
+            {rad.text && foersteUrl(rad.text) && <LenkeKort url={foersteUrl(rad.text)} token={token} />}
           </>
         )}
         {(rad.vedlegg || []).length > 0 && (
@@ -907,36 +1123,37 @@ export default function ChatBoble({ token, user }) {
           </button>
         )}
       </div>
-      <div className="absolute -top-1.5 right-2 flex items-center gap-1 opacity-0 transition-all group-hover:opacity-100">
+      <div className="absolute -top-3 right-2 flex items-center overflow-hidden rounded-[11px] bg-white opacity-0 transition-all group-hover:opacity-100"
+        style={{ boxShadow: '0 6px 20px rgba(20,16,40,0.14), inset 0 0 0 1px rgba(0,0,0,0.06)' }}>
         <button onClick={() => setVisEmojiFor((v) => (v === rad.id ? null : rad.id))} title="Reager med emoji" data-testid={`chat-reager-${rad.id}`}
-          className="flex h-6 w-6 items-center justify-center rounded-[8px] bg-white text-[#a6a19a] shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all hover:text-[#d97706] active:scale-90">
-          <Smile className="h-3 w-3" />
+          className="flex h-7 w-7 items-center justify-center text-[#a6a19a] transition-colors hover:bg-[#faf6ee] hover:text-[#d97706] active:scale-90">
+          <Smile className="h-3.5 w-3.5" />
         </button>
         {!iTraad && (
           <button onClick={() => aapneTraad(rad)} title="Svar i tråd" data-testid={`chat-svar-${rad.id}`}
-            className="flex h-6 w-6 items-center justify-center rounded-[8px] bg-white text-[#a6a19a] shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all hover:text-[#6d28d9] active:scale-90">
-            <Reply className="h-3 w-3" />
+            className="flex h-7 w-7 items-center justify-center text-[#a6a19a] transition-colors hover:bg-[#f5f2fc] hover:text-[#6d28d9] active:scale-90">
+            <Reply className="h-3.5 w-3.5" />
           </button>
         )}
         <button onClick={() => fest(rad)} title={rad.festet ? 'Løsne meldingen' : 'Fest meldingen øverst'} data-testid={`chat-fest-${rad.id}`}
-          className={`flex h-6 w-6 items-center justify-center rounded-[8px] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all active:scale-90 ${rad.festet ? 'text-[#d97706]' : 'text-[#a6a19a] hover:text-[#d97706]'}`}>
-          <Pin className="h-3 w-3" />
+          className={`flex h-7 w-7 items-center justify-center transition-colors hover:bg-[#faf6ee] active:scale-90 ${rad.festet ? 'text-[#d97706]' : 'text-[#a6a19a] hover:text-[#d97706]'}`}>
+          <Pin className="h-3.5 w-3.5" />
         </button>
         {rad.userId === minId && (
           <button onClick={() => { setVisEmojiFor(null); setRedigerer({ id: rad.id, tekst: rad.text }); }} title="Rediger meldingen" data-testid={`chat-rediger-${rad.id}`}
-            className="flex h-6 w-6 items-center justify-center rounded-[8px] bg-white text-[#a6a19a] shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all hover:text-[#1c1917] active:scale-90">
-            <Pencil className="h-3 w-3" />
+            className="flex h-7 w-7 items-center justify-center text-[#a6a19a] transition-colors hover:bg-[#faf9f7] hover:text-[#1c1917] active:scale-90">
+            <Pencil className="h-3.5 w-3.5" />
           </button>
         )}
         {(rad.userId === minId || erAdminRolle) && (
           <button onClick={() => slett(rad.id, iTraad)} title="Slett meldingen"
-            className="flex h-6 w-6 items-center justify-center rounded-[8px] bg-white text-[#c2beb8] shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all hover:text-[#c2413b] active:scale-90">
-            <Trash2 className="h-3 w-3" />
+            className="flex h-7 w-7 items-center justify-center text-[#c2beb8] transition-colors hover:bg-[#fdf1f0] hover:text-[#c2413b] active:scale-90">
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
       {visEmojiFor === rad.id && (
-        <div className="absolute -top-9 right-2 z-20 flex items-center gap-0.5 rounded-full bg-white px-1.5 py-1"
+        <div className="absolute -top-11 right-2 z-20 flex items-center gap-0.5 rounded-full bg-white px-1.5 py-1"
           style={{ boxShadow: '0 10px 32px rgba(20,16,40,0.2), inset 0 0 0 1px rgba(0,0,0,0.05)', animation: 'dhChatMeldingInn 140ms ease-out both' }}
           data-testid="chat-emoji-velger">
           {EMOJIS.map((e) => (
@@ -958,6 +1175,11 @@ export default function ChatBoble({ token, user }) {
         @keyframes dhChatPuls { 0%, 100% { box-shadow: 0 0 0 0 rgba(109,40,217,0.35); } 55% { box-shadow: 0 0 0 9px rgba(109,40,217,0); } }
         @keyframes dhChatViserInn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes dhChatViserZoomInn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+        @keyframes dhChatSideInn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        .dh-chat-scroll::-webkit-scrollbar { width: 9px; }
+        .dh-chat-scroll::-webkit-scrollbar-track { background: transparent; }
+        .dh-chat-scroll::-webkit-scrollbar-thumb { background: rgba(28,25,23,0.14); border-radius: 99px; border: 3px solid transparent; background-clip: content-box; }
+        .dh-chat-scroll::-webkit-scrollbar-thumb:hover { background: rgba(28,25,23,0.28); border: 3px solid transparent; background-clip: content-box; }
       `}</style>
 
       {/* ═══ Filviser — innebygd fullskjermsvisning av bilder og dokumenter ═══ */}
@@ -1074,7 +1296,7 @@ export default function ChatBoble({ token, user }) {
       {aapen && (
         <div
           data-testid="chat-panel"
-          className="fixed bottom-[92px] right-4 z-[70] flex flex-col overflow-hidden rounded-[24px] sm:right-5"
+          className={`z-[70] flex overflow-hidden ${fullskjerm ? 'fixed inset-0 flex-row rounded-none sm:inset-4 sm:rounded-[24px]' : 'fixed bottom-[92px] right-4 flex-col rounded-[24px] sm:right-5'}`}
           onDragEnter={(e) => {
             if (![...(e.dataTransfer?.types || [])].includes('Files')) return;
             e.preventDefault();
@@ -1094,15 +1316,15 @@ export default function ChatBoble({ token, user }) {
             for (const f of filer) await lastOppFil(f); // sekvensielt — én fremdriftslinje
           }}
           style={{
-            width: 'min(408px, calc(100vw - 24px))',
-            height: 'min(620px, calc(100vh - 120px))',
-            background: 'rgba(255,255,255,0.88)',
+            width: fullskjerm ? undefined : 'min(430px, calc(100vw - 24px))',
+            height: fullskjerm ? undefined : 'min(660px, calc(100vh - 116px))',
+            background: fullskjerm ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.88)',
             backdropFilter: 'blur(24px) saturate(1.4)',
             WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
             boxShadow: '0 32px 90px rgba(20,16,40,0.28), 0 2px 8px rgba(20,16,40,0.08), inset 0 0 0 1px rgba(255,255,255,0.7), 0 0 0 1px rgba(0,0,0,0.05)',
             opacity: vis ? 1 : 0,
             transform: vis ? 'translateY(0) scale(1)' : 'translateY(16px) scale(0.94)',
-            transformOrigin: 'bottom right',
+            transformOrigin: fullskjerm ? 'center' : 'bottom right',
             transition: 'opacity 180ms ease-out, transform 260ms cubic-bezier(0.34, 1.4, 0.64, 1)',
           }}
         >
@@ -1116,6 +1338,85 @@ export default function ChatBoble({ token, user }) {
               <p className="text-[11px] text-[#8b6bc7]">Bilder og filer · maks 8 MB</p>
             </div>
           )}
+
+          {/* ═══ Fullskjerm: sidefelt med Hovedstrøm + tråder + profil (skjules på mobil) ═══ */}
+          {fullskjerm && (
+            <div className="hidden w-[288px] shrink-0 flex-col border-r border-black/[0.06] md:flex"
+              style={{ background: 'linear-gradient(180deg, rgba(250,249,247,0.92), rgba(246,244,241,0.78))', animation: 'dhChatSideInn 240ms ease-out both' }}
+              data-testid="chat-sidefelt">
+              <div className="flex items-center gap-2.5 px-4 pb-3 pt-4">
+                <span className="relative flex h-9 w-9 items-center justify-center rounded-[12px]"
+                  style={{ background: 'linear-gradient(135deg, #1c1917 20%, #3b2373 130%)', boxShadow: '0 6px 16px rgba(59,35,115,0.35)' }}>
+                  <MessageCircle className="h-[17px] w-[17px] text-white" />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#22c55e] ring-2 ring-[#faf9f7]" title="Tilkoblet" />
+                </span>
+                <div>
+                  <p className="text-[14.5px] font-bold leading-tight text-[#1c1917]" style={heading}>Teamchat</p>
+                  <p className="text-[10.5px] leading-tight text-[#a6a19a]">{brukere.length > 0 ? `${brukere.length} i teamet` : 'Intern kanal'}</p>
+                </div>
+              </div>
+              <div className="px-2.5">
+                <button onClick={() => { lukkTraad(); setFane('chat'); setVisSok(false); setSokTekst(''); setSokTreff(null); }}
+                  data-testid="chat-side-hovedstrom"
+                  className={`flex w-full items-center gap-2.5 rounded-[12px] px-2.5 py-2 text-left transition-all active:scale-[0.99] ${!traad && fane === 'chat' && !visSok ? 'bg-white shadow-[0_1px_5px_rgba(20,16,40,0.07),inset_0_0_0_1px_rgba(109,40,217,0.22)]' : 'hover:bg-white/70'}`}>
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'linear-gradient(135deg, #f0ebfa, #e5d9fb)' }}>
+                    <MessageCircle className="h-3.5 w-3.5 text-[#6d28d9]" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[12.5px] font-bold leading-snug text-[#1c1917]">Hovedstrøm</span>
+                    <span className="block truncate text-[10.5px] text-[#a6a19a]">
+                      {meldinger.length ? `${meldinger[meldinger.length - 1].userName}: ${meldinger[meldinger.length - 1].text || '📎 vedlegg'}` : 'Hele teamet samlet'}
+                    </span>
+                  </span>
+                </button>
+              </div>
+              <p className="flex items-center gap-1.5 px-5 pb-1 pt-4 text-[9.5px] font-bold uppercase tracking-[0.12em] text-[#b3ada3]">
+                Tråder
+                {traader.length > 0 && <span className="font-semibold text-[#c2beb8]">{traader.length}</span>}
+                {traaderUlest > 0 && (
+                  <span className="flex h-[14px] min-w-[14px] items-center justify-center rounded-full px-1 text-[8px] font-bold text-white" style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}>{traaderUlest}</span>
+                )}
+              </p>
+              <div className="dh-chat-scroll min-h-0 flex-1 overflow-y-auto px-2.5 pb-2" style={{ scrollbarWidth: 'thin' }}>
+                {traader.length === 0 && (
+                  <p className="px-2.5 py-3 text-[11px] leading-relaxed text-[#b3ada3]">Ingen tråder ennå — hold musen over en melding og trykk svar-pilen.</p>
+                )}
+                {traader.map((t) => (
+                  <button key={t.id} onClick={() => { setVisSok(false); aapneTraad(t.id); }} data-testid={`chat-side-traad-${t.id}`}
+                    className={`mb-0.5 flex w-full items-center gap-2 rounded-[11px] px-2.5 py-[7px] text-left transition-all active:scale-[0.99] ${traad?.id === t.id ? 'bg-white shadow-[0_1px_5px_rgba(20,16,40,0.07),inset_0_0_0_1px_rgba(109,40,217,0.22)]' : 'hover:bg-white/70'}`}>
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-white" style={{ background: avatarFarge(t.userName) }}>{initialer(t.userName)}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate text-[12px] leading-snug ${(t.uleste || 0) > 0 ? 'font-bold text-[#1c1917]' : 'font-semibold text-[#44403c]'}`}>{t.navn || t.tekst}</span>
+                      <span className="block truncate text-[10px] text-[#b3ada3]">{t.antallSvar === 1 ? '1 svar' : `${t.antallSvar} svar`}{t.sak ? ` · ${t.sak.title}` : ''}</span>
+                    </span>
+                    {(t.uleste || 0) > 0 && (
+                      <span className="flex h-[16px] min-w-[16px] shrink-0 items-center justify-center rounded-full px-1 text-[8.5px] font-bold text-white" style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}>{t.uleste}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="border-t border-black/[0.05] px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold text-white" style={{ background: avatarFarge(user?.name) }}>{initialer(user?.name)}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] font-bold text-[#1c1917]">{user?.name || 'Deg'}</span>
+                    <span className="block text-[9.5px] font-medium uppercase tracking-wide text-[#b3ada3]">{user?.role === 'owner' ? 'Eier' : user?.role === 'admin' ? 'Admin' : 'Teammedlem'}</span>
+                  </span>
+                  <button onClick={toggleVarsler} title={varslerPaa ? 'Desktop-varsler er PÅ' : 'Skru på desktop-varsler'}
+                    className={`rounded-[8px] p-1.5 transition-all active:scale-90 ${varslerPaa ? 'bg-[#ece4fb] text-[#6d28d9]' : 'text-[#b3ada3] hover:bg-black/[0.04] hover:text-[#57534e]'}`}>
+                    {varslerPaa ? <BellRing className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+                  </button>
+                  <button onClick={toggleLyd} title={lydPaa ? 'Pling er PÅ' : 'Skru på pling'}
+                    className={`rounded-[8px] p-1.5 transition-all active:scale-90 ${lydPaa ? 'bg-[#ece4fb] text-[#6d28d9]' : 'text-[#b3ada3] hover:bg-black/[0.04] hover:text-[#57534e]'}`}>
+                    {lydPaa ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ Hovedkolonnen — header, faner, meldinger og komponist ═══ */}
+          <div className="flex min-w-0 flex-1 flex-col">
           {/* Topp — gradient-aksent + avatarstabel */}
           <div className="relative border-b border-black/[0.05] px-4 pb-3 pt-3.5">
             <span className="pointer-events-none absolute inset-x-0 top-0 h-[2.5px] bg-gradient-to-r from-[#6d28d9] via-[#9d6bff] to-transparent" />
@@ -1139,8 +1440,8 @@ export default function ChatBoble({ token, user }) {
                     <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#22c55e] ring-2 ring-white" title="Tilkoblet" />
                   </span>
                   <div>
-                    <p className="text-[14.5px] font-bold leading-tight text-[#1c1917]" style={heading}>Teamchat</p>
-                    <p className="text-[11px] leading-tight text-[#a6a19a]">Intern · <span className="font-semibold text-[#8b6bc7]">@tag</span> gir e-postvarsel</p>
+                    <p className="text-[14.5px] font-bold leading-tight text-[#1c1917]" style={heading}>{fullskjerm ? 'Hovedstrøm' : 'Teamchat'}</p>
+                    <p className="text-[11px] leading-tight text-[#a6a19a]">{fullskjerm ? 'Hele teamet samlet' : 'Intern'} · <span className="font-semibold text-[#8b6bc7]">@tag</span> gir e-postvarsel</p>
                   </div>
                 </div>
               )}
@@ -1155,37 +1456,77 @@ export default function ChatBoble({ token, user }) {
                     {brukere.length > 4 && <span className="ml-1 text-[10.5px] font-semibold text-[#a6a19a]">+{brukere.length - 4}</span>}
                   </span>
                 )}
-                <button onClick={() => setAapen(false)} data-testid="chat-lukk" className="rounded-[9px] p-1.5 text-[#a6a19a] transition-all hover:bg-black/[0.05] hover:text-[#1c1917] active:scale-90" title="Lukk">
+                <button onClick={() => setFullskjerm((f) => !f)} data-testid="chat-fullskjerm" className="rounded-[9px] p-1.5 text-[#a6a19a] transition-all hover:bg-black/[0.05] hover:text-[#1c1917] active:scale-90" title={fullskjerm ? 'Tilbake til liten visning' : 'Fullskjerm'}>
+                  {fullskjerm ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </button>
+                <button onClick={() => { setFullskjerm(false); setAapen(false); }} data-testid="chat-lukk" className="rounded-[9px] p-1.5 text-[#a6a19a] transition-all hover:bg-black/[0.05] hover:text-[#1c1917] active:scale-90" title="Lukk">
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Faner: Chat | Tråder — skjules inne i en åpen tråd */}
+          {/* Faner: Chat | Tråder + søk/varsler/lyd — skjules inne i en åpen tråd */}
           {!traad && (
-            <div className="flex items-center gap-1 border-b border-black/[0.05] px-3 py-2">
-              <button onClick={() => setFane('chat')} data-testid="chat-fane-chat"
-                className={`rounded-full px-3 py-1 text-[11.5px] font-bold transition-all ${fane === 'chat' ? 'text-white' : 'text-[#a6a19a] hover:bg-black/[0.04] hover:text-[#57534e]'}`}
-                style={fane === 'chat' ? { background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)', boxShadow: '0 3px 10px rgba(59,35,115,0.25)' } : {}}>
-                Chat
-              </button>
-              <button onClick={() => { setFane('traader'); lastTraader(); }} data-testid="chat-fane-traader"
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-bold transition-all ${fane === 'traader' ? 'text-white' : 'text-[#a6a19a] hover:bg-black/[0.04] hover:text-[#57534e]'}`}
-                style={fane === 'traader' ? { background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)', boxShadow: '0 3px 10px rgba(59,35,115,0.25)' } : {}}>
-                <MessagesSquare className="h-3 w-3" />
-                Tråder
-                {traader.length > 0 && <span className={`text-[10px] font-semibold ${fane === 'traader' ? 'text-white/70' : 'text-[#c2beb8]'}`}>{traader.length}</span>}
-                {traaderUlest > 0 && (
-                  <span data-testid="chat-traader-ulest" className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full px-1 text-[8.5px] font-bold text-white" style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}>{traaderUlest}</span>
-                )}
-              </button>
+            <div className="border-b border-black/[0.05] px-3 py-2">
+              <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5 rounded-full p-[3px]" style={{ background: 'rgba(0,0,0,0.045)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}>
+                  <button onClick={() => setFane('chat')} data-testid="chat-fane-chat"
+                    className={`rounded-full px-3 py-1 text-[11.5px] font-bold transition-all ${fane === 'chat' ? 'text-white' : 'text-[#8a857d] hover:text-[#57534e]'}`}
+                    style={fane === 'chat' ? { background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)', boxShadow: '0 3px 10px rgba(59,35,115,0.25)' } : {}}>
+                    Chat
+                  </button>
+                  <button onClick={() => { setFane('traader'); lastTraader(); }} data-testid="chat-fane-traader"
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-bold transition-all ${fane === 'traader' ? 'text-white' : 'text-[#8a857d] hover:text-[#57534e]'}`}
+                    style={fane === 'traader' ? { background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)', boxShadow: '0 3px 10px rgba(59,35,115,0.25)' } : {}}>
+                    <MessagesSquare className="h-3 w-3" />
+                    Tråder
+                    {traader.length > 0 && <span className={`text-[10px] font-semibold ${fane === 'traader' ? 'text-white/70' : 'text-[#c2beb8]'}`}>{traader.length}</span>}
+                    {traaderUlest > 0 && (
+                      <span data-testid="chat-traader-ulest" className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full px-1 text-[8.5px] font-bold text-white" style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}>{traaderUlest}</span>
+                    )}
+                  </button>
+                </div>
+                <span className="flex-1" />
+                <button onClick={() => { setVisSok((v) => !v); setSokTekst(''); setSokTreff(null); }} data-testid="chat-sok-knapp"
+                  title="Søk i chatten"
+                  className={`flex h-7 w-7 items-center justify-center rounded-[9px] transition-all active:scale-90 ${visSok ? 'bg-[#ece4fb] text-[#6d28d9]' : 'text-[#a6a19a] hover:bg-black/[0.04] hover:text-[#57534e]'}`}>
+                  <Search className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={toggleVarsler} data-testid="chat-varsler-knapp"
+                  title={varslerPaa ? 'Desktop-varsler er PÅ — klikk for å skru av' : 'Få desktop-varsel ved nye meldinger'}
+                  className={`flex h-7 w-7 items-center justify-center rounded-[9px] transition-all active:scale-90 ${varslerPaa ? 'bg-[#ece4fb] text-[#6d28d9]' : 'text-[#a6a19a] hover:bg-black/[0.04] hover:text-[#57534e]'}`}>
+                  {varslerPaa ? <BellRing className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+                </button>
+                <button onClick={toggleLyd} data-testid="chat-lyd-knapp"
+                  title={lydPaa ? 'Pling ved nye meldinger er PÅ' : 'Skru på pling ved nye meldinger'}
+                  className={`flex h-7 w-7 items-center justify-center rounded-[9px] transition-all active:scale-90 ${lydPaa ? 'bg-[#ece4fb] text-[#6d28d9]' : 'text-[#a6a19a] hover:bg-black/[0.04] hover:text-[#57534e]'}`}>
+                  {lydPaa ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              {visSok && (
+                <div className="mt-2 flex items-center gap-1.5 rounded-[11px] bg-white px-2.5 py-1.5" style={{ boxShadow: 'inset 0 0 0 1px rgba(109,40,217,0.3), 0 2px 8px rgba(109,40,217,0.08)' }}>
+                  <Search className="h-3.5 w-3.5 shrink-0 text-[#8b6bc7]" />
+                  <input
+                    autoFocus
+                    value={sokTekst}
+                    onChange={(e) => setSokTekst(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') { setVisSok(false); setSokTekst(''); setSokTreff(null); } }}
+                    placeholder="Søk i meldinger, navn og tråder…"
+                    data-testid="chat-sok-input"
+                    className="min-w-0 flex-1 bg-transparent text-[12.5px] text-[#1c1917] outline-none placeholder:text-[#b3ada3]"
+                  />
+                  {sokLaster && <Loader2 className="h-3 w-3 animate-spin text-[#b3ada3]" />}
+                  {sokTekst && <button onClick={() => { setSokTekst(''); setSokTreff(null); }} className="text-[#b3ada3] hover:text-[#57534e]"><X className="h-3.5 w-3.5" /></button>}
+                </div>
+              )}
             </div>
           )}
 
           {/* Meldinger — hovedstrøm eller åpen tråd */}
           {traad ? (
-            <div ref={traadListeRef} className="flex-1 overflow-y-auto px-3 py-3" style={{ scrollbarWidth: 'thin', background: 'linear-gradient(180deg, rgba(250,249,247,0.6), rgba(255,255,255,0.35))' }} data-testid="chat-traad-panel">
+            <div ref={traadListeRef} className="dh-chat-scroll flex-1 overflow-y-auto px-3 py-3" style={{ scrollbarWidth: 'thin', background: 'linear-gradient(180deg, rgba(250,249,247,0.6), rgba(255,255,255,0.35))' }} data-testid="chat-traad-panel">
+              <div className={midtstill}>
               {/* Meta: trådnavn + sak-kobling */}
               {traad.text && (
                 <div className="mb-2 flex items-center gap-1.5">
@@ -1277,9 +1618,46 @@ export default function ChatBoble({ token, user }) {
                   <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.09em] text-[#a6a19a] shadow-[0_1px_4px_rgba(0,0,0,0.06),inset_0_0_0_1px_rgba(0,0,0,0.04)]">{rad.separator}</span>
                 </div>
               ) : radJSX(rad, true)))}
+              </div>
+            </div>
+          ) : (visSok && sokTekst.trim().length >= 2) ? (
+            <div className="dh-chat-scroll flex-1 overflow-y-auto px-3 py-3" style={{ scrollbarWidth: 'thin', background: 'linear-gradient(180deg, rgba(250,249,247,0.6), rgba(255,255,255,0.35))' }} data-testid="chat-sok-resultater">
+              <div className={midtstill}>
+              {sokTreff === null && (
+                <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-[#c2beb8]" /></div>
+              )}
+              {Array.isArray(sokTreff) && sokTreff.length === 0 && !sokLaster && (
+                <p className="py-10 text-center text-[12px] text-[#a6a19a]">Ingen meldinger matcher «{sokTekst.trim()}»</p>
+              )}
+              {Array.isArray(sokTreff) && sokTreff.length > 0 && (
+                <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.09em] text-[#a6a19a]">{sokTreff.length === 1 ? '1 treff' : `${sokTreff.length} treff`}</p>
+              )}
+              {(sokTreff || []).map((t) => {
+                const u = sokUtdrag(t.text, sokTekst.trim());
+                return (
+                  <button key={t.id} onClick={() => gaaTilTreff(t)} data-testid={`chat-sok-treff-${t.id}`}
+                    className="mb-1.5 flex w-full items-start gap-2.5 rounded-[13px] bg-white/90 px-2.5 py-2 text-left transition-all hover:-translate-y-px hover:bg-white active:scale-[0.99]"
+                    style={{ boxShadow: '0 1px 5px rgba(20,16,40,0.06), inset 0 0 0 1px rgba(0,0,0,0.04)' }}>
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[8.5px] font-bold text-white" style={{ background: avatarFarge(t.userName) }}>{initialer(t.userName)}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline gap-1.5">
+                        <span className="text-[11.5px] font-bold text-[#1c1917]">{t.userName}</span>
+                        <span className="text-[9.5px] font-medium text-[#c2beb8]">{dagLabel(t.createdAt)} {klokke(t.createdAt)}</span>
+                        {t.threadId && <span className="rounded-[5px] bg-[#f0ebfa] px-1 text-[8.5px] font-bold uppercase tracking-wide text-[#8b6bc7]">tråd</span>}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[12px] leading-snug text-[#57534e]">
+                        {u.foer}<span className="rounded-[3px] bg-[#f3e8ac] px-0.5 font-semibold text-[#1c1917]">{u.treff}</span>{u.etter}
+                        {!u.treff && !u.foer && (t.vedlegg || []).length > 0 && `📎 ${t.vedlegg.map((v) => v.name).join(', ').slice(0, 60)}`}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+              </div>
             </div>
           ) : fane === 'traader' ? (
-            <div className="flex-1 overflow-y-auto px-3 py-3" style={{ scrollbarWidth: 'thin', background: 'linear-gradient(180deg, rgba(250,249,247,0.6), rgba(255,255,255,0.35))' }} data-testid="chat-traader-liste">
+            <div className="dh-chat-scroll flex-1 overflow-y-auto px-3 py-3" style={{ scrollbarWidth: 'thin', background: 'linear-gradient(180deg, rgba(250,249,247,0.6), rgba(255,255,255,0.35))' }} data-testid="chat-traader-liste">
+              <div className={midtstill}>
               {traader.length > 3 && (
                 <div className="mb-2.5 flex items-center gap-1.5 rounded-[11px] bg-white px-2.5 py-2" style={{ boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.06), 0 1px 4px rgba(20,16,40,0.04)' }}>
                   <Search className="h-3.5 w-3.5 shrink-0 text-[#b3ada3]" />
@@ -1337,9 +1715,11 @@ export default function ChatBoble({ token, user }) {
                   </div>
                 </button>
               ))}
+              </div>
             </div>
           ) : (
-            <div ref={listeRef} className="flex-1 overflow-y-auto px-3 py-3" style={{ scrollbarWidth: 'thin', background: 'linear-gradient(180deg, rgba(250,249,247,0.6), rgba(255,255,255,0.35))' }} data-testid="chat-meldinger">
+            <div ref={listeRef} className="dh-chat-scroll flex-1 overflow-y-auto px-3 py-3" style={{ scrollbarWidth: 'thin', background: 'linear-gradient(180deg, rgba(250,249,247,0.6), rgba(255,255,255,0.35))' }} data-testid="chat-meldinger">
+              <div className={midtstill}>
               {/* Festede meldinger — gull-stripe øverst */}
               {festede.length > 0 && (
                 <div className="mb-2 overflow-hidden rounded-[14px]" style={{ background: 'linear-gradient(135deg, #fffaf0, #fdf3e0)', boxShadow: 'inset 0 0 0 1px rgba(217,119,6,0.18), 0 1px 5px rgba(180,120,20,0.08)' }} data-testid="chat-festede">
@@ -1394,12 +1774,13 @@ export default function ChatBoble({ token, user }) {
                   <span className="h-px flex-1" style={{ background: 'linear-gradient(270deg, transparent, #a78bfa)' }} />
                 </div>
               ) : radJSX(rad, false)))}
+              </div>
             </div>
           )}
 
           {/* Komponist — skjules i trådoversikten (der velger man en tråd først) */}
           {(traad || fane === 'chat') ? (
-          <div className="relative px-3 pb-3 pt-2">
+          <div className={`relative px-3 pb-3 pt-2 ${midtstill}`}>
             {feil && <p className="mb-1.5 px-1 text-[11.5px] text-[#b3261e]" data-testid="chat-feil">{feil}</p>}
             {skriver.length > 0 && (
               <p className="mb-1 flex items-center gap-1.5 px-1 text-[10.5px] font-medium text-[#8b6bc7]" data-testid="chat-skriver">
@@ -1460,6 +1841,22 @@ export default function ChatBoble({ token, user }) {
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[13px] text-[#a6a19a] transition-all hover:bg-black/[0.04] hover:text-[#6d28d9] active:scale-90">
                 <Paperclip className="h-4 w-4" />
               </button>
+              <button onClick={() => setVisEmojiTekst((v) => !v)} title="Sett inn emoji" data-testid="chat-emoji-knapp"
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[13px] transition-all active:scale-90 ${visEmojiTekst ? 'bg-[#ece4fb] text-[#6d28d9]' : 'text-[#a6a19a] hover:bg-black/[0.04] hover:text-[#d97706]'}`}>
+                <Smile className="h-4 w-4" />
+              </button>
+              {visEmojiTekst && (
+                <div className="absolute bottom-full left-1 z-30 mb-2 grid w-[292px] grid-cols-8 gap-0.5 rounded-[16px] bg-white p-2"
+                  style={{ boxShadow: '0 16px 48px rgba(20,16,40,0.22), inset 0 0 0 1px rgba(0,0,0,0.05)', animation: 'dhChatMeldingInn 140ms ease-out both' }}
+                  data-testid="chat-emoji-tekst-velger">
+                  {TEKST_EMOJIS.map((emo) => (
+                    <button key={emo} onClick={() => settInnEmoji(emo)}
+                      className="flex h-8 w-8 items-center justify-center rounded-[9px] text-[17px] transition-transform hover:scale-125 hover:bg-[#faf9f7] active:scale-95">
+                      {emo}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="relative min-w-0 flex-1">
                 {/* Speil-laget med badges — nøyaktig samme typografi som textareaen */}
                 <div ref={overlayRef} aria-hidden="true"
@@ -1502,10 +1899,12 @@ export default function ChatBoble({ token, user }) {
           ) : (
             <p className="border-t border-black/[0.05] px-4 py-2.5 text-center text-[10.5px] text-[#b3ada3]">Velg en tråd for å svare — eller start en ny fra en melding i chatten</p>
           )}
+          </div>
         </div>
       )}
 
-      {/* Boblen */}
+      {/* Boblen — skjules mens panelet er i fullskjerm */}
+      {!(aapen && fullskjerm) && (
       <button
         onClick={() => setAapen((o) => !o)}
         data-testid="chat-boble"
@@ -1528,6 +1927,7 @@ export default function ChatBoble({ token, user }) {
           </span>
         )}
       </button>
+      )}
     </>
   );
 }

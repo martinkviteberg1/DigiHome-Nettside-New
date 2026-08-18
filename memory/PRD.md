@@ -603,3 +603,11 @@ Google Ads-styring via native REST API).
 - /tilbud/[slug] totalredesignet som «digitalt utleieprospekt»: hero med anbefalt leie som konklusjon (tellende tall), netto-chip, før/etter-slider høyt i viewport, sentrerte seksjonshoder m/ kicker-chips, prislinjal (markedsintervall) + grunnlag i eget kort, FINN-sammenligning «Annonsen din i dag → DigiHome anbefaler» (kun ekte data), økonomiblokk-kort, tonalt/mørke seksjonsbånd som avrundede paneler, animert FAQ-accordion, kapsel-navbar ved scroll, flytende mobil bunn-CTA.
 - Backend: hentTilbud eksponerer grunnlag.snittSone (kun aggregert, kun ved >=2 i sonen) — backendtestet 7/7 OK.
 - Omvisning.js (delt tour-motor for Budsjett/Investormodell/Enhetsøkonomi/Leieforhold/Datarom) oppgradert: glasskort m/ blur, lilla steg-chip, klikkbar segmentert fremdriftslinje, pulserende spotlight-ring, per-steg entrance-animasjon, lilla Ferdig-knapp, tastaturhint, bottom-sheet m/ håndtak på mobil. Samme API/testids.
+
+## Feb 2026 — Chat UI/UX-polish («forbedre alt med ui og ux layout»)
+- ChatBoble.js helhetlig polert: FULLSKJERM er nå ekte to-panels layout — sidefelt (288px, skjult < md) m/ Teamchat-brand, «Hovedstrøm»-snarvei m/ siste melding, trådliste m/ ulest-badges og aktiv-markering, brukerkort nederst m/ varsel-/lydtoggler. Hovedkolonnen sentrerer feed/composer på maks 860px for lesbarhet.
+- Fullskjerm på mobil = full-bleed (inset-0, ingen avrunding); FAB-boblen skjules i fullskjerm (overlappet før).
+- Chat|Tråder-fanene er nå segmentert kontroll (felles kapsel m/ inset-skygge). Hover-verktøylinjen på meldinger er gruppert pill (à la Slack/Linear) i stedet for løse knapper; emoji-hurtigvelger flyttet til -top-11.
+- Egendefinerte tynne scrollbars (.dh-chat-scroll) i alle chatlister. Vanlig panel litt større (430×660). Fullskjerm-bakgrunn mer dekkende (0.95) så admin-siden ikke skinner gjennom.
+- Header viser «Hovedstrøm» i fullskjerm (brand ligger i sidefeltet).
+- Backend-test av forrige rundes utestede pakke: søk (/admin/chat/sok), unfurl m/ SSRF-vern+cache (/admin/chat/unfurl), status m/ sisteUlest — 28/28 bestått (backend_test_chat_search_unfurl_status.py). Screenshot-verifisert: vanlig panel, fullskjerm, tråd i fullskjerm, hover-pill, mobil fullskjerm. IKKE brukerbekreftet ennå.

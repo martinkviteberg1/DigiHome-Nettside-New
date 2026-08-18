@@ -39,7 +39,7 @@ import {
   hentSelskap as drHentSelskap, lagreSelskap as drLagreSelskap,
 } from '@/lib/datarom';
 import { hentEnhetsokonomi as eoHent, lagreEnhetsokonomiDrivere as eoLagre } from '@/lib/enhetsokonomi';
-import { listMeldinger as chatList, nyMelding as chatNy, slettMelding as chatSlett, merkLest as chatLest, hentStatus as chatStatus, oppdaterTraad as chatTraadOppdater, listTraader as chatTraader, redigerMelding as chatRediger, reagerMelding as chatReager, festMelding as chatFest, hentFestede as chatFestede, settSkriver as chatSettSkriver, hentSkriver as chatHentSkriver, lagreFilChunk as chatFilChunk, hentFil as chatHentFil, slettUbundetFil as chatSlettFil } from '@/lib/chat';
+import { listMeldinger as chatList, nyMelding as chatNy, slettMelding as chatSlett, merkLest as chatLest, hentStatus as chatStatus, oppdaterTraad as chatTraadOppdater, listTraader as chatTraader, redigerMelding as chatRediger, reagerMelding as chatReager, festMelding as chatFest, hentFestede as chatFestede, settSkriver as chatSettSkriver, hentSkriver as chatHentSkriver, lagreFilChunk as chatFilChunk, hentFil as chatHentFil, slettUbundetFil as chatSlettFil, sokMeldinger as chatSok, unfurlLenke as chatUnfurl } from '@/lib/chat';
 import { byggInvestorpakke } from '@/lib/datarom-excel';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
@@ -3505,6 +3505,20 @@ async function handleRoute(request, { params }) {
       const sesChD = sessionFra(request) || {};
       const resChD = await chatSlettFil(db, { id: path[3], userId: sesChD.sub || 'master' });
       return cors(NextResponse.json({ ok: resChD.ok }));
+    }
+    if (route === '/admin/chat/sok' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const spChSk = new URL(request.url).searchParams;
+      const treff = await chatSok(db, { kanal: spChSk.get('kanal'), q: spChSk.get('q') || '' });
+      return cors(NextResponse.json({ ok: true, treff }));
+    }
+    if (route === '/admin/chat/unfurl' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!rateLimit(`chatunfurl:${clientIp(request)}`, 60)) return cors(NextResponse.json({ error: 'For mange forespørsler' }, { status: 429 }));
+      const spChU = new URL(request.url).searchParams;
+      const resChUf = await chatUnfurl(db, { url: spChU.get('url') || '' });
+      if (!resChUf.ok) return cors(NextResponse.json({ ok: false, error: resChUf.error }, { status: resChUf.status || 400 }));
+      return cors(NextResponse.json(resChUf));
     }
     if (route === '/admin/chat/traader' && method === 'GET') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
