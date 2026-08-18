@@ -24,6 +24,7 @@ import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads
 import { recordWonConversions } from '@/lib/closed-loop';
 import { runDueReminders } from '@/lib/reminders';
 import { hentLeieforhold } from '@/lib/leieforhold';
+import { synkFraBrreg, hentOrganisasjon, lagrePerson, slettPerson, nyRolle, oppdaterRolle, slettRolle, oppdaterSelskap, hentEierbok, lagreEier, slettEier, lagreKlasse, slettKlasse, nyTransaksjon, slettTransaksjon } from '@/lib/selskap';
 import { lagLeieforholdExcel, lagLeieforholdCsv } from '@/lib/leieforhold-excel';
 import {
   anvendScenario as lfScenario, filtrerRader as lfFiltrer, parseFilterParams as lfParseFilter,
@@ -1129,7 +1130,7 @@ async function invaliderBrukerTokens(db, userId) {
 // --- E-postramme for konto-e-poster (invitasjon / reset / magic link) ---
 // Verdensklasse, klientsikker HTML: inline-styles, skjult preheader, én tydelig
 // CTA, fallback-lenke i klartekst og sikkerhetsnotis. Matcher admin-designet.
-function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, ctaUrl, gyldighet, sikkerhet, mottakerEpost, preheader, headerLabel = 'Admin' }) {
+function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, ctaUrl, gyldighet, sikkerhet, mottakerEpost, preheader, headerLabel = 'Admin', footerTekst = 'vårt interne arbeidsverktøy' }) {
   const esc = taskEsc;
   const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
   const logoUrl = `${base}/api/media/email-logo.png`;
@@ -1164,7 +1165,7 @@ function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, c
         <p style="margin:0;color:#8a8a8a;font-size:12px;line-height:1.65">${esc(sikkerhet)}</p>
       </div>` : ''}
     </div>
-    <p style="max-width:560px;margin:20px auto 0;text-align:center;color:#b5b2ad;font-size:11px;line-height:1.7">DigiHome Admin &middot; vårt interne arbeidsverktøy &middot; digihome.no${mottakerEpost ? `<br/>Sendt til ${esc(mottakerEpost)}` : ''}</p>
+    <p style="max-width:560px;margin:20px auto 0;text-align:center;color:#b5b2ad;font-size:11px;line-height:1.7">DigiHome ${headerLabel === 'Investorrom' ? 'Investorrom' : 'Admin'} &middot; ${taskEsc(footerTekst)} &middot; digihome.no${mottakerEpost ? `<br/>Sendt til ${esc(mottakerEpost)}` : ''}</p>
   </div>`;
 }
 
@@ -1176,6 +1177,57 @@ async function sendVelkomstEpost({ member, rawToken, invitertAv }) {
   const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
   const url = `${base}/admin?invite=${rawToken}`;
   const fornavn = String(member.name || '').trim().split(/\s+/)[0] || 'der';
+
+  // ── Investorer (og eksterne eiere) får en egen, eksklusiv invitasjon til
+  //    investorrommet — med oversikt over nøyaktig hva de har fått tilgang til.
+  if (['investor', 'eier'].includes(member.role)) {
+    const MODUL_INFO = {
+      'dr-oversikt': ['Oversikt', 'nøkkeltall, veksttrapp og fremtidsbilde'],
+      leieforhold: ['Leieforhold', 'porteføljen live — leie, honorar og kontrakter'],
+      'dr-resultat': ['Regnskap', 'resultat per måned'],
+      'dr-enheter': ['Enhetsøkonomi', 'margin per enhet, skalering og kapasitet'],
+      budsjett: ['Budsjett', 'vekstbudsjett, prognoser og scenarioer'],
+      'dr-pipeline': ['Pipeline', 'enheter på vei inn'],
+      'dr-selskap': ['Selskap', 'ansatte, faste kostnader og gjeld'],
+      'dr-organisasjon': ['Organisasjon', 'styre og ledelse i begge selskapene'],
+      'dr-eierbok': ['Aksjeeierbok', 'aksjonærer, transaksjoner og cap table'],
+      'dr-dokumenter': ['Dokumenter', 'delte filer og rapporter'],
+    };
+    const valgte = (member.moduler || []).map((k) => MODUL_INFO[k]).filter(Boolean);
+    const modulerHtml = valgte.length ? `
+        <div style="margin-top:24px">
+          <p style="margin:0 0 8px;color:#8b5cf6;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em">Dette finner du i rommet ditt</p>
+          <div style="background:#faf9f7;border:1px solid #f0eeeb;border-radius:14px;padding:4px 20px">
+            ${valgte.map(([l, s], i) => `
+            <div style="padding:11px 0;${i ? 'border-top:1px solid #f0eeeb;' : ''}">
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                <td style="vertical-align:top;padding-right:10px"><span style="display:inline-block;width:6px;height:6px;border-radius:99px;background:#8b5cf6;margin-top:6px"></span></td>
+                <td><span style="color:#0f0f0f;font-size:13.5px;font-weight:700">${taskEsc(l)}</span>
+                <span style="color:#8a8a8a;font-size:12.5px"> &mdash; ${taskEsc(s)}</span></td>
+              </tr></table>
+            </div>`).join('')}
+          </div>
+        </div>` : '';
+    const html = authEpostHtml({
+      eyebrow: 'Personlig invitasjon',
+      heading: `Hei ${fornavn} — investorrommet ditt er klart`,
+      intro: `${taskEsc(invitertAv || 'DigiHome')} har åpnet et <strong style="color:#0f0f0f">privat investorrom</strong> for deg — med løpende innsikt i DigiHome: porteføljen, tallene og utviklingen, alltid oppdatert. Aktiver tilgangen under og velg ditt eget passord, så er du inne på under ett minutt.`,
+      detaljerHtml: modulerHtml,
+      ctaLabel: 'Åpne investorrommet',
+      ctaUrl: url,
+      gyldighet: 'Lenken er personlig og gyldig i 7 dager.',
+      sikkerhet: 'Innholdet i investorrommet er konfidensielt og delt personlig med deg. Var ikke dette deg? Da kan du trygt se bort fra denne e-posten — ingenting skjer uten at lenken brukes.',
+      mottakerEpost: member.email,
+      preheader: 'Privat investorrom med løpende innsikt i DigiHome — aktiver den personlige tilgangen din her.',
+      headerLabel: 'Investorrom',
+      footerTekst: 'et privat datarom for investorer og styret',
+    });
+    try {
+      await sendHtmlEmail({ to: member.email, subject: `${fornavn}, investorrommet ditt i DigiHome er klart`, html, fromName: 'DigiHome', individual: true, categories: ['konto-invitasjon-investor'] });
+      return true;
+    } catch (e) { return false; }
+  }
+
   const rolleTekst = member.role === 'admin' || member.role === 'owner'
     ? 'Du får full tilgang til hele DigiHome Admin — innsikt, leads, økonomi, saker og møter.'
     : 'Du får tilgang til <strong style="color:#0f0f0f">Saker</strong> — teamets system for oppfølging, frister og ansvar.';
@@ -1359,6 +1411,8 @@ const MODUL_NOKLER = [
   'dokumenter',
   // Datarom-sidene (investorrommet) — må speile MODUL_VALG i components/admin/Brukere.js
   'dr-oversikt', 'dr-resultat', 'dr-enheter', 'dr-pipeline', 'dr-selskap', 'dr-dokumenter',
+  // Selskapssidene: organisasjonskart (styre & ledelse) + aksjeeierbok
+  'dr-organisasjon', 'dr-eierbok',
 ];
 async function modulAuthed(request, db, modul) {
   if (adminAuthed(request)) return true;
@@ -3993,6 +4047,25 @@ async function handleRoute(request, { params }) {
       const faktiskP = await beregnFaktiskPeriode(db, planP.startYm, planP.antallMnd);
       return cors(NextResponse.json({ ok: true, plan: planP, faktisk: faktiskP }));
     }
+    // Excel-eksport av vekstbudsjett/plan — samme tilgang som GET plan
+    // (investorer får kun planer som er delt i investorrommet).
+    if (route === '/admin/budsjett/plan/xlsx' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const idPx = (() => { try { return new URL(request.url).searchParams.get('id') || ''; } catch (e) { return ''; } })();
+      const planPx = await hentPlan(db, idPx);
+      if (!planPx) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (!adminAuthed(request) && !planPx.investorSynlig) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const { lagVekstbudsjettExcel } = await import('@/lib/budsjettplan-excel');
+      const bufPx = await lagVekstbudsjettExcel({ plan: planPx });
+      const filnavnPx = `digihome-vekstbudsjett-${String(planPx.navn).toLowerCase().replace(/[^a-z0-9æøå]+/gi, '-').replace(/^-|-$/g, '').slice(0, 60) || 'plan'}.xlsx`;
+      return new NextResponse(bufPx, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${filnavnPx}"`,
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
     if (route === '/admin/budsjett/plan' && method === 'PUT') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let bodyP = {}; try { bodyP = await request.json(); } catch (e) {}
@@ -4424,6 +4497,106 @@ async function handleRoute(request, { params }) {
       const resDr = await drLagreSelskap(db, bodyDr);
       return cors(NextResponse.json(resDr));
     }
+
+    // ═══ SELSKAP — organisasjonskart (styre & ledelse) + aksjeeierbok ═══════
+    // Lesing styres av modultilgangene dr-organisasjon / dr-eierbok (investorer
+    // ser read-only). ALL skriving krever full admin — håndhevet her, ikke i UI.
+    if (route === '/admin/selskap/organisasjon' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'dr-organisasjon'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const orgSel = await hentOrganisasjon(db);
+      return cors(NextResponse.json({ ok: true, ...orgSel }));
+    }
+    if (route === '/admin/selskap/synk' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!rateLimit(`brregsynk:${clientIp(request)}`, 10)) return cors(NextResponse.json({ error: 'For mange synkroniseringer — vent litt' }, { status: 429 }));
+      let bodySel = {}; try { bodySel = await request.json(); } catch (e) {}
+      const resSel = await synkFraBrreg(db, { selskapId: bodySel.selskapId });
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/selskap/person' && (method === 'POST' || method === 'PUT')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodySel = {}; try { bodySel = await request.json(); } catch (e) {}
+      if (method === 'POST') delete bodySel.id;
+      const resSel = await lagrePerson(db, bodySel);
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/selskap/person' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const resSel = await slettPerson(db, { id: new URL(request.url).searchParams.get('id') });
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/selskap/rolle' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodySel = {}; try { bodySel = await request.json(); } catch (e) {}
+      const resSel = await nyRolle(db, bodySel);
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/selskap/rolle' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodySel = {}; try { bodySel = await request.json(); } catch (e) {}
+      const resSel = await oppdaterRolle(db, bodySel);
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/selskap/rolle' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const resSel = await slettRolle(db, { id: new URL(request.url).searchParams.get('id') });
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/selskap/innstillinger' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodySel = {}; try { bodySel = await request.json(); } catch (e) {}
+      const resSel = await oppdaterSelskap(db, bodySel);
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/selskap/eierbok' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'dr-eierbok'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const spSel = new URL(request.url).searchParams;
+      const resSel = await hentEierbok(db, { selskapId: spSel.get('selskapId'), dato: spSel.get('dato') || null });
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 404 }));
+    }
+    if (route === '/admin/selskap/eier' && (method === 'POST' || method === 'PUT')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodySel = {}; try { bodySel = await request.json(); } catch (e) {}
+      if (method === 'POST') delete bodySel.id;
+      const resSel = await lagreEier(db, bodySel);
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/selskap/eier' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const resSel = await slettEier(db, { id: new URL(request.url).searchParams.get('id') });
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/selskap/klasse' && (method === 'POST' || method === 'PUT')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodySel = {}; try { bodySel = await request.json(); } catch (e) {}
+      if (method === 'POST') delete bodySel.id;
+      const resSel = await lagreKlasse(db, bodySel);
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/selskap/klasse' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const resSel = await slettKlasse(db, { id: new URL(request.url).searchParams.get('id') });
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/selskap/transaksjon' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodySel = {}; try { bodySel = await request.json(); } catch (e) {}
+      // Hvem registrerte — hentes fra sesjonen (masternøkkel = «DigiHome»)
+      const sesSel = sessionFra(request);
+      let regAv = 'DigiHome';
+      if (sesSel?.sub) {
+        const uSel = await db.collection('admin_users').findOne({ id: sesSel.sub }, { projection: { _id: 0, name: 1 } });
+        if (uSel?.name) regAv = uSel.name;
+      }
+      const resSel = await nyTransaksjon(db, { ...bodySel, registrertAv: regAv });
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/selskap/transaksjon' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const resSel = await slettTransaksjon(db, { id: new URL(request.url).searchParams.get('id') });
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+
     // Dokumenter: gjenbruker DD-hvelvet fra Investor-rommet (dd_documents) i
     // lesemodus — admin administrerer filene i Investor-rom-modulen.
     if (route === '/admin/datarom/dokumenter' && method === 'GET') {
@@ -5695,14 +5868,17 @@ async function handleRoute(request, { params }) {
       if (!rT.ok) return cors(NextResponse.json({ ok: false, error: rT.error }, { status: rT.status || 400 }));
       return cors(NextResponse.json(rT));
     }
-    // Send dokument til BankID-signering via Posten signering (admin — eller
-    // Dokumenter-modul for frittstående dokumenter)
+    // Send dokument til BankID-signering via Posten signering — for alle med
+    // Dokumenter-modulen. Saksdokumenter krever i tillegg at man kan SE saken
+    // (tidligere kun admin — da fikk daglig leder m.fl. «Uautorisert»).
     if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'signering' && method === 'POST') {
       if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const filSigGate = await db.collection('task_files').findOne({ id: path[2] }, { projection: { taskId: 1 } });
       if (!filSigGate) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
-      // Saksdokumenter sendes fortsatt kun av admin — modulen gjelder frittstående dokumenter.
-      if (filSigGate.taskId !== 'DOKUMENTER' && !adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (filSigGate.taskId !== 'DOKUMENTER') {
+        const sakSigGate = await hentSynligSak(db, request, filSigGate.taskId);
+        if (!sakSigGate.task) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      }
       if (!rateLimit(`signering:${clientIp(request)}`, 10)) return cors(NextResponse.json({ error: 'For mange forespørsler — vent litt' }, { status: 429 }));
       let bS = {}; try { bS = await request.json(); } catch (e) {}
       try {
@@ -5740,10 +5916,13 @@ async function handleRoute(request, { params }) {
     }
     if (path[0] === 'admin' && path[1] === 'signering' && path.length === 4 && path[3] === 'kanseller' && method === 'POST') {
       if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      // Signeringsrunder på SAKSdokumenter kanselleres fortsatt kun av admin.
+      // Saksdokumenters runder: alle med Dokumenter-modulen som kan se saken.
       const jbGateK = await db.collection(SIGN_JOBB_COLL).findOne({ id: path[2] }, { projection: { taskId: 1 } });
       if (!jbGateK) return cors(NextResponse.json({ ok: false, error: 'Jobb ikke funnet' }, { status: 404 }));
-      if (jbGateK.taskId !== 'DOKUMENTER' && !adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (jbGateK.taskId !== 'DOKUMENTER') {
+        const sakGateK = await hentSynligSak(db, request, jbGateK.taskId);
+        if (!sakGateK.task) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      }
       try {
         const rK = await kansellerSignering(db, path[2], '');
         if (!rK.ok) return cors(NextResponse.json({ ok: false, error: rK.error }, { status: rK.status || 400 }));
@@ -5763,8 +5942,11 @@ async function handleRoute(request, { params }) {
       if (!rateLimit(`signpurr:${clientIp(request)}`, 10)) return cors(NextResponse.json({ error: 'Vent litt før neste purring' }, { status: 429 }));
       const jP = await db.collection(SIGN_JOBB_COLL).findOne({ id: path[2] });
       if (!jP) return cors(NextResponse.json({ ok: false, error: 'Jobb ikke funnet' }, { status: 404 }));
-      // Purring på SAKSdokumenters runder er fortsatt kun for admin.
-      if (jP.taskId !== 'DOKUMENTER' && !adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      // Saksdokumenters runder: alle med Dokumenter-modulen som kan se saken.
+      if (jP.taskId !== 'DOKUMENTER') {
+        const sakGateP = await hentSynligSak(db, request, jP.taskId);
+        if (!sakGateP.task) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      }
       if (jP.status !== 'I_GANG') return cors(NextResponse.json({ ok: false, error: 'Signeringsrunden er ikke aktiv' }, { status: 400 }));
       const { sendSignaturEpost, signatarerPaaTur } = await import('@/lib/signering');
       let sendtP = 0;

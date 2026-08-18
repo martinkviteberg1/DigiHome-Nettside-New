@@ -8,7 +8,7 @@ import {
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
   ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User, Eye, EyeOff,
-  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar,
+  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar, Network, BookMarked,
 } from 'lucide-react';
 import Brukere from '@/components/admin/Brukere';
 import Salgsradar from '@/components/admin/Salgsradar';
@@ -29,6 +29,8 @@ import SeoAeoTab from '@/components/admin/SeoAeoTab';
 import TasksTab from '@/components/admin/TasksTab';
 import MeetingsTab from '@/components/admin/MeetingsTab';
 import Datarom from '@/components/admin/Datarom';
+import Organisasjon from '@/components/admin/Organisasjon';
+import Aksjeeierbok from '@/components/admin/Aksjeeierbok';
 import DokumenterModul from '@/components/admin/DokumenterModul';
 import ChatBoble from '@/components/admin/ChatBoble';
 import { cacheHent, cacheSlett } from '@/lib/klient-cache';
@@ -64,6 +66,8 @@ const NAV = [
       // economics med skaleringsgraf. Per-enhet-detaljer bor i Leieforhold.
       { k: 'dr-pipeline', datarom: 'pipeline', l: 'Pipeline', icon: TrendingUp, desc: 'Enheter på vei inn — signert kontra forventet' },
       { k: 'dr-selskap', datarom: 'selskap', l: 'Selskap', icon: ShieldCheck, desc: 'Ansatte, faste kostnader, gjeld og aksjonærlån' },
+      { k: 'dr-organisasjon', datarom: 'organisasjon', l: 'Organisasjon', icon: Network, desc: 'Styre & ledelse — interaktivt kart for begge selskapene, synket fra Brønnøysund' },
+      { k: 'dr-eierbok', datarom: 'eierbok', l: 'Aksjeeierbok', icon: BookMarked, desc: 'Aksjonærer, transaksjoner og cap table — full historikk for begge selskapene' },
       { k: 'dr-dokumenter', datarom: 'dokumenter', l: 'Dokumenter', icon: FileText, desc: 'Delte rapporter og avtaler fra dokumenthvelvet' },
     ],
   },
@@ -184,6 +188,8 @@ const DATAROM_TITLER = {
   enheter: { t: 'Enhetsøkonomi', s: 'Er det attraktivt å skaffe én ny enhet — og hvor mye verdi skaper den over levetiden?' },
   pipeline: { t: 'Pipeline', s: 'Enheter på vei inn — signert kontra forventet, med estimert oppstart' },
   selskap: { t: 'Selskap', s: 'Ansatte, faste kostnader, gjeld og aksjonærlån — vedlikeholdt av DigiHome' },
+  organisasjon: { t: 'Organisasjon', s: 'Styre & ledelse i Digihome AS og Digihome Tech AS — synkronisert fra Brønnøysundregistrene' },
+  eierbok: { t: 'Aksjeeierbok', s: 'Aksjonærer, transaksjoner og eierandeler — ført etter aksjeloven § 4-5 for begge selskapene' },
   dokumenter: { t: 'Dokumenter', s: 'Delte rapporter og avtaler — fra dokumenthvelvet i Investor-rommet' },
 };
 
@@ -232,6 +238,8 @@ const SLUG_TIL_SEKSJON = {
   'datarom-enheter': { section: 'datarom', dtab: 'enheter' },
   'datarom-pipeline': { section: 'datarom', dtab: 'pipeline' },
   'datarom-selskap': { section: 'datarom', dtab: 'selskap' },
+  'datarom-organisasjon': { section: 'datarom', dtab: 'organisasjon' },
+  'datarom-eierbok': { section: 'datarom', dtab: 'eierbok' },
   'datarom-dokumenter': { section: 'datarom', dtab: 'dokumenter' },
 };
 const INNSIKT_TAB_SLUG = {
@@ -242,6 +250,7 @@ const INNSIKT_TAB_SLUG = {
 const DATAROM_TAB_SLUG = {
   oversikt: 'datarom', resultat: 'datarom-resultat', enheter: 'datarom-enheter',
   pipeline: 'datarom-pipeline', selskap: 'datarom-selskap', dokumenter: 'datarom-dokumenter',
+  organisasjon: 'datarom-organisasjon', eierbok: 'datarom-eierbok',
 };
 const seksjonTilSlug = (section, tab, dtab) => (
   section === 'innsikt' ? (INNSIKT_TAB_SLUG[tab] || 'oversikt')
@@ -848,7 +857,9 @@ export default function AdminPage({ params }) {
               autoTour={!user?.impersonatedBy && !(user?.tourSett || []).includes('budsjett')}
             />
           )}
-          {section === 'datarom' && (
+          {section === 'datarom' && dataromTab === 'organisasjon' && <Organisasjon apiKey={token} erAdmin={!erBruker} />}
+          {section === 'datarom' && dataromTab === 'eierbok' && <Aksjeeierbok apiKey={token} erAdmin={!erBruker} />}
+          {section === 'datarom' && dataromTab !== 'organisasjon' && dataromTab !== 'eierbok' && (
             <Datarom
               apiKey={token}
               tab={dataromTab}

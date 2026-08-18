@@ -80,7 +80,8 @@ export default function DokumentModal({ fil, taskId, apiKey, api, actor, onClose
       try {
         const r = await api('users');
         const j = await r.json();
-        setMembers((j.users || j || []).filter((u) => u.email));
+        // API-et svarer {ok, members} — behold fallback for eldre form
+        setMembers((j.members || j.users || []).filter((u) => u.email));
       } catch (e) { /* stille */ }
     })();
   }, [fil.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -343,19 +344,26 @@ function SigneringSeksjon({ det, api, actor, erAdmin, oppsett, setOppsett, membe
                   </div>
                 ))}
               </div>
-              {members.length > 0 && (
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const m = members.find((x) => x.id === e.target.value);
-                    if (m) leggTil({ navn: m.name, epost: (m.email || '').toLowerCase(), mobil: '' });
-                  }}
-                  data-testid="sign-velg-person"
-                  className={`${INPUT} mt-1.5`}
-                >
-                  <option value="">+ Velg fra personer …</option>
-                  {members.filter((m) => !signatarer.some((s) => s.epost === (m.email || '').toLowerCase())).map((m) => <option key={m.id} value={m.id}>{m.name} · {m.email}</option>)}
-                </select>
+              {/* Hurtigvalg: legg til personer fra systemet med ett klikk */}
+              {members.filter((m) => !signatarer.some((s) => s.epost === (m.email || '').toLowerCase())).length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5" data-testid="sign-velg-person">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[#b5b5b5]">Fra systemet:</span>
+                  {members.filter((m) => !signatarer.some((s) => s.epost === (m.email || '').toLowerCase())).map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => leggTil({ navn: m.name || '', epost: (m.email || '').toLowerCase(), mobil: '' })}
+                      data-testid={`sign-velg-${m.id}`}
+                      title={`Legg til ${m.name} (${m.email}) som signatar`}
+                      className="group flex items-center gap-1.5 rounded-full bg-[#f4f4f2] py-1 pl-1 pr-2.5 text-[11.5px] font-semibold text-[#555] transition-all hover:bg-[#ece4fa] hover:text-[#6d28d9] active:scale-95"
+                    >
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-white" style={{ background: m.color || '#8b5cf6' }}>
+                        {String(m.name || m.email || '?').trim().slice(0, 1).toUpperCase()}
+                      </span>
+                      {m.name || m.email}
+                      <Plus className="h-3 w-3 text-[#c5c1ba] transition-colors group-hover:text-[#8b5cf6]" />
+                    </button>
+                  ))}
+                </div>
               )}
               <div className="mt-1.5 grid grid-cols-[1fr_1.4fr_auto] gap-1.5">
                 <input value={nyNavn} onChange={(e) => setNyNavn(e.target.value)} placeholder="Navn" className={INPUT} data-testid="sign-ny-navn" />

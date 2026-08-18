@@ -54,6 +54,8 @@ const MODUL_GRUPPER = [
       { k: 'budsjett', l: 'Budsjett', sub: 'Neste 12 mnd + kalenderår' },
       { k: 'dr-pipeline', l: 'Pipeline', sub: 'Enheter på vei inn' },
       { k: 'dr-selskap', l: 'Selskap', sub: 'Ansatte, gjeld og faste kostnader' },
+      { k: 'dr-organisasjon', l: 'Organisasjon', sub: 'Styre & ledelse — kart for begge selskapene' },
+      { k: 'dr-eierbok', l: 'Aksjeeierbok', sub: 'Aksjonærer, transaksjoner og cap table' },
       { k: 'dr-dokumenter', l: 'Dokumenter', sub: 'Delte filer og rapporter' },
     ],
   },

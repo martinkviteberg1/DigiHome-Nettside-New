@@ -17,7 +17,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   ArrowLeft, ArrowRight, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Plus, X, RotateCcw, ChevronDown,
-  SlidersHorizontal, TrendingUp, Scale, Users, Building2, Bookmark, HelpCircle,
+  SlidersHorizontal, TrendingUp, Scale, Users, Building2, Bookmark, HelpCircle, FileSpreadsheet,
 } from 'lucide-react';
 import Omvisning from '@/components/admin/Omvisning';
 import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE, skalerVekst } from '@/lib/budsjett-modell';
@@ -760,6 +760,27 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   /* ── Omvisning (modell-editoren): auto-start første gang en investormodell
         åpnes; «?» i topplinjen åpner den igjen. Nøktern, presis tone. ── */
   const [tourAktiv, setTourAktiv] = useState(false);
+  const [eksporterer, setEksporterer] = useState(false);
+
+  /* Excel-eksport — laster ned investorklar arbeidsbok (lagrede tall) */
+  const eksporterExcel = async () => {
+    if (eksporterer) return;
+    setEksporterer(true);
+    try {
+      const r = await fetch(`/api/admin/budsjett/plan/xlsx?id=${encodeURIComponent(plan.id)}&key=${encodeURIComponent(apiKey)}`);
+      if (!r.ok) throw new Error('Eksporten feilet');
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cd = r.headers.get('Content-Disposition') || '';
+      const mNavn = cd.match(/filename="([^"]+)"/);
+      a.download = (mNavn && mNavn[1]) || 'digihome-vekstbudsjett.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (e) { setFeil('Kunne ikke eksportere til Excel — prøv igjen'); }
+    finally { setEksporterer(false); }
+  };
   const tourStartetRef = useRef(false);
   const tourSteg = [
     {
@@ -1162,6 +1183,13 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
               </>
             )}
           </div>
+          {/* Excel-eksport — investorklar arbeidsbok med formler */}
+          <button onClick={eksporterExcel} disabled={eksporterer} data-testid="modell-excel-eksport"
+            title="Last ned som Excel — Sammendrag, Månedsbudsjett med levende formler og Forutsetninger"
+            className="flex h-9 shrink-0 items-center gap-2 rounded-full bg-white px-3.5 text-[12.5px] font-medium text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-all hover:text-[#1c1917] disabled:opacity-60">
+            {eksporterer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-[#15803d]" />}
+            <span className="hidden sm:block">Excel</span>
+          </button>
           {/* Omvisning */}
           <button onClick={() => setTourAktiv(true)} data-testid="modell-tour-knapp" title="Omvisning — se hvordan budsjettmodellen henger sammen"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#a6a19a] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-colors hover:text-[#1c1917]">
