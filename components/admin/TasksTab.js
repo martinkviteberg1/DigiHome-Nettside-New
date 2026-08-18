@@ -149,6 +149,15 @@ function DueChip({ due, today, done }) {
 
 function Avatar({ member, size = 24 }) {
   if (!member) return null;
+  if (member.avatar) {
+    return (
+      <img
+        src={member.avatar} alt="" title={member.name}
+        className="inline-flex shrink-0 rounded-full object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   const init = member.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   return (
     <span

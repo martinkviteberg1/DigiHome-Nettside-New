@@ -632,3 +632,12 @@ Google Ads-styring via native REST API).
 - NYTT: GET /api/admin/signering/mine (alle innloggede) + «Venter på din signatur»-seksjon øverst i Dokumenter → Signering m/ ravgule kort, «Signer med BankID»-knapp (egen sid-lenke), paaTur-logikk for sekvensiell rekkefølge, amber fanebadge. Poll-helse (sist/neste sjekk mot Posten) vises i statuslinjen. Backend testet 9/9.
 - PROFILBILDER: admin_users.avatar (256px JPEG dataURL, servervalidert). Egen opplasting i Min profil (+ sidebar viser bildet), admin-opplasting i Brukere → rediger. Vises i personlister/chips.
 - BRUKERVELGERE: «Hent fra brukerne»-chips i organisasjonskartets «Legg til rolle» (tar med epost/tittel/bilde til org-person; lagrePerson-create honorerer nå bilde) og i aksjeeierbokens «Ny aksjonær» (navn/epost, type person) — fritekst for eksterne fungerer som før.
+
+## Feb 2026 (forts.) — Eksportpakke + org-kart-robusthet + responsiv budsjett-cockpit
+- PDF-RAPPORT: GET /api/admin/budsjett/plan/pdf — 5-siders investorrapport (mørk forside m/ DigiHome-identitet, KPI-kort, søyle-/akkumulertgrafer m/ break-even-markering, månedstabell, forutsetninger) bygget m/ pdf-lib + embeddede brand-fonter (Right Grotesk/Diatype). PDF-knapp ved siden av Excel i budsjett-cockpiten. Auth som xlsx.
+- EIERBOK-EXCEL: GET /api/admin/selskap/eierbok/xlsx — 3 ark (cap table m/ levende andelsformler + kontrollsum/avstemming, transaksjonshistorikk m/ beløpsformler, aksjeklasser), tidsreise via dato-param. Excel-knapp i Aksjeeierbok-verktøylinjen.
+- BUDSJETT-EXCEL: levende formler verifisert (drivere i Forutsetninger!B driver Månedsbudsjett; Årsoversikt m/ kryssark-SUM).
+- ORG-KART: rotårsak til «prøv igjen»-krasj ved drag fikset (null-ref på drar.current inne i setView-updater); pointer-handlere try/catch-sikret; lokal KartFeilgrense; canvas fyller nå hele viewporten (dynamisk måling); dobbelklikk = tilpass; maks bredde 1720px.
+- AVATARER OVERALT: profilbilder vises nå i chat (NavnAvatar m/ navnregister, 10 steder), saker og møter (Avatar-komponentene).
+- RESPONSIV BUDSJETT-COCKPIT: KPI-rad → responsivt kort-grid (clamp-fontstørrelse, aldri avkuttede tall); Forutsetninger blir bunn-ark m/ håndtak+Ferdig på <xl; rail auto-lukket på mobil ved oppstart.
+- Backend-testagent: 10/10 bestått (PDF, eierbok-xlsx, regresjon xlsx/mine/eierbok/users-avatar). Prod-endringer krever redeploy.

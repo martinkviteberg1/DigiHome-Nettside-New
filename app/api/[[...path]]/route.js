@@ -4087,6 +4087,23 @@ async function handleRoute(request, { params }) {
         },
       });
     }
+    if (route === '/admin/budsjett/plan/pdf' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const idPdf = (() => { try { return new URL(request.url).searchParams.get('id') || ''; } catch (e) { return ''; } })();
+      const planPdf = await hentPlan(db, idPdf);
+      if (!planPdf) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (!adminAuthed(request) && !planPdf.investorSynlig) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const { lagVekstbudsjettPdf } = await import('@/lib/budsjettplan-pdf');
+      const bufPdf = await lagVekstbudsjettPdf({ plan: planPdf });
+      const filnavnPdf = `digihome-vekstbudsjett-${String(planPdf.navn).toLowerCase().replace(/[^a-z0-9æøå]+/gi, '-').replace(/^-|-$/g, '').slice(0, 60) || 'plan'}.pdf`;
+      return new NextResponse(bufPdf, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${filnavnPdf}"`,
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
     if (route === '/admin/budsjett/plan' && method === 'PUT') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let bodyP = {}; try { bodyP = await request.json(); } catch (e) {}
@@ -4574,6 +4591,24 @@ async function handleRoute(request, { params }) {
       const spSel = new URL(request.url).searchParams;
       const resSel = await hentEierbok(db, { selskapId: spSel.get('selskapId'), dato: spSel.get('dato') || null });
       return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 404 }));
+    }
+    // Excel-eksport av aksjeeierboken — cap table, transaksjoner og klasser
+    if (route === '/admin/selskap/eierbok/xlsx' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'dr-eierbok'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const spEb = new URL(request.url).searchParams;
+      const ebRes = await hentEierbok(db, { selskapId: spEb.get('selskapId'), dato: spEb.get('dato') || null });
+      if (!ebRes.ok) return cors(NextResponse.json(ebRes, { status: 404 }));
+      const { lagEierbokExcel } = await import('@/lib/eierbok-excel');
+      const bufEb = await lagEierbokExcel({ eierbok: ebRes });
+      const datoDel = ebRes.capTable && ebRes.capTable.perDato ? `-per-${ebRes.capTable.perDato}` : '';
+      const filnavnEb = `digihome-aksjeeierbok-${String(ebRes.selskap.navn).toLowerCase().replace(/[^a-z0-9æøå]+/gi, '-').replace(/^-|-$/g, '').slice(0, 60)}${datoDel}.xlsx`;
+      return new NextResponse(bufEb, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${filnavnEb}"`,
+          'Cache-Control': 'no-store',
+        },
+      });
     }
     if (route === '/admin/selskap/eier' && (method === 'POST' || method === 'PUT')) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));

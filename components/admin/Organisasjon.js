@@ -108,6 +108,32 @@ function byggLayout(selskaper, roller, modus) {
 
 // ═════════════════════════════════════════════════════════════════════════════
 
+// Lokal feilgrense: uansett hva som skulle gå galt i selve kartet, skal aldri
+// hele admin-flaten erstattes av den globale feilsiden — vis en rolig
+// gjenopprettingsboks med «Last kartet på nytt» i stedet.
+class KartFeilgrense extends React.Component {
+  constructor(props) { super(props); this.state = { feilet: false }; }
+  static getDerivedStateFromError() { return { feilet: true }; }
+  componentDidCatch(error) { try { console.error('[organisasjon] kartfeil fanget:', error && error.message); } catch (e) {} }
+  render() {
+    if (this.state.feilet) {
+      return (
+        <div className="flex h-[440px] flex-col items-center justify-center gap-3 rounded-[24px] bg-white" data-testid="org-kart-feilgrense">
+          <AlertTriangle className="h-7 w-7 text-[#d97706]" />
+          <p className="text-[13.5px] font-semibold text-[#57534e]">Kartet fikk et lite problem — dataene dine er trygge</p>
+          <button
+            onClick={() => this.setState({ feilet: false })}
+            className="rounded-full bg-[#1c1917] px-4 py-2 text-[12.5px] font-bold text-white transition-all hover:opacity-90 active:scale-95"
+          >
+            Last kartet på nytt
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function Organisasjon({ apiKey, erAdmin }) {
   const [data, setData] = useState(null);
   const [laster, setLaster] = useState(true);
@@ -189,9 +215,9 @@ export default function Organisasjon({ apiKey, erAdmin }) {
   const sistSynket = (data?.selskaper || []).map((s) => s.sistSynket).filter(Boolean).sort().pop();
 
   return (
-    <div className="mx-auto max-w-[1440px]">
+    <div className="mx-auto max-w-[1720px]">
       {/* Verktøylinje */}
-      <div className="mb-4 flex flex-wrap items-center gap-2.5">
+      <div className="mb-3 flex flex-wrap items-center gap-2.5">
         <div className="max-w-full overflow-x-auto">
           <div className="flex w-max items-center gap-0.5 rounded-full p-[3px]" style={{ background: 'rgba(0,0,0,0.045)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}>
             {[...(data?.selskaper || []).map((s) => ({ id: s.id, navn: s.navn })), { id: 'alle', navn: 'Begge' }].map((v) => (
@@ -226,14 +252,16 @@ export default function Organisasjon({ apiKey, erAdmin }) {
       {/* Canvas */}
       {layout && (
         <div className="relative">
-          <OrgCanvas
-            layout={layout}
-            personAv={personAv}
-            flereSelskap={modus === 'alle' ? flereSelskap : new Set()}
-            hoverPersonId={hoverPersonId}
-            onHover={setHoverPersonId}
-            onVelg={setValgtPersonId}
-          />
+          <KartFeilgrense>
+            <OrgCanvas
+              layout={layout}
+              personAv={personAv}
+              flereSelskap={modus === 'alle' ? flereSelskap : new Set()}
+              hoverPersonId={hoverPersonId}
+              onHover={setHoverPersonId}
+              onVelg={setValgtPersonId}
+            />
+          </KartFeilgrense>
           {(data?.roller || []).length === 0 && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
               <div className="pointer-events-auto max-w-sm rounded-[22px] bg-white/95 p-8 text-center shadow-[0_18px_50px_rgba(20,16,40,0.16)] backdrop-blur">
@@ -295,6 +323,22 @@ function OrgCanvas({ layout, personAv, flereSelskap, hoverPersonId, onHover, onV
   const drar = useRef(null);
   const PAD = 90; // luft rundt kartet i koordinatsystemet
 
+  // Fyll hele layouten: mål avstanden fra canvas-toppen til viewport-bunnen
+  // og bruk den som høyde — ingen hvit stripe nederst, uansett skjerm.
+  const [hoydePx, setHoydePx] = useState(560);
+  useEffect(() => {
+    const beregn = () => {
+      try {
+        const el = ytreRef.current; if (!el) return;
+        const r = el.getBoundingClientRect();
+        setHoydePx(Math.max(440, Math.round(window.innerHeight - r.top - 20)));
+      } catch (e) { /* aldri la måling velte kartet */ }
+    };
+    beregn();
+    window.addEventListener('resize', beregn);
+    return () => window.removeEventListener('resize', beregn);
+  }, []);
+
   const tilpass = useCallback(() => {
     const el = ytreRef.current; if (!el) return;
     const cw = el.clientWidth; const ch = el.clientHeight;
@@ -304,7 +348,7 @@ function OrgCanvas({ layout, personAv, flereSelskap, hoverPersonId, onHover, onV
     setView({ x: (cw - bw * scale) / 2, y: (ch - bh * scale) / 2, scale });
   }, [layout]);
 
-  useEffect(() => { tilpass(); }, [tilpass]);
+  useEffect(() => { tilpass(); }, [tilpass, hoydePx]);
 
   // Zoom mot pekeren — native listener (React gjør wheel passiv)
   useEffect(() => {
@@ -325,44 +369,58 @@ function OrgCanvas({ layout, personAv, flereSelskap, hoverPersonId, onHover, onV
   }, []);
 
   const paaPekerNed = (e) => {
-    // Klikk på kort/knapper skal nå frem som vanlige klikk — kun bakgrunnen
-    // starter panorering (pointer capture ville ellers kapret klikket).
-    if (e.target.closest && e.target.closest('button')) return;
-    setMyk(false);
-    pekere.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pekere.current.size === 1) {
-      drar.current = { startX: e.clientX, startY: e.clientY, viewX: view.x, viewY: view.y, flyttet: false };
-      e.currentTarget.setPointerCapture(e.pointerId);
-    }
+    try {
+      // Klikk på kort/knapper skal nå frem som vanlige klikk — kun bakgrunnen
+      // starter panorering (pointer capture ville ellers kapret klikket).
+      if (e.target && e.target.closest && e.target.closest('button')) return;
+      setMyk(false);
+      pekere.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pekere.current.size === 1) {
+        const v = viewRef.current;
+        drar.current = { startX: e.clientX, startY: e.clientY, viewX: v.x, viewY: v.y, flyttet: false };
+        // setPointerCapture kan kaste hvis pekeren alt er borte — aldri la det velte UI-et
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* ufarlig */ }
+      }
+    } catch (err) { drar.current = null; }
   };
   const paaPekerFlytt = (e) => {
-    if (!pekere.current.has(e.pointerId)) return;
-    const forrige = new Map(pekere.current);
-    pekere.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pekere.current.size === 2) {
-      // Pinch: skaler rundt midtpunktet
-      const [a, b] = [...pekere.current.values()];
-      const [fa, fb] = [...forrige.values()];
-      const avstNy = Math.hypot(a.x - b.x, a.y - b.y);
-      const avstGammel = Math.hypot(fa.x - fb.x, fa.y - fb.y) || avstNy;
-      const rect = ytreRef.current.getBoundingClientRect();
-      const mx = (a.x + b.x) / 2 - rect.left; const my = (a.y + b.y) / 2 - rect.top;
-      const v = viewRef.current;
-      const nyScale = Math.min(2.2, Math.max(0.25, v.scale * (avstNy / avstGammel)));
-      const k = nyScale / v.scale;
-      setView({ scale: nyScale, x: mx - (mx - v.x) * k, y: my - (my - v.y) * k });
-      drar.current = null;
-      return;
-    }
-    if (drar.current) {
-      const dx = e.clientX - drar.current.startX; const dy = e.clientY - drar.current.startY;
-      if (Math.abs(dx) + Math.abs(dy) > 3) drar.current.flyttet = true;
-      setView((v) => ({ ...v, x: drar.current.viewX + dx, y: drar.current.viewY + dy }));
-    }
+    try {
+      if (!pekere.current.has(e.pointerId)) return;
+      const forrige = new Map(pekere.current);
+      pekere.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pekere.current.size === 2) {
+        // Pinch: skaler rundt midtpunktet
+        const el = ytreRef.current; if (!el) return;
+        const [a, b] = [...pekere.current.values()];
+        const [fa, fb] = [...forrige.values()];
+        const avstNy = Math.hypot(a.x - b.x, a.y - b.y);
+        const avstGammel = Math.hypot(fa.x - fb.x, fa.y - fb.y) || avstNy;
+        const rect = el.getBoundingClientRect();
+        const mx = (a.x + b.x) / 2 - rect.left; const my = (a.y + b.y) / 2 - rect.top;
+        const v = viewRef.current;
+        const nyScale = Math.min(2.2, Math.max(0.25, v.scale * (avstNy / avstGammel)));
+        const k = nyScale / v.scale;
+        setView({ scale: nyScale, x: mx - (mx - v.x) * k, y: my - (my - v.y) * k });
+        drar.current = null;
+        return;
+      }
+      // VIKTIG: les drag-tilstanden inn i en LOKAL variabel før setView.
+      // «drar.current» kan bli nullstilt (pointerup/pinch) FØR React kjører
+      // oppdatereren — å dereferere ref-en inne i oppdatereren ga tidligere
+      // null-krasj («prøv igjen»-feilsiden) midt i panorering.
+      const d = drar.current;
+      if (d) {
+        const dx = e.clientX - d.startX; const dy = e.clientY - d.startY;
+        if (Math.abs(dx) + Math.abs(dy) > 3) d.flyttet = true;
+        setView((v) => ({ ...v, x: d.viewX + dx, y: d.viewY + dy }));
+      }
+    } catch (err) { drar.current = null; }
   };
   const paaPekerOpp = (e) => {
-    pekere.current.delete(e.pointerId);
-    if (pekere.current.size === 0) drar.current = null;
+    try {
+      pekere.current.delete(e.pointerId);
+      if (pekere.current.size === 0) drar.current = null;
+    } catch (err) { pekere.current = new Map(); drar.current = null; }
   };
 
   const zoomKnapp = (retning) => {
@@ -380,11 +438,12 @@ function OrgCanvas({ layout, personAv, flereSelskap, hoverPersonId, onHover, onV
       ref={ytreRef}
       data-testid="org-canvas"
       className="relative overflow-hidden rounded-[24px] shadow-[0_2px_20px_rgba(20,16,40,0.06),inset_0_0_0_1px_rgba(0,0,0,0.04)]"
-      style={{ height: 'max(520px, calc(100vh - 280px))', background: 'linear-gradient(180deg, #fbfaf8, #f5f3ef)', touchAction: 'none', userSelect: 'none', cursor: drar.current ? 'grabbing' : 'grab' }}
+      style={{ height: hoydePx, background: 'linear-gradient(180deg, #fbfaf8, #f5f3ef)', touchAction: 'none', userSelect: 'none', cursor: drar.current ? 'grabbing' : 'grab' }}
       onPointerDown={paaPekerNed}
       onPointerMove={paaPekerFlytt}
       onPointerUp={paaPekerOpp}
       onPointerCancel={paaPekerOpp}
+      onDoubleClick={(e) => { if (!(e.target && e.target.closest && e.target.closest('button'))) tilpass(); }}
     >
       <style>{`
         @keyframes dhOrgKortInn { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -466,7 +525,7 @@ function OrgCanvas({ layout, personAv, flereSelskap, hoverPersonId, onHover, onV
         <button onClick={() => zoomKnapp(1)} className="flex h-9 w-9 items-center justify-center text-[#8a857d] transition-colors hover:bg-[#faf9f7] hover:text-[#1c1917] active:scale-90" title="Zoom inn"><Plus className="h-3.5 w-3.5" /></button>
         <button onClick={tilpass} className="flex h-9 w-9 items-center justify-center border-l border-black/[0.05] text-[#8a857d] transition-colors hover:bg-[#faf9f7] hover:text-[#6d28d9] active:scale-90" title="Tilpass visningen" data-testid="org-fit-btn"><Maximize2 className="h-3.5 w-3.5" /></button>
       </div>
-      <p className="pointer-events-none absolute bottom-4 left-4 hidden rounded-full bg-white/70 px-3 py-1.5 text-[10px] font-medium text-[#a6a19a] backdrop-blur sm:block">Dra for å flytte · scroll for zoom · klikk et kort for detaljer</p>
+      <p className="pointer-events-none absolute bottom-4 left-4 hidden rounded-full bg-white/70 px-3 py-1.5 text-[10px] font-medium text-[#a6a19a] backdrop-blur sm:block">Dra for å flytte · scroll for zoom · dobbelklikk for å tilpasse · klikk et kort for detaljer</p>
     </div>
   );
 }

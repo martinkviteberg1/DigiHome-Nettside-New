@@ -17,7 +17,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   ArrowLeft, ArrowRight, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Plus, X, RotateCcw, ChevronDown,
-  SlidersHorizontal, TrendingUp, Scale, Users, Building2, Bookmark, HelpCircle, FileSpreadsheet,
+  SlidersHorizontal, TrendingUp, Scale, Users, Building2, Bookmark, HelpCircle, FileSpreadsheet, FileText,
 } from 'lucide-react';
 import Omvisning from '@/components/admin/Omvisning';
 import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE, skalerVekst } from '@/lib/budsjett-modell';
@@ -748,6 +748,11 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const [fakta, setFakta] = useState(plan.fakta || { eksisterende: [], enheter: [], oppdatertAt: null });
   const [aapne, setAapne] = useState({ portefolje: true, unit: false, org: false, faste: false });
   const [railAapen, setRailAapen] = useState(true);
+  // Under xl er panelet et bunn-ark som dekker innholdet — start derfor lukket
+  // på mobil/nettbrett, så tallene er det første man ser.
+  useEffect(() => {
+    try { if (typeof window !== 'undefined' && window.innerWidth < 1280) setRailAapen(false); } catch (e) {}
+  }, []);
   const [skittent, setSkittent] = useState(false);
   // Navngitte scenariosett: lagrede driversett («Konservativt» osv.) på planen.
   // Å velge et scenario laster driverne inn i editoren — «Lagre» i topplinjen
@@ -761,13 +766,13 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
         åpnes; «?» i topplinjen åpner den igjen. Nøktern, presis tone. ── */
   const [tourAktiv, setTourAktiv] = useState(false);
   const [eksporterer, setEksporterer] = useState(false);
+  const [eksportererPdf, setEksportererPdf] = useState(false);
 
-  /* Excel-eksport — laster ned investorklar arbeidsbok (lagrede tall) */
-  const eksporterExcel = async () => {
-    if (eksporterer) return;
-    setEksporterer(true);
+  /* Felles nedlaster for eksportformatene */
+  const lastNedEksport = async (format, fallbackNavn, settBusy) => {
+    settBusy(true);
     try {
-      const r = await fetch(`/api/admin/budsjett/plan/xlsx?id=${encodeURIComponent(plan.id)}&key=${encodeURIComponent(apiKey)}`);
+      const r = await fetch(`/api/admin/budsjett/plan/${format}?id=${encodeURIComponent(plan.id)}&key=${encodeURIComponent(apiKey)}`);
       if (!r.ok) throw new Error('Eksporten feilet');
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
@@ -775,11 +780,22 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
       a.href = url;
       const cd = r.headers.get('Content-Disposition') || '';
       const mNavn = cd.match(/filename="([^"]+)"/);
-      a.download = (mNavn && mNavn[1]) || 'digihome-vekstbudsjett.xlsx';
+      a.download = (mNavn && mNavn[1]) || fallbackNavn;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
-    } catch (e) { setFeil('Kunne ikke eksportere til Excel — prøv igjen'); }
-    finally { setEksporterer(false); }
+    } catch (e) { setFeil(`Kunne ikke eksportere til ${format === 'pdf' ? 'PDF' : 'Excel'} — prøv igjen`); }
+    finally { settBusy(false); }
+  };
+
+  /* Excel-eksport — laster ned investorklar arbeidsbok (levende formler) */
+  const eksporterExcel = async () => {
+    if (eksporterer) return;
+    await lastNedEksport('xlsx', 'digihome-vekstbudsjett.xlsx', setEksporterer);
+  };
+  /* PDF-rapport — investorklart dokument med forside, KPI-er og grafer */
+  const eksporterPdf = async () => {
+    if (eksportererPdf) return;
+    await lastNedEksport('pdf', 'digihome-vekstbudsjett.pdf', setEksportererPdf);
   };
   const tourStartetRef = useRef(false);
   const tourSteg = [
@@ -1086,13 +1102,13 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const feltProps = { drivere, sanert, lagret: lagretDrivere, onEndre: settDriver, readOnly };
 
   const Stat = ({ tittel, verdi, under, farge, testid, hoyre }) => (
-    <div className="flex min-w-[184px] flex-1 items-center justify-between gap-3 px-5 py-4">
+    <div className="flex min-w-0 items-center justify-between gap-3 rounded-[14px] bg-white px-4 py-3.5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
       <div className="min-w-0">
-        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#a6a19a]">{tittel}</p>
-        <p className={`mt-0.5 truncate text-[24px] font-bold tracking-[-0.015em] ${farge || 'text-[#1c1917]'}`} style={heading} data-testid={testid}>{verdi}</p>
-        {under && <p className="truncate text-[11.5px] text-[#a6a19a]">{under}</p>}
+        <p className="truncate text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a6a19a]">{tittel}</p>
+        <p className={`mt-0.5 truncate text-[length:clamp(17px,1.35vw,23px)] font-bold tracking-[-0.015em] ${farge || 'text-[#1c1917]'}`} style={heading} data-testid={testid}>{verdi}</p>
+        {under && <p className="truncate text-[11px] text-[#a6a19a]">{under}</p>}
       </div>
-      {hoyre}
+      {hoyre && <span className="hidden shrink-0 md:block">{hoyre}</span>}
     </div>
   );
 
@@ -1185,10 +1201,17 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
           </div>
           {/* Excel-eksport — investorklar arbeidsbok med formler */}
           <button onClick={eksporterExcel} disabled={eksporterer} data-testid="modell-excel-eksport"
-            title="Last ned som Excel — Sammendrag, Månedsbudsjett med levende formler og Forutsetninger"
+            title="Last ned som Excel — Sammendrag, Månedsbudsjett med levende formler, Årsoversikt og Forutsetninger"
             className="flex h-9 shrink-0 items-center gap-2 rounded-full bg-white px-3.5 text-[12.5px] font-medium text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-all hover:text-[#1c1917] disabled:opacity-60">
             {eksporterer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-[#15803d]" />}
             <span className="hidden sm:block">Excel</span>
+          </button>
+          {/* PDF-rapport — investorklart dokument */}
+          <button onClick={eksporterPdf} disabled={eksportererPdf} data-testid="modell-pdf-eksport"
+            title="Last ned PDF-rapport — forside, nøkkeltall, grafer, månedsbudsjett og forutsetninger"
+            className="flex h-9 shrink-0 items-center gap-2 rounded-full bg-white px-3.5 text-[12.5px] font-medium text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-all hover:text-[#1c1917] disabled:opacity-60">
+            {eksportererPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5 text-[#b91c1c]" />}
+            <span className="hidden sm:block">PDF</span>
           </button>
           {/* Omvisning */}
           <button onClick={() => setTourAktiv(true)} data-testid="modell-tour-knapp" title="Omvisning — se hvordan budsjettmodellen henger sammen"
@@ -1227,10 +1250,27 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
       <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-start">
         {/* ── Venstre: forutsetninger — investorens mentale kjede (vis/skjul i topp-raden) ── */}
         {railAapen && (
-        <aside className="w-full shrink-0 xl:sticky xl:top-3 xl:max-h-[calc(100vh-24px)] xl:w-[344px] xl:overflow-y-auto" data-testid="modell-drivere" style={{ scrollbarWidth: 'thin' }}>
+        <>
+        {/* Under xl: forutsetningene vises som et bunn-ark over innholdet —
+            slipper å skyve hele cockpiten ned på mobil/nettbrett. */}
+        <div className="fixed inset-0 z-[70] bg-black/25 backdrop-blur-[2px] xl:hidden" onClick={() => setRailAapen(false)} data-testid="modell-rail-overlay" />
+        <aside
+          className="fixed inset-x-0 bottom-0 z-[71] max-h-[84vh] w-full shrink-0 overflow-y-auto overscroll-contain rounded-t-[22px] bg-[#f7f6f3] px-3 pb-[max(14px,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-18px_60px_rgba(20,16,40,0.28)] xl:sticky xl:inset-x-auto xl:bottom-auto xl:top-3 xl:z-auto xl:max-h-[calc(100vh-24px)] xl:w-[344px] xl:rounded-none xl:bg-transparent xl:p-0 xl:shadow-none"
+          data-testid="modell-drivere" style={{ scrollbarWidth: 'thin' }}
+        >
+          {/* Mobil-topp: håndtak + Ferdig */}
+          <div className="sticky top-0 z-10 -mx-3 mb-1.5 flex items-center justify-between rounded-t-[22px] bg-[#f7f6f3]/95 px-4 pb-1.5 pt-2.5 backdrop-blur xl:hidden">
+            <span className="pointer-events-none absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-black/15" />
+            <p className="pt-1.5 text-[13.5px] font-bold text-[#1c1917]" style={heading}>Forutsetninger</p>
+            <button onClick={() => setRailAapen(false)} data-testid="modell-rail-lukk-mobil"
+              className="mt-0.5 rounded-full bg-[#141414] px-3.5 py-1.5 text-[12px] font-bold text-white transition-all active:scale-95">
+              Ferdig
+            </button>
+          </div>
           <div className="rounded-[16px] bg-white px-4 pb-3.5 pt-3.5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <p className="text-[14.5px] font-bold text-[#1c1917]" style={heading}>Forutsetninger</p>
+              <p className="hidden text-[14.5px] font-bold text-[#1c1917] xl:block" style={heading}>Forutsetninger</p>
+              <span className="xl:hidden" />
               {!readOnly && antallEndret > 0 && (
                 <button onClick={tilbakestill} className="flex items-center gap-1 rounded-full bg-[#f0ebfa] px-2 py-0.5 text-[11px] font-bold text-[#6d28d9] transition-colors hover:bg-[#e5dbf7]" title="Tilbakestill til sist lagrede verdier">
                   <RotateCcw className="h-2.5 w-2.5" /> {antallEndret} endret · nullstill
@@ -1333,12 +1373,14 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             </div>
           </div>
         </aside>
+        </>
         )}
 
         {/* ── Høyre: output ── */}
         <main className="min-w-0 flex-1">
-          {/* Nøkkeltall — diagnostiske */}
-          <div className="flex flex-wrap divide-x divide-black/[0.05] rounded-[16px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="modell-nokkeltall">
+          {/* Nøkkeltall — diagnostiske. Responsivt grid: aldri avkuttede tall,
+              uansett om forutsetnings-panelet er åpent eller skjermen er smal. */}
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 min-[1560px]:grid-cols-5" data-testid="modell-nokkeltall">
             <Stat tittel="Resultat i perioden" verdi={kr(s.resultat)} farge={s.resultat >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'} testid="modell-resultat"
               hoyre={<Sparkline serie={m.resultat} />} />
             <Stat tittel="Resultat siste måned" verdi={`${kr0(m.resultat[sisteIdx])} kr`}

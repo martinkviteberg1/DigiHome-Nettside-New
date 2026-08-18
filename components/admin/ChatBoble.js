@@ -23,6 +23,40 @@ const avatarFarge = (navn) => {
   return AVATAR_FARGER[h % AVATAR_FARGER.length];
 };
 const initialer = (navn) => String(navn || '?').trim().split(/\s+/).slice(0, 2).map((d) => d[0]).join('').toUpperCase();
+// Profilbilder: navn → dataURL. Fylles når brukerlisten lastes; brukes av
+// NavnAvatar overalt i chatten (meldinger, lesekvitteringer, tråder, søk).
+const AVATAR_REG = new Map();
+const registrerAvatarer = (liste) => {
+  try {
+    for (const m of liste || []) {
+      if (m && m.name) AVATAR_REG.set(String(m.name).toLowerCase().trim(), m.avatar || '');
+    }
+  } catch (e) { /* aldri la avatarer velte chatten */ }
+};
+const avatarFor = (navn) => AVATAR_REG.get(String(navn || '').toLowerCase().trim()) || '';
+// Rund avatar: profilbilde hvis brukeren har lastet opp ett, ellers initialer.
+function NavnAvatar({ navn, size = 28, fontPx, className = '', style = {}, gradient = false }) {
+  const bilde = avatarFor(navn);
+  if (bilde) {
+    return (
+      <img
+        src={bilde} alt="" title={navn}
+        className={`shrink-0 rounded-full object-cover ${className}`}
+        style={{ width: size, height: size, ...style }}
+      />
+    );
+  }
+  const f = avatarFarge(navn);
+  return (
+    <span
+      title={navn}
+      className={`flex shrink-0 items-center justify-center rounded-full font-bold text-white ${className}`}
+      style={{ width: size, height: size, fontSize: fontPx || Math.round(size * 0.36), background: gradient ? `linear-gradient(135deg, ${f}, ${f}cc)` : f, ...style }}
+    >
+      {initialer(navn)}
+    </span>
+  );
+}
 const klokke = (iso) => { try { return new Date(iso).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
 const dagLabel = (iso) => {
   const d = new Date(iso); const iDag = new Date(); const iGaar = new Date(Date.now() - 864e5);
@@ -466,6 +500,7 @@ export default function ChatBoble({ token, user }) {
         setMeldinger(j.meldinger || []);
         setFestede(jFest?.festede || []);
         const alleU = ur.members || ur.users || ur.personer || (Array.isArray(ur) ? ur : []);
+        registrerAvatarer(alleU);
         setBrukere(alleU.filter((u) => ['owner', 'admin', 'bruker', 'partner'].includes(u.role)));
         setUlest(0);
         // Merk lest — API-et returnerer FORRIGE lesetidspunkt, som blir
@@ -1026,9 +1061,7 @@ export default function ChatBoble({ token, user }) {
       {rad.fortsettelse ? (
         <span className="w-7 shrink-0 pt-[3px] text-right text-[9px] font-medium text-[#c2beb8] opacity-0 transition-opacity group-hover:opacity-100">{klokke(rad.createdAt)}</span>
       ) : (
-        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-[0_2px_6px_rgba(0,0,0,0.14)]" style={{ background: `linear-gradient(135deg, ${avatarFarge(rad.userName)}, ${avatarFarge(rad.userName)}cc)` }}>
-          {initialer(rad.userName)}
-        </span>
+        <NavnAvatar navn={rad.userName} size={28} fontPx={10} gradient className="mt-0.5 shadow-[0_2px_6px_rgba(0,0,0,0.14)]" />
       )}
       <div className="min-w-0 flex-1">
         {!rad.fortsettelse && (
@@ -1112,7 +1145,7 @@ export default function ChatBoble({ token, user }) {
             {rad.traad && (
               <span className="flex shrink-0 items-center">
                 {(rad.traad.navn || []).slice(0, 3).map((n, i) => (
-                  <span key={n} className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[7px] font-bold text-white ring-[1.5px] ring-white" style={{ background: avatarFarge(n), marginLeft: i ? -5 : 0 }}>{initialer(n)}</span>
+                  <span key={n} className="flex" style={{ marginLeft: i ? -5 : 0 }}><NavnAvatar navn={n} size={18} fontPx={7} className="ring-[1.5px] ring-white" /></span>
                 ))}
               </span>
             )}
@@ -1384,7 +1417,7 @@ export default function ChatBoble({ token, user }) {
                 {traader.map((t) => (
                   <button key={t.id} onClick={() => { setVisSok(false); aapneTraad(t.id); }} data-testid={`chat-side-traad-${t.id}`}
                     className={`mb-0.5 flex w-full items-center gap-2 rounded-[11px] px-2.5 py-[7px] text-left transition-all active:scale-[0.99] ${traad?.id === t.id ? 'bg-white shadow-[0_1px_5px_rgba(20,16,40,0.07),inset_0_0_0_1px_rgba(109,40,217,0.22)]' : 'hover:bg-white/70'}`}>
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-white" style={{ background: avatarFarge(t.userName) }}>{initialer(t.userName)}</span>
+                    <NavnAvatar navn={t.userName} size={24} fontPx={8} />
                     <span className="min-w-0 flex-1">
                       <span className={`block truncate text-[12px] leading-snug ${(t.uleste || 0) > 0 ? 'font-bold text-[#1c1917]' : 'font-semibold text-[#44403c]'}`}>{t.navn || t.tekst}</span>
                       <span className="block truncate text-[10px] text-[#b3ada3]">{t.antallSvar === 1 ? '1 svar' : `${t.antallSvar} svar`}{t.sak ? ` · ${t.sak.title}` : ''}</span>
@@ -1397,7 +1430,7 @@ export default function ChatBoble({ token, user }) {
               </div>
               <div className="border-t border-black/[0.05] px-4 py-3">
                 <div className="flex items-center gap-2.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold text-white" style={{ background: avatarFarge(user?.name) }}>{initialer(user?.name)}</span>
+                  <NavnAvatar navn={user?.name} size={28} fontPx={9.5} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[12px] font-bold text-[#1c1917]">{user?.name || 'Deg'}</span>
                     <span className="block text-[9.5px] font-medium uppercase tracking-wide text-[#b3ada3]">{user?.role === 'owner' ? 'Eier' : user?.role === 'admin' ? 'Admin' : 'Teammedlem'}</span>
@@ -1449,9 +1482,7 @@ export default function ChatBoble({ token, user }) {
                 {!traad && brukere.length > 0 && (
                   <span className="mr-1 hidden items-center sm:flex" title={brukere.map((u) => u.name).join(', ')}>
                     {brukere.slice(0, 4).map((u, i) => (
-                      <span key={u.id} className="flex h-6 w-6 items-center justify-center rounded-full text-[8.5px] font-bold text-white ring-2 ring-white" style={{ background: avatarFarge(u.name), marginLeft: i ? -7 : 0 }}>
-                        {initialer(u.name)}
-                      </span>
+                      <span key={u.id} className="flex" style={{ marginLeft: i ? -7 : 0 }}><NavnAvatar navn={u.name} size={24} fontPx={8.5} className="ring-2 ring-white" /></span>
                     ))}
                     {brukere.length > 4 && <span className="ml-1 text-[10.5px] font-semibold text-[#a6a19a]">+{brukere.length - 4}</span>}
                   </span>
@@ -1638,7 +1669,7 @@ export default function ChatBoble({ token, user }) {
                   <button key={t.id} onClick={() => gaaTilTreff(t)} data-testid={`chat-sok-treff-${t.id}`}
                     className="mb-1.5 flex w-full items-start gap-2.5 rounded-[13px] bg-white/90 px-2.5 py-2 text-left transition-all hover:-translate-y-px hover:bg-white active:scale-[0.99]"
                     style={{ boxShadow: '0 1px 5px rgba(20,16,40,0.06), inset 0 0 0 1px rgba(0,0,0,0.04)' }}>
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[8.5px] font-bold text-white" style={{ background: avatarFarge(t.userName) }}>{initialer(t.userName)}</span>
+                    <NavnAvatar navn={t.userName} size={24} fontPx={8.5} className="mt-0.5" />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline gap-1.5">
                         <span className="text-[11.5px] font-bold text-[#1c1917]">{t.userName}</span>
@@ -1683,9 +1714,7 @@ export default function ChatBoble({ token, user }) {
                   className="mb-2 w-full rounded-[14px] bg-white/90 p-2.5 text-left transition-all hover:-translate-y-px hover:bg-white active:scale-[0.99]"
                   style={{ boxShadow: (t.uleste || 0) > 0 ? '0 2px 10px rgba(109,40,217,0.12), inset 0 0 0 1px rgba(109,40,217,0.25)' : '0 1px 5px rgba(20,16,40,0.06), inset 0 0 0 1px rgba(0,0,0,0.04)', animation: 'dhChatMeldingInn 200ms ease-out both' }}>
                   <div className="flex items-start gap-2.5">
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-[0_2px_6px_rgba(0,0,0,0.14)]" style={{ background: `linear-gradient(135deg, ${avatarFarge(t.userName)}, ${avatarFarge(t.userName)}cc)` }}>
-                      {initialer(t.userName)}
-                    </span>
+                    <NavnAvatar navn={t.userName} size={28} fontPx={10} gradient className="mt-0.5 shadow-[0_2px_6px_rgba(0,0,0,0.14)]" />
                     <div className="min-w-0 flex-1">
                       <p className="flex items-baseline gap-2">
                         <span className="truncate text-[13px] font-bold text-[#1c1917]">{t.navn || t.tekst}</span>
@@ -1698,7 +1727,7 @@ export default function ChatBoble({ token, user }) {
                         {(t.deltakere || []).length > 0 && (
                           <span className="flex items-center">
                             {t.deltakere.slice(0, 3).map((n, i) => (
-                              <span key={n} className="flex h-[16px] w-[16px] items-center justify-center rounded-full text-[6.5px] font-bold text-white ring-[1.5px] ring-white" style={{ background: avatarFarge(n), marginLeft: i ? -4 : 0 }}>{initialer(n)}</span>
+                              <span key={n} className="flex" style={{ marginLeft: i ? -4 : 0 }}><NavnAvatar navn={n} size={16} fontPx={6.5} className="ring-[1.5px] ring-white" /></span>
                             ))}
                           </span>
                         )}
@@ -1736,7 +1765,7 @@ export default function ChatBoble({ token, user }) {
                     <div className="space-y-1 px-2 pb-2">
                       {festede.map((f) => (
                         <div key={f.id} className="group/f flex items-start gap-2 rounded-[10px] bg-white/70 px-2.5 py-1.5">
-                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[7.5px] font-bold text-white" style={{ background: avatarFarge(f.userName) }}>{initialer(f.userName)}</span>
+                          <NavnAvatar navn={f.userName} size={20} fontPx={7.5} className="mt-0.5" />
                           <div className="min-w-0 flex-1">
                             <p className="text-[10px] font-bold text-[#78350f]">{f.userName} <span className="font-medium text-[#c9a227]">{dagLabel(f.createdAt)} {klokke(f.createdAt)}</span></p>
                             <p className="line-clamp-2 whitespace-pre-wrap text-[11.5px] leading-snug text-[#44403c]">{f.text || `📎 ${(f.vedlegg || []).map((v) => v.name).join(', ')}`}</p>
@@ -1824,7 +1853,7 @@ export default function ChatBoble({ token, user }) {
                 {mentionTreff.map((u, i) => (
                   <button key={u.id} onClick={() => velgMention(u)} data-testid={`chat-mention-${u.id}`}
                     className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left transition-colors hover:bg-[#f5f2fc] ${i === 0 ? 'bg-[#f8f6fd]' : ''}`}>
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: avatarFarge(u.name) }}>{initialer(u.name)}</span>
+                    <NavnAvatar navn={u.name} size={24} fontPx={9} />
                     <span className="min-w-0">
                       <span className="block truncate text-[13px] font-semibold text-[#1c1917]">{u.name}</span>
                       {u.tittel && <span className="block truncate text-[10.5px] text-[#a6a19a]">{u.tittel}</span>}

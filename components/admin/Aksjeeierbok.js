@@ -12,7 +12,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import {
   BookMarked, Plus, X, Loader2, Trash2, AlertTriangle, Check, Users, Settings2,
   Printer, CalendarClock, Sparkles, ArrowRight, Landmark, User, Coins, PieChart,
-  SplitSquareHorizontal, Merge, FileMinus, PenLine,
+  SplitSquareHorizontal, Merge, FileMinus, PenLine, FileSpreadsheet,
 } from 'lucide-react';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
@@ -78,6 +78,30 @@ export default function Aksjeeierbok({ apiKey, erAdmin }) {
   const [visPrint, setVisPrint] = useState(false);
   const [sletterTrans, setSletterTrans] = useState('');
   const [transFeil, setTransFeil] = useState('');
+  const [eksporterer, setEksporterer] = useState(false);
+
+  /* Excel-eksport — cap table (per valgt dato), transaksjoner og klasser */
+  const eksporterExcel = async () => {
+    if (eksporterer) return;
+    setEksporterer(true);
+    try {
+      const params = new URLSearchParams({ key: apiKey });
+      if (selskapId) params.set('selskapId', selskapId);
+      if (dato) params.set('dato', dato);
+      const r = await fetch(`/api/admin/selskap/eierbok/xlsx?${params}`);
+      if (!r.ok) throw new Error('Eksporten feilet');
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cd = r.headers.get('Content-Disposition') || '';
+      const mNavn = cd.match(/filename="([^"]+)"/);
+      a.download = (mNavn && mNavn[1]) || 'digihome-aksjeeierbok.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (e) { setFeil('Kunne ikke eksportere eierboken til Excel — prøv igjen'); }
+    finally { setEksporterer(false); }
+  };
 
   const hent = useCallback(async (sid = selskapId, d = dato) => {
     try {
@@ -143,6 +167,11 @@ export default function Aksjeeierbok({ apiKey, erAdmin }) {
         <button onClick={() => setVisPrint(true)} title="Skriv ut eierboken" data-testid="eb-print-btn"
           className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-[12px] font-bold text-[#44403c] shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all hover:shadow-md active:scale-95">
           <Printer className="h-3.5 w-3.5" /> Skriv ut
+        </button>
+        <button onClick={eksporterExcel} disabled={eksporterer} data-testid="eb-excel-btn"
+          title="Last ned aksjeeierboken som Excel — cap table, transaksjonshistorikk og aksjeklasser"
+          className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-[12px] font-bold text-[#44403c] shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all hover:shadow-md active:scale-95 disabled:opacity-60">
+          {eksporterer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-[#15803d]" />} Excel
         </button>
         {erAdmin && (
           <>
