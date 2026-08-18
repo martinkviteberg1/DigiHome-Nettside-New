@@ -26,13 +26,13 @@ const fmtOrgnr = (o) => String(o || '').replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 
 const fmtDato = (iso) => { try { return new Date(iso).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ''; } };
 
 // ── Layoutmotor: rene koordinater — ingen DOM-måling ─────────────────────────
-const CW = 226; const CH = 112;   // personkort
+const CW = 260; const CH = 72;    // personkort — FAST høyde, alle like
 const SW = 330; const SH = 100;   // selskapskort
-const CHIP_W = 240; const CHIP_H = 56;
-const GX = 26;                    // luft mellom kort i en rad
-const RG = 74;                    // luft mellom rader (radetikett kommer i tillegg)
-const TRE_GAP = 170;              // luft mellom de to selskapstrærne
-const MOR_GAP = 104;              // luft mellom morselskapets kort og døtrene
+const CHIP_W = 260; const CHIP_H = 72; // støttefunksjon-chip — samme bredde som personkort
+const GX = 20;                    // luft mellom kort i en rad
+const RG = 52;                    // luft mellom rader (radetikett kommer i tillegg)
+const TRE_GAP = 110;              // luft mellom de to selskapstrærne
+const MOR_GAP = 64;               // luft mellom morselskapets kort og døtrene
 
 function sorterRoller(a, b) {
   return (a.rekkefolge - b.rekkefolge) || String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
@@ -230,12 +230,6 @@ export default function Organisasjon({ apiKey, erAdmin }) {
 
   const layout = useMemo(() => (data ? byggLayout(data.selskaper, data.roller, modus) : null), [data, modus]);
   const personAv = useMemo(() => Object.fromEntries((data?.personer || []).map((p) => [p.id, p])), [data]);
-  // Personer med roller i 2+ selskaper (for «2 selskaper»-badge)
-  const flereSelskap = useMemo(() => {
-    const per = {};
-    for (const r of (data?.roller || [])) { (per[r.personId] = per[r.personId] || new Set()).add(r.selskapId); }
-    return new Set(Object.keys(per).filter((pid) => per[pid].size > 1));
-  }, [data]);
 
   const valgtPerson = valgtPersonId ? personAv[valgtPersonId] : null;
 
@@ -253,7 +247,6 @@ export default function Organisasjon({ apiKey, erAdmin }) {
             <OrgCanvas
               layout={layout}
               personAv={personAv}
-              flereSelskap={modus === 'alle' ? flereSelskap : new Set()}
               hoverPersonId={hoverPersonId}
               onHover={setHoverPersonId}
               onVelg={setValgtPersonId}
@@ -358,14 +351,14 @@ export default function Organisasjon({ apiKey, erAdmin }) {
 
 // ── Canvas med pan/zoom ──────────────────────────────────────────────────────
 
-function OrgCanvas({ layout, personAv, flereSelskap, hoverPersonId, onHover, onVelg }) {
+function OrgCanvas({ layout, personAv, hoverPersonId, onHover, onVelg }) {
   const ytreRef = useRef(null);
   const [view, setView] = useState({ x: 0, y: 0, scale: 1 });
   const [myk, setMyk] = useState(false); // myk transisjon ved knappe-zoom/fit
   const viewRef = useRef(view); viewRef.current = view;
   const pekere = useRef(new Map());
   const drar = useRef(null);
-  const PAD = 90; // luft rundt kartet i koordinatsystemet
+  const PAD = 48; // luft rundt kartet i koordinatsystemet
 
   // Fyll hele layouten: mål avstanden fra canvas-toppen til viewport-bunnen
   // og bruk den som høyde — ingen hvit stripe nederst, uansett skjerm.
@@ -571,7 +564,6 @@ function OrgCanvas({ layout, personAv, flereSelskap, hoverPersonId, onHover, onV
           }
           return (
             <PersonKort key={n.data.id} node={n} person={person} pad={PAD} stagger={i}
-              badgeFlere={flereSelskap.has(person.id)}
               hover={hoverPersonId === person.id}
               onHover={onHover} onVelg={onVelg} />
           );
@@ -620,7 +612,7 @@ function SelskapKort({ node, pad, stagger = 0 }) {
   );
 }
 
-function PersonKort({ node, person, pad, badgeFlere, hover, onHover, onVelg, stagger = 0 }) {
+function PersonKort({ node, person, pad, hover, onHover, onVelg, stagger = 0 }) {
   const r = node.data;
   const erStyre = node.navn === 'styre';
   const erVara = ['VARA', 'OBS'].includes(r.rolleKode);
@@ -631,14 +623,19 @@ function PersonKort({ node, person, pad, badgeFlere, hover, onHover, onVelg, sta
         onMouseEnter={() => onHover(person.id)}
         onMouseLeave={() => onHover(null)}
         data-testid={`org-kort-${r.id}`}
-        className={`w-full rounded-[16px] bg-white px-4 py-3.5 text-left transition-all duration-200 hover:-translate-y-1 ${erVara ? 'opacity-75' : ''}`}
+        className={`relative flex h-[72px] w-full items-center rounded-[16px] bg-white px-4 text-left transition-all duration-200 hover:-translate-y-1 ${erVara ? 'opacity-75' : ''}`}
         style={{
           boxShadow: hover
             ? '0 14px 34px rgba(59,35,115,0.20), inset 0 0 0 1.5px rgba(109,40,217,0.45)'
             : '0 2px 10px rgba(20,16,40,0.06), inset 0 0 0 1px rgba(0,0,0,0.05)',
         }}
       >
-        <div className="flex items-start gap-3">
+        {r.brregBorte && (
+          <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#fdf3e7] text-[#b45309] shadow-sm" title="Ikke lenger registrert i Brønnøysund">
+            <AlertTriangle className="h-3 w-3" />
+          </span>
+        )}
+        <div className="flex w-full items-center gap-3">
           {person.bilde ? (
             <img src={person.bilde} alt="" className="h-11 w-11 shrink-0 rounded-[13px] object-cover" style={{ boxShadow: '0 3px 10px rgba(20,16,40,0.14)' }} />
           ) : (
@@ -648,20 +645,16 @@ function PersonKort({ node, person, pad, badgeFlere, hover, onHover, onVelg, sta
             </span>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-bold leading-snug text-[#1c1917]">{person.navn}</p>
-            <span className={`mt-1 inline-block rounded-full px-2 py-[2px] text-[9px] font-bold uppercase tracking-wide ${erStyre ? 'bg-[#f0ebfa] text-[#6d28d9]' : 'text-white'}`}
-              style={erStyre ? {} : { background: 'linear-gradient(135deg, #1c1917, #3d3733)' }}>
-              {r.rolleNavn}
+            <p className="truncate text-[13.5px] font-bold leading-snug text-[#1c1917]">{person.navn}</p>
+            <span className="mt-1 flex min-w-0 items-center gap-1.5">
+              <span className={`inline-block shrink-0 rounded-full px-2 py-[2px] text-[9px] font-bold uppercase tracking-wide ${erStyre ? 'bg-[#f0ebfa] text-[#6d28d9]' : 'text-white'}`}
+                style={erStyre ? {} : { background: 'linear-gradient(135deg, #1c1917, #3d3733)' }}>
+                {r.rolleNavn}
+              </span>
+              {person.tittel && r.rolleNavn !== person.tittel && <span className="truncate text-[9.5px] font-medium text-[#a6a19a]">{person.tittel}</span>}
             </span>
-            {person.tittel && r.rolleNavn !== person.tittel && <p className="mt-1 truncate text-[10px] text-[#a6a19a]">{person.tittel}</p>}
           </div>
         </div>
-        {(badgeFlere || r.brregBorte) && (
-          <div className="mt-1.5 flex items-center gap-1.5">
-            {badgeFlere && <span className="rounded-full bg-[#eef6f1] px-1.5 py-[1px] text-[8.5px] font-bold text-[#15803d]">2 selskaper</span>}
-            {r.brregBorte && <span className="flex items-center gap-0.5 rounded-full bg-[#fdf3e7] px-1.5 py-[1px] text-[8.5px] font-bold text-[#b45309]"><AlertTriangle className="h-2.5 w-2.5" />Ikke lenger i BRreg</span>}
-          </div>
-        )}
       </button>
     </div>
   );
