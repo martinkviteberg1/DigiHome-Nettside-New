@@ -22,6 +22,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Loader2, Check, ChevronDown, RotateCcw, ArrowRight, Sparkles, Scale, Info, HelpCircle,
+  Timer, Gauge, Percent, TrendingUp, CalendarRange,
 } from 'lucide-react';
 import Omvisning from '@/components/admin/Omvisning';
 import {
@@ -89,6 +90,48 @@ const Felt = ({ label, k, drivere, sanert, lagret, onEndre, enhet, hint, slider,
   );
 };
 
+/* ── Donut-ring: liten sirkulær fremdriftsindikator (margin m.m.) ── */
+function DonutRing({ pct, farge }) {
+  const p = Math.max(0, Math.min(100, Number(pct) || 0));
+  const R = 25, C = 2 * Math.PI * R;
+  return (
+    <svg viewBox="0 0 64 64" className="h-[52px] w-[52px] -rotate-90">
+      <circle cx="32" cy="32" r={R} fill="none" stroke="#f0efec" strokeWidth="7.5" />
+      <circle cx="32" cy="32" r={R} fill="none" stroke={farge} strokeWidth="7.5" strokeLinecap="round"
+        strokeDasharray={`${(p / 100) * C} ${C}`} style={{ transition: 'stroke-dasharray 400ms ease' }} />
+    </svg>
+  );
+}
+
+/* ── Mini-sparkline til hero-flisen: akkumulert kontantstrøm på mørk bunn ── */
+function MiniKurve({ u, visning }) {
+  const bidrag = visning === 'etter' ? u.bidragEtter : u.bidragFor;
+  const T = 36, W = 400, H = 64;
+  const yV = (t) => -u.nettoCac + bidrag * t;
+  const yMin = Math.min(-u.nettoCac, yV(T), 0);
+  const yMaks = Math.max(yV(T), 1);
+  const x = (t) => (W / T) * t;
+  const y = (v) => 5 + (H - 10) * (1 - (v - yMin) / ((yMaks - yMin) || 1));
+  const pb = bidrag > 0 ? u.nettoCac / bidrag : null;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 64 }} preserveAspectRatio="none" aria-hidden>
+      <defs>
+        <linearGradient id="eoHeroGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={bidrag > 0 ? '#34d399' : '#f87171'} stopOpacity="0.32" />
+          <stop offset="100%" stopColor={bidrag > 0 ? '#34d399' : '#f87171'} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <line x1="0" x2={W} y1={y(0)} y2={y(0)} stroke="rgba(255,255,255,0.16)" strokeWidth="1" strokeDasharray="3 4" />
+      <polygon points={`${x(0)},${y(yV(0))} ${x(T)},${y(yV(T))} ${x(T)},${H} ${x(0)},${H}`} fill="url(#eoHeroGrad)" />
+      <polyline points={`${x(0)},${y(yV(0))} ${x(T)},${y(yV(T))}`} fill="none"
+        stroke={bidrag > 0 ? '#34d399' : '#f87171'} strokeWidth="2.2" strokeLinecap="round" />
+      {pb !== null && pb < T && (
+        <circle cx={x(pb)} cy={y(0)} r="4" fill="#141414" stroke="#c4b5fd" strokeWidth="2.2" />
+      )}
+    </svg>
+  );
+}
+
 /* ── Livsløpsgraf: akkumulert økonomi for én enhet fra måned 0 (starter på −CAC) ── */
 function LivslopGraf({ u, visning }) {
   const [hov, setHov] = useState(null);
@@ -134,7 +177,14 @@ function LivslopGraf({ u, visning }) {
           <polygon points={`${x(0)},${y(0)} ${x(0)},${y(-u.nettoCac)} ${x(Math.min(payback, T))},${y(yV(Math.min(payback, T)))} ${x(Math.min(payback, T))},${y(0)}`}
             fill="#b3261e" opacity="0.07" />
         )}
-        {/* kurven */}
+        {/* kurven m/ gradientfyll */}
+        <defs>
+          <linearGradient id="eoLivArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={bidrag > 0 ? '#0a7d55' : '#b3261e'} stopOpacity="0.15" />
+            <stop offset="100%" stopColor={bidrag > 0 ? '#0a7d55' : '#b3261e'} stopOpacity="0.01" />
+          </linearGradient>
+        </defs>
+        <polygon points={`${x(0)},${y(-u.nettoCac)} ${x(T)},${y(yV(T))} ${x(T)},${H - PAD} ${x(0)},${H - PAD}`} fill="url(#eoLivArea)" />
         <polyline points={`${x(0)},${y(-u.nettoCac)} ${x(T)},${y(yV(T))}`} fill="none"
           stroke={bidrag > 0 ? '#0a7d55' : '#b3261e'} strokeWidth="2.2" strokeLinecap="round" />
         {/* CAC tilbakebetalt */}
@@ -178,8 +228,8 @@ function Matrise({ tittel, under, rader, kolonner, radFmt, kolFmt, verdi, fmt, b
     return { bg: '#fbe7e4', fg: '#b3261e' };
   };
   return (
-    <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid={testid}>
-      <p className="text-[13.5px] font-medium text-[#8f8a82]">{tittel}</p>
+    <div className="rounded-[20px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.04)]" data-testid={testid}>
+      <p className="text-[14px] font-bold tracking-[-0.01em] text-[#1c1917]">{tittel}</p>
       <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">{under}</p>
       <div className="mt-3 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
         <table className="w-full text-[12.5px]">
@@ -405,11 +455,19 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
     ? Object.keys(EO_STANDARD).filter((k) => Math.abs((basis[k] ?? 0) - (lagretDrivere[k] ?? 0)) > 1e-9).length
     : 0;
 
-  const Stat = ({ tittel, verdi, under, farge, testid }) => (
-    <div className="min-w-[168px] flex-1 px-5 py-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#a6a19a]">{tittel}</p>
-      <p className={`mt-0.5 truncate text-[24px] font-bold tracking-[-0.015em] ${farge || 'text-[#1c1917]'}`} style={heading} data-testid={testid}>{verdi}</p>
-      {under && <p className="truncate text-[11.5px] text-[#a6a19a]">{under}</p>}
+  /* ── Bento-flis: KPI m/ ikon, stort tall og plass til mini-visualisering ── */
+  const KpiFlis = ({ label, ikon: Ikon, verdi, enhet, under, tone, testid, children, klasse }) => (
+    <div className={`relative flex flex-col overflow-hidden rounded-[22px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.04)] ${klasse || ''}`}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#a6a19a]">{label}</p>
+        {Ikon && <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] bg-[#f5f4f1] text-[#8f8a82]"><Ikon className="h-3.5 w-3.5" /></span>}
+      </div>
+      <p className={`mt-1.5 whitespace-nowrap font-bold tabular-nums tracking-[-0.025em] ${tone || 'text-[#1c1917]'}`}
+        style={{ ...heading, fontSize: 'clamp(23px,1.6vw,30px)' }} data-testid={testid}>
+        {verdi}{enhet && <span className="ml-1 text-[12.5px] font-semibold tracking-normal text-[#b3ada3]">{enhet}</span>}
+      </p>
+      {under && <p className="mt-0.5 truncate text-[11px] text-[#a6a19a]">{under}</p>}
+      {children}
     </div>
   );
 
@@ -424,39 +482,31 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
   const heroPositiv = u.bidragEtter > 0;
   const feltProps = { drivere, sanert: basis, lagret: lagretDrivere, onEndre: settDriver, readOnly: !erAdmin };
   const scLabel = { konservativ: 'Konservativ', basis: 'Basis', ambisios: 'Ambisiøs' };
+  const ltvCacSkala = Math.max(6, Math.ceil((valgt.ltvCac || 0) * 1.15));
 
   return (
     <div className="w-full" data-testid="eo-side">
-      {/* ── Hero: setningen som oppsummerer caset — generert fra modellen ── */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 max-w-[880px]">
-          {/* Egen overskrift — den globale toppraden (m/ søk) er skjult på desktop */}
-          <p className="hidden text-[11px] font-bold uppercase tracking-[0.1em] text-[#a6a19a] lg:block">Enhetsøkonomi</p>
-          <p className="mt-1 text-[20px] font-bold leading-snug tracking-[-0.01em] text-[#1c1917] md:text-[23px]" style={heading} data-testid="eo-hero">
-            En gjennomsnittlig ny enhet gir{' '}
-            <span className={heroPositiv ? 'text-[#0a7d55]' : 'text-[#b3261e]'}>{kr0(u.bidragEtter)} kr</span>
-            {' '}i månedlig bidrag etter normalisert bemanning
-            {u.paybackEtter !== null
-              ? <> og tilbakebetaler CAC på <span className="text-[#6d28d9]">{kma(u.paybackEtter)} måneder</span>.</>
-              : heroPositiv ? '.' : ' — økonomien bærer ikke en fullt skalert organisasjon med dagens forutsetninger.'}
-          </p>
+      {/* ── Topplinje: tittel + kontroller ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="hidden text-[19px] font-bold tracking-[-0.01em] text-[#1c1917] lg:block" style={heading}>Enhetsøkonomi</h2>
           {portefolje && portefolje.antallAktive > 0 && (
-            <p className="mt-1.5 text-[12px] text-[#a6a19a]" data-testid="eo-datagrunnlag">
-              Datagrunnlag: {portefolje.antallAktive} aktive enheter · snitt beregnet fra faktisk portefølje
+            <p className="mt-0.5 text-[11.5px] text-[#a6a19a]" data-testid="eo-datagrunnlag">
+              Datagrunnlag: {portefolje.antallAktive} aktive enheter · vektet snitt fra faktisk portefølje
               {datoKort(portefolje.oppdatertAt) ? ` · oppdatert ${datoKort(portefolje.oppdatertAt)}` : ''}
             </p>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => setTourAktiv(true)} data-testid="eo-tour-knapp" title="Omvisning — se hvordan enhetsøkonomien henger sammen"
-            className="flex h-9 w-9 items-center justify-center rounded-[9px] bg-white text-[#a6a19a] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-colors hover:text-[#1c1917]">
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#a6a19a] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-colors hover:text-[#1c1917]">
             <HelpCircle className="h-4 w-4" />
           </button>
           {/* Scenariobrytere */}
-          <div className="flex items-center gap-0.5 rounded-[9px] bg-[#f0efec] p-0.5" data-testid="eo-scenariovalg">
+          <div className="flex items-center gap-0.5 rounded-full bg-[#f0efec] p-0.5" data-testid="eo-scenariovalg">
             {['konservativ', 'basis', 'ambisios'].map((sc) => (
               <button key={sc} onClick={() => setScenario(sc)} data-testid={`eo-scenario-${sc}`}
-                className={`rounded-[7px] px-2.5 py-1 text-[12px] font-semibold transition-colors ${scenario === sc ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#8f8a82] hover:text-[#57534e]'}`}>
+                className={`rounded-full px-3 py-1 text-[12px] font-semibold transition-colors ${scenario === sc ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#8f8a82] hover:text-[#57534e]'}`}>
                 {scLabel[sc]}
               </button>
             ))}
@@ -464,12 +514,12 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
           {erAdmin && (
             <>
               {skittent && (
-                <button onClick={tilbakestill} title="Tilbakestill til sist lagret" className="flex h-9 items-center gap-1 rounded-[9px] px-2.5 text-[12.5px] font-medium text-[#8f8a82] transition-colors hover:bg-black/[0.05] hover:text-[#1c1917]">
+                <button onClick={tilbakestill} title="Tilbakestill til sist lagret" className="flex h-9 items-center gap-1 rounded-full px-2.5 text-[12.5px] font-medium text-[#8f8a82] transition-colors hover:bg-black/[0.05] hover:text-[#1c1917]">
                   <RotateCcw className="h-3.5 w-3.5" />{antallEndret > 0 ? `${antallEndret} endret` : ''}
                 </button>
               )}
               <button onClick={lagre} disabled={lagrer || !skittent} data-testid="eo-lagre"
-                className="flex h-9 items-center gap-1.5 rounded-[9px] bg-[#141414] px-4 text-[13px] font-medium text-white transition-colors hover:bg-black/80 active:scale-[0.98] disabled:opacity-40">
+                className="flex h-9 items-center gap-1.5 rounded-full bg-[#141414] px-4 text-[13px] font-medium text-white transition-colors hover:bg-black/80 active:scale-[0.98] disabled:opacity-40">
                 {lagrer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : lagret ? <Check className="h-3.5 w-3.5" /> : null}
                 {lagret ? 'Lagret' : 'Lagre antakelser'}
               </button>
@@ -479,37 +529,131 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
       </div>
 
       {scenario !== 'basis' && (
-        <p className="mt-2 inline-flex items-center gap-1.5 rounded-[9px] bg-[#f0ebfa] px-3 py-1.5 text-[12px] font-medium text-[#6d28d9]" data-testid="eo-scenario-banner">
+        <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#f0ebfa] px-3 py-1.5 text-[12px] font-medium text-[#6d28d9]" data-testid="eo-scenario-banner">
           <Sparkles className="h-3.5 w-3.5" />
           Viser scenarioet {scLabel[scenario]} — beregnet fra basisdriverne. Driverne i panelet redigerer alltid Basis.
         </p>
       )}
       {feil && <p className="mt-2 text-[13px] text-[#b3261e]" data-testid="eo-feil">{feil}</p>}
 
-      {/* ── KPI-stripe m/ før/etter-bryter ── */}
-      <div className="mt-4 rounded-[16px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="eo-kpi">
-        <div className="flex items-center justify-between gap-2 border-b border-black/[0.05] px-5 py-2.5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.09em] text-[#a6a19a]">Nøkkeltall per enhet</p>
-          <div className="flex items-center gap-0.5 rounded-[8px] bg-[#f0efec] p-0.5" data-testid="eo-visningsvalg">
+      {/* ── Bento-grid: nøkkeltall per enhet ── */}
+      <div className="mt-3" data-testid="eo-kpi">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#a6a19a]">Nøkkeltall per enhet</p>
+          <div className="flex items-center gap-0.5 rounded-full bg-[#f0efec] p-0.5" data-testid="eo-visningsvalg">
             <button onClick={() => setVisning('for')} data-testid="eo-visning-for"
-              className={`rounded-[6px] px-2.5 py-1 text-[11.5px] font-semibold transition-colors ${visning === 'for' ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#8f8a82] hover:text-[#57534e]'}`}>
+              className={`rounded-full px-3 py-1 text-[11.5px] font-semibold transition-colors ${visning === 'for' ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#8f8a82] hover:text-[#57534e]'}`}>
               Før bemanning
             </button>
             <button onClick={() => setVisning('etter')} data-testid="eo-visning-etter"
-              className={`rounded-[6px] px-2.5 py-1 text-[11.5px] font-semibold transition-colors ${visning === 'etter' ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#8f8a82] hover:text-[#57534e]'}`}>
+              className={`rounded-full px-3 py-1 text-[11.5px] font-semibold transition-colors ${visning === 'etter' ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#8f8a82] hover:text-[#57534e]'}`}>
               Etter normalisert bemanning
             </button>
           </div>
         </div>
-        <div className="flex flex-wrap divide-x divide-black/[0.05]">
-          <Stat tittel="Bidrag per enhet" verdi={`${kr0(valgt.bidrag)} kr`} under="per måned, eks. mva"
-            farge={valgt.bidrag > 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'} testid="eo-kpi-bidrag" />
-          <Stat tittel="Bidragsmargin" verdi={valgt.margin === null ? '—' : `${valgt.margin} %`} under="av inntekt per enhet" testid="eo-kpi-margin" />
-          <Stat tittel="CAC payback" verdi={paybackTekst(valgt.payback)} under={`CAC ${kr0(aktive.cac)} kr per ny enhet`} farge="text-[#6d28d9]" testid="eo-kpi-payback" />
-          <Stat tittel={`LTV · ${aktive.ltvHorisontAar} år`} verdi={`${kr0(valgt.ltv.horisont)} kr`} under="overlevelsesvektet bidrag" testid="eo-kpi-ltv" />
-          <Stat tittel="LTV/CAC" verdi={valgt.ltvCac === null ? '—' : `${kma(valgt.ltvCac)}×`}
-            farge={valgt.ltvCac !== null && valgt.ltvCac >= 3 ? 'text-[#0a7d55]' : undefined} under="mål: over 3×" testid="eo-kpi-ltvcac" />
-          <Stat tittel="Årlig verdi" verdi={`${kr0(valgt.aarlig)} kr`} under="bidrag × 12 måneder" testid="eo-kpi-aarlig" />
+
+        <div className="grid grid-cols-12 gap-3">
+          {/* HERO — bidraget, konklusjonen og kontantstrømmen på mørk bunn */}
+          <div className="relative col-span-12 overflow-hidden rounded-[22px] bg-[#141414] p-6 lg:col-span-5 lg:row-span-2">
+            <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-[#6d28d9] opacity-[0.28] blur-[100px]" />
+            <div className="pointer-events-none absolute -bottom-28 -left-14 h-64 w-64 rounded-full bg-[#0a7d55] opacity-[0.18] blur-[100px]" />
+            <div className="relative flex h-full flex-col">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-white/40">
+                  Bidrag per enhet · {visning === 'etter' ? 'etter bemanning' : 'før bemanning'}
+                </p>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] ${valgt.bidrag > 0 ? 'bg-[#34d399]/15 text-[#6ee7b7]' : 'bg-[#f87171]/15 text-[#fca5a5]'}`}>
+                  {valgt.bidrag > 0 ? 'Lønnsom' : 'Ulønnsom'}
+                </span>
+              </div>
+              <p className="mt-3 whitespace-nowrap font-bold leading-none tracking-[-0.03em] text-white"
+                style={{ ...heading, fontSize: 'clamp(40px,3.4vw,58px)' }} data-testid="eo-kpi-bidrag">
+                {kr0(valgt.bidrag)}<span className="ml-2 text-[17px] font-semibold tracking-normal text-white/40">kr/mnd</span>
+              </p>
+              <p className="mt-4 max-w-[440px] text-[13px] leading-relaxed text-white/60" data-testid="eo-hero">
+                En gjennomsnittlig ny enhet gir{' '}
+                <span className={`font-bold ${heroPositiv ? 'text-[#6ee7b7]' : 'text-[#fca5a5]'}`}>{kr0(u.bidragEtter)} kr</span>
+                {' '}i månedlig bidrag etter normalisert bemanning
+                {u.paybackEtter !== null
+                  ? <> og tilbakebetaler CAC på <span className="font-bold text-[#c4b5fd]">{kma(u.paybackEtter)} måneder</span>.</>
+                  : heroPositiv ? '.' : ' — økonomien bærer ikke en fullt skalert organisasjon med dagens forutsetninger.'}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-semibold text-white/70">Margin {valgt.margin === null ? '—' : `${valgt.margin} %`}</span>
+                <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-semibold text-white/70">CAC {kr0(aktive.cac)} kr</span>
+                <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-semibold text-white/70">LTV/CAC {valgt.ltvCac === null ? '—' : `${kma(valgt.ltvCac)}×`}</span>
+              </div>
+              <div className="mt-auto pt-5">
+                <MiniKurve u={u} visning={visning} />
+                <div className="mt-1 flex items-center justify-between text-[10px] font-semibold text-white/35">
+                  <span>I dag: −{kr0(u.nettoCac)} kr</span>
+                  <span>Akkumulert kontantstrøm · 36 mnd</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CAC PAYBACK m/ tidslinje */}
+          <KpiFlis label="CAC payback" ikon={Timer} verdi={valgt.payback === null ? '—' : kma(valgt.payback)}
+            enhet={valgt.payback === null ? '' : 'mnd'} under={`CAC ${kr0(aktive.cac)} kr per ny enhet`}
+            tone="text-[#6d28d9]" testid="eo-kpi-payback" klasse="col-span-6 lg:col-span-4">
+            <div className="mt-auto pt-3">
+              <div className="relative h-[6px] w-full rounded-full bg-[#f0efec]">
+                {valgt.payback !== null && (
+                  <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#6d28d9] to-[#a78bfa] transition-all duration-300"
+                    style={{ width: `${Math.min(100, Math.max(2, (valgt.payback / 24) * 100))}%` }} />
+                )}
+                <div className="absolute -inset-y-[2px] left-1/2 w-[2px] rounded bg-[#dcd9d3]" title="12 måneder" />
+              </div>
+              <div className="mt-1 flex justify-between text-[9.5px] font-semibold text-[#c2beb8]">
+                <span>0</span><span>12 mnd</span><span>24 mnd</span>
+              </div>
+            </div>
+          </KpiFlis>
+
+          {/* LTV/CAC m/ målbar */}
+          <KpiFlis label="LTV / CAC" ikon={Gauge} verdi={valgt.ltvCac === null ? '—' : `${kma(valgt.ltvCac)}×`}
+            under="mål: over 3×" tone={valgt.ltvCac !== null && valgt.ltvCac >= 3 ? 'text-[#0a7d55]' : 'text-[#9a6b1c]'}
+            testid="eo-kpi-ltvcac" klasse="col-span-6 lg:col-span-3">
+            <div className="mt-auto pt-3">
+              <div className="relative h-[6px] w-full rounded-full bg-[#f0efec]">
+                {valgt.ltvCac !== null && (
+                  <div className={`absolute inset-y-0 left-0 rounded-full transition-all duration-300 ${valgt.ltvCac >= 3 ? 'bg-gradient-to-r from-[#0a7d55] to-[#34d399]' : 'bg-gradient-to-r from-[#9a6b1c] to-[#d4a94e]'}`}
+                    style={{ width: `${Math.min(100, Math.max(2, ((valgt.ltvCac || 0) / ltvCacSkala) * 100))}%` }} />
+                )}
+                <div className="absolute -inset-y-[2px] w-[2px] rounded bg-[#1c1917]/30" style={{ left: `${(3 / ltvCacSkala) * 100}%` }} title="Mål: 3×" />
+              </div>
+              <div className="mt-1 flex justify-between text-[9.5px] font-semibold text-[#c2beb8]">
+                <span>0×</span><span>{ltvCacSkala}×</span>
+              </div>
+            </div>
+          </KpiFlis>
+
+          {/* MARGIN m/ donut */}
+          <div className="relative col-span-6 flex flex-col overflow-hidden rounded-[22px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.04)] lg:col-span-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#a6a19a]">Bidragsmargin</p>
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] bg-[#f5f4f1] text-[#8f8a82]"><Percent className="h-3.5 w-3.5" /></span>
+            </div>
+            <div className="mt-1 flex flex-1 items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="whitespace-nowrap font-bold tabular-nums tracking-[-0.025em] text-[#1c1917]"
+                  style={{ ...heading, fontSize: 'clamp(23px,1.6vw,30px)' }} data-testid="eo-kpi-margin">
+                  {valgt.margin === null ? '—' : `${valgt.margin} %`}
+                </p>
+                <p className="mt-0.5 truncate text-[11px] text-[#a6a19a]">av inntekt per enhet</p>
+              </div>
+              <DonutRing pct={valgt.margin} farge={valgt.margin !== null && valgt.margin > 0 ? (valgt.margin >= 50 ? '#0a7d55' : '#9a6b1c') : '#b3261e'} />
+            </div>
+          </div>
+
+          {/* LTV */}
+          <KpiFlis label={`LTV · ${aktive.ltvHorisontAar} år`} ikon={TrendingUp} verdi={kr0(valgt.ltv.horisont)}
+            enhet="kr" under="overlevelsesvektet bidrag" testid="eo-kpi-ltv" klasse="col-span-6 lg:col-span-2" />
+
+          {/* ÅRLIG VERDI */}
+          <KpiFlis label="Årlig verdi" ikon={CalendarRange} verdi={kr0(valgt.aarlig)}
+            enhet="kr" under="bidrag × 12 måneder" testid="eo-kpi-aarlig" klasse="col-span-12 lg:col-span-2" />
         </div>
       </div>
 
@@ -517,7 +661,7 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
       <div className="mt-4 flex flex-col gap-4 xl:flex-row xl:items-start">
         {/* Venstre: forutsetninger */}
         <aside className="w-full shrink-0 xl:sticky xl:top-3 xl:max-h-[calc(100vh-24px)] xl:w-[344px] xl:overflow-y-auto" data-testid="eo-drivere" style={{ scrollbarWidth: 'thin' }}>
-          <div className="rounded-[16px] bg-white px-4 py-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+          <div className="rounded-[20px] bg-white px-4 py-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.04)]">
             <div className="flex items-center justify-between py-2">
               <p className="text-[13px] font-bold text-[#1c1917]" style={heading}>Forutsetninger</p>
               <Scale className="h-3.5 w-3.5 text-[#c2beb8]" />
@@ -556,34 +700,51 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
         {/* Høyre: hovedhistorien */}
         <main className="min-w-0 flex-1 space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
-            {/* Anatomien til én enhet */}
-            <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="eo-anatomi">
-              <p className="text-[13.5px] font-medium text-[#8f8a82]">Anatomien til én enhet</p>
-              <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Fra husleie til bidrag — per måned, eks. mva.</p>
-              <div className="mt-3 space-y-1.5 text-[13.5px]">
-                <div className="flex justify-between"><span className="text-[#8f8a82]">Gjennomsnittlig husleie</span><span className="font-medium text-[#57534e]">{kr0(aktive.snittleie)} kr</span></div>
-                <div className="flex justify-between"><span className="text-[#8f8a82]">× Forvaltningshonorar</span><span className="font-medium text-[#57534e]">{kma(aktive.honorarPct)} %</span></div>
-                <div className="flex justify-between border-t border-black/[0.05] pt-1.5"><span className="text-[#57534e]">Honorarinntekt <span className="text-[#a6a19a]">eks. mva</span></span><span className="font-semibold text-[#1c1917]">{kr0(u.honorarInntekt)} kr</span></div>
-                {aktive.tilleggPerMnd > 0 && (
-                  <div className="flex justify-between"><span className="text-[#57534e]">+ Tilleggstjenester</span><span className="font-semibold text-[#1c1917]">{kr0(aktive.tilleggPerMnd)} kr</span></div>
-                )}
-                <div className="flex justify-between"><span className="text-[#57534e]">− Systemkostnad</span><span className="font-semibold text-[#1c1917]">{kr0(aktive.systemPerEnhet)} kr</span></div>
-                {aktive.andreDirekte > 0 && (
-                  <div className="flex justify-between"><span className="text-[#57534e]">− Andre direkte</span><span className="font-semibold text-[#1c1917]">{kr0(aktive.andreDirekte)} kr</span></div>
-                )}
-                <div className="flex justify-between border-t border-black/[0.05] pt-1.5">
-                  <span className="font-semibold text-[#1c1917]">Bidrag før bemanning</span>
-                  <span className={`font-bold ${u.bidragFor > 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr0(u.bidragFor)} kr{u.marginFor !== null && <span className="ml-1 text-[11px] font-bold text-[#a6a19a]">({u.marginFor} %)</span>}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#57534e]">− Normalisert forvalterkost <span className="text-[#c2beb8]" title={`Fullkost ${kr0(u.fullkostAar)} kr ÷ ${kr0(aktive.enheterPerAarsverk)} enheter ÷ 12`}>ⓘ</span></span>
-                  <span className="font-semibold text-[#1c1917]">{kr0(u.bemanningPerEnhet)} kr</span>
-                </div>
-                <div className="flex justify-between border-t border-black/[0.05] pt-1.5">
-                  <span className="font-semibold text-[#1c1917]">Bidrag etter bemanning</span>
-                  <span className={`font-bold ${u.bidragEtter > 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`} data-testid="eo-anatomi-bidrag-etter">{kr0(u.bidragEtter)} kr{u.marginEtter !== null && <span className="ml-1 text-[11px] font-bold text-[#a6a19a]">({u.marginEtter} %)</span>}</span>
-                </div>
-              </div>
+            {/* Anatomien til én enhet — vannfall */}
+            <div className="rounded-[20px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.04)]" data-testid="eo-anatomi">
+              <p className="text-[14px] font-bold tracking-[-0.01em] text-[#1c1917]">Anatomien til én enhet</p>
+              <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">
+                {kr0(aktive.snittleie)} kr husleie × {kma(aktive.honorarPct)} % honorar — per måned, eks. mva.
+              </p>
+              {(() => {
+                const maks = Math.max(u.inntekt, 1);
+                const Rad = ({ label, fra, til, farge, verdi, bold, testid, delelinje }) => {
+                  const a = Math.max(0, Math.min(fra, til));
+                  const b = Math.max(0, Math.max(fra, til));
+                  return (
+                    <>
+                      {delelinje && <div className="my-1 border-t border-black/[0.05]" />}
+                      <div className="flex items-center gap-3 py-[5px]">
+                        <span className={`w-[152px] shrink-0 text-[12px] leading-tight sm:w-[176px] ${bold ? 'font-semibold text-[#1c1917]' : 'text-[#8f8a82]'}`}>{label}</span>
+                        <span className="relative h-[10px] min-w-0 flex-1 overflow-hidden rounded-full bg-[#f5f4f1]">
+                          <span className="absolute inset-y-0 rounded-full transition-all duration-300"
+                            style={{ left: `${(a / maks) * 100}%`, width: `${Math.max(b > a ? 1 : 0, ((b - a) / maks) * 100)}%`, background: farge }} />
+                        </span>
+                        <span className={`w-[84px] shrink-0 text-right text-[12.5px] tabular-nums ${bold ? 'font-bold' : 'font-medium'}`}
+                          style={{ color: bold ? farge : '#57534e' }} data-testid={testid}>{verdi}</span>
+                      </div>
+                    </>
+                  );
+                };
+                return (
+                  <div className="mt-3">
+                    <Rad label="Honorarinntekt (eks. mva)" fra={0} til={u.honorarInntekt} farge="#0a7d55" verdi={`${kr0(u.honorarInntekt)} kr`} />
+                    {aktive.tilleggPerMnd > 0 && (
+                      <Rad label="+ Tilleggstjenester" fra={u.honorarInntekt} til={u.inntekt} farge="#34d399" verdi={`+${kr0(aktive.tilleggPerMnd)} kr`} />
+                    )}
+                    <Rad label="− Systemkostnad" fra={u.inntekt - aktive.systemPerEnhet} til={u.inntekt} farge="#e0a49a" verdi={`−${kr0(aktive.systemPerEnhet)} kr`} />
+                    {aktive.andreDirekte > 0 && (
+                      <Rad label="− Andre direkte" fra={u.inntekt - aktive.systemPerEnhet - aktive.andreDirekte} til={u.inntekt - aktive.systemPerEnhet} farge="#e0a49a" verdi={`−${kr0(aktive.andreDirekte)} kr`} />
+                    )}
+                    <Rad delelinje label={<>Bidrag før bemanning{u.marginFor !== null && <span className="ml-1 text-[10px] font-bold text-[#b3ada3]">{u.marginFor} %</span>}</>}
+                      fra={0} til={u.bidragFor} farge={u.bidragFor > 0 ? '#0a7d55' : '#b3261e'} verdi={`${kr0(u.bidragFor)} kr`} bold />
+                    <Rad label={<span title={`Fullkost ${kr0(u.fullkostAar)} kr ÷ ${kr0(aktive.enheterPerAarsverk)} enheter ÷ 12`}>− Normalisert forvalterkost ⓘ</span>}
+                      fra={u.bidragEtter} til={u.bidragFor} farge="#e0a49a" verdi={`−${kr0(u.bemanningPerEnhet)} kr`} />
+                    <Rad delelinje label={<>Bidrag etter bemanning{u.marginEtter !== null && <span className="ml-1 text-[10px] font-bold text-[#b3ada3]">{u.marginEtter} %</span>}</>}
+                      fra={0} til={u.bidragEtter} farge={u.bidragEtter > 0 ? '#6d28d9' : '#b3261e'} verdi={`${kr0(u.bidragEtter)} kr`} bold testid="eo-anatomi-bidrag-etter" />
+                  </div>
+                );
+              })()}
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <span className="inline-flex rounded-full bg-[#f5f4f1] px-3 py-1 text-[12.5px] font-semibold text-[#57534e]">CAC {kr0(aktive.cac)} kr</span>
                 <span className="inline-flex rounded-full bg-[#f0ebfa] px-3 py-1 text-[12.5px] font-bold text-[#6d28d9]">Payback før: {paybackTekst(u.paybackFor)}</span>
@@ -592,10 +753,10 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
             </div>
 
             {/* Dagens portefølje vs. ny enhet (benchmark) */}
-            <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="eo-portefolje">
+            <div className="rounded-[20px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.04)]" data-testid="eo-portefolje">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-[13.5px] font-medium text-[#8f8a82]">Dagens portefølje vs. ny enhet</p>
+                  <p className="text-[14px] font-bold tracking-[-0.01em] text-[#1c1917]">Dagens portefølje vs. ny enhet</p>
                   <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Faktiske tall er vektet (sum honorar ÷ sum leie) — ikke aritmetisk snitt.</p>
                 </div>
                 {erAdmin && portefolje && portefolje.antallAktive > 0 && (
@@ -651,10 +812,10 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
           </div>
 
           {/* Livsløpsøkonomi */}
-          <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+          <div className="rounded-[20px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.04)]">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
-                <p className="text-[13.5px] font-medium text-[#8f8a82]">Livsløpsøkonomi — én enhet fra dag null</p>
+                <p className="text-[14px] font-bold tracking-[-0.01em] text-[#1c1917]">Livsløpsøkonomi — én enhet fra dag null</p>
                 <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">
                   Vi investerer {kr0(u.nettoCac)} kr i dag{u.paybackEtter !== null || u.paybackFor !== null
                     ? <>, er tilbake i null etter {paybackTekst(visning === 'etter' ? u.paybackEtter : u.paybackFor)} — resten av levetiden er positiv kontantgenerering.</>
@@ -670,8 +831,8 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
 
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Før vs. etter normalisert bemanning */}
-            <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="eo-foretter">
-              <p className="text-[13.5px] font-medium text-[#8f8a82]">Før vs. etter normalisert bemanning</p>
+            <div className="rounded-[20px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.04)]" data-testid="eo-foretter">
+              <p className="text-[14px] font-bold tracking-[-0.01em] text-[#1c1917]">Før vs. etter normalisert bemanning</p>
               <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Før: marginaløkonomien ved ledig kapasitet. Etter: økonomien i en fullt skalert virksomhet.</p>
               <table className="mt-3 w-full text-[13px]">
                 <thead>
@@ -722,8 +883,8 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
             </div>
 
             {/* LTV — behandlet forsiktig */}
-            <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="eo-ltv">
-              <p className="text-[13.5px] font-medium text-[#8f8a82]">Levetidsverdi (LTV) — {visning === 'etter' ? 'etter bemanning' : 'før bemanning'}</p>
+            <div className="rounded-[20px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.04)]" data-testid="eo-ltv">
+              <p className="text-[14px] font-bold tracking-[-0.01em] text-[#1c1917]">Levetidsverdi (LTV) — {visning === 'etter' ? 'etter bemanning' : 'før bemanning'}</p>
               <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Overlevelsesvektet: hver måned teller med sannsynligheten for at kunden fortsatt er der.</p>
               <div className="mt-3 space-y-1.5 text-[13.5px]">
                 <div className="flex justify-between"><span className="text-[#8f8a82]">Forventet levetid <span className="text-[#c2beb8]">(fra {kma(aktive.aarligChurnPct)} % churn)</span></span><span className="font-semibold text-[#1c1917]">{u.levetidAar === null ? 'Uendelig' : `${kma(u.levetidAar)} år`}</span></div>
@@ -746,8 +907,8 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
           </div>
 
           {/* Scenarioer */}
-          <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="eo-scenarioer">
-            <p className="text-[13.5px] font-medium text-[#8f8a82]">Scenarioer — hvor robust er økonomien?</p>
+          <div className="rounded-[20px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.04)]" data-testid="eo-scenarioer">
+            <p className="text-[14px] font-bold tracking-[-0.01em] text-[#1c1917]">Scenarioer — hvor robust er økonomien?</p>
             <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Tre sett kommersielle drivere. Klikk knappene øverst for å se hele siden i et scenario.</p>
             <div className="mt-3 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
               <table className="w-full min-w-[520px] text-[13px]">
@@ -818,8 +979,8 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
           </div>
 
           {/* Prisverktøy — minimum attraktiv enhet */}
-          <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="eo-prisverktoy">
-            <p className="text-[13.5px] font-medium text-[#8f8a82]">Prisverktøy — bør vi ta denne kunden?</p>
+          <div className="rounded-[20px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.04)]" data-testid="eo-prisverktoy">
+            <p className="text-[14px] font-bold tracking-[-0.01em] text-[#1c1917]">Prisverktøy — bør vi ta denne kunden?</p>
             <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Beregner minstepris fra kostnadsstrukturen og ønsket bidragsmargin etter normalisert bemanning. Endrer ingenting — bare et regnestykke.</p>
             <div className="mt-3 grid gap-4 md:grid-cols-[280px_1fr]">
               <div className="space-y-2.5">
@@ -884,8 +1045,8 @@ export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, 
           </div>
 
           {/* Modellforklaring — investorvennlig transparens */}
-          <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="eo-forklaring">
-            <p className="flex items-center gap-1.5 text-[13.5px] font-medium text-[#8f8a82]"><Info className="h-3.5 w-3.5" /> Slik regner modellen</p>
+          <div className="rounded-[20px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.04)]" data-testid="eo-forklaring">
+            <p className="flex items-center gap-1.5 text-[14px] font-bold tracking-[-0.01em] text-[#1c1917]"><Info className="h-3.5 w-3.5" /> Slik regner modellen</p>
             <div className="mt-3 grid gap-x-6 gap-y-3 md:grid-cols-2">
               {[
                 ['Normalisert bemanning', `Beregnet andel av en fulltidsforvalter per enhet: fullkost ${kr0(u.fullkostAar)} kr/år ÷ ${kr0(aktive.enheterPerAarsverk)} enheter ÷ 12 = ${kr0(u.bemanningPerEnhet)} kr/mnd. «Før bemanning» viser marginaløkonomien når det er ledig kapasitet; «etter» viser en fullt skalert virksomhet.`],

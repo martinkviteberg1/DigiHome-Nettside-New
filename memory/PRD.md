@@ -659,3 +659,10 @@ Google Ads-styring via native REST API).
 - NYTT: GET /admin/selskap/brreg-sok?q= (adminAuthed, 30/min) — søk i Enhetsregisteret på navn eller orgnr. POST /admin/selskap/stotte — knytt støtteselskap (advokat/regnskap/revisor/bank …) idempotent per orgnr; samme funksjonsnavn gjenbruker rollen.
 - UI: «Støtteselskap»-knapp i org-kartets toolbar → modal m/ debounced BRreg-søk (navn/orgnr), valg-kort, manuell registrering som fallback, funksjonsforslag-chips (Juridisk, Regnskapsfører, Revisor, Bank & finans, Forsikring …). Enheter kan nå redigeres (nettside/kontakt) i personskuffen.
 - Backend-testagent: 11/11 bestått (brreg-sok, stotte-idempotens, dedupe-selvhelbredelse, synk-regresjon — begge ekte Blue Sky-enheter bevart som separate). QAFIX-data ryddet, 0 rester.
+
+## Feb 2026 (forts. 5) — Enhetsøkonomi: bento-redesign
+- KPI-sonen bygget om til moderne bento-grid (12 kolonner): mørk hero-flis (#141414 m/ lilla/grønn glød) med bidraget i klamp-skalert kjempetall, Lønnsom/Ulønnsom-badge, den genererte konklusjonssetningen, hurtig-chips (margin/CAC/LTV-CAC) og mini-sparkline av akkumulert kontantstrøm m/ payback-punkt.
+- KPI-fliser m/ innebygde mini-visualiseringer: CAC payback m/ 0–24 mnd-tidslinje og 12-mnd-markør, LTV/CAC m/ målbar og 3×-tick, bidragsmargin m/ donut-ring, LTV og årlig verdi. Ikoner (Timer/Gauge/Percent/TrendingUp/CalendarRange) i alle fliser.
+- Anatomien til én enhet → vannfallsdiagram (horisontale barer fra honorarinntekt ned til bidrag etter bemanning, m/ marginprosent per nivå).
+- Livsløpsgrafen fikk gradient-områdefyll. Alle kort: rounded-20/22px, mykere skygge, bold mørke titler. Kontroller (scenario/visning/lagre) som pillformede segmented controls.
+- All funksjonalitet bevart: scenarioer, før/etter-bryter, lagring/tilbakestilling, «Bruk porteføljesnitt», omvisning (alle data-testids beholdt), read-only for investor. Screenshot-verifisert desktop + mobil; scenario- og visningsbytte funksjonstestet.
