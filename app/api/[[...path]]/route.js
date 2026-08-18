@@ -4335,6 +4335,26 @@ async function handleRoute(request, { params }) {
       await drAutoSync(db, async () => (await hentLeieforhold(leieforholdTarget(), { db })).rows || []);
       return cors(NextResponse.json({ ok: true, oversikt: await drBeregnOversikt(db) }));
     }
+    // Puls — interne driftssignaler til oversiktens kommandosenter. Team-only
+    // (sakerAuthed): investorer får 401 og UI-et skjuler raden stille. Billige
+    // aggregater: åpne saker (m/frist-status) + aktive signeringsrunder.
+    if (route === '/admin/datarom/puls' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const iDagPls = osloIDag();
+      const allePls = await db.collection('tasks').find({ archived: { $ne: true } }).project({ _id: 0, status: 1, dueDate: 1 }).toArray();
+      const aapnePls = allePls.filter((t) => t.status !== 'done');
+      const jobberPls = await db.collection(SIGN_JOBB_COLL).find({ status: 'I_GANG' }, { projection: { _id: 0, signatarer: 1 } }).toArray();
+      const venterPls = jobberPls.reduce((s, j) => s + (j.signatarer || []).filter((x) => x.status === 'VENTER' || x.status === 'RESERVERT').length, 0);
+      return cors(NextResponse.json({
+        ok: true,
+        saker: {
+          open: aapnePls.length,
+          overdue: aapnePls.filter((t) => t.dueDate && t.dueDate < iDagPls).length,
+          dueToday: aapnePls.filter((t) => t.dueDate === iDagPls).length,
+        },
+        signering: { aktive: jobberPls.length, venterPaa: venterPls },
+      }));
+    }
     // ═══ SALGSRADAR — FINN-annonse → analyse → AI-styling → tilbudsside ═══
     if (route === '/admin/salgsradar/hent' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));

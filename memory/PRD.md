@@ -679,3 +679,10 @@ Google Ads-styring via native REST API).
 - Tidsbestemte kontrakters honorar gjenopptas nå i budsjettet (i stedet for permanent bortfall = dobbeltstraff ift. churn). beregnBortfallSerie i lib/budsjett.js: punktvise bortfall fra kjente utflyttinger; nytt fakta-felt `bortfall` fra plan/forslag. Modelldrivere: reutleiePaa (default PÅ), reutleieGapMnd (default 0, 0–6). Reutleie(t)=kumulativt bortfall forskjøvet med gap; churnes ikke; sammendrag.sumReutleie.
 - Vises som EGET lag (ærlighet mot investorer): «Kontraktsfestet»-KPI forblir ren. UI: toggle + gap-knapper i Portefølje & vekst, grønt grafsegment/legend, grønn resultatrad. Excel: ny permanent rad 10 (radkart bumpet, alle formler via R-kart, 0 #REF). PDF: re-utleie i inntektssammensetning.
 - Eldre planer endres IKKE i det stille — laget aktiveres først når «Oppdater fra leieforholdene» kjøres (hint vises). Backend-testagent 4/4 inkl. full XLSX-formelregresjon. Bruker må selv oppdatere fakta + lagre i sine planer, og deploye.
+
+## Datarom → Oversikt: Kommandosenter-redesign (feb 2026)
+- Oversikt redesignet til minimalistisk bento-«kommandosenter»: mørk hero-flis (honorar/mnd som dominant tall, live-indikator, fremtidsbilde-kontroller, investorpakke, veksttrapp), KPI-fliser (margin m/break-even-bar, utleiegrad-ring, pipeline, ARR-potensial, leie under forvaltning).
+- NY puls-rad med driftssignaler: åpne saker (m/over frist), signeringer i gang, kontrakter som utløper ≤60 dgr, innflyttinger 30 dgr, ledig uten annonse. Team-signaler via NYTT endepunkt GET /api/admin/datarom/puls (sakerAuthed — investor får 401 og raden skjules).
+- P&L-graf fikk narrativ-badge (akkumulert + mnd ført). Snarveier utvidet med «Budsjett & vekstplan» (kun admin).
+- Komponenten flyttet til egen fil /app/components/admin/DataromOversikt.js (Datarom.js slanket fra ~1230 til ~750 linjer). Alle testids/omvisning bevart.
+- Backend-testet 5/5 (puls + regresjon oversikt/leieforhold). Screenshot-QA desktop + mobil (0 px overflow).
