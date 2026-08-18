@@ -767,8 +767,8 @@ export default function AdminPage({ params }) {
   return (
     <div className="min-h-screen bg-[#f7f6f4] flex">
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={paletteCommands} />
-      {/* Teamchat — kun interne roller; investor/eier ser den aldri (håndheves også i API-et) */}
-      {user && ['owner', 'admin', 'bruker', 'partner'].includes(user.role) && (
+      {/* Teamchat — interne roller + investor (investor låses til egen kanal i API-et) */}
+      {user && ['owner', 'admin', 'bruker', 'partner', 'investor'].includes(user.role) && (
         <ChatBoble token={token} user={user} />
       )}
       {profileOpen && (

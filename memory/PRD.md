@@ -644,3 +644,11 @@ Google Ads-styring via native REST API).
 
 ## Feb 2026 (forts. 2) — Scenariosammenligning (A/B-duell)
 - «Sammenlign»-knapp i budsjett-cockpitens topplinje åpner fullskjerms ScenarioSammenligning (modulnivå-komponent i BudsjettModell.js): to velgere (Gjeldende forutsetninger + lagrede scenarioer, farge A=lilla/B=amber), KPI-duell m/ Δ-chips (grønn/rød etter hva som er bedre for B: tidligere break-even, lavere kapitalbehov, høyere resultat), to overlagte SVG-grafer (akkumulert resultat m/ break-even-prikker + enheter under forvaltning), driverdiff-tabell (kun felter som skiller settene, inkl. vekstplan/bemanningstrapp), årsvis tabell m/ Δ resultat. Fullt responsiv: mobil stabler KPI-rader m/ fargeprikker. Kun frontend — beregnes live m/ beregnInvestorModell/rensModellDrivere. Screenshot-verifisert desktop+mobil m/ midlertidige QAFIX-scenarioer (slettet etterpå — scenarioer:[] igjen).
+
+## Feb 2026 (forts. 3) — Investorchat
+- Investorer får chatboblen i investorrommet med EGEN låst kanal ('investor-<userId>'): chatTilgang()-resolver i alle chat-ruter tvinger investorer til egen kanal på serversiden (query/body ignoreres) — de ser ALDRI internchatten ('generelt'). Interne kan åpne investorkanaler.
+- Teamet: kanalvelger-chips i chatten (Intern + én per investor, m/ avatar og ulest-badge, amber tema), GET /admin/chat/investorkanaler (ulest/sisteAt per kanal), ravgul ekstra-badge på boblen for uleste investormeldinger.
+- Varsling: investor skriver → in-app til alle interne; teamet svarer → in-app til investor + e-post (throttlet 30 min/kanal via chat_epost_logg, hoppes over ved @tagging).
+- Isolasjon håndhevet overalt: meldinger, reaksjoner (404 på fremmede kanaler), filer (404 hvis filens kanal ≠ investors), søk, tråder, status/lest, skriver-indikator. fest + trådnavn/sak-kobling forblir interne (UI skjult + API-vakt).
+- auth/me + login returnerer nå user.id (fikset også minId/egen-melding-logikk i chat). rensKanal 40→60 tegn.
+- Backend-testagent: 29/30 bestått; T9 (fil-isolasjon) verifisert manuelt etterpå: investor 404 på intern fil, 200 på egen, kanal tvinges ved opplasting. UI screenshot-verifisert for både investor og owner.

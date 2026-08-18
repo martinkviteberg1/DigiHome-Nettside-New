@@ -316,6 +316,14 @@ export default function ChatBoble({ token, user }) {
   const [skriver, setSkriver] = useState([]); // navn som skriver nå
   const [dragOver, setDragOver] = useState(false);
   const filInputRef = useRef(null);
+  // ── Kanaler: 'generelt' = internchat; 'investor-<id>' = én investors direktelinje.
+  // Investorer låses til sin egen kanal på SERVEREN — klienten trenger aldri
+  // sende kanal for dem. Interne kan bytte mellom intern og investorkanaler.
+  const erInvestor = user?.role === 'investor';
+  const [aktivKanal, setAktivKanal] = useState('generelt');
+  const aktivKanalRef = useRef('generelt');
+  aktivKanalRef.current = aktivKanal;
+  const [invKanaler, setInvKanaler] = useState([]); // teamets oversikt m/ ulest per investor
   const skriverSistRef = useRef(0); // throttle for «skriver…»-heartbeat
   const dragTellerRef = useRef(0); // dragenter/-leave-balanse (barneelementer)
   const [visSok, setVisSok] = useState(false); // meldingssøk aktivt
@@ -390,16 +398,51 @@ export default function ChatBoble({ token, user }) {
   }, []);
 
   const api = useCallback(async (sti, opts = {}) => {
-    const skille = sti.includes('?') ? '&' : '?';
-    const r = await fetch(`/api/admin/chat/${sti}${skille}key=${encodeURIComponent(token)}`, {
+    // Aktiv kanal plumbes automatisk inn i ALLE chat-kall (query + body) —
+    // 'generelt' sendes ikke (serverens standard). Investorer sender aldri
+    // kanal; serveren låser dem uansett til sin egen.
+    const kNaa = aktivKanalRef.current;
+    const medKanal = kNaa && kNaa !== 'generelt';
+    const stiK = medKanal ? `${sti}${sti.includes('?') ? '&' : '?'}kanal=${encodeURIComponent(kNaa)}` : sti;
+    const skille = stiK.includes('?') ? '&' : '?';
+    const bodyK = opts.body && medKanal ? { kanal: kNaa, ...opts.body } : opts.body;
+    const r = await fetch(`/api/admin/chat/${stiK}${skille}key=${encodeURIComponent(token)}`, {
       headers: { 'Content-Type': 'application/json' },
       ...opts,
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      body: bodyK ? JSON.stringify(bodyK) : undefined,
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || 'Noe gikk galt');
     return j;
   }, [token]);
+
+  // Teamets investorkanal-oversikt (navn, avatar, ulest) — lett polling
+  useEffect(() => {
+    if (!token || erInvestor) return undefined;
+    let alive = true;
+    const hentIk = async () => {
+      try {
+        const r = await fetch(`/api/admin/chat/investorkanaler?key=${encodeURIComponent(token)}`);
+        const j = await r.json().catch(() => ({}));
+        if (alive && j.ok) setInvKanaler(j.kanaler || []);
+      } catch (e) {}
+    };
+    hentIk();
+    const iv = setInterval(hentIk, 15000);
+    return () => { alive = false; clearInterval(iv); };
+  }, [token, erInvestor]);
+
+  // Bytt kanal: nullstill visningen — hovedeffekten laster alt på nytt
+  const byttKanal = useCallback((k) => {
+    if (k === aktivKanalRef.current) return;
+    setAktivKanal(k);
+    setMeldinger([]); setFestede([]); setTraader([]); setTraad(null); setTraadMeldinger([]);
+    setNyttSidenSist(null); setFane('chat'); setFeil('');
+  }, []);
+  const aktivInvestor = !erInvestor && aktivKanal !== 'generelt'
+    ? invKanaler.find((k) => k.kanal === aktivKanal) || null
+    : null;
+  const invUlestTotalt = erInvestor ? 0 : invKanaler.reduce((a, k) => a + (k.ulest || 0), 0);
 
   const scrollNed = useCallback(() => {
     requestAnimationFrame(() => {
@@ -565,7 +608,7 @@ export default function ChatBoble({ token, user }) {
       setTraad(null); setTraadMeldinger([]); setNyttSidenSist(null);
       setFane('chat'); setVisSakVelger(false); setRedigererNavn(false);
     };
-  }, [aapen, token, api, scrollNed, scrollTraadNed, lastTraader, user?.id]);
+  }, [aapen, token, api, scrollNed, scrollTraadNed, lastTraader, user?.id, aktivKanal]);
 
   /* «Skriver…»-indikator: lett polling (3,5 s) mens chatten er åpen */
   useEffect(() => {
@@ -1168,10 +1211,12 @@ export default function ChatBoble({ token, user }) {
             <Reply className="h-3.5 w-3.5" />
           </button>
         )}
-        <button onClick={() => fest(rad)} title={rad.festet ? 'Løsne meldingen' : 'Fest meldingen øverst'} data-testid={`chat-fest-${rad.id}`}
-          className={`flex h-7 w-7 items-center justify-center transition-colors hover:bg-[#faf6ee] active:scale-90 ${rad.festet ? 'text-[#d97706]' : 'text-[#a6a19a] hover:text-[#d97706]'}`}>
-          <Pin className="h-3.5 w-3.5" />
-        </button>
+        {user?.role !== 'investor' && (
+          <button onClick={() => fest(rad)} title={rad.festet ? 'Løsne meldingen' : 'Fest meldingen øverst'} data-testid={`chat-fest-${rad.id}`}
+            className={`flex h-7 w-7 items-center justify-center transition-colors hover:bg-[#faf6ee] active:scale-90 ${rad.festet ? 'text-[#d97706]' : 'text-[#a6a19a] hover:text-[#d97706]'}`}>
+            <Pin className="h-3.5 w-3.5" />
+          </button>
+        )}
         {rad.userId === minId && (
           <button onClick={() => { setVisEmojiFor(null); setRedigerer({ id: rad.id, tekst: rad.text }); }} title="Rediger meldingen" data-testid={`chat-rediger-${rad.id}`}
             className="flex h-7 w-7 items-center justify-center text-[#a6a19a] transition-colors hover:bg-[#faf9f7] hover:text-[#1c1917] active:scale-90">
@@ -1384,7 +1429,7 @@ export default function ChatBoble({ token, user }) {
                   <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#22c55e] ring-2 ring-[#faf9f7]" title="Tilkoblet" />
                 </span>
                 <div>
-                  <p className="text-[14.5px] font-bold leading-tight text-[#1c1917]" style={heading}>Teamchat</p>
+                  <p className="text-[14.5px] font-bold leading-tight text-[#1c1917]" style={heading}>{erInvestor ? 'DigiHome-teamet' : 'Teamchat'}</p>
                   <p className="text-[10.5px] leading-tight text-[#a6a19a]">{brukere.length > 0 ? `${brukere.length} i teamet` : 'Intern kanal'}</p>
                 </div>
               </div>
@@ -1433,7 +1478,7 @@ export default function ChatBoble({ token, user }) {
                   <NavnAvatar navn={user?.name} size={28} fontPx={9.5} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[12px] font-bold text-[#1c1917]">{user?.name || 'Deg'}</span>
-                    <span className="block text-[9.5px] font-medium uppercase tracking-wide text-[#b3ada3]">{user?.role === 'owner' ? 'Eier' : user?.role === 'admin' ? 'Admin' : 'Teammedlem'}</span>
+                    <span className="block text-[9.5px] font-medium uppercase tracking-wide text-[#b3ada3]">{user?.role === 'owner' ? 'Eier' : user?.role === 'admin' ? 'Admin' : user?.role === 'investor' ? 'Investor' : 'Teammedlem'}</span>
                   </span>
                   <button onClick={toggleVarsler} title={varslerPaa ? 'Desktop-varsler er PÅ' : 'Skru på desktop-varsler'}
                     className={`rounded-[8px] p-1.5 transition-all active:scale-90 ${varslerPaa ? 'bg-[#ece4fb] text-[#6d28d9]' : 'text-[#b3ada3] hover:bg-black/[0.04] hover:text-[#57534e]'}`}>
@@ -1473,8 +1518,16 @@ export default function ChatBoble({ token, user }) {
                     <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#22c55e] ring-2 ring-white" title="Tilkoblet" />
                   </span>
                   <div>
-                    <p className="text-[14.5px] font-bold leading-tight text-[#1c1917]" style={heading}>{fullskjerm ? 'Hovedstrøm' : 'Teamchat'}</p>
-                    <p className="text-[11px] leading-tight text-[#a6a19a]">{fullskjerm ? 'Hele teamet samlet' : 'Intern'} · <span className="font-semibold text-[#8b6bc7]">@tag</span> gir e-postvarsel</p>
+                    <p className="text-[14.5px] font-bold leading-tight text-[#1c1917]" style={heading}>
+                      {erInvestor ? 'DigiHome-teamet' : aktivInvestor ? aktivInvestor.navn : fullskjerm ? 'Hovedstrøm' : 'Teamchat'}
+                    </p>
+                    <p className="text-[11px] leading-tight text-[#a6a19a]">
+                      {erInvestor
+                        ? <>Din direktelinje til teamet · <span className="font-semibold text-[#8b6bc7]">@tag</span> gir e-postvarsel</>
+                        : aktivInvestor
+                          ? 'Investorkanal — kun teamet og investoren ser denne'
+                          : <>{fullskjerm ? 'Hele teamet samlet' : 'Intern'} · <span className="font-semibold text-[#8b6bc7]">@tag</span> gir e-postvarsel</>}
+                    </p>
                   </div>
                 </div>
               )}
@@ -1496,6 +1549,36 @@ export default function ChatBoble({ token, user }) {
               </div>
             </div>
           </div>
+
+          {/* Kanalvelger for teamet: Intern + én kanal per investor */}
+          {!traad && !erInvestor && invKanaler.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto border-b border-black/[0.05] px-3 py-2" style={{ scrollbarWidth: 'none' }} data-testid="chat-kanalvelger">
+              <button onClick={() => byttKanal('generelt')} data-testid="chat-kanal-intern"
+                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11.5px] font-bold transition-all active:scale-[0.97] ${aktivKanal === 'generelt' ? 'text-white' : 'bg-black/[0.04] text-[#8a857d] hover:text-[#57534e]'}`}
+                style={aktivKanal === 'generelt' ? { background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)', boxShadow: '0 3px 10px rgba(59,35,115,0.25)' } : {}}>
+                <MessageCircle className="h-3 w-3" />
+                Intern
+              </button>
+              <span className="h-4 w-px shrink-0 bg-black/[0.08]" />
+              {invKanaler.map((k) => {
+                const aktiv = aktivKanal === k.kanal;
+                return (
+                  <button key={k.kanal} onClick={() => byttKanal(k.kanal)} data-testid={`chat-kanal-${k.kanal}`}
+                    title={`Investorkanal — ${k.navn}`}
+                    className={`flex shrink-0 items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-[11.5px] font-bold transition-all active:scale-[0.97] ${aktiv ? 'text-white' : 'bg-black/[0.04] text-[#8a857d] hover:text-[#57534e]'}`}
+                    style={aktiv ? { background: 'linear-gradient(135deg, #b45309, #d97706)', boxShadow: '0 3px 10px rgba(180,83,9,0.3)' } : {}}>
+                    {k.avatar
+                      ? <img src={k.avatar} alt="" className="h-[18px] w-[18px] rounded-full object-cover" />
+                      : <span className={`flex h-[18px] w-[18px] items-center justify-center rounded-full text-[7.5px] font-bold ${aktiv ? 'bg-white/25 text-white' : 'text-white'}`} style={aktiv ? {} : { background: avatarFarge(k.navn) }}>{initialer(k.navn)}</span>}
+                    <span className="max-w-[120px] truncate">{k.navn}</span>
+                    {(k.ulest || 0) > 0 && !aktiv && (
+                      <span className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#d97706] px-1 text-[8.5px] font-bold text-white">{k.ulest}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Faner: Chat | Tråder + søk/varsler/lyd — skjules inne i en åpen tråd */}
           {!traad && (
@@ -1574,6 +1657,10 @@ export default function ChatBoble({ token, user }) {
                       className="min-w-0 flex-1 rounded-[10px] bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-[#1c1917] outline-none placeholder:text-[#b3ada3]"
                       style={{ boxShadow: 'inset 0 0 0 1px rgba(109,40,217,0.4), 0 4px 14px rgba(109,40,217,0.1)' }}
                     />
+                  ) : erInvestor ? (
+                    <span className="flex min-w-0 items-center gap-1.5 px-2 py-1.5">
+                      <span className={`truncate text-[12.5px] ${traad.traadNavn ? 'font-bold text-[#1c1917]' : 'font-medium text-[#b3ada3]'}`}>{traad.traadNavn || 'Tråd'}</span>
+                    </span>
                   ) : (
                     <button onClick={() => { setNavnUtkast(traad.traadNavn || ''); setRedigererNavn(true); }} data-testid="chat-traad-navn"
                       title={traad.traadNavn ? 'Endre trådnavnet' : 'Gi tråden et navn'}
@@ -1591,14 +1678,14 @@ export default function ChatBoble({ token, user }) {
                         <X className="h-3 w-3" />
                       </button>
                     </span>
-                  ) : (
+                  ) : !erInvestor ? (
                     <button onClick={() => { setVisSakVelger((v) => !v); hentSaker(); }} data-testid="chat-traad-koble-sak"
                       className="flex shrink-0 items-center gap-1 rounded-[10px] bg-white px-2 py-1.5 text-[11px] font-bold text-[#57534e] transition-all hover:text-[#0a7d55] active:scale-[0.97]"
                       style={{ boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 4px rgba(20,16,40,0.05)' }}>
                       <Link2 className="h-3 w-3" />
                       Koble til sak
                     </button>
-                  )}
+                  ) : null}
                 </div>
               )}
               {visSakVelger && !traad.sak && (
@@ -1953,6 +2040,14 @@ export default function ChatBoble({ token, user }) {
             className="absolute -right-0.5 -top-0.5 flex h-[21px] min-w-[21px] items-center justify-center rounded-full px-1 text-[10.5px] font-bold text-white ring-2 ring-[#faf9f7]"
             style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', animation: 'dhChatBadgePop 260ms cubic-bezier(0.34,1.56,0.64,1) both' }}>
             {ulest > 99 ? '99+' : ulest}
+          </span>
+        )}
+        {/* Ravgul badge: uleste investormeldinger (teamet) */}
+        {!aapen && invUlestTotalt > 0 && (
+          <span data-testid="chat-badge-investor"
+            className={`absolute flex h-[19px] min-w-[19px] items-center justify-center rounded-full px-1 text-[9.5px] font-bold text-white ring-2 ring-[#faf9f7] ${ulest > 0 ? '-right-0.5 top-[18px]' : '-right-0.5 -top-0.5'}`}
+            style={{ background: 'linear-gradient(135deg, #d97706, #b45309)' }}>
+            {invUlestTotalt > 99 ? '99+' : invUlestTotalt}
           </span>
         )}
       </button>
