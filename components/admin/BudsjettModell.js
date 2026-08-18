@@ -130,9 +130,11 @@ const visTall = (v) => {
   return Number.isFinite(n) ? Math.round(n).toLocaleString('nb-NO') : s;
 };
 // Holder porteføljefakta flat utover perioden — til ekstrapolering av break-even
+// (bortfall er PUNKTVISE hendelser og utvides med 0 — ingen nye kjente bortfall)
 const utvidFakta = (fk, N2) => ({
   eksisterende: Array.from({ length: N2 }, (_, i) => fk.eksisterende?.[Math.min(i, (fk.eksisterende?.length || 1) - 1)] || 0),
   enheter: Array.from({ length: N2 }, (_, i) => fk.enheter?.[Math.min(i, (fk.enheter?.length || 1) - 1)] || 0),
+  bortfall: Array.from({ length: N2 }, (_, i) => fk.bortfall?.[i] || 0),
 });
 
 /* ── Kollapsbar seksjon i driver-railen ── */
@@ -229,12 +231,14 @@ const Graf = ({ m, startYm }) => {
         ))}
         {Array.from({ length: N }, (_, i) => {
           const eksH = m.eksisterende[i] * yS;
+          const reH = (m.reutleie?.[i] || 0) * yS;
           const modH = (m.vekst[i] + m.oppstart[i]) * yS;
           const dim = hov !== null && hov !== i;
           return (
             <g key={i} opacity={dim ? 0.4 : 1} style={{ transition: 'opacity 120ms' }}>
               <rect x={x(i)} y={H - eksH} width={bw} height={Math.max(0, eksH)} rx="2" fill="#1c1917" opacity="0.9" />
-              <rect x={x(i)} y={H - eksH - modH} width={bw} height={Math.max(0, modH)} rx="2" fill="#ddd2f5" />
+              {reH > 0 && <rect x={x(i)} y={H - eksH - reH} width={bw} height={Math.max(0, reH)} rx="2" fill="#8fd9be" />}
+              <rect x={x(i)} y={H - eksH - reH - modH} width={bw} height={Math.max(0, modH)} rx="2" fill="#ddd2f5" />
               {i % hopp === 0 && (
                 <text x={midt(i)} y={H + 15} textAnchor="middle" fontSize="11" fill="#a6a19a">{mndKort(ymPluss(startYm, i))}</text>
               )}
@@ -261,6 +265,7 @@ const Graf = ({ m, startYm }) => {
           <p className="font-bold">{stor(mndLang(ymPluss(startYm, hov)))} · {Math.round(m.enheter[hov])} enheter</p>
           <div className="mt-1 space-y-0.5 text-white/85">
             <p className="flex justify-between gap-3"><span>Portefølje</span><span>{kr0(m.eksisterende[hov])}</span></p>
+            {(m.reutleie?.[hov] || 0) > 0 && <p className="flex justify-between gap-3"><span>Forventet re-utleie</span><span>{kr0(m.reutleie[hov])}</span></p>}
             <p className="flex justify-between gap-3"><span>Modellert vekst</span><span>{kr0(m.vekst[hov] + m.oppstart[hov])}</span></p>
             <p className="flex justify-between gap-3"><span>Kostnader</span><span>−{kr0(m.kostSum[hov])}</span></p>
             <p className={`flex justify-between gap-3 border-t border-white/15 pt-0.5 font-bold ${m.resultat[hov] >= 0 ? 'text-[#7ee2b8]' : 'text-[#ff9d94]'}`}>
@@ -271,6 +276,7 @@ const Graf = ({ m, startYm }) => {
       )}
       <div className="mt-1.5 flex flex-wrap items-center gap-4 text-[12.5px] text-[#8f8a82]">
         <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px] bg-[#1c1917]" /> Kontraktsfestet</span>
+        {(m.sammendrag.sumReutleie || 0) > 0 && <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px] bg-[#8fd9be]" /> Forventet re-utleie</span>}
         <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px] bg-[#ddd2f5]" /> Modellert vekst</span>
         <span className="flex items-center gap-1.5"><span className="h-[2px] w-4 rounded bg-[#0a7d55]" /> Inntekt</span>
         <span className="flex items-center gap-1.5"><span className="h-[2px] w-4 rounded bg-[#b3261e]" /> Kostnader</span>
@@ -1346,6 +1352,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
       setFakta({
         eksisterende: (f.sikret || []).map((x) => Math.max(0, Math.round(Number(x) || 0))),
         enheter: (f.enheterSerie || []).map((x) => Math.max(0, Math.round(Number(x) || 0))),
+        bortfall: (f.bortfall || []).map((x) => Math.max(0, Math.round(Number(x) || 0))),
         oppdatertAt: new Date().toISOString(),
       });
       setSkittent(true);
@@ -1433,6 +1440,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
     r.push({ label: 'Enheter under forvaltning', serie: m.enheter, type: 'stock', info: true, fmt: (v) => String(Math.round(v)) });
     r.push({ header: 'Inntekter' });
     r.push({ label: 'Portefølje (kontraktsfestet)', serie: m.eksisterende });
+    if ((m.sammendrag.sumReutleie || 0) > 0) r.push({ label: 'Forventet re-utleie', serie: m.reutleie, gronn: true });
     r.push({ label: 'Modellert vekst', serie: m.vekst, lilla: true });
     if (!alleNull(m.oppstart)) r.push({ label: 'Oppstartshonorar', serie: m.oppstart, lilla: true });
     r.push({ label: 'Sum inntekter', serie: m.inntekt, sum: true });
@@ -1685,6 +1693,38 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                 <ArrowRight className="h-4 w-4 shrink-0 text-[#8b6bc7]" />
               </button>
               <Felt label="Årlig churn" k="aarligChurnPct" {...feltProps} enhet="%" testid="driver-churn" slider={{ min: 0, max: 40, step: 1 }} hint={`≈ ${kma(s.mndChurnPct)} %/mnd på modellerte enheter — dagens portefølje churnes ikke`} />
+              {/* Re-utleie ved kontraktslutt — eget modellag, aldri blandet med kontraktsfestet */}
+              <div className="mt-1 rounded-[10px] bg-[#f5f4f1] px-2.5 py-2" data-testid="driver-reutleie">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="min-w-0">
+                    <span className="block text-[12px] font-semibold text-[#57534e]">Re-utleie ved kontraktslutt</span>
+                    <span className="block text-[10.5px] leading-snug text-[#a6a19a]">Boligen forvaltes videre — honoraret gjenopptas etter gapet</span>
+                  </span>
+                  <button type="button" onClick={() => !readOnly && settDriver('reutleiePaa', !sanert.reutleiePaa)} disabled={readOnly}
+                    data-testid="driver-reutleie-toggle" aria-pressed={sanert.reutleiePaa}
+                    className={`relative h-[22px] w-[38px] shrink-0 rounded-full transition-colors ${sanert.reutleiePaa ? 'bg-[#0a7d55]' : 'bg-[#d6d3cd]'} ${readOnly ? 'opacity-60' : ''}`}>
+                    <span className={`absolute top-[3px] h-4 w-4 rounded-full bg-white shadow transition-all ${sanert.reutleiePaa ? 'left-[18px]' : 'left-[3px]'}`} />
+                  </button>
+                </div>
+                {sanert.reutleiePaa && (
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-medium text-[#8f8a82]">Ledighetsgap ved skifte</span>
+                    <span className="flex items-center gap-1">
+                      {[0, 1, 2, 3].map((g) => (
+                        <button key={g} type="button" disabled={readOnly} onClick={() => settDriver('reutleieGapMnd', g)}
+                          data-testid={`driver-reutleie-gap-${g}`}
+                          className={`h-6 w-6 rounded-[7px] text-[11px] font-bold transition-all ${sanert.reutleieGapMnd === g ? 'bg-[#1c1917] text-white' : 'bg-white text-[#8f8a82] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.07)] hover:text-[#1c1917]'}`}>
+                          {g}
+                        </button>
+                      ))}
+                      <span className="ml-0.5 text-[10.5px] text-[#a6a19a]">mnd</span>
+                    </span>
+                  </div>
+                )}
+                {sanert.reutleiePaa && !(fakta.bortfall || []).some((x) => x > 0) && (
+                  <p className="mt-1.5 text-[10.5px] leading-snug text-[#b0824a]">Trykk «Oppdater fra leieforholdene» for å hente kjente kontraktslutt inn i laget</p>
+                )}
+              </div>
               <Felt label="Snittleie nye enheter" k="snittleieNye" {...feltProps} enhet="kr/mnd" testid="driver-leie" heltall slider={{ min: 5000, max: 40000, step: 500 }} />
               <Felt label="Honorar nye enheter" k="honorarPctNye" {...feltProps} enhet="%" testid="driver-honorar" slider={{ min: 0, max: 20, step: 0.5 }} hint={`≈ ${kr0(m.cac.bruttoHonorarNy)} kr eks. mva per enhet/mnd`} />
             </Seksjon>
@@ -1827,6 +1867,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                       if (rad.resultat || rad.akk) return v >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]';
                       if (rad.info) return 'text-[#b5b0a8]';
                       if (rad.lilla) return 'text-[#6d28d9]';
+                      if (rad.gronn) return 'text-[#0a7d55]';
                       return 'text-[#57534e]';
                     };
                     const vekt = rad.sum || rad.resultat ? 'font-bold' : rad.akk ? 'font-medium' : '';

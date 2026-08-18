@@ -674,3 +674,8 @@ Google Ads-styring via native REST API).
 ## Feb 2026 (forts. 7) — Org-kart: Blue Sky-skjuling + større/likere kort
 - Engangs-migrering (app_migreringer, kjøres automatisk i hentOrganisasjon): skjuler utdatert REGN-rolle for BLUE SKY ECONOMY AS (921171986) der Bergen-enheten (936595960) også har synlig REGN-rolle. Reverserbar via personskuffen; synk rører aldri skjult. Retter prod automatisk etter deploy. Backend-testagent 4/4.
 - Layout: CH 112→72 (fjernet død plass), CW/CHIP_W 260, PAD 48, RG 52, MOR_GAP 64 → fit-zoom 67%→84%. PersonKort: fast 72px høyde (alle like), rolle+tittel på én linje, «2 selskaper»-badge FJERNET, brregBorte som oransje hjørnemerke m/ tooltip.
+
+## Feb 2026 (forts. 8) — Budsjett: Re-utleie ved kontraktslutt
+- Tidsbestemte kontrakters honorar gjenopptas nå i budsjettet (i stedet for permanent bortfall = dobbeltstraff ift. churn). beregnBortfallSerie i lib/budsjett.js: punktvise bortfall fra kjente utflyttinger; nytt fakta-felt `bortfall` fra plan/forslag. Modelldrivere: reutleiePaa (default PÅ), reutleieGapMnd (default 0, 0–6). Reutleie(t)=kumulativt bortfall forskjøvet med gap; churnes ikke; sammendrag.sumReutleie.
+- Vises som EGET lag (ærlighet mot investorer): «Kontraktsfestet»-KPI forblir ren. UI: toggle + gap-knapper i Portefølje & vekst, grønt grafsegment/legend, grønn resultatrad. Excel: ny permanent rad 10 (radkart bumpet, alle formler via R-kart, 0 #REF). PDF: re-utleie i inntektssammensetning.
+- Eldre planer endres IKKE i det stille — laget aktiveres først når «Oppdater fra leieforholdene» kjøres (hint vises). Backend-testagent 4/4 inkl. full XLSX-formelregresjon. Bruker må selv oppdatere fakta + lagre i sine planer, og deploye.
