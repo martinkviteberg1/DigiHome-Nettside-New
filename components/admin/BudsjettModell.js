@@ -251,6 +251,27 @@ const Graf = ({ m, startYm }) => {
           fill="none" stroke="#0a7d55" strokeWidth="1.8" strokeLinejoin="round" pointerEvents="none" />
         <polyline points={Array.from({ length: N }, (_, i) => `${midt(i)},${H - m.kostSum[i] * yS}`).join(' ')}
           fill="none" stroke="#b3261e" strokeWidth="1.8" strokeLinejoin="round" pointerEvents="none" opacity="0.9" />
+        {/* Årsskiller — flerårsplanens rytme direkte i grafen */}
+        {Array.from({ length: Math.floor((N - 1) / 12) }, (_, k) => (k + 1) * 12).map((i) => (
+          <g key={`aar-${i}`} pointerEvents="none">
+            <line x1={(W / N) * i} x2={(W / N) * i} y1="4" y2={H} stroke="#d6d3cd" strokeWidth="1" strokeDasharray="2 4" />
+            <text x={(W / N) * i + 4} y="11" fontSize="9" fill="#a6a19a" fontWeight="700" letterSpacing="0.5">ÅR {i / 12 + 1}</text>
+          </g>
+        ))}
+        {/* Kapitalbunn — dypeste akkumulerte punkt = kapitalbehovet */}
+        {m.sammendrag.kapitalbehovIdx !== null && m.sammendrag.kapitalbehov > 0 && (() => {
+          const ki = m.sammendrag.kapitalbehovIdx;
+          const anker = ki < N * 0.18 ? 'start' : ki > N * 0.82 ? 'end' : 'middle';
+          return (
+            <g pointerEvents="none">
+              <line x1={midt(ki)} x2={midt(ki)} y1="18" y2={H} stroke="#b45309" strokeWidth="1" strokeDasharray="3 3" opacity="0.45" />
+              <circle cx={midt(ki)} cy={H} r="3.5" fill="#b45309" />
+              <text x={midt(ki) + (anker === 'start' ? 5 : anker === 'end' ? -5 : 0)} y="26" fontSize="9.5" fill="#b45309" fontWeight="700" textAnchor={anker}>
+                Kapitalbunn −{kr0(m.sammendrag.kapitalbehov)} kr
+              </text>
+            </g>
+          );
+        })()}
         {beIdx !== null && beIdx > 0 && (
           <g pointerEvents="none">
             <line x1={midt(beIdx)} x2={midt(beIdx)} y1={H - m.inntekt[beIdx] * yS - 14} y2={H} stroke="#6d28d9" strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
@@ -1119,7 +1140,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const [drivere, setDrivere] = useState(() => ({ ...rensModellDrivere(plan.drivere) }));
   const [lagretDrivere, setLagretDrivere] = useState(() => rensModellDrivere(plan.drivere));
   const [fakta, setFakta] = useState(plan.fakta || { eksisterende: [], enheter: [], oppdatertAt: null });
-  const [aapne, setAapne] = useState({ portefolje: true, unit: false, org: false, faste: false });
+  const [aapne, setAapne] = useState({ portefolje: true, unit: false, org: false, faste: false, aarlig: false });
   const [railAapen, setRailAapen] = useState(true);
   // Under xl er panelet et bunn-ark som dekker innholdet — start derfor lukket
   // på mobil/nettbrett, så tallene er det første man ser.
@@ -1253,7 +1274,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const [lagret, setLagret] = useState(false);
   const [feil, setFeil] = useState('');
   const [henterFakta, setHenterFakta] = useState(false);
-  const [visning, setVisning] = useState('mnd');
+  const [visning, setVisning] = useState(plan.antallMnd > 12 ? 'teleskop' : 'mnd');
   const [sletteBekreft, setSletteBekreft] = useState(false);
 
   const m = useMemo(
@@ -1418,17 +1439,29 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
     };
   }, [m.cac, sanert.aarligChurnPct, sanert.aarslonn, sanert.paslagPct, sanert.enheterPerAarsverk]);
 
-  /* ── Matrise: perioder som kolonner ── */
+  /* ── Matrise: perioder som kolonner ──
+     Teleskop (standard for flerårsplaner — investorstandard): år 1 måned for
+     måned (der innsikten er størst), år 2 kvartalsvis, år 3+ årlig. ── */
   const perioder = useMemo(() => {
-    if (visning === 'mnd') return Array.from({ length: m.N }, (_, i) => ({ label: stor(mndKort(ymPluss(plan.startYm, i))), idx: [i] }));
-    const grupper = [];
-    for (let i = 0; i < m.N; i++) {
-      const { y, m: mm } = ymDeler(ymPluss(plan.startYm, i));
-      const key = `Q${Math.floor((mm - 1) / 3) + 1} ${String(y).slice(2)}`;
-      const siste = grupper[grupper.length - 1];
-      if (siste && siste.label === key) siste.idx.push(i); else grupper.push({ label: key, idx: [i] });
-    }
-    return grupper;
+    const mndKol = (i) => ({ label: stor(mndKort(ymPluss(plan.startYm, i))), idx: [i] });
+    const grupper = (fra, til, type) => {
+      const ut = [];
+      for (let i = fra; i <= til; i++) {
+        const { y, m: mm } = ymDeler(ymPluss(plan.startYm, i));
+        const key = type === 'kvartal' ? `Q${Math.floor((mm - 1) / 3) + 1} ${String(y).slice(2)}` : String(y);
+        const siste = ut[ut.length - 1];
+        if (siste && siste.label === key) siste.idx.push(i); else ut.push({ label: key, idx: [i] });
+      }
+      return ut;
+    };
+    if (visning === 'mnd') return Array.from({ length: m.N }, (_, i) => mndKol(i));
+    if (visning === 'kvartal') return grupper(0, m.N - 1, 'kvartal');
+    if (visning === 'aar') return grupper(0, m.N - 1, 'aar');
+    // teleskop
+    const ut = Array.from({ length: Math.min(12, m.N) }, (_, i) => mndKol(i));
+    if (m.N > 12) ut.push(...grupper(12, Math.min(24, m.N) - 1, 'kvartal'));
+    if (m.N > 24) ut.push(...grupper(24, m.N - 1, 'aar'));
+    return ut;
   }, [visning, m.N, plan.startYm]);
 
   const flyt = (serie, idx) => idx.reduce((sum, i) => sum + (serie[i] || 0), 0);
@@ -1460,7 +1493,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
 
   const fullkost = Math.round(sanert.aarslonn * (1 + sanert.paslagPct / 100));
   const sisteIdx = m.N - 1;
-  const antallEndret = ['nyePerMnd', 'aarligChurnPct', 'snittleieNye', 'honorarPctNye', 'oppstartPerEnhet', 'systemPerEnhet', 'enheterPerAarsverk', 'aarslonn', 'paslagPct', 'mfFast', 'provisjonPerNyEnhet', 'adminFast', 'andreFaste']
+  const antallEndret = ['nyePerMnd', 'aarligChurnPct', 'snittleieNye', 'honorarPctNye', 'oppstartPerEnhet', 'systemPerEnhet', 'enheterPerAarsverk', 'aarslonn', 'paslagPct', 'mfFast', 'provisjonPerNyEnhet', 'adminFast', 'andreFaste', 'indeksPct', 'lonnsvekstPct', 'kostInflasjonPct']
     .filter((k) => Math.abs((sanert[k] ?? 0) - (lagretDrivere[k] ?? 0)) > 1e-9).length
     + (JSON.stringify(sanert.vekstplan || []) !== JSON.stringify(lagretDrivere.vekstplan || []) ? 1 : 0);
 
@@ -1760,6 +1793,24 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
               <Felt label="Andre faste kostnader" k="andreFaste" {...feltProps} enhet="kr/mnd" testid="driver-andre" heltall />
             </Seksjon>
 
+            <Seksjon tittel="Årlig justering" ikon={CalendarDays} open={aapne.aarlig} onToggle={() => veksle('aarlig')}
+              sammendrag={`${kma(sanert.indeksPct)} % leie · ${kma(sanert.lonnsvekstPct)} % lønn · ${kma(sanert.kostInflasjonPct)} % kost`}>
+              <p className="pb-1 pt-0.5 text-[11px] leading-snug text-[#a6a19a]">
+                Trappes per planår — <b>år 1 påvirkes aldri</b>. Gir realistiske flerårsplaner: leien indeksjusteres, lønn og priser stiger.
+              </p>
+              <Felt label="Indeksregulering leie (KPI)" k="indeksPct" {...feltProps} enhet="%/år" testid="driver-indeks" slider={{ min: 0, max: 8, step: 0.5 }}
+                hint="husleieloven § 4-2 — honoraret følger leien (alle inntektslag unntatt oppstartshonorar)" />
+              <Felt label="Lønnsvekst" k="lonnsvekstPct" {...feltProps} enhet="%/år" testid="driver-lonnsvekst" slider={{ min: 0, max: 10, step: 0.5 }}
+                hint="bemanningskostnaden justeres årlig" />
+              <Felt label="Kostnadsinflasjon" k="kostInflasjonPct" {...feltProps} enhet="%/år" testid="driver-kostinflasjon" slider={{ min: 0, max: 10, step: 0.5 }}
+                hint="system, markedsføring, CAC, administrasjon og andre faste" />
+              {plan.antallMnd <= 12 && (
+                <p className="mt-1 rounded-[8px] bg-[#fdf3e0] px-2.5 py-1.5 text-[10.5px] leading-snug text-[#9a6b1c]">
+                  Planen er {plan.antallMnd} mnd — justeringen får først effekt i flerårsplaner (13+ måneder).
+                </p>
+              )}
+            </Seksjon>
+
             {/* Bemanning som INNSIKT bor i hovedflaten — løftes kun frem når den er relevant */}
 
             <div className="mt-3 border-t border-black/[0.05] pt-2.5">
@@ -1808,6 +1859,38 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             <Stat tittel="Kontraktsfestet" verdi={s.andelEksisterendePct === null ? '—' : `${s.andelEksisterendePct} %`} under="av inntekten i perioden" testid="modell-andel" />
           </div>
 
+          {/* Årssammendrag — teleskopets øverste nivå: ett kort per planår med
+              YoY-vekst og ARR exit run-rate (tallet en emisjonspitch bygger på) */}
+          {m.aar.length > 1 && (
+            <div className={`mt-2.5 grid gap-2 sm:grid-cols-2 ${m.aar.length >= 3 ? 'xl:grid-cols-3' : ''}`} data-testid="modell-aarsstripe">
+              {m.aar.map((a, i) => {
+                const forrige = m.aar[i - 1];
+                const yoy = forrige && forrige.inntekt > 0 ? Math.round(((a.inntekt - forrige.inntekt) / forrige.inntekt) * 100) : null;
+                return (
+                  <div key={a.nr} className="rounded-[14px] bg-white px-4 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid={`modell-aar-${a.nr}`}>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="min-w-0 truncate text-[11px] font-bold uppercase tracking-[0.08em] text-[#8f8a82]">
+                        År {a.nr}
+                        <span className="ml-1.5 font-medium normal-case tracking-normal text-[#c2beb8]">{stor(mndKort(ymPluss(plan.startYm, a.fraIdx)))} – {mndKort(ymPluss(plan.startYm, a.tilIdx))}</span>
+                      </p>
+                      {yoy !== null && (
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold tabular-nums ${yoy >= 0 ? 'bg-[#e7f4ee] text-[#0a7d55]' : 'bg-[#fdf0ef] text-[#b3261e]'}`}>
+                          {yoy >= 0 ? '+' : ''}{yoy} % vekst
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12.5px]">
+                      <p className="flex justify-between gap-2"><span className="text-[#8f8a82]">Inntekter</span><span className="font-semibold tabular-nums text-[#1c1917]">{kr0(a.inntekt)}</span></p>
+                      <p className="flex justify-between gap-2"><span className="text-[#8f8a82]">Resultat</span><span className={`font-bold tabular-nums ${a.resultat >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr0(a.resultat)}</span></p>
+                      <p className="flex justify-between gap-2"><span className="text-[#8f8a82]">Enheter v/slutt</span><span className="font-semibold tabular-nums text-[#1c1917]">{Math.round(a.enheterSlutt)}</span></p>
+                      <p className="flex justify-between gap-2"><span className="text-[#8f8a82]" title="Siste måneds inntekt × 12 — exit run-rate">ARR ved slutt</span><span className="font-semibold tabular-nums text-[#6d28d9]">{kr0(a.arrExit)}</span></p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* Bemanning som innsikt: dukker KUN opp når kapasiteten faktisk sprenges */}
           {varselIdx !== null && (
             <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-[14px] bg-[#fdf3e0] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(154,107,28,0.14)]" data-testid="modell-bemanning-innsikt">
@@ -1832,8 +1915,9 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-1 pt-3.5">
               <p className="text-[13.5px] font-medium text-[#8f8a82]">Resultatoppstilling <span className="text-[#c2beb8]">· beløp i kr · beregnet fra driverne</span></p>
               <div className="flex items-center gap-0.5 rounded-[8px] bg-[#f0efec] p-0.5" data-testid="modell-visning">
-                {[['mnd', 'Måned'], ['kvartal', 'Kvartal']].map(([v, l]) => (
+                {[...(plan.antallMnd > 12 ? [['teleskop', 'Teleskop']] : []), ['mnd', 'Måned'], ['kvartal', 'Kvartal'], ...(plan.antallMnd > 12 ? [['aar', 'År']] : [])].map(([v, l]) => (
                   <button key={v} onClick={() => setVisning(v)} data-testid={`modell-visning-${v}`}
+                    title={v === 'teleskop' ? 'År 1 måned for måned · år 2 kvartalsvis · år 3 årlig' : undefined}
                     className={`rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors ${visning === v ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#8f8a82] hover:text-[#57534e]'}`}>{l}</button>
                 ))}
               </div>
@@ -2025,6 +2109,8 @@ function TornadoListe({ m, sanert, fakta, antallMnd, startYm }) {
       ['paslagPct', 'Arbeidsgiverpåslag'], ['mfFast', 'Fast markedsføring'],
       ['provisjonPerNyEnhet', 'Salgsprovisjon (CAC)'], ['adminFast', 'Administrasjon'],
       ['andreFaste', 'Andre faste'],
+      ['indeksPct', 'Indeksregulering (leie)'], ['lonnsvekstPct', 'Lønnsvekst'],
+      ['kostInflasjonPct', 'Kostnadsinflasjon'],
     ];
     const rader = kandidater.map(([k, label]) => {
       const v = sanert[k];

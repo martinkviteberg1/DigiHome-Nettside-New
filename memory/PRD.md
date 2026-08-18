@@ -686,3 +686,10 @@ Google Ads-styring via native REST API).
 - P&L-graf fikk narrativ-badge (akkumulert + mnd ført). Snarveier utvidet med «Budsjett & vekstplan» (kun admin).
 - Komponenten flyttet til egen fil /app/components/admin/DataromOversikt.js (Datarom.js slanket fra ~1230 til ~750 linjer). Alle testids/omvisning bevart.
 - Backend-testet 5/5 (puls + regresjon oversikt/leieforhold). Screenshot-QA desktop + mobil (0 px overflow).
+
+## Feb 2026 (forts. 9) — Flerårsbudsjett i verdensklasse (teleskopmodell)
+- Motoren (budsjett-modell.js): nye årsdrivere indeksPct (KPI-justering leie, std 3 %), lonnsvekstPct (std 4 %), kostInflasjonPct (std 3 %) — trappes per PLANÅR fra år 2 (år 1 påvirkes aldri). Eksisterende planer får 0 (uendrede tall). Nye aggregater: aar[] (per planår: inntekt/resultat/margin/enheter/ARR), arrExit, prisFaktor/kostFaktor/lonnFaktor-serier.
+- UI (BudsjettModell.js): Teleskopvisning (standard for flerårsplaner — år 1 månedlig, år 2 kvartalsvis, år 3 årlig) + År-visning; årssammendrag-stripe m/ YoY-vekst og ARR; graf med ÅR 2/ÅR 3-skiller + kapitalbunn-markør; ny driverseksjon «Årlig justering»; tornado utvidet.
+- BudsjettEnkel.js: 1/2/3-års hurtigvalg ved opprettelse; bortfall-serien følger med fra forslaget.
+- Excel: levende faktor-rader (POWER-formler mot Forutsetninger B21/B23), kostformler ×kostnadsfaktor, ARR-kolonne i Årsoversikt, per-år-blokk + ARR i Sammendrag. PDF: ARR i KPI/årsoversikt + Årlig justering-blokk.
+- Backend-testet 7/7 inkl. bakoverkompatibilitet (gamle planer B21=0) og opprydding. Screenshot-QA av hele flyten.

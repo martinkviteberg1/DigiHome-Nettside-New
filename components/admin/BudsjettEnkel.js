@@ -152,7 +152,7 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
       const serie = (arr) => { const a = (arr || []).slice(0, n).map((v) => Math.max(0, Math.round(Number(v) || 0))); while (a.length < n) a.push(0); return a; };
       const body = {
         navn, startYm: nyFra, antallMnd: n, type: 'modell', investorSynlig: false,
-        fakta: { eksisterende: serie(forslag?.sikret), enheter: serie(forslag?.enheterSerie), oppdatertAt: new Date().toISOString() },
+        fakta: { eksisterende: serie(forslag?.sikret), enheter: serie(forslag?.enheterSerie), bortfall: serie(forslag?.bortfall), oppdatertAt: new Date().toISOString() },
         drivere: {
           ...STANDARD_DRIVERE,
           ...(forslag?.drivereBrukt?.snittLeie ? { snittleieNye: Math.round(forslag.drivereBrukt.snittLeie) } : {}),
@@ -387,11 +387,20 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
                 className="mt-1 h-9 w-full rounded-[8px] border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none focus:border-[#1c1917]/25" />
             </label>
           </div>
-          <div className="mt-3.5 flex items-center gap-3">
+          <div className="mt-3.5 flex flex-wrap items-center gap-3">
             <button onClick={opprett} disabled={oppretter} data-testid="budsjett-opprett" className={KNAPP_PRIMAER}>
               {oppretter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <TrendingUp className="h-3.5 w-3.5" />}
               {oppretter ? 'Henter porteføljefakta…' : 'Opprett budsjett'}
             </button>
+            {/* Hurtigvalg av horisont — 3-årsplanen er investorstandarden */}
+            <span className="flex items-center gap-1" data-testid="budsjett-ny-horisont">
+              {[[12, '1 år'], [24, '2 år'], [36, '3 år']].map(([n, l]) => (
+                <button key={n} type="button" onClick={() => setNyTil(ymPluss(nyFra, n - 1))} data-testid={`budsjett-ny-horisont-${n}`}
+                  className={`h-7 rounded-full px-2.5 text-[11.5px] font-bold transition-all ${ymDiff(nyFra, nyTil) === n ? 'bg-[#1c1917] text-white' : 'bg-[#f0efec] text-[#8f8a82] hover:text-[#1c1917]'}`}>
+                  {l}
+                </button>
+              ))}
+            </span>
             {nyFra && nyTil && ymDiff(nyFra, nyTil) >= 1 && (
               <span className="text-[12.5px] text-[#a6a19a]">{periodeLabel(nyFra, ymDiff(nyFra, nyTil))}</span>
             )}
