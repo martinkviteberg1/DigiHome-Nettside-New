@@ -1280,7 +1280,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     <div className="space-y-1.5">
                       {r.forvaltning_id && (
                         <button
-                          onClick={() => setPdfVisning({ id: r.forvaltning_id, tittel: `Forvaltningsavtale — ${(gate || '').trim()}` })}
+                          onClick={() => setPdfVisning({ id: r.forvaltning_id, adresse: r.address || '', tittel: `Forvaltningsavtale — ${(gate || '').trim()}` })}
                           className="flex w-full items-center gap-2.5 rounded-[10px] border border-black/[0.05] bg-[#fbfaf8] px-3 py-2.5 text-left transition-colors hover:border-[#8b5cf6]/25 hover:bg-[#f5f1fd]"
                           data-testid="leieforhold-skuff-forvaltning-pdf"
                         >
@@ -1293,7 +1293,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                       )}
                       {r.lease_id && (
                         <button
-                          onClick={() => setPdfVisning({ id: r.lease_id, tittel: `Leiekontrakt — ${r.tenant_name || (gate || '').trim()}` })}
+                          onClick={() => setPdfVisning({ id: r.lease_id, adresse: r.address || '', tittel: `Leiekontrakt — ${r.tenant_name || (gate || '').trim()}` })}
                           className="flex w-full items-center gap-2.5 rounded-[10px] border border-black/[0.05] bg-[#fbfaf8] px-3 py-2.5 text-left transition-colors hover:border-[#3757c4]/25 hover:bg-[#eef2fd]"
                           data-testid="leieforhold-skuff-leiekontrakt-pdf"
                         >
@@ -1321,7 +1321,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
               <FileText className="h-4 w-4 shrink-0 text-[#8b5cf6]" />
               <p className="min-w-0 truncate text-[13px] font-semibold text-[#1c1917]" style={heading}>{pdfVisning.tittel}</p>
               <a
-                href={`/api/admin/leieforhold/kontrakt-pdf?key=${encodeURIComponent(apiKey)}&id=${encodeURIComponent(pdfVisning.id)}`}
+                href={`/api/admin/leieforhold/kontrakt-pdf?key=${encodeURIComponent(apiKey)}&id=${encodeURIComponent(pdfVisning.id)}&adresse=${encodeURIComponent(pdfVisning.adresse || '')}`}
                 target="_blank" rel="noreferrer"
                 className={`ml-auto ${KNAPP_GHOST}`}
               >
@@ -1331,7 +1331,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             </div>
             <iframe
               title={pdfVisning.tittel}
-              src={`/api/admin/leieforhold/kontrakt-pdf?key=${encodeURIComponent(apiKey)}&id=${encodeURIComponent(pdfVisning.id)}`}
+              src={`/api/admin/leieforhold/kontrakt-pdf?key=${encodeURIComponent(apiKey)}&id=${encodeURIComponent(pdfVisning.id)}&adresse=${encodeURIComponent(pdfVisning.adresse || '')}`}
               className="h-full w-full flex-1 border-0 bg-[#faf9f7]"
             />
           </div>

@@ -1137,35 +1137,35 @@ function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, c
   return `
   <div style="background:#f4f3f1;padding:44px 16px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
     <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden">${esc(preheader || intro)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</span>
-    <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #eceae7;box-shadow:0 1px 3px rgba(20,15,35,0.04)">
-      <div style="height:4px;background:linear-gradient(90deg,#8b5cf6 0%,#cf97fc 60%,#e9d5ff 100%)"></div>
-      <div style="padding:24px 32px 0">
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:22px;overflow:hidden;border:1px solid #eceae7;box-shadow:0 2px 8px rgba(20,15,35,0.05)">
+      <div style="height:3px;background:linear-gradient(90deg,#8b5cf6 0%,#cf97fc 60%,#e9d5ff 100%)"></div>
+      <div style="padding:26px 36px 0">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-          <td style="vertical-align:middle"><img src="${logoUrl}" alt="DigiHome" height="26" style="display:block;height:26px;width:auto;border:0" /></td>
-          <td style="vertical-align:middle;text-align:right"><span style="display:inline-block;border:1px solid #e7e4ef;border-radius:99px;padding:4px 12px;color:#8b5cf6;font-size:10.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase">${esc(headerLabel)}</span></td>
+          <td style="vertical-align:middle"><img src="${logoUrl}" alt="DigiHome" height="24" style="display:block;height:24px;width:auto;border:0" /></td>
+          <td style="vertical-align:middle;text-align:right"><span style="display:inline-block;background:#f4f0fb;border-radius:99px;padding:5px 13px;color:#6d28d9;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase">${esc(headerLabel)}</span></td>
         </tr></table>
       </div>
-      <div style="padding:30px 32px 8px">
-        <p style="margin:0 0 10px;color:#8b5cf6;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em">${esc(eyebrow)}</p>
-        <h1 style="margin:0 0 12px;color:#0f0f0f;font-size:25px;line-height:1.22;letter-spacing:-0.02em">${esc(heading)}</h1>
-        <p style="margin:0;color:#565656;font-size:14.5px;line-height:1.68">${intro}</p>
+      <div style="padding:34px 36px 8px">
+        <p style="margin:0 0 10px;color:#8b5cf6;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em">${esc(eyebrow)}</p>
+        <h1 style="margin:0 0 14px;color:#0f0f0f;font-size:26px;line-height:1.2;letter-spacing:-0.025em;font-weight:700">${esc(heading)}</h1>
+        <p style="margin:0;color:#52525b;font-size:15px;line-height:1.7">${intro}</p>
         ${detaljerHtml}
       </div>
-      <div style="padding:28px 32px 6px">
-        <a href="${ctaUrl}" style="display:block;background:#0f0f0f;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:16px 24px;border-radius:13px;text-align:center;letter-spacing:-0.01em">${esc(ctaLabel)} &rarr;</a>
+      <div style="padding:30px 36px 8px">
+        <a href="${ctaUrl}" style="display:block;background:#0f0f0f;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:16px 24px;border-radius:99px;text-align:center;letter-spacing:-0.01em">${esc(ctaLabel)} &rarr;</a>
         ${gyldighet ? `<p style="margin:14px 0 0;color:#9b9b9b;font-size:12px;line-height:1.6;text-align:center">${esc(gyldighet)}</p>` : ''}
       </div>
-      <div style="padding:24px 32px 28px">
-        <div style="border-top:1px solid #f0eeeb;padding-top:16px">
-          <p style="margin:0 0 5px;color:#adadad;font-size:11.5px;line-height:1.6">Fungerer ikke knappen? Kopier lenken inn i nettleseren:</p>
+      <div style="padding:22px 36px 26px">
+        <div style="border-top:1px solid #f0eeeb;padding-top:14px">
+          <p style="margin:0 0 4px;color:#b3b3b3;font-size:11px;line-height:1.6">Fungerer ikke knappen? Kopier lenken inn i nettleseren:</p>
           <p style="margin:0;word-break:break-all"><a href="${ctaUrl}" style="color:#8b5cf6;font-size:11px;text-decoration:underline">${esc(ctaUrl)}</a></p>
         </div>
       </div>
-      ${sikkerhet ? `<div style="background:#faf9f7;border-top:1px solid #f0eeeb;padding:18px 32px">
+      ${sikkerhet ? `<div style="background:#faf9f7;border-top:1px solid #f0eeeb;padding:16px 36px">
         <p style="margin:0;color:#8a8a8a;font-size:12px;line-height:1.65">${esc(sikkerhet)}</p>
       </div>` : ''}
     </div>
-    <p style="max-width:560px;margin:20px auto 0;text-align:center;color:#b5b2ad;font-size:11px;line-height:1.7">DigiHome ${headerLabel === 'Investorrom' ? 'Investorrom' : 'Admin'} &middot; ${taskEsc(footerTekst)} &middot; digihome.no${mottakerEpost ? `<br/>Sendt til ${esc(mottakerEpost)}` : ''}</p>
+    <p style="max-width:560px;margin:20px auto 0;text-align:center;color:#b5b2ad;font-size:11px;line-height:1.7">DigiHome ${esc(headerLabel)} &middot; ${taskEsc(footerTekst)} &middot; digihome.no${mottakerEpost ? `<br/>Sendt til ${esc(mottakerEpost)}` : ''}</p>
   </div>`;
 }
 
@@ -1195,9 +1195,9 @@ async function sendVelkomstEpost({ member, rawToken, invitertAv }) {
     };
     const valgte = (member.moduler || []).map((k) => MODUL_INFO[k]).filter(Boolean);
     const modulerHtml = valgte.length ? `
-        <div style="margin-top:24px">
-          <p style="margin:0 0 8px;color:#8b5cf6;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em">Dette finner du i rommet ditt</p>
-          <div style="background:#faf9f7;border:1px solid #f0eeeb;border-radius:14px;padding:4px 20px">
+        <div style="margin-top:26px">
+          <p style="margin:0 0 8px;color:#8b5cf6;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em">Dette får du tilgang til</p>
+          <div style="background:#faf9f7;border:1px solid #f0eeeb;border-radius:16px;padding:4px 20px">
             ${valgte.map(([l, s], i) => `
             <div style="padding:11px 0;${i ? 'border-top:1px solid #f0eeeb;' : ''}">
               <table role="presentation" cellpadding="0" cellspacing="0"><tr>
@@ -1209,21 +1209,21 @@ async function sendVelkomstEpost({ member, rawToken, invitertAv }) {
           </div>
         </div>` : '';
     const html = authEpostHtml({
-      eyebrow: 'Personlig invitasjon',
-      heading: `Hei ${fornavn} — investorrommet ditt er klart`,
-      intro: `${taskEsc(invitertAv || 'DigiHome')} har åpnet et <strong style="color:#0f0f0f">privat investorrom</strong> for deg — med løpende innsikt i DigiHome: porteføljen, tallene og utviklingen, alltid oppdatert. Aktiver tilgangen under og velg ditt eget passord, så er du inne på under ett minutt.`,
+      eyebrow: 'Invitasjon',
+      heading: 'Velkommen til DigiHome\u2019s datarom',
+      intro: `${taskEsc(invitertAv || 'DigiHome')} har gitt deg tilgang til <strong style="color:#0f0f0f">DigiHome\u2019s datarom</strong> — løpende innsikt i porteføljen, økonomien og utviklingen, alltid oppdatert. Aktiver tilgangen nedenfor og velg passord.`,
       detaljerHtml: modulerHtml,
-      ctaLabel: 'Åpne investorrommet',
+      ctaLabel: 'Åpne datarommet',
       ctaUrl: url,
       gyldighet: 'Lenken er personlig og gyldig i 7 dager.',
-      sikkerhet: 'Innholdet i investorrommet er konfidensielt og delt personlig med deg. Var ikke dette deg? Da kan du trygt se bort fra denne e-posten — ingenting skjer uten at lenken brukes.',
+      sikkerhet: 'Innholdet i datarommet er konfidensielt. Var ikke dette deg? Se bort fra denne e-posten — ingenting skjer uten at lenken brukes.',
       mottakerEpost: member.email,
-      preheader: 'Privat investorrom med løpende innsikt i DigiHome — aktiver den personlige tilgangen din her.',
-      headerLabel: 'Investorrom',
-      footerTekst: 'et privat datarom for investorer og styret',
+      preheader: 'Tilgang til DigiHome\u2019s datarom — aktiver tilgangen og velg passord.',
+      headerLabel: 'Datarom',
+      footerTekst: 'for investorer og styret',
     });
     try {
-      await sendHtmlEmail({ to: member.email, subject: `${fornavn}, investorrommet ditt i DigiHome er klart`, html, fromName: 'DigiHome', individual: true, categories: ['konto-invitasjon-investor'] });
+      await sendHtmlEmail({ to: member.email, subject: 'Tilgang til DigiHome\u2019s datarom', html, fromName: 'DigiHome', individual: true, categories: ['konto-invitasjon-investor'] });
       return true;
     } catch (e) { return false; }
   }
@@ -1243,7 +1243,7 @@ async function sendVelkomstEpost({ member, rawToken, invitertAv }) {
   const html = authEpostHtml({
     eyebrow: 'Velkommen til teamet',
     heading: `Hei ${fornavn} — kontoen din er klar`,
-    intro: `${taskEsc(invitertAv || 'DigiHome')} har invitert deg til <strong style="color:#0f0f0f">DigiHome Admin</strong> — vårt interne arbeidsverktøy. ${rolleTekst} Trykk på knappen under for å aktivere kontoen og velge ditt eget passord.`,
+    intro: `${taskEsc(invitertAv || 'DigiHome')} har invitert deg til <strong style="color:#0f0f0f">DigiHome Admin</strong> — vårt interne arbeidsverktøy. ${rolleTekst} Aktiver kontoen nedenfor og velg passord.`,
     detaljerHtml: detaljer,
     ctaLabel: 'Aktiver konto og velg passord',
     ctaUrl: url,
@@ -3899,11 +3899,48 @@ async function handleRoute(request, { params }) {
         { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
       );
       try {
-        // Prøv id-en som den er; komposit-id (kontraktId:enhetId) fra
-        // contracts/export prøves også med ren uuid-del som fallback, slik at
-        // vi virker uansett hvilken variant plattformen implementerer.
+        // Komposit-id (avtaleId:enhetId) er plattformens kanoniske nøkkel for
+        // PDF. Rader fra units/export har ofte bare REN avtale-uuid — og én
+        // avtale kan dekke flere enheter/adresser (samme eier). Da slår vi opp
+        // riktig komposit i contracts/export, med radens adresse som hint ved
+        // flertydighet — ellers risikerer vi å vise feil eiendom.
+        const adresseHint = (() => { try { return (new URL(request.url).searchParams.get('adresse') || '').slice(0, 100); } catch (e) { return ''; } })();
+        const naAdr = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        let eksportKontrakter = null;
+        const hentEksport = async () => {
+          if (eksportKontrakter) return eksportKontrakter;
+          const rEx = await fetch(`${mTarget.url}/api/contracts/export`, { headers: { 'X-API-Key': mTarget.key }, signal: AbortSignal.timeout(15000) });
+          if (!rEx.ok) { eksportKontrakter = []; return eksportKontrakter; }
+          const jEx = await rEx.json();
+          eksportKontrakter = Array.isArray(jEx) ? jEx : (jEx.contracts || jEx.data || []);
+          return eksportKontrakter;
+        };
+        const finnKontrakt = async () => {
+          const treff = (await hentEksport()).filter((c) => {
+            const cid = String(c.contract_id || c.id || '');
+            return cid === idPdf || cid.startsWith(`${idPdf}:`) || (idPdf.includes(':') && cid === idPdf.split(':')[0]);
+          });
+          if (treff.length === 1) return treff[0];
+          if (treff.length > 1) {
+            const hint = naAdr(adresseHint).split(',')[0];
+            // Uten entydig adressetreff velger vi INGEN — feil eiendom er verre enn venteside.
+            return (hint && treff.find((c) => naAdr(c.property?.address).startsWith(hint))) || null;
+          }
+          return null;
+        };
+
         const kandidater = [idPdf];
         if (idPdf.includes(':')) kandidater.push(idPdf.split(':')[0]);
+        let kontraktEx = null;
+        if (!idPdf.includes(':')) {
+          // Ren avtale-uuid → finn komposit-id FØR PDF-forsøket, slik at
+          // plattformens PDF-endepunkt (som krever komposit) kan treffe.
+          try {
+            kontraktEx = await finnKontrakt();
+            const cid = kontraktEx ? String(kontraktEx.contract_id || '') : '';
+            if (cid && cid.includes(':')) kandidater.unshift(cid);
+          } catch (e) { /* prøver videre med rå id */ }
+        }
         let rPdf = null; let sisteDetalj = '';
         for (const kand of kandidater) {
           rPdf = await fetch(`${mTarget.url}/api/contracts/${encodeURIComponent(kand)}/pdf`, {
@@ -3917,11 +3954,26 @@ async function handleRoute(request, { params }) {
           if (/ikke tilgjengelig/i.test(sisteDetalj)) break;
         }
         if (!rPdf || !rPdf.ok) {
-          // Plattformens PDF-endepunkt er LEVERT for både leiekontrakt og
-          // forvaltningsavtale (komposit-id). Forvaltningsavtale krever at en
-          // signert PDF-fil er lagret på plattformen (signed_agreement_url) —
-          // ellers svarer den 404 «Signert forvaltningsavtale-PDF ikke
-          // tilgjengelig». Server-generert fallback er bestilt via broen.
+          // FALLBACK: plattformen mangler lagret PDF-fil (typisk forvaltnings-
+          // avtaler uten signed_agreement_url). I stedet for en venteside
+          // genererer vi et profesjonelt AVTALESAMMENDRAG fra plattformens
+          // registrerte avtaledata — tydelig merket som systemgenerert. Den
+          // signerte originalen tar over automatisk når den finnes.
+          try {
+            if (!kontraktEx) kontraktEx = await finnKontrakt();
+            if (kontraktEx) {
+              const { lagAvtaleSammendragPdf } = await import('@/lib/avtale-pdf');
+              const bufSam = await lagAvtaleSammendragPdf({ kontrakt: kontraktEx });
+              return new NextResponse(bufSam, {
+                status: 200,
+                headers: {
+                  'Content-Type': 'application/pdf',
+                  'Content-Disposition': `inline; filename="digihome-avtalesammendrag-${idPdf.slice(0, 8)}.pdf"`,
+                  'Cache-Control': 'private, max-age=300',
+                },
+              });
+            }
+          } catch (e) { /* faller videre til ventesiden under */ }
           if (/ikke tilgjengelig/i.test(sisteDetalj)) {
             return ventSide(
               'Ingen signert PDF lagret ennå',

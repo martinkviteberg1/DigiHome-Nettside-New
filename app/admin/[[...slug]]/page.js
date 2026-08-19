@@ -1279,19 +1279,20 @@ function AuthSkjerm({ onLoggedIn }) {
   } else if (view === 'aktiver' || view === 'reset') {
     const erAktiver = view === 'aktiver';
     const fornavn = tokenInfo && tokenInfo.name ? tokenInfo.name.split(' ')[0] : '';
+    const erInvestor = tokenInfo && ['investor', 'eier'].includes(tokenInfo.role);
     innhold = (
       <div>
         {erAktiver && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#cf97fc]/15 border border-[#cf97fc]/25 px-3 py-1 text-[12px] font-semibold text-[#cf97fc] mb-4">
-            <Sparkles className="w-3.5 h-3.5" /> Velkommen til teamet
+            <ShieldCheck className="w-3.5 h-3.5" /> {erInvestor ? 'Tilgang til datarommet' : 'Kontoaktivering'}
           </span>
         )}
         <h1 className="text-white text-[26px] font-bold tracking-[-0.02em] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>
-          {erAktiver ? (fornavn ? `Hei ${fornavn} 👋` : 'Aktiver kontoen din') : 'Velg nytt passord'}
+          {erAktiver ? (fornavn ? `Velkommen, ${fornavn}` : 'Aktiver kontoen') : 'Velg nytt passord'}
         </h1>
         <p className="text-white/45 text-[14px] mt-1.5">
           {erAktiver
-            ? <>Velg ditt eget passord for <span className="text-white/80 font-medium">{tokenInfo && tokenInfo.email}</span>, så er du i gang.</>
+            ? <>Opprett passord for <span className="text-white/80 font-medium">{tokenInfo && tokenInfo.email}</span> for å aktivere tilgangen.</>
             : <>Sett et nytt passord for <span className="text-white/80 font-medium">{tokenInfo && tokenInfo.email}</span>.</>}
         </p>
         <form onSubmit={(e) => { e.preventDefault(); settPassord(erAktiver ? 'aktiver' : 'reset'); }} className="mt-7 space-y-3">
@@ -1301,7 +1302,7 @@ function AuthSkjerm({ onLoggedIn }) {
             type="submit" disabled={busy || pw1.length < 8 || pw1 !== pw2}
             className={primaryBtn} data-testid={erAktiver ? 'auth-aktiver-btn' : 'auth-reset-btn'}
           >
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{erAktiver ? 'Aktiver konto og logg inn' : 'Lagre passord og logg inn'} <ChevronRight className="w-4 h-4" /></>}
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{erAktiver ? 'Aktiver og logg inn' : 'Lagre passord og logg inn'} <ChevronRight className="w-4 h-4" /></>}
           </button>
         </form>
       </div>
@@ -1310,7 +1311,7 @@ function AuthSkjerm({ onLoggedIn }) {
     innhold = (
       <div>
         <h1 className="text-white text-[26px] font-bold tracking-[-0.02em] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>Logg inn</h1>
-        <p className="text-white/45 text-[14px] mt-1.5">Tilgang til innsikt, leads og forretning.</p>
+        <p className="text-white/45 text-[14px] mt-1.5">Fortsett til DigiHome-portalen.</p>
 
         <form onSubmit={doLogin} className="mt-7 space-y-3">
           <div>
@@ -1380,7 +1381,7 @@ function AuthSkjerm({ onLoggedIn }) {
           <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#cf97fc]/70 to-transparent" />
           {innhold}
         </div>
-        <p className="mt-5 flex items-center justify-center gap-1.5 text-[11.5px] text-white/25"><ShieldCheck className="w-3.5 h-3.5" /> Kryptert sesjon · noindex · kun for DigiHome-teamet</p>
+        <p className="mt-5 flex items-center justify-center gap-1.5 text-[11.5px] text-white/25"><ShieldCheck className="w-3.5 h-3.5" /> Kryptert forbindelse · Beskyttet område · digihome.no</p>
       </div>
     </div>
   );
