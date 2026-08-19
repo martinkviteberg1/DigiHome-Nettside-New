@@ -1172,7 +1172,7 @@ function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, c
 // Velkomst-/invitasjons-e-post: personlig hilsen, hvem som inviterte, hva du
 // får tilgang til (rollestyrt), og aktiveringslenke der brukeren VELGER EGET
 // passord. Feiler stille (returnerer false) — kontoen finnes uansett.
-async function sendVelkomstEpost({ member, rawToken, invitertAv }) {
+async function sendVelkomstEpost({ member, rawToken, invitertAv, invitertAvEpost }) {
   if (!member || !member.email || !emailConfigured()) return false;
   const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
   const url = `${base}/admin?invite=${rawToken}`;
@@ -1223,7 +1223,9 @@ async function sendVelkomstEpost({ member, rawToken, invitertAv }) {
       footerTekst: 'for investorer og styret',
     });
     try {
-      await sendHtmlEmail({ to: member.email, subject: 'Tilgang til DigiHome\u2019s datarom', html, fromName: 'DigiHome', individual: true, categories: ['konto-invitasjon-investor'] });
+      // replyTo = personen som inviterte: svar går til et ekte menneske, som er
+      // et person-til-person-signal Outlook vekter mot «Prioritert»-innboksen.
+      await sendHtmlEmail({ to: member.email, subject: 'Tilgang til DigiHome\u2019s datarom', html, fromName: 'DigiHome', replyTo: invitertAvEpost || undefined, individual: true, categories: ['konto-invitasjon-investor'] });
       return true;
     } catch (e) { return false; }
   }
@@ -1253,7 +1255,7 @@ async function sendVelkomstEpost({ member, rawToken, invitertAv }) {
     preheader: `Du er invitert til DigiHome Admin. Aktiver kontoen og velg ditt eget passord.`,
   });
   try {
-    await sendHtmlEmail({ to: member.email, subject: `Velkommen til DigiHome Admin, ${fornavn}`, html, fromName: 'DigiHome Admin', individual: false, categories: ['konto-invitasjon'] });
+    await sendHtmlEmail({ to: member.email, subject: `Velkommen til DigiHome Admin, ${fornavn}`, html, fromName: 'DigiHome Admin', replyTo: invitertAvEpost || undefined, individual: false, categories: ['konto-invitasjon'] });
     return true;
   } catch (e) { return false; }
 }
@@ -3022,14 +3024,16 @@ async function handleRoute(request, { params }) {
       if (invite) {
         const raw = await lagAuthToken(db, { userId: member.id, email, type: 'invite' });
         let invitertAv = 'DigiHome';
+        let invitertAvEpost = null;
         const sesjon = sessionFra(request);
         if (sesjon && sesjon.sub) {
           try {
             const s = await db.collection('admin_users').findOne({ id: sesjon.sub });
             if (s && s.name) invitertAv = s.name;
+            if (s && s.email) invitertAvEpost = s.email;
           } catch (e) {}
         }
-        invitert = await sendVelkomstEpost({ member: doc, rawToken: raw, invitertAv });
+        invitert = await sendVelkomstEpost({ member: doc, rawToken: raw, invitertAv, invitertAvEpost });
         if (isUndeliverableTestAddress(email)) testToken = raw;
       }
       return cors(NextResponse.json({
@@ -3050,14 +3054,16 @@ async function handleRoute(request, { params }) {
       const raw = await lagAuthToken(db, { userId: target.id, email: target.email, type: 'invite' });
       await db.collection('admin_users').updateOne({ id: target.id }, { $set: { invitedAt: new Date().toISOString() } });
       let invitertAv = 'DigiHome';
+      let invitertAvEpost = null;
       const sesjon = sessionFra(request);
       if (sesjon && sesjon.sub) {
         try {
           const s = await db.collection('admin_users').findOne({ id: sesjon.sub });
           if (s && s.name) invitertAv = s.name;
+          if (s && s.email) invitertAvEpost = s.email;
         } catch (e) {}
       }
-      const invitert = await sendVelkomstEpost({ member: target, rawToken: raw, invitertAv });
+      const invitert = await sendVelkomstEpost({ member: target, rawToken: raw, invitertAv, invitertAvEpost });
       const member = (await hentPersoner(db)).find((m) => m.id === target.id) || null;
       return cors(NextResponse.json({
         ok: true, invitert, member,
@@ -12503,7 +12509,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
               const rows = fresh.map((a) => `<tr><td style="padding:10px 14px;border-bottom:1px solid #eee;"><strong style="color:#b91c1c;">${a.title}</strong><br/><span style="color:#555;font-size:13px;">${a.detail || ''}</span></td></tr>`).join('');
               const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;"><h2 style="color:#0a0a0a;">⚠️ Kritiske annonse-varsler</h2><p style="color:#555;">Anomali-motoren fant ${fresh.length} kritiske varsler (${ad.window.current.from} – ${ad.window.current.to}):</p><table style="width:100%;border-collapse:collapse;background:#fafafa;border-radius:8px;">${rows}</table><p style="color:#999;font-size:12px;margin-top:16px;">Se detaljer i adminpanelet → Annonser. Denne e-posten sendes maks én gang per varsel per døgn.</p></div>`;
               try {
-                await sendHtmlEmail({ to: recipients, subject: `⚠️ DigiHome annonse-varsel: ${fresh[0].title}`, html });
+                await sendHtmlEmail({ to: recipients, subject: `DigiHome annonse-varsel: ${fresh[0].title}`, html });
                 for (const a of fresh) sent[a.id] = new Date().toISOString();
                 await stateColl.updateOne({ key: 'alerts_email_state' }, { $set: { key: 'alerts_email_state', sent } }, { upsert: true });
                 alertsInfo.emailed = true;

@@ -704,3 +704,11 @@ Google Ads-styring via native REST API).
 - Graf 2026: full omskriving — glatte catmull-rom-kurver (inntekt m/ gradientareal, kostnad stiplet rosé), lyse avrundede søyler (violet-toner + mint for re-utleie), pill-markører for Break-even og Kapitalbunn, årsskiller, hover-guide m/ punkter, pill-legend.
 - Tusenskiller-bug: NBSP fra toLocaleString('nb-NO') rendret bredt i heading-font — byttet til U+202F (smalt no-break space) i kr/kr0 i begge filene.
 - Screenshot-QA desktop + mobil (0 px overflow). Kun frontend — ingen backend-endringer.
+
+## E-post-deliverability (Outlook «Annet»-fiks) — Feb 2026
+- `lib/email.js`: `personlig=true` som standard — all SendGrid klikk-/åpningssporing og link-omskriving (url####.sendgrid.net) er AV for alle e-poster. Vil en flyt ha sporing, send `personlig:false` eksplisitt.
+- Invitasjoner (`sendVelkomstEpost`): ny param `invitertAvEpost` → `replyTo` settes til inviterende persons e-post (person-til-person-signal). Med masternøkkel (ingen sesjon) utelates replyTo.
+- Emoji fjernet fra annonse-varsel-emne (bulk-signal).
+- DNS-status verifisert: DKIM s1/s2 → SendGrid OK; SPF-rot kun M365; DMARC p=none; em-CNAME (Return-Path) ikke funnet ved skanning — bruker må verifisere i SendGrid Sender Authentication.
+- Brukerhandlinger (kan ikke gjøres i kode): (1) sjekk at alle 3 SendGrid-CNAMEs er publisert/verifisert, (2) valgfritt DMARC → p=quarantine, (3) Exchange-regel `X-MS-Exchange-Organization-BypassFocusedInbox=true` for hei@digihome.no gir garantert «Prioritert» internt, (4) eksterne mottakere: «Alltid flytt til Fokusert».
+- Backend-testet 6/6 (invitasjonsflyt, resend, investor-gren, regresjon, opprydding).
