@@ -712,3 +712,11 @@ Google Ads-styring via native REST API).
 - DNS-status verifisert: DKIM s1/s2 → SendGrid OK; SPF-rot kun M365; DMARC p=none; em-CNAME (Return-Path) ikke funnet ved skanning — bruker må verifisere i SendGrid Sender Authentication.
 - Brukerhandlinger (kan ikke gjøres i kode): (1) sjekk at alle 3 SendGrid-CNAMEs er publisert/verifisert, (2) valgfritt DMARC → p=quarantine, (3) Exchange-regel `X-MS-Exchange-Organization-BypassFocusedInbox=true` for hei@digihome.no gir garantert «Prioritert» internt, (4) eksterne mottakere: «Alltid flytt til Fokusert».
 - Backend-testet 6/6 (invitasjonsflyt, resend, investor-gren, regresjon, opprydding).
+
+## Moderne saks-e-poster (chat-stil) — Feb 2026
+- Ny gjenbrukbar `byggSakEpost` + `sakChip` + `badgeMentionsHtml` i `lib/email.js` — samme design som chat-varslene.
+- Alle Saker-e-poster redesignet: tildelt, nevnt (beskrivelse/kommentar), ny kommentar, statusendring (overgangschip «Pågår → Ferdig»), følger, innmeldt, manuell påminnelse, sjekklistepunkter, dagens frister-digest og frist-i-morgen-påminnelse (lib/reminders.js).
+- @-tagger vises som lilla badges i kommentarboble og beskrivelse. Chips: status (fargetone per status), prioritet (P1 rød), frist (forfalt rød).
+- Avsendernavn = «Aktør (DigiHome)» for person-hendelser; «DigiHome Saker» for systemutsendelser.
+- taskEpost nye parametre: actor, kommentar, mentions, fraStatus, hendelse. 12 kallsteder oppdatert.
+- Screenshot-QA av 4 varianter (QA-side slettet). Backend-testet 8/8 (alle varslingsstier, cron dry-run, regresjon, opprydding).

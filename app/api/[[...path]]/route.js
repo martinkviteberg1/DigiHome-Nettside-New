@@ -79,7 +79,7 @@ import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
 import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, listRuns, applyRecommendation } from '@/lib/ads-optimize';
 import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-report';
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
-import { emailConfigured, reportRecipients, sendHtmlEmail, isUndeliverableTestAddress, byggChatEpost } from '@/lib/email';
+import { emailConfigured, reportRecipients, sendHtmlEmail, isUndeliverableTestAddress, byggChatEpost, byggSakEpost, sakChip, badgeMentionsHtml } from '@/lib/email';
 import { byggMoteProtokoll, protokollFilnavn } from '@/lib/protokoll';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, setPropertyEditorialFields, PROPERTIES_COLL } from '@/lib/properties-sync';
@@ -1787,9 +1787,14 @@ function mdTilRen(kilde, maks = 180) {
   return s;
 }
 
-// E-postvarsel for saker (tildeling + påminnelse). Feiler stille — en sak skal
-// aldri gå tapt fordi SendGrid er nede. Returnerer true hvis sendt.
-async function taskEpost({ member, task, heading, intro, kategori }) {
+// E-postvarsel for saker (tildeling, nevnt, kommentar, status m.m.). Moderne
+// design via byggSakEpost (samme stil som chat-varslene): aktør-avatar,
+// badge-chips for status/prioritet/frist og @-tagger som badges. Feiler
+// stille — en sak skal aldri gå tapt fordi SendGrid er nede. Returnerer true
+// hvis sendt. Nye valgfrie felt: actor (navn på personen bak hendelsen),
+// kommentar (sitat → boble), mentions (navn som badges), fraStatus (for
+// statusendring-chip «Ny → Ferdig») og hendelse (eksplisitt header-tekst).
+async function taskEpost({ member, task, heading, intro, kategori, actor = null, kommentar = null, mentions = [], fraStatus = null, hendelse = null }) {
   if (!member || !member.email || !emailConfigured()) return false;
   if (notifEmailAv(member, kategori)) return false; // bruker har skrudd av e-post for denne typen
   // Sentral synlighetsvakt: aldri e-post om saker mottakeren ikke kan se
@@ -1799,23 +1804,45 @@ async function taskEpost({ member, task, heading, intro, kategori }) {
   const frist = task.dueDate
     ? new Date(`${task.dueDate}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
-  const rad = (l, v) => `<tr><td style="padding:4px 14px 4px 0;color:#8a8a8a;font-size:13px;white-space:nowrap">${l}</td><td style="padding:4px 0;color:#111;font-size:13px;font-weight:600">${v}</td></tr>`;
-  const html = `
-  <div style="background:#f6f5f3;padding:32px 16px;font-family:-apple-system,'Segoe UI',Roboto,sans-serif">
-    <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #eee">
-      <div style="background:#0a0a0a;padding:18px 24px"><span style="color:#fff;font-size:15px;font-weight:700">DigiHome</span> <span style="color:rgba(255,255,255,0.45);font-size:12px;margin-left:6px">Saker · intern</span></div>
-      <div style="padding:26px 24px">
-        <p style="margin:0;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">${taskEsc(heading)}</p>
-        <h2 style="margin:8px 0 4px;color:#0a0a0a;font-size:19px;line-height:1.3">${taskEsc(task.title)}</h2>
-        <p style="margin:0 0 16px;color:#666;font-size:13.5px;line-height:1.55">${taskEsc(intro)}</p>
-        ${task.description ? `<div style="background:#fafaf8;border:1px solid #f0eeea;border-radius:12px;padding:14px 16px 5px;margin:0 0 16px">${mdTilEpost(task.description, 1200)}</div>` : ''}
-        <table style="border-collapse:collapse">${rad('Prioritet', TASK_PRI_LABEL[task.priority] || 'P2 · Normal')}${frist ? rad('Frist', taskEsc(frist)) : ''}${rad('Status', TASK_STATUS_LABEL[task.status] || taskEsc(task.status))}</table>
-        <a href="${base}/admin/saker/${encodeURIComponent(task.id)}" style="display:inline-block;margin-top:20px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne saken →</a>
-      </div>
-    </div>
-  </div>`;
+  const forfalt = !!(task.dueDate && task.dueDate < osloIDag() && task.status !== 'done');
+  // Header-tekst: «Martin tildelte deg saken» — faller tilbake til heading
+  // (med DigiHome-avatar) for hendelser uten kjent aktør.
+  const HENDELSE_TEKST = {
+    tildelt: 'tildelte deg saken',
+    folger: 'la deg til som følger av saken',
+    nevnt: kommentar ? 'nevnte deg i en kommentar' : 'nevnte deg i saken',
+    kommentar: 'kommenterte saken',
+    status: `flyttet saken til «${TASK_STATUS_LABEL[task.status] || task.status}»`,
+    innmeldt: 'meldte inn en sak fra Forvalter-plattformen',
+  };
+  const hend = hendelse || (actor ? HENDELSE_TEKST[kategori] : null) || heading;
+  // Badge-chips: status (ev. overgang), prioritet og frist med fargetone.
+  const STATUS_TONE = { inbox: 'bla', doing: 'lilla', waiting: 'gul', done: 'groenn' };
+  const chips = [];
+  if (kategori === 'status' && fraStatus) {
+    chips.push(sakChip(`${TASK_STATUS_LABEL[fraStatus] || fraStatus} → ${TASK_STATUS_LABEL[task.status] || task.status}`, STATUS_TONE[task.status] || 'lilla'));
+  } else {
+    chips.push(sakChip(TASK_STATUS_LABEL[task.status] || task.status || 'Ny', STATUS_TONE[task.status] || 'graa'));
+  }
+  chips.push(sakChip(TASK_PRI_LABEL[task.priority] || 'P2 · Normal', task.priority === 1 ? 'roed' : 'graa'));
+  if (frist) chips.push(sakChip(`Frist · ${frist}${forfalt ? ' · forfalt' : ''}`, forfalt ? 'roed' : 'gul'));
+  const { html, text } = byggSakEpost({
+    aktorNavn: actor,
+    hendelse: hend,
+    tittel: task.title,
+    intro: intro || null,
+    melding: kommentar,
+    mentions,
+    beskrivelseHtml: task.description ? mdTilEpost(task.description, 1200) : null,
+    chips,
+    ctaLabel: 'Åpne saken',
+    ctaUrl: `${base}/admin/saker/${encodeURIComponent(task.id)}`,
+    bunntekst: 'Du får denne e-posten fra DigiHome Saker fordi du er involvert i saken. E-postvarsler kan justeres i varselinnstillingene i portalen.',
+    preheader: `${actor ? `${actor} ` : ''}${hend} — ${task.title}${kommentar ? `: «${kommentar.slice(0, 90)}»` : ''}`,
+    merkelapp: 'Saker',
+  });
   try {
-    await sendHtmlEmail({ to: member.email, subject: `${heading}: ${task.title}`, html, fromName: 'DigiHome Saker', individual: false, categories: ['intern-sak'] });
+    await sendHtmlEmail({ to: member.email, subject: `${heading}: ${task.title}`, html, text, fromName: actor ? `${actor} (DigiHome)` : 'DigiHome Saker', individual: false, categories: ['intern-sak'] });
     return true;
   } catch (e) {
     return false;
@@ -1831,31 +1858,22 @@ async function deloppgaveEpost({ member, task, deloppgaver, actor }) {
   const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
   const fmtFrist = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }) : null);
   const idag = osloIDag();
-  const rader = deloppgaver.map((s) => {
-    const frist = fmtFrist(s.due);
-    const forfalt = s.due && s.due < idag;
-    return `<tr>
-      <td style="padding:7px 10px 7px 0;vertical-align:top"><span style="display:inline-block;width:13px;height:13px;border:2px solid #d9d4f7;border-radius:99px"></span></td>
-      <td style="padding:5px 0;color:#111;font-size:13.5px;font-weight:600;line-height:1.45">${taskEsc(s.text)}
-        <div style="color:${forfalt ? '#e11d48' : (frist ? '#b45309' : '#999')};font-size:12px;font-weight:${frist ? 600 : 400};margin-top:2px">${frist ? `Frist: ${taskEsc(frist)}${forfalt ? ' (forfalt)' : ''}` : 'Ingen frist'}</div>
-      </td></tr>`;
-  }).join('');
   const flertall = deloppgaver.length > 1;
-  const html = `
-  <div style="background:#f6f5f3;padding:32px 16px;font-family:-apple-system,'Segoe UI',Roboto,sans-serif">
-    <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #eee">
-      <div style="background:#0a0a0a;padding:18px 24px"><span style="color:#fff;font-size:15px;font-weight:700">DigiHome</span> <span style="color:rgba(255,255,255,0.45);font-size:12px;margin-left:6px">Saker · intern</span></div>
-      <div style="padding:26px 24px">
-        <p style="margin:0;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">${flertall ? 'Sjekklistepunkter tildelt deg' : 'Sjekklistepunkt tildelt deg'}</p>
-        <h2 style="margin:8px 0 4px;color:#0a0a0a;font-size:19px;line-height:1.3">${taskEsc(task.title)}</h2>
-        <p style="margin:0 0 14px;color:#666;font-size:13.5px;line-height:1.55">${taskEsc(actor)} ga deg ansvar for ${flertall ? `${deloppgaver.length} sjekklistepunkter` : 'et sjekklistepunkt'} i denne saken.</p>
-        <table style="border-collapse:collapse;width:100%">${rader}</table>
-        <a href="${base}/admin/saker/${encodeURIComponent(task.id)}" style="display:inline-block;margin-top:20px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne saken →</a>
-      </div>
-    </div>
-  </div>`;
+  const punkter = deloppgaver.map((s) => ({ tekst: s.text, fristTekst: fmtFrist(s.due), forfalt: !!(s.due && s.due < idag) }));
+  const { html, text } = byggSakEpost({
+    aktorNavn: actor || null,
+    hendelse: `ga deg ansvar for ${flertall ? `${deloppgaver.length} sjekklistepunkter` : 'et sjekklistepunkt'}`,
+    tittel: task.title,
+    chips: [sakChip(TASK_STATUS_LABEL[task.status] || 'Ny', { inbox: 'bla', doing: 'lilla', waiting: 'gul', done: 'groenn' }[task.status] || 'graa')],
+    punkter,
+    ctaLabel: 'Åpne saken',
+    ctaUrl: `${base}/admin/saker/${encodeURIComponent(task.id)}`,
+    bunntekst: 'Du får denne e-posten fra DigiHome Saker fordi du fikk ansvar for sjekklistepunkter. E-postvarsler kan justeres i varselinnstillingene i portalen.',
+    preheader: `${actor || 'DigiHome'} ga deg ansvar for ${flertall ? `${deloppgaver.length} sjekklistepunkter` : 'et sjekklistepunkt'} — ${task.title}`,
+    merkelapp: 'Saker',
+  });
   try {
-    await sendHtmlEmail({ to: member.email, subject: `${flertall ? 'Sjekklistepunkter' : 'Sjekklistepunkt'} tildelt deg: ${task.title}`, html, fromName: 'DigiHome Saker', individual: false, categories: ['intern-sak'] });
+    await sendHtmlEmail({ to: member.email, subject: `${flertall ? 'Sjekklistepunkter' : 'Sjekklistepunkt'} tildelt deg: ${task.title}`, html, text, fromName: actor ? `${actor} (DigiHome)` : 'DigiHome Saker', individual: false, categories: ['intern-sak'] });
     return true;
   } catch (e) {
     return false;
@@ -2167,24 +2185,29 @@ async function kanskjeSendFristDigest(db) {
     for (const [pid, liste] of perPerson) {
       const member = await db.collection('admin_users').findOne({ id: pid });
       if (!member || !member.email) continue;
-      const rader = liste.map((t) => {
+      const fmtD = (d) => { try { return new Date(`${d}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' }); } catch (e) { return d; } };
+      const listeHtml = liste.map((t, i) => {
         const forfalt = t.dueDate < iDag;
-        return `<tr><td style="padding:7px 10px 7px 0;color:${forfalt ? '#e11d48' : '#b45309'};font-size:12px;font-weight:700;white-space:nowrap">${forfalt ? 'Forfalt' : 'I dag'}</td><td style="padding:7px 0;font-size:13.5px;font-weight:600"><a href="${base}/admin/saker/${encodeURIComponent(t.id)}" style="color:#111;text-decoration:none">${taskEsc(t.title)}</a></td><td style="padding:7px 0 7px 12px;color:#999;font-size:12px;white-space:nowrap">${taskEsc(t.dueDate)}</td></tr>`;
+        return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ${i ? 'style="border-top:1px solid #f0ecfa;"' : ''}><tr>
+          <td width="72" valign="middle" style="padding:10px 0;">${sakChip(forfalt ? 'Forfalt' : 'I dag', forfalt ? 'roed' : 'gul')}</td>
+          <td valign="middle" style="padding:10px 0;"><a href="${base}/admin/saker/${encodeURIComponent(t.id)}" style="color:#1c1917;font-size:13.5px;font-weight:700;text-decoration:none;line-height:1.4;">${taskEsc(t.title)}</a></td>
+          <td valign="middle" align="right" style="padding:10px 0 10px 12px;white-space:nowrap;"><span style="color:#a6a19a;font-size:12px;">${taskEsc(fmtD(t.dueDate))}</span></td>
+        </tr></table>`;
       }).join('');
-      const html = `
-      <div style="background:#f6f5f3;padding:32px 16px;font-family:-apple-system,'Segoe UI',Roboto,sans-serif">
-        <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #eee">
-          <div style="background:#0a0a0a;padding:18px 24px"><span style="color:#fff;font-size:15px;font-weight:700">DigiHome</span> <span style="color:rgba(255,255,255,0.45);font-size:12px;margin-left:6px">Saker · dagens frister</span></div>
-          <div style="padding:26px 24px">
-            <h2 style="margin:0 0 6px;color:#0a0a0a;font-size:18px">God morgen, ${taskEsc((member.name || '').split(' ')[0])}</h2>
-            <p style="margin:0 0 14px;color:#666;font-size:13.5px">Du har ${liste.length} ${liste.length === 1 ? 'sak' : 'saker'} med frist i dag eller tidligere:</p>
-            <table style="border-collapse:collapse;width:100%">${rader}</table>
-            <a href="${base}/admin/saker" style="display:inline-block;margin-top:18px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne Saker →</a>
-          </div>
-        </div>
-      </div>`;
+      const { html, text } = byggSakEpost({
+        aktorNavn: null,
+        hendelse: 'dagens frister',
+        tittel: `God morgen, ${(member.name || '').split(' ')[0]}`,
+        intro: `Du har ${liste.length} ${liste.length === 1 ? 'sak' : 'saker'} med frist i dag eller tidligere:`,
+        listeHtml,
+        ctaLabel: 'Åpne Saker',
+        ctaUrl: `${base}/admin/saker`,
+        bunntekst: 'Du får denne e-posten fra DigiHome Saker fordi du har saker med frist i dag eller tidligere. E-postvarsler kan justeres i varselinnstillingene i portalen.',
+        preheader: `${liste.length} ${liste.length === 1 ? 'sak' : 'saker'} med frist å følge opp i dag.`,
+        merkelapp: 'Saker',
+      });
       try {
-        await sendHtmlEmail({ to: member.email, subject: `Dagens saker (${liste.length}) — frister å følge opp`, html, fromName: 'DigiHome Saker', individual: false, categories: ['intern-sak-digest'] });
+        await sendHtmlEmail({ to: member.email, subject: `Dagens saker (${liste.length}) — frister å følge opp`, html, text, fromName: 'DigiHome Saker', individual: false, categories: ['intern-sak-digest'] });
       } catch (e) { /* neste person */ }
     }
   } catch (e) { /* digest skal aldri velte summary-kallet */ }
@@ -5082,7 +5105,8 @@ async function handleRoute(request, { params }) {
             if (intakeDi.notifyEmail !== false) {
               await taskEpost({
                 member: p, task: taskDi, heading: 'Ny innmeldt sak',
-                intro: `${varselTekstDi}${modulDi ? ` (modul: ${modulDi})` : ''}. Du står som mottaker for innmeldte utviklingssaker.`,
+                actor: repNavnDi,
+                intro: `${modulDi ? `Modul: ${modulDi}. ` : ''}Du står som mottaker for innmeldte utviklingssaker.`,
                 kategori: 'innmeldt',
               });
             }
@@ -5340,7 +5364,7 @@ async function handleRoute(request, { params }) {
       let emailed = false;
       if (task.assigneeId && body.notify !== false) {
         const member = await db.collection('admin_users').findOne({ id: task.assigneeId });
-        emailed = await taskEpost({ member, task, heading: 'Ny sak tildelt deg', intro: `${actor} har tildelt deg en sak i det interne sakssystemet.`, kategori: 'tildelt' });
+        emailed = await taskEpost({ member, task, heading: 'Ny sak tildelt deg', actor, kategori: 'tildelt' });
         if (emailed) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til ${member.name}` });
         await varsle(db, task.assigneeId, actorId, { type: 'tildelt', taskId: task.id, taskTitle: task.title, actor, text: `${actor} tildelte deg saken` });
       }
@@ -5348,7 +5372,7 @@ async function handleRoute(request, { params }) {
         const flg = await db.collection('admin_users').find({ id: { $in: task.followers } }).toArray();
         for (const f of flg) {
           if (f.id === task.assigneeId || !f.email) continue;
-          const ok = await taskEpost({ member: f, task, heading: 'Du følger nå en sak', intro: `${actor} har lagt deg til som følger av saken.`, kategori: 'folger' });
+          const ok = await taskEpost({ member: f, task, heading: 'Du følger nå en sak', actor, kategori: 'folger' });
           if (ok) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til følger ${f.name}` });
           await varsle(db, f.id, actorId, { type: 'folger', taskId: task.id, taskTitle: task.title, actor, text: `${actor} la deg til som følger` });
         }
@@ -5363,8 +5387,10 @@ async function handleRoute(request, { params }) {
           && m.id !== task.assigneeId
           && !task.followers.includes(m.id)
           && String(m.name).toLowerCase() !== actor.toLowerCase());
+        // Alle navn som faktisk står i teksten — badges i e-postens beskrivelse.
+        const nevntNavnAlle = allePers.filter((m) => m.name && beskLav.includes(`@${String(m.name).toLowerCase()}`)).map((m) => m.name);
         for (const m of nevnt) {
-          const ok = await taskEpost({ member: m, task, heading: 'Du ble nevnt i en sak', intro: `${actor} nevnte deg i beskrivelsen av en ny sak.`, kategori: 'nevnt' });
+          const ok = await taskEpost({ member: m, task, heading: 'Du ble nevnt i en sak', actor, kategori: 'nevnt', mentions: nevntNavnAlle });
           if (ok) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til ${m.name} (nevnt i beskrivelsen)` });
           await varsle(db, m.id, actorId, { type: 'nevnt', taskId: task.id, taskTitle: task.title, actor, text: `${actor} nevnte deg i beskrivelsen` });
         }
@@ -5415,10 +5441,11 @@ async function handleRoute(request, { params }) {
           const nyNevnt = allePers.filter((m) => m.name
             && nyLav.includes(`@${String(m.name).toLowerCase()}`)
             && !gammelLav.includes(`@${String(m.name).toLowerCase()}`));
+          const nevntNavnAlle = allePers.filter((m) => m.name && nyLav.includes(`@${String(m.name).toLowerCase()}`)).map((m) => m.name);
           for (const m of nyNevnt) {
             if (!m.email) continue;
             if (String(m.name).toLowerCase() === actor.toLowerCase()) continue;
-            const ok = await taskEpost({ member: m, task: { ...eksisterende, ...set }, heading: 'Du ble nevnt i en sak', intro: `${actor} nevnte deg i beskrivelsen av saken.`, kategori: 'nevnt' });
+            const ok = await taskEpost({ member: m, task: { ...eksisterende, ...set }, heading: 'Du ble nevnt i en sak', actor, kategori: 'nevnt', mentions: nevntNavnAlle });
             if (ok) logg.push(`E-postvarsel sendt til ${m.name} (nevnt i beskrivelsen)`);
             varselKo.push({ userId: m.id, type: 'nevnt', text: `${actor} nevnte deg i beskrivelsen` });
           }
@@ -5443,7 +5470,8 @@ async function handleRoute(request, { params }) {
               member: m,
               task: { ...eksisterende, ...set },
               heading: 'Statusendring',
-              intro: `${actor} flyttet saken fra ${TASK_STATUS_LABEL[eksisterende.status] || 'Ny'} til ${TASK_STATUS_LABEL[body.status]}.`,
+              actor,
+              fraStatus: eksisterende.status,
               kategori: 'status',
             });
             if (ok) logg.push(`E-postvarsel sendt til ${m.name} (statusendring)`);
@@ -5602,7 +5630,7 @@ async function handleRoute(request, { params }) {
             if (body.notify !== false) {
               for (const f of flg) {
                 if (!f.email) continue;
-                const ok = await taskEpost({ member: f, task: { ...eksisterende, ...set }, heading: 'Du følger nå en sak', intro: `${actor} har lagt deg til som følger av saken.`, kategori: 'folger' });
+                const ok = await taskEpost({ member: f, task: { ...eksisterende, ...set }, heading: 'Du følger nå en sak', actor, kategori: 'folger' });
                 if (ok) logg.push(`E-postvarsel sendt til følger ${f.name}`);
                 varselKo.push({ userId: f.id, type: 'folger', text: `${actor} la deg til som følger` });
               }
@@ -5632,7 +5660,7 @@ async function handleRoute(request, { params }) {
           const member = await db.collection('admin_users').findOne({ id: set.assigneeId });
           logg.push(`Ansvarlig: ${member ? member.name : 'ukjent'}`);
           if (member && body.notify !== false) {
-            emailed = await taskEpost({ member, task: { ...eksisterende, ...set }, heading: 'Sak tildelt deg', intro: `${actor} har satt deg som ansvarlig for saken.`, kategori: 'tildelt' });
+            emailed = await taskEpost({ member, task: { ...eksisterende, ...set }, heading: 'Sak tildelt deg', actor, kategori: 'tildelt' });
             if (emailed) logg.push(`E-postvarsel sendt til ${member.name}`);
           }
           varselKo.push({ userId: set.assigneeId, type: 'tildelt', text: `${actor} satte deg som ansvarlig` });
@@ -5765,11 +5793,12 @@ async function handleRoute(request, { params }) {
       const nevntIds = new Set(nevnt.map((m) => m.id));
       const komMottakere = new Set([task.assigneeId, ...(task.followers || [])].filter(Boolean));
       if (nevnt.length && body.notify !== false) {
-        const utdrag = mdTilRen(text, 180);
+        const utdrag = mdTilRen(text, 500);
+        const nevntNavnKom = nevnt.map((x) => x.name).filter(Boolean);
         for (const m of nevnt) {
           if (!m.email) continue;
           if (String(m.name).toLowerCase() === author.toLowerCase()) continue;
-          const ok = await taskEpost({ member: m, task, heading: 'Du ble nevnt i en sak', intro: `${author} nevnte deg i en kommentar: «${utdrag}»`, kategori: 'nevnt' });
+          const ok = await taskEpost({ member: m, task, heading: 'Du ble nevnt i en sak', actor: author, kommentar: utdrag, mentions: nevntNavnKom, kategori: 'nevnt' });
           if (ok) varslet.push(m.name);
         }
       }
@@ -5777,12 +5806,13 @@ async function handleRoute(request, { params }) {
       // kan skrus av per bruker i varselinnstillingene). Nevnte fikk allerede
       // «nevnt»-e-post; forfatteren varsles aldri om egne kommentarer.
       if (komMottakere.size && body.notify !== false) {
-        const utdragKom = mdTilRen(text, 180);
+        const utdragKom = mdTilRen(text, 500);
+        const nevntNavnKom2 = nevnt.map((x) => x.name).filter(Boolean);
         for (const m of allePersoner) {
           if (!komMottakere.has(m.id) || nevntIds.has(m.id) || !m.email) continue;
           if (actorId && m.id === actorId) continue;
           if (String(m.name || '').toLowerCase() === author.toLowerCase()) continue;
-          const ok = await taskEpost({ member: m, task, heading: 'Ny kommentar', intro: `${author} kommenterte: «${utdragKom}»`, kategori: 'kommentar' });
+          const ok = await taskEpost({ member: m, task, heading: 'Ny kommentar', actor: author, kommentar: utdragKom, mentions: nevntNavnKom2, kategori: 'kommentar' });
           if (ok) varslet.push(m.name);
         }
       }
@@ -5878,7 +5908,7 @@ async function handleRoute(request, { params }) {
       const member = await db.collection('admin_users').findOne({ id: task.assigneeId });
       if (!member || !member.email) return cors(NextResponse.json({ ok: false, error: 'Ansvarlig mangler e-postadresse' }, { status: 400 }));
       const actor = String(body.actor || '').trim() || 'En kollega';
-      const sendt = await taskEpost({ member, task, heading: 'Påminnelse', intro: `${actor} minner om denne saken.` });
+      const sendt = await taskEpost({ member, task, heading: 'Påminnelse', actor, hendelse: 'minner deg om saken' });
       if (!sendt) return cors(NextResponse.json({ ok: false, error: 'E-post kunne ikke sendes' }, { status: 502 }));
       // Følgere med e-post får samme påminnelse (uten å blokkere hvis noen feiler)
       let ekstraVarslet = 0;
@@ -5887,7 +5917,7 @@ async function handleRoute(request, { params }) {
         const flg = await db.collection('admin_users').find({ id: { $in: folgereIds } }).toArray();
         for (const f of flg) {
           if (!f.email) continue;
-          const okF = await taskEpost({ member: f, task, heading: 'Påminnelse', intro: `${actor} minner om denne saken (du følger den).` });
+          const okF = await taskEpost({ member: f, task, heading: 'Påminnelse', actor, hendelse: 'minner deg om saken', intro: 'Du får påminnelsen fordi du følger saken.' });
           if (okF) ekstraVarslet++;
         }
       }
@@ -6621,7 +6651,7 @@ async function handleRoute(request, { params }) {
       let emailed = false;
       if (task.assigneeId && body.notify !== false) {
         const member = await db.collection('admin_users').findOne({ id: task.assigneeId });
-        emailed = await taskEpost({ member, task, heading: 'Nytt aksjonspunkt fra møte', intro: `${actor} ga deg et aksjonspunkt fra møtet «${meeting.title}».` });
+        emailed = await taskEpost({ member, task, heading: 'Nytt aksjonspunkt fra møte', actor, hendelse: `ga deg et aksjonspunkt fra møtet «${meeting.title}»` });
         if (emailed) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt` });
       }
       await db.collection('tasks').insertOne({ ...task });
