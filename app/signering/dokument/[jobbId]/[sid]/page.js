@@ -119,15 +119,33 @@ export default function SignerDokumentSide({ params }) {
   const flere = (info.signatarer || []).length > 1;
 
   const StatusMelding = () => {
+    const NesteKnapp = () => info.batch?.neste ? (
+      <a
+        href={`/signering/dokument/${info.batch.neste.jobbId}/${info.batch.neste.sid}`}
+        data-testid="signer-neste-dokument"
+        className="group mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0a0a0a] px-6 py-3 text-[13.5px] font-semibold text-white transition-all hover:bg-black active:scale-[0.99]"
+      >
+        Neste dokument til signering ({info.batch.ferdig + 1} av {info.batch.antall})
+        <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+      </a>
+    ) : null;
     if (alleredeSignert) return (
-      <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-emerald-50 px-3.5 py-3 text-[13px] font-medium leading-relaxed text-emerald-800">
-        <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-        Du har allerede signert dette dokumentet. Takk!
+      <div className="mt-4">
+        <div className="flex items-start gap-2.5 rounded-xl bg-emerald-50 px-3.5 py-3 text-[13px] font-medium leading-relaxed text-emerald-800">
+          <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+          {info.batch?.neste
+            ? `Signert! ${info.batch.antall - info.batch.ferdig} dokument${info.batch.antall - info.batch.ferdig === 1 ? '' : 'er'} gjenstår i denne bunken.`
+            : 'Du har allerede signert dette dokumentet. Takk!'}
+        </div>
+        <NesteKnapp />
       </div>
     );
     if (avsluttet) return (
-      <div className="mt-4 rounded-xl bg-[#f5f4f1] px-3.5 py-3 text-[13px] font-medium leading-relaxed text-[#78716c]">
-        {info.jobbStatus === 'FULLFORT' ? 'Signeringsrunden er fullført — alle har signert.' : info.jobbStatus === 'KANSELLERT' ? 'Signeringsrunden er kansellert av avsenderen.' : 'Signeringsrunden er avsluttet.'}
+      <div className="mt-4">
+        <div className="rounded-xl bg-[#f5f4f1] px-3.5 py-3 text-[13px] font-medium leading-relaxed text-[#78716c]">
+          {info.jobbStatus === 'FULLFORT' ? 'Signeringsrunden er fullført — alle har signert.' : info.jobbStatus === 'KANSELLERT' ? 'Signeringsrunden er kansellert av avsenderen.' : 'Signeringsrunden er avsluttet.'}
+        </div>
+        <NesteKnapp />
       </div>
     );
     if (!info.paaTur) return (
@@ -142,6 +160,11 @@ export default function SignerDokumentSide({ params }) {
     <a
       href={`/api/signer/${jobbId}/${sid}`}
       data-testid="signer-bankid-knapp"
+      onClick={() => {
+        // Exit-siden (etter BankID) bruker dette til å tilby «Neste dokument»
+        // når flere dokumenter i samme bunt venter på signataren.
+        try { window.localStorage.setItem('dh_sign_siste', JSON.stringify({ jobbId, sid, at: Date.now() })); } catch (e) { /* stille */ }
+      }}
       className={`group inline-flex items-center justify-center gap-2 rounded-full bg-[#0a0a0a] px-7 py-[15px] text-[15px] font-semibold text-white shadow-[0_10px_26px_-12px_rgba(10,10,10,0.5)] transition-all hover:bg-black hover:shadow-[0_14px_30px_-12px_rgba(10,10,10,0.55)] active:scale-[0.99] ${bred ? 'w-full' : ''}`}
     >
       Signer med BankID

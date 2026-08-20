@@ -11,8 +11,10 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   PenLine, Upload, Loader2, FileText, ShieldCheck, Clock, CheckCircle2,
   XCircle, Ban, ChevronRight, Send, RefreshCw, Search, Archive, FolderOpen,
+  CheckSquare, Check,
 } from 'lucide-react';
 import DokumentModal from './DokumentModal';
+import SigneringBatchModal from './SigneringBatchModal';
 
 const fmtDato = (iso) => {
   if (!iso) return '';
@@ -46,6 +48,9 @@ export default function DokumenterModul({ apiKey, user }) {
   const [sok, setSok] = useState('');
   const [filter, setFilter] = useState('alle');
   const [dokFil, setDokFil] = useState(null); // {id,name,type,size,taskId} → DokumentModal
+  const [velgModus, setVelgModus] = useState(false); // batch-signering: velg flere
+  const [valgte, setValgte] = useState([]); // fil-id-er valgt for batch
+  const [visBatch, setVisBatch] = useState(false);
   const [lasterOpp, setLasterOpp] = useState(false);
   const [prosent, setProsent] = useState(0);
   const [drar, setDrar] = useState(false);
@@ -177,13 +182,29 @@ export default function DokumenterModul({ apiKey, user }) {
   );
 
   /* ── Dokumentrad (gjenbrukes for frittstående + arkiv) ────────────────────── */
-  const DokRad = ({ f, taskId, sakTittel, forste }) => (
+  // I velg-modus (batch-signering) blir raden en avkrysningsrad: signerte/låste
+  // og dokumenter med aktiv runde kan ikke velges.
+  const DokRad = ({ f, taskId, sakTittel, forste }) => {
+    const kanVelges = !f.laast && f.signering?.status !== 'I_GANG';
+    const valgt = valgte.includes(f.id);
+    const klikk = () => {
+      if (!velgModus) { setDokFil({ id: f.id, name: f.name, type: f.type, size: f.size, taskId }); return; }
+      if (!kanVelges) { visToast(f.laast ? 'Dokumentet er allerede signert' : 'Dokumentet har en aktiv signeringsrunde', 'feil'); return; }
+      setValgte((p) => (p.includes(f.id) ? p.filter((x) => x !== f.id) : [...p, f.id]));
+    };
+    return (
     <button
-      onClick={() => setDokFil({ id: f.id, name: f.name, type: f.type, size: f.size, taskId })}
+      onClick={klikk}
       data-testid={`dokumenter-fil-${f.id}`}
-      className={`group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#fbfaf9] ${forste ? '' : 'border-t border-black/[0.04]'}`}
+      className={`group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#fbfaf9] ${forste ? '' : 'border-t border-black/[0.04]'} ${velgModus && !kanVelges ? 'opacity-45' : ''} ${valgt ? 'bg-[#f8f5ff] hover:bg-[#f4efff]' : ''}`}
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f5f4f1]"><FileText className="h-4 w-4 text-[#a8a29a]" /></span>
+      {velgModus ? (
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${valgt ? 'bg-[#7c3aed]' : 'bg-[#f5f4f1]'}`}>
+          {valgt ? <Check className="h-4 w-4 text-white" /> : <span className="h-4 w-4 rounded-[5px] border-[1.5px] border-[#c9c4bc]" />}
+        </span>
+      ) : (
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f5f4f1]"><FileText className="h-4 w-4 text-[#a8a29a]" /></span>
+      )}
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="truncate text-[13.5px] font-medium text-[#1c1917]">{f.name}</span>
@@ -196,9 +217,10 @@ export default function DokumenterModul({ apiKey, user }) {
           {fmtStr(f.size)}{sakTittel ? <> · fra saken «{sakTittel}»</> : <> · lastet opp {fmtDato(f.at)}{f.uploadedBy ? ` av ${f.uploadedBy}` : ''}</>}
         </span>
       </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-[#d6d3cd] transition-colors group-hover:text-[#7c3aed]" />
+      {!velgModus && <ChevronRight className="h-4 w-4 shrink-0 text-[#d6d3cd] transition-colors group-hover:text-[#7c3aed]" />}
     </button>
-  );
+    );
+  };
 
   if (!lastet) {
     return <div className="flex justify-center py-24"><Loader2 className="h-5 w-5 animate-spin text-[#c2beb8]" /></div>;
@@ -222,9 +244,20 @@ export default function DokumenterModul({ apiKey, user }) {
             </button>
           ))}
         </div>
-        <button onClick={hentAlt} className="ml-auto flex items-center gap-1 text-[11.5px] font-medium text-[#a8a29a] transition-colors hover:text-[#57534e]">
-          <RefreshCw className="h-3 w-3" /> Oppdater
-        </button>
+        <div className="ml-auto flex items-center gap-3">
+          {tab === 'dokumenter' && (dokumenter.length + arkiv.length) > 1 && (
+            <button
+              onClick={() => { setVelgModus(!velgModus); setValgte([]); }}
+              data-testid="dokumenter-velg-flere"
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11.5px] font-semibold transition-colors ${velgModus ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f4f2] text-[#78716c] hover:bg-[#ecece9]'}`}
+            >
+              <CheckSquare className="h-3.5 w-3.5" /> {velgModus ? 'Avslutt valg' : 'Velg flere'}
+            </button>
+          )}
+          <button onClick={hentAlt} className="flex items-center gap-1 text-[11.5px] font-medium text-[#a8a29a] transition-colors hover:text-[#57534e]">
+            <RefreshCw className="h-3 w-3" /> Oppdater
+          </button>
+        </div>
       </div>
 
       {/* ═══ FANE: DOKUMENTER — bibliotek + arkiv ═══ */}
@@ -401,6 +434,33 @@ export default function DokumenterModul({ apiKey, user }) {
             )}
           </div>
         </div>
+      )}
+
+      {/* Handlingslinje: batch-signering av valgte dokumenter */}
+      {velgModus && (
+        <div className="fixed bottom-5 left-1/2 z-[205] flex -translate-x-1/2 items-center gap-3 rounded-full bg-[#0a0a0a] py-2 pl-5 pr-2 text-white shadow-xl" data-testid="batch-handlingslinje">
+          <span className="text-[12.5px] font-semibold tabular-nums">{valgte.length} valgt</span>
+          <button
+            onClick={() => { if (valgte.length >= 2) setVisBatch(true); else visToast('Velg minst to dokumenter', 'feil'); }}
+            disabled={valgte.length < 2}
+            data-testid="batch-start"
+            className="flex h-9 items-center gap-1.5 rounded-full bg-white px-4 text-[12.5px] font-bold text-[#0a0a0a] transition-colors hover:bg-[#f0ecff] disabled:opacity-40"
+          >
+            <PenLine className="h-3.5 w-3.5" /> Send til signering
+          </button>
+        </div>
+      )}
+
+      {/* Batch-signeringsmodal */}
+      {visBatch && (
+        <SigneringBatchModal
+          filer={Array.from(new Map([...dokumenter, ...arkiv].filter((f) => valgte.includes(f.id)).map((f) => [f.id, f])).values())}
+          apiKey={apiKey}
+          actor={actor}
+          visToast={visToast}
+          onClose={() => setVisBatch(false)}
+          onDone={() => { setVelgModus(false); setValgte([]); hentAlt(); }}
+        />
       )}
 
       {/* DokumentModal — samme panel som i Saker (signering/arkiv/deling/versjoner) */}

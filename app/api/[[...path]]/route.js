@@ -66,7 +66,7 @@ import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, ups
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
 import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, filtrerLevendeBilder, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER, opprettStylingJobber, kjorStylingJobber, listStylingJobber, reviewStylingJobb, fjernStyletBilde } from '@/lib/salgsradar';
 import { settArkiv, listArkiv, nyVersjon, listVersjoner, hentVersjon, gjenopprettVersjon, opprettDeling, trekkDeling, hentDelt, filDetaljer, filLogg, VERSJON_COLL, konverterDocxTilPdf } from '@/lib/dokumenter';
-import { lagreOppsett as signLagreOppsett, hentOppsett as signHentOppsett, slettOppsett as signSlettOppsett, opprettSigneringsjobb, kansellerSignering, pollSignering, pollSnarest, listSigneringsjobber, hentSignerRedirect, hentSignerVisning, hentSignerDokument, SIGN_JOBB_COLL } from '@/lib/signering';
+import { lagreOppsett as signLagreOppsett, hentOppsett as signHentOppsett, slettOppsett as signSlettOppsett, opprettSigneringsjobb, kansellerSignering, pollSignering, pollSnarest, listSigneringsjobber, hentSignerRedirect, hentSignerVisning, hentSignerDokument, sendBatchSignaturEposter, SIGN_JOBB_COLL } from '@/lib/signering';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
@@ -6226,6 +6226,83 @@ async function handleRoute(request, { params }) {
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: String(e && e.message || 'Signering feilet') }, { status: 502 }));
       }
+    }
+    // ── BATCH-SIGNERING: send FLERE dokumenter til BankID-signering i ett
+    //    oppsett. Samme signatarer/rekkefølge/frist for alle. Word-filer
+    //    auto-konverteres til PDF først (ny versjon, original beholdes).
+    //    Én runde per dokument (hvert dokument får egen signert PAdES-PDF),
+    //    men signatarene får ÉN samle-e-post med alle lenkene. ──────────────
+    if (route === '/admin/task-files/signering-batch' && method === 'POST') {
+      if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!rateLimit(`signering:${clientIp(request)}`, 10)) return cors(NextResponse.json({ error: 'For mange forespørsler — vent litt' }, { status: 429 }));
+      let bB = {}; try { bB = await request.json(); } catch (e) {}
+      const filIds = [...new Set((Array.isArray(bB.filIds) ? bB.filIds : []).map((x) => String(x || '')).filter(Boolean))];
+      if (filIds.length < 2) return cors(NextResponse.json({ ok: false, error: 'Velg minst to dokumenter (bruk vanlig signering for ett)' }, { status: 400 }));
+      if (filIds.length > 15) return cors(NextResponse.json({ ok: false, error: 'Maks 15 dokumenter per utsendelse' }, { status: 400 }));
+      const actorB = String(bB.actor || '').slice(0, 80);
+      const avIdB = (sessionFra(request) || {}).sub || null;
+      const batchId = uuidv4();
+      const opprettet = [];
+      const feilet = [];
+      for (const fid of filIds) {
+        try {
+          let filB = await db.collection('task_files').findOne({ id: fid });
+          if (!filB) { feilet.push({ filId: fid, name: fid, error: 'Ikke funnet' }); continue; }
+          // Synlighetsvakt (saksfiler): samme som enkelt-signering.
+          if (filB.taskId !== 'DOKUMENTER') {
+            const sakB = await hentSynligSak(db, request, filB.taskId);
+            if (!sakB.task) { feilet.push({ filId: fid, name: filB.name, error: 'Ingen tilgang' }); continue; }
+          }
+          // Word → PDF automatisk (ny versjon; Word-originalen beholdes).
+          const erDocxB = /wordprocessingml/i.test(String(filB.type || '')) || /\.docx$/i.test(String(filB.name || ''));
+          if (erDocxB && !filB.laast) {
+            const aktivB = filB.signering && filB.signering.status === 'I_GANG';
+            if (aktivB) { feilet.push({ filId: fid, name: filB.name, error: 'Aktiv signeringsrunde pågår' }); continue; }
+            try {
+              const pdfBufB = await konverterDocxTilPdf(Buffer.from(filB.data || '', 'base64'));
+              if (!pdfBufB || pdfBufB.length < 100 || pdfBufB.subarray(0, 5).toString('latin1') !== '%PDF-') throw new Error('ugyldig PDF');
+              const navnB = String(filB.name || 'dokument').replace(/\.docx$/i, '') + '.pdf';
+              const rKB = await nyVersjon(db, filB.id, { name: navnB, type: 'application/pdf', data: pdfBufB.toString('base64') }, actorB, { loggTekst: 'Konvertert fra Word til PDF (automatisk ved batch-signering)' });
+              if (!rKB.ok) throw new Error(rKB.error || 'versjonslagring feilet');
+              filB = await db.collection('task_files').findOne({ id: fid });
+            } catch (eK) {
+              console.error('[signering-batch] DOCX→PDF feilet:', (eK && eK.message) || eK);
+              feilet.push({ filId: fid, name: filB.name, error: 'Word-konvertering feilet — lagre som PDF i Word og last opp ny versjon' });
+              continue;
+            }
+          }
+          const rB = await opprettSigneringsjobb(db, {
+            filId: fid,
+            tittel: String(bB.tittelPrefix ? `${bB.tittelPrefix} — ` : '').slice(0, 20) + String(filB.name || '').replace(/\.pdf$/i, '').slice(0, 60),
+            melding: bB.melding,
+            signatarer: bB.signatarer,
+            dagerFrist: bB.dagerFrist,
+            av: actorB,
+            avId: avIdB,
+            autoArkiv: bB.autoArkiv && bB.autoArkiv.aktiv ? { aktiv: true, synlighet: String(bB.autoArkiv.synlighet || 'styret').slice(0, 30) } : null,
+            batchId,
+            hoppOverEpost: true,
+          });
+          if (!rB.ok) { feilet.push({ filId: fid, name: filB.name, error: rB.error || 'Signering feilet' }); continue; }
+          await filLogg(db, fid, `Sendt til BankID-signering i bunt (${(bB.signatarer || []).length} signatarer)`, actorB);
+          await db.collection('task_files').updateOne({ id: fid }, { $set: { signering: { jobbId: rB.jobb.id, status: 'I_GANG', oppdatert: new Date().toISOString() } } });
+          opprettet.push({ filId: fid, jobbId: rB.jobb.id, name: filB.name });
+        } catch (e) {
+          console.error('[signering-batch] fil feilet:', fid, (e && e.message) || e);
+          feilet.push({ filId: fid, name: fid, error: String((e && e.message) || 'Ukjent feil').slice(0, 200) });
+        }
+      }
+      // Samle-e-post per signatar (én e-post med alle dokumentlenkene).
+      let epostSendt = 0;
+      if (opprettet.length) {
+        try {
+          const rE = await sendBatchSignaturEposter(db, batchId);
+          epostSendt = (rE && rE.sendt) || 0;
+        } catch (e) {
+          console.error('[signering-batch] samle-e-post feilet:', (e && e.message) || e);
+        }
+      }
+      return cors(NextResponse.json({ ok: opprettet.length > 0, batchId, opprettet, feilet, epostSendt }, { status: opprettet.length ? 200 : 400 }));
     }
     // Signering: oppsett (virksomhetssertifikat), kansellering, manuell poll
     if (route === '/admin/signering/oppsett' && method === 'GET') {

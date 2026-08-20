@@ -19,6 +19,7 @@ import { Marked } from 'marked';
 import SakerInnsikt from './SakerInnsikt';
 import FilViser, { filIkonInfo } from './FilViser';
 import DokumentModal from './DokumentModal';
+import SigneringBatchModal from './SigneringBatchModal';
 import ProduktAdmin from './ProduktAdmin';
 import ProsjekterVisning from './Prosjekter';
 import {
@@ -3683,8 +3684,13 @@ function VedleggSeksjon({ t, apiKey, api, actor, onReload, visToast }) {
   const [prosent, setProsent] = useState(0);
   const [viserIdx, setViserIdx] = useState(null); // åpent vedlegg i FilViser
   const [dokFil, setDokFil] = useState(null); // åpen fil i DokumentModal
+  const [velgModus, setVelgModus] = useState(false); // batch-signering: velg flere
+  const [valgte, setValgte] = useState([]); // vedleggs-id-er valgt for batch
+  const [visBatch, setVisBatch] = useState(false);
   const filRef = useRef(null);
   const vedlegg = t.attachments || [];
+  const kanVelges = (a) => !a.laast && a.signeringStatus !== 'I_GANG';
+  const velgbare = vedlegg.filter(kanVelges).length;
 
   const lastOpp = async (file) => {
     if (!file) return;
@@ -3744,20 +3750,41 @@ function VedleggSeksjon({ t, apiKey, api, actor, onReload, visToast }) {
       <div className="flex items-center gap-2">
         <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Vedlegg</p>
         {vedlegg.length > 0 && <span className="text-[11px] text-[#bbb] tabular-nums">{vedlegg.length}/12</span>}
+        {velgbare >= 2 && (
+          <button
+            onClick={() => { setVelgModus(!velgModus); setValgte([]); }}
+            data-testid="vedlegg-velg-flere"
+            className={`ml-auto rounded-full px-2.5 py-1 text-[10.5px] font-bold transition-colors ${velgModus ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f4f2] text-[#888] hover:bg-[#ecece9]'}`}
+          >
+            {velgModus ? 'Avslutt valg' : 'Velg flere'}
+          </button>
+        )}
       </div>
       <div className="mt-2 space-y-1.5">
         {vedlegg.map((a, i) => {
           const { Ikon, farge } = filIkonInfo(a.type, a.name);
           const erBilde = String(a.type || '').startsWith('image/');
+          const valgt = valgte.includes(a.id);
           return (
-            <div key={a.id} className="group flex items-center gap-2.5 rounded-xl bg-[#fafaf8] px-3 py-2.5 transition-colors hover:bg-[#f4f0fb]/60" data-testid={`attachment-${a.id}`}>
+            <div key={a.id} className={`group flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-colors ${valgt ? 'bg-[#f4efff]' : 'bg-[#fafaf8] hover:bg-[#f4f0fb]/60'} ${velgModus && !kanVelges(a) ? 'opacity-45' : ''}`} data-testid={`attachment-${a.id}`}>
               <button
-                onClick={() => setViserIdx(i)}
+                onClick={() => {
+                  if (velgModus) {
+                    if (!kanVelges(a)) { visToast(a.laast ? 'Dokumentet er allerede signert' : 'Dokumentet har en aktiv signeringsrunde', 'feil'); return; }
+                    setValgte((p) => (p.includes(a.id) ? p.filter((x) => x !== a.id) : [...p, a.id]));
+                    return;
+                  }
+                  setViserIdx(i);
+                }}
                 data-testid={`attachment-open-${a.id}`}
-                title="Forhåndsvis"
+                title={velgModus ? 'Velg for signering' : 'Forhåndsvis'}
                 className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
               >
-                {erBilde ? (
+                {velgModus ? (
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${valgt ? 'bg-[#7c3aed]' : 'bg-white shadow-sm'}`}>
+                    {valgt ? <Check className="h-4 w-4 text-white" /> : <span className="h-4 w-4 rounded-[5px] border-[1.5px] border-[#c9c4bc]" />}
+                  </span>
+                ) : erBilde ? (
                   <img
                     src={`/api/admin/task-files/${a.id}?key=${encodeURIComponent(apiKey)}&inline=1`}
                     alt=""
@@ -3781,30 +3808,57 @@ function VedleggSeksjon({ t, apiKey, api, actor, onReload, visToast }) {
                   </p>
                 </div>
               </button>
-              <button
-                onClick={() => setDokFil(a)}
-                data-testid={`attachment-dok-${a.id}`}
-                title="Dokumenthandlinger — signering, arkiv, versjoner, deling"
-                className="shrink-0 rounded-lg p-2 text-[#bbb] transition-colors hover:bg-white hover:text-[#8b5cf6]"
-              >
-                <PenLine className="w-4 h-4" />
-              </button>
-              <a
-                href={`/api/admin/task-files/${a.id}?key=${encodeURIComponent(apiKey)}`}
-                download={a.name}
-                title="Last ned"
-                className="shrink-0 rounded-lg p-2 text-[#bbb] transition-colors hover:bg-white hover:text-[#8b5cf6]"
-              >
-                <Download className="w-4 h-4" />
-              </a>
-              <button onClick={() => slettFil(a)} title="Slett vedlegg" className="shrink-0 rounded-lg p-2 text-[#ccc] transition-colors hover:bg-rose-50 hover:text-rose-600">
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {!velgModus && (
+                <>
+                  <button
+                    onClick={() => setDokFil(a)}
+                    data-testid={`attachment-dok-${a.id}`}
+                    title="Dokumenthandlinger — signering, arkiv, versjoner, deling"
+                    className="shrink-0 rounded-lg p-2 text-[#bbb] transition-colors hover:bg-white hover:text-[#8b5cf6]"
+                  >
+                    <PenLine className="w-4 h-4" />
+                  </button>
+                  <a
+                    href={`/api/admin/task-files/${a.id}?key=${encodeURIComponent(apiKey)}`}
+                    download={a.name}
+                    title="Last ned"
+                    className="shrink-0 rounded-lg p-2 text-[#bbb] transition-colors hover:bg-white hover:text-[#8b5cf6]"
+                  >
+                    <Download className="w-4 h-4" />
+                  </a>
+                  <button onClick={() => slettFil(a)} title="Slett vedlegg" className="shrink-0 rounded-lg p-2 text-[#ccc] transition-colors hover:bg-rose-50 hover:text-rose-600">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
           );
         })}
         {!vedlegg.length && !lasterOpp && <p className="text-[12.5px] text-[#bbb]">Ingen vedlegg ennå.</p>}
       </div>
+      {velgModus && (
+        <div className="mt-2.5 flex items-center gap-2.5 rounded-xl bg-[#0a0a0a] py-2 pl-4 pr-2 text-white" data-testid="vedlegg-batch-linje">
+          <span className="text-[12px] font-semibold tabular-nums">{valgte.length} valgt</span>
+          <button
+            onClick={() => { if (valgte.length >= 2) setVisBatch(true); else visToast('Velg minst to dokumenter', 'feil'); }}
+            disabled={valgte.length < 2}
+            data-testid="vedlegg-batch-start"
+            className="ml-auto flex h-8 items-center gap-1.5 rounded-lg bg-white px-3.5 text-[12px] font-bold text-[#0a0a0a] transition-colors hover:bg-[#f0ecff] disabled:opacity-40"
+          >
+            <PenLine className="h-3.5 w-3.5" /> Send til signering
+          </button>
+        </div>
+      )}
+      {visBatch && (
+        <SigneringBatchModal
+          filer={vedlegg.filter((a) => valgte.includes(a.id))}
+          apiKey={apiKey}
+          actor={actor}
+          visToast={visToast}
+          onClose={() => setVisBatch(false)}
+          onDone={() => { setVelgModus(false); setValgte([]); if (onReload) onReload(); }}
+        />
+      )}
       {viserIdx !== null && (
         <FilViser filer={vedlegg} index={viserIdx} apiKey={apiKey} onClose={() => setViserIdx(null)} onIndex={setViserIdx} />
       )}

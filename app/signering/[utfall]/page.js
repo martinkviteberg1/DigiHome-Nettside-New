@@ -37,6 +37,7 @@ export default function SigneringUtfall({ params, searchParams }) {
   const sp = typeof searchParams?.then === 'function' ? use(searchParams) : searchParams;
   const utfall = ['ferdig', 'avvist', 'feil'].includes(p?.utfall) ? p.utfall : 'feil';
   const [grunn, setGrunn] = useState('');
+  const [neste, setNeste] = useState(null); // {jobbId, sid, tittel, ferdig, antall} — batch-flyt
   const c = INNHOLD[utfall];
 
   useEffect(() => {
@@ -62,6 +63,23 @@ export default function SigneringUtfall({ params, searchParams }) {
       const g = sp?.grunn || new URLSearchParams(window.location.search).get('grunn');
       if (g) setGrunn(String(g).slice(0, 160));
     } catch (e) { /* stille */ }
+    // Batch-flyt: signeringssiden lagret {jobbId, sid} før BankID. Hvis flere
+    // dokumenter i samme bunt venter på signataren, tilbys «Neste dokument →».
+    if (utfall === 'ferdig') {
+      (async () => {
+        try {
+          const raa = window.localStorage.getItem('dh_sign_siste');
+          if (!raa) return;
+          const siste = JSON.parse(raa);
+          if (!siste || !siste.jobbId || !siste.sid || (Date.now() - (siste.at || 0)) > 2 * 3600000) return;
+          const r = await fetch(`/api/signer-info/${siste.jobbId}/${siste.sid}`);
+          const j = await r.json();
+          if (j.ok && j.batch && j.batch.neste) {
+            setNeste({ ...j.batch.neste, ferdig: j.batch.ferdig, antall: j.batch.antall });
+          }
+        } catch (e) { /* stille */ }
+      })();
+    }
   }, [utfall]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -87,6 +105,18 @@ export default function SigneringUtfall({ params, searchParams }) {
           <p className="mt-3 text-[13.5px] leading-relaxed text-[#78716c]">{c.tekst}</p>
           {grunn && utfall === 'feil' && (
             <p className="mt-4 rounded-xl bg-[#faf9f7] px-4 py-2.5 text-[12px] text-[#a8a29a]">{grunn}</p>
+          )}
+          {neste && utfall === 'ferdig' && (
+            <div className="mt-6" data-testid="exit-neste-dokument">
+              <a
+                href={`/signering/dokument/${neste.jobbId}/${neste.sid}`}
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0a0a0a] px-6 py-[14px] text-[14px] font-semibold text-white transition-all hover:bg-black active:scale-[0.99]"
+              >
+                Neste dokument til signering{neste.antall ? ` (${Math.min((neste.ferdig || 0) + 1, neste.antall)} av ${neste.antall})` : ''}
+                <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+              </a>
+              {neste.tittel && <p className="mt-2.5 truncate text-[12px] text-[#a8a29a]">Neste: {neste.tittel}</p>}
+            </div>
           )}
           <p className="mt-7 border-t border-black/[0.05] pt-4 text-[11px] text-[#c2beb8]">Elektronisk signering levert av Posten signering · BankID</p>
         </div>

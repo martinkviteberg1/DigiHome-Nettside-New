@@ -729,3 +729,13 @@ Google Ads-styring via native REST API).
 - UI: Investorrommets «Dokumentarkiv fra sakene» → «Dokumentarkiv».
 - Backend-testet 6/6 (pdf-worker, docx-opplasting+konvertering, arkiv, signeringsjobber, tasks, opprydding).
 - Datarom-forbedringer (mappestruktur/søk/forhåndsvisning m.m.) DISKUTERT med bruker — venter på prioritering.
+
+## Batch-signering — Feb 2026
+- Velg-modus («Velg flere») i Dokumenter-modulen og saksskuffens vedleggsliste → «Send N til signering».
+- SigneringBatchModal: signatarer (chips fra systemet + manuelle), rekkefølge-toggle, frist, melding — settes ÉN gang.
+- POST /admin/task-files/signering-batch: én Posten-runde per dokument (felles batchId), auto DOCX→PDF (ny versjon), delresultat {opprettet, feilet}, maks 15 dok / 10 signatarer.
+- ÉN samle-e-post per signatar (sendBatchSignaturEposter) med alle signeringslenkene i rolig BankID-design.
+- «Neste dokument til signering (X av Y) →» på signeringssiden (allerede signert/fullført) og exit-siden (via localStorage dh_sign_siste + signer-info batch {antall, ferdig, neste}).
+- Signert/aktiv-runde-dokumenter kan ikke velges (dimmet). Hvert dokument får egen signert PAdES + auto-arkiv som før.
+- UI screenshot-QA via egen Playwright (velg-modus + modal). Backend-validering testet 6/6. Suksess-sti mot Posten må prøves av bruker (f.eks. liten bunt på 2) etter deploy.
+- MERK: mcp_screenshot_tool kjører ikke interaksjonsskript pålitelig — bruk egen Playwright med executable_path /pw-browsers/chromium_headless_shell-1208/... for interaktiv UI-QA.
