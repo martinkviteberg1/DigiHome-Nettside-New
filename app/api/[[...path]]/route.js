@@ -4936,8 +4936,12 @@ async function handleRoute(request, { params }) {
       const objDr = verDr ? await getObject(verDr.objectPath) : null;
       if (!objDr) return cors(NextResponse.json({ ok: false, error: 'Filen finnes ikke i lagringen' }, { status: 404 }));
       const resFil = new NextResponse(objDr.buffer, { status: 200 });
-      resFil.headers.set('Content-Type', verDr.mime || objDr.contentType || 'application/octet-stream');
-      resFil.headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(verDr.filename)}`);
+      const mimeDr = verDr.mime || objDr.contentType || 'application/octet-stream';
+      // inline=1 → forhåndsvisning i nettleser/datarom-viser (kun trygge typer)
+      const inlineDr = spDr.get('inline') === '1' && /^(application\/pdf|image\/(png|jpe?g|gif|webp|avif))$/i.test(mimeDr);
+      resFil.headers.set('Content-Type', mimeDr);
+      resFil.headers.set('Content-Disposition', `${inlineDr ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(verDr.filename)}`);
+      resFil.headers.set('X-Content-Type-Options', 'nosniff');
       resFil.headers.set('Cache-Control', 'no-store');
       return cors(resFil);
     }

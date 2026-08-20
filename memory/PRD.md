@@ -739,3 +739,11 @@ Google Ads-styring via native REST API).
 - Signert/aktiv-runde-dokumenter kan ikke velges (dimmet). Hvert dokument får egen signert PAdES + auto-arkiv som før.
 - UI screenshot-QA via egen Playwright (velg-modus + modal). Backend-validering testet 6/6. Suksess-sti mot Posten må prøves av bruker (f.eks. liten bunt på 2) etter deploy.
 - MERK: mcp_screenshot_tool kjører ikke interaksjonsskript pålitelig — bruk egen Playwright med executable_path /pw-browsers/chromium_headless_shell-1208/... for interaktiv UI-QA.
+
+## Datarom Fase 1 — Feb 2026
+- NY komponent components/admin/DataromDokumenter.js erstatter SakArkiv + gammel hvelv-liste i Datarom.js (Dokumenter-seksjonen).
+- Nummerert DD-mappestruktur: 01 Selskap & styring, 02 Avtaler, 03 Rapporter, 04 Økonomi, 05 Annet. Arkivkategorier mappes 1:1; hvelv-dokumenter matches på kategori-/filnavn-regex.
+- Fritekstsøk (navn/sak/kategori), mappe-pills med antall, «Kun signerte»-toggle. Søk viser flat treffliste m/ mappe-badge.
+- Forhåndsvisning i nettleser: PDF via pdf.js (workerSrc /api/pdf-worker, canvas per side, maks 40 sider) + bilder; mørk fullskjermmodal m/ Last ned. Fallback-nedlasting ved feil.
+- Backend: /admin/datarom/fil støtter ?inline=1 (pdf/bilder). Arkivfiler hadde inline-støtte fra før.
+- QA: egen Playwright (mapper, søk-treff/0-treff, kun-signerte, modal m/ canvas). Mobil 0px overflow. Backend 6/6.
