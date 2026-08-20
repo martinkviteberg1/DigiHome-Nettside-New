@@ -720,3 +720,12 @@ Google Ads-styring via native REST API).
 - Avsendernavn = «Aktør (DigiHome)» for person-hendelser; «DigiHome Saker» for systemutsendelser.
 - taskEpost nye parametre: actor, kommentar, mentions, fraStatus, hendelse. 12 kallsteder oppdatert.
 - Screenshot-QA av 4 varianter (QA-side slettet). Backend-testet 8/8 (alle varslingsstier, cron dry-run, regresjon, opprydding).
+
+## Signering + dokumenter: prod-fikser og nye funksjoner — Feb 2026
+- PROD-FIKS: DOCX→PDF feilet i produksjon (standalone tracer ikke docx-to-pdf.wasm). Fikset via outputFileTracingIncludes + kandidatstier i lib/dokumenter.js + feillogging.
+- PROD-FIKS: PDF-forhåndsvisning (signeringsside + chat) feilet i prod (/pdf.worker.min.mjs 404 — /public shippes ikke, .mjs ikke i media-fallback). Fikset via NY rute GET /api/pdf-worker som serverer worker versjonsriktig fra pdfjs-dist; workerSrc oppdatert begge steder.
+- NY: Når alle har signert sendes e-post (byggSakEpost-design m/ signatarliste) med signert PAdES-PDF som VEDLEGG til alle signatarer + avsender. Idempotent (signertEpostSendtAt-claim). 18MB-vakt. Funksjonstestet direkte.
+- NY: Ved FULLFORT auto-arkiveres dokumentet alltid (standard styret · Avtaler, respekterer eksisterende valg) → synlig i Dokumenter-modulen og datarom.
+- UI: Investorrommets «Dokumentarkiv fra sakene» → «Dokumentarkiv».
+- Backend-testet 6/6 (pdf-worker, docx-opplasting+konvertering, arkiv, signeringsjobber, tasks, opprydding).
+- Datarom-forbedringer (mappestruktur/søk/forhåndsvisning m.m.) DISKUTERT med bruker — venter på prioritering.

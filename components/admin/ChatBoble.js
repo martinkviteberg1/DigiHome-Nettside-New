@@ -116,7 +116,7 @@ function PdfVisning({ url, navn }) {
         if (!res.ok) throw new Error('Kunne ikke hente dokumentet');
         const data = await res.arrayBuffer();
         const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        pdfjs.GlobalWorkerOptions.workerSrc = '/api/pdf-worker';
         const doc = await pdfjs.getDocument({ data }).promise;
         if (!aktiv) return;
         if (holder) holder.innerHTML = '';

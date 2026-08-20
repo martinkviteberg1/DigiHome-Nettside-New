@@ -49,7 +49,7 @@ export default function SignerDokumentSide({ params }) {
     (async () => {
       try {
         const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        pdfjs.GlobalWorkerOptions.workerSrc = '/api/pdf-worker';
         const res = await fetch(`/api/signer-dokument/${jobbId}/${sid}`);
         if (!res.ok) throw new Error('dokument');
         const data = await res.arrayBuffer();

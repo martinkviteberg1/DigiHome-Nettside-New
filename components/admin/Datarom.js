@@ -648,7 +648,7 @@ function SakArkiv({ apiKey, erAdmin }) {
   return (
     <Kort className="p-0" data-testid="datarom-sakarkiv">
       <div className="flex items-center gap-2 border-b border-black/[0.04] px-5 py-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]">Dokumentarkiv fra sakene</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]">Dokumentarkiv</p>
         <span className="text-[11px] text-[#c5c0b8]">· {filer.length} dokument{filer.length === 1 ? '' : 'er'}</span>
       </div>
       {Object.entries(perKat).map(([kat, fs]) => (

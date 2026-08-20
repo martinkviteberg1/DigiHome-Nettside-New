@@ -2244,6 +2244,37 @@ async function handleRoute(request, { params }) {
       return serveMedia(request, path.slice(1));
     }
 
+    // --- pdf.js-worker (/api/pdf-worker) ---
+    // Standalone-prod inkluderer ikke /public, så /pdf.worker.min.mjs 404-er og
+    // PDF-forhåndsvisning (signeringsside + chat-filviser) feiler. Server
+    // worker-filen direkte fra pdfjs-dist i stedet — da matcher versjonen alltid
+    // API-et, i både dev og prod. Filen traces inn via next.config.js.
+    if (path[0] === 'pdf-worker' && method === 'GET') {
+      try {
+        const fsW = await import('node:fs/promises');
+        const pathW = await import('node:path');
+        const kandidaterW = [
+          pathW.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'legacy', 'build', 'pdf.worker.min.mjs'),
+          pathW.join(process.cwd(), '..', 'node_modules', 'pdfjs-dist', 'legacy', 'build', 'pdf.worker.min.mjs'),
+          '/app/node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs',
+        ];
+        let bufW = null;
+        for (const sti of kandidaterW) {
+          try { bufW = await fsW.readFile(sti); break; } catch (e) { /* neste kandidat */ }
+        }
+        if (!bufW) return cors(NextResponse.json({ ok: false, error: 'Worker ikke funnet' }, { status: 404 }));
+        return new NextResponse(bufW, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/javascript; charset=utf-8',
+            'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        });
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'Worker-feil' }, { status: 500 }));
+      }
+    }
+
     // --- Pitch-deck passord-gate (server-side; httpOnly cookie) ---
     if (route === '/deck/auth' && method === 'GET') {
       const token = request.cookies.get('dh_deck')?.value || '';
@@ -6093,6 +6124,7 @@ async function handleRoute(request, { params }) {
         if (!rKon.ok) return cors(NextResponse.json({ ok: false, error: rKon.error }, { status: rKon.status || 400 }));
         return cors(NextResponse.json({ ok: true, versjon: rKon.versjon, name: nyttNavn, size: pdfBuf.length }));
       } catch (e) {
+        console.error('[konverter-pdf] DOCX→PDF feilet:', (e && e.message) || e);
         return cors(NextResponse.json({ ok: false, error: 'Konverteringen feilet — bruk «Lagre som PDF» i Word i stedet' }, { status: 422 }));
       }
     }

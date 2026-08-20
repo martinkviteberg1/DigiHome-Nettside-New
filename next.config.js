@@ -51,8 +51,10 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', 'date-fns'],
     // KRITISK for prod: output:'standalone' inkluderer ikke /public, men OG-bildene
     // (next/og) leser merkefontene fra public/fonts. Trace dem inn i standalone-bygget.
+    // docx-to-pdf.wasm leses med fs.readFile i lib/dokumenter.js og blir IKKE
+    // auto-tracet — uten denne linjen feiler DOCX→PDF-konvertering i produksjon.
     outputFileTracingIncludes: {
-      '/**': ['./public/fonts/**/*.woff', './lib/llms-content.txt'],
+      '/**': ['./public/fonts/**/*.woff', './lib/llms-content.txt', './node_modules/docx-to-pdf-wasm/build/docx-to-pdf.wasm', './node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs'],
     },
   },
   webpack(config, { dev }) {
