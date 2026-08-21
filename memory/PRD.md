@@ -747,3 +747,9 @@ Google Ads-styring via native REST API).
 - Forhåndsvisning i nettleser: PDF via pdf.js (workerSrc /api/pdf-worker, canvas per side, maks 40 sider) + bilder; mørk fullskjermmodal m/ Last ned. Fallback-nedlasting ved feil.
 - Backend: /admin/datarom/fil støtter ?inline=1 (pdf/bilder). Arkivfiler hadde inline-støtte fra før.
 - QA: egen Playwright (mapper, søk-treff/0-treff, kun-signerte, modal m/ canvas). Mobil 0px overflow. Backend 6/6.
+
+## Bilder i saker: e-post + editor + z-fiks — Feb 2026
+- E-post: kommentar/beskrivelse rendres som full markdown; limte saksbilder (task_images) bygges inn som INLINE CID-vedlegg (sakBilderTilVedlegg, maks 6/12MB) — samme mekanisme som chat. mdTilEpost(kilde, maks, bildeCids). byggSakEpost fikk meldingHtml-param. Kommentar-kallsteder sender rå markdown (2000 tegn).
+- Editor: MentionTekstfelt viser 48px-miniatyrer av limte bilder under feltet m/ ×-fjern (apiKey-prop lagt til; sendes fra SakSkuff/NySakModal/TasksTab-rot).
+- Z-fiks: SakKort får z-40 når ...-menyen er åpen (menyen lå bak kortene under pga. hover-transform stacking context).
+- QA: Playwright (meny elementFromPoint OK, bildeopplasting + miniatyr OK). Backend 5/5 (bildeopplasting, tildelt/nevnt/kommentar-e-poststier m/ CID, regresjon, opprydding).

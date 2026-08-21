@@ -1737,7 +1737,7 @@ const EPOST_MD_STIL = {
   hr: 'border:none;border-top:1px solid #eee;margin:14px 0',
   blockquote: 'margin:0 0 10px;padding:2px 0 2px 12px;border-left:3px solid #d9d4f5;color:#666',
 };
-function mdTilEpost(kilde, maks = 1200) {
+function mdTilEpost(kilde, maks = 1200, bildeCids = {}) {
   let src = String(kilde || '').trim();
   if (!src) return '';
   const kuttet = src.length > maks;
@@ -1749,12 +1749,18 @@ function mdTilEpost(kilde, maks = 1200) {
     return `<p style="${EPOST_MD_STIL.p};white-space:pre-wrap">${taskEsc(kilde).slice(0, maks)}</p>`;
   }
   const okUrl = (h) => /^(https?:|mailto:)/i.test(String(h || '').trim());
-  // Bilder: interne (/api/admin/…) krever innlogging → merke; eksterne https vises.
-  html = html.replace(/<img[^>]*?src="([^"]*)"[^>]*>/gi, (m, s) => (
-    /^https:\/\//i.test(s)
+  // Bilder: interne saksbilder bygges inn som CID-vedlegg (vises inline i
+  // Outlook/Gmail — samme mekanisme som chat-varslene) når bildeCids har
+  // id→cid-mapping. Eksterne https vises direkte; alt annet får merke.
+  html = html.replace(/<img[^>]*?src="([^"]*)"[^>]*>/gi, (m, s) => {
+    const intern = String(s || '').match(/^\/api\/admin\/tasks\/image\/([A-Za-z0-9-]+)/);
+    if (intern && bildeCids[intern[1]]) {
+      return `<img src="cid:${bildeCids[intern[1]]}" alt="" style="display:block;max-width:100%;border-radius:12px;margin:8px 0;border:0" />`;
+    }
+    return /^https:\/\//i.test(s)
       ? `<img src="${s}" alt="" style="max-width:100%;border-radius:10px;margin:6px 0" />`
-      : '<span style="display:inline-block;background:#f3f2f0;color:#777;font-size:12px;border-radius:8px;padding:3px 10px;margin:2px 0">🖼 Bilde — åpne saken i admin</span>'
-  ));
+      : '<span style="display:inline-block;background:#f3f2f0;color:#777;font-size:12px;border-radius:8px;padding:3px 10px;margin:2px 0">🖼 Bilde — åpne saken i admin</span>';
+  });
   // Lenker: kun http/mailto, DigiHome-lilla og god klikkbarhet.
   html = html.replace(/<a href="([^"]*)"[^>]*>/gi, (m, href) => (
     okUrl(href) ? `<a href="${href}" target="_blank" style="color:#7c3aed;font-weight:600;text-decoration:underline">` : '<a>'
@@ -1785,6 +1791,40 @@ function mdTilRen(kilde, maks = 180) {
     .replace(/\s{2,}/g, ' ').trim();
   if (s.length > maks) s = `${s.slice(0, maks).trim()} …`;
   return s;
+}
+
+// Finner interne saksbilder (![…](/api/admin/tasks/image/<id>)) i tekstene og
+// laster dem som INLINE CID-vedlegg for e-post — samme mekanisme som chat-
+// varslene. Maks 6 bilder / ~12 MB totalt; overskytende faller tilbake til
+// «åpne saken i admin»-merket i mdTilEpost.
+async function sakBilderTilVedlegg(db, tekster = []) {
+  const ids = [];
+  for (const t of tekster) {
+    const re = /!\[[^\]]*\]\(\/api\/admin\/tasks\/image\/([A-Za-z0-9-]+)\)/g;
+    let m;
+    while ((m = re.exec(String(t || ''))) !== null) {
+      if (!ids.includes(m[1])) ids.push(m[1]);
+      if (ids.length >= 6) break;
+    }
+    if (ids.length >= 6) break;
+  }
+  if (!ids.length) return { vedlegg: [], cidAvId: {} };
+  const vedlegg = [];
+  const cidAvId = {};
+  let total = 0;
+  try {
+    const bilder = await db.collection('task_images').find({ id: { $in: ids } }).toArray();
+    for (const b of bilder) {
+      const buf = b.data && b.data.buffer ? Buffer.from(b.data.buffer) : Buffer.from(b.data || '');
+      if (!buf.length || total + buf.length > 12 * 1024 * 1024) continue;
+      total += buf.length;
+      const cid = `sakimg-${b.id}`;
+      cidAvId[b.id] = cid;
+      const ext = ((b.contentType || 'image/png').split('/')[1] || 'png').replace('jpeg', 'jpg');
+      vedlegg.push({ content: buf.toString('base64'), filename: `bilde-${vedlegg.length + 1}.${ext}`, type: b.contentType || 'image/png', disposition: 'inline', contentId: cid });
+    }
+  } catch (e) { /* stille — e-post går uten bilder */ }
+  return { vedlegg, cidAvId };
 }
 
 // E-postvarsel for saker (tildeling, nevnt, kommentar, status m.m.). Moderne
@@ -1826,23 +1866,38 @@ async function taskEpost({ member, task, heading, intro, kategori, actor = null,
   }
   chips.push(sakChip(TASK_PRI_LABEL[task.priority] || 'P2 · Normal', task.priority === 1 ? 'roed' : 'graa'));
   if (frist) chips.push(sakChip(`Frist · ${frist}${forfalt ? ' · forfalt' : ''}`, forfalt ? 'roed' : 'gul'));
+  // Rik e-post: kommentar og beskrivelse rendres som markdown, og limte
+  // saksbilder bygges inn som INLINE CID-vedlegg (vises direkte i Outlook/
+  // Gmail — akkurat som chat-varslene).
+  let vedlegg = [];
+  let cidAvId = {};
+  if (kommentar || task.description) {
+    try {
+      const dbBilder = await getDb();
+      const r = await sakBilderTilVedlegg(dbBilder, [kommentar, task.description]);
+      vedlegg = r.vedlegg;
+      cidAvId = r.cidAvId;
+    } catch (e) { /* stille — e-post går uten bilder */ }
+  }
+  const kommentarRen = kommentar ? mdTilRen(kommentar, 90) : '';
   const { html, text } = byggSakEpost({
     aktorNavn: actor,
     hendelse: hend,
     tittel: task.title,
     intro: intro || null,
-    melding: kommentar,
+    meldingHtml: kommentar ? mdTilEpost(kommentar, 2000, cidAvId) : null,
+    melding: kommentarRen || null,
     mentions,
-    beskrivelseHtml: task.description ? mdTilEpost(task.description, 1200) : null,
+    beskrivelseHtml: task.description ? mdTilEpost(task.description, 1200, cidAvId) : null,
     chips,
     ctaLabel: 'Åpne saken',
     ctaUrl: `${base}/admin/saker/${encodeURIComponent(task.id)}`,
     bunntekst: 'Du får denne e-posten fra DigiHome Saker fordi du er involvert i saken. E-postvarsler kan justeres i varselinnstillingene i portalen.',
-    preheader: `${actor ? `${actor} ` : ''}${hend} — ${task.title}${kommentar ? `: «${kommentar.slice(0, 90)}»` : ''}`,
+    preheader: `${actor ? `${actor} ` : ''}${hend} — ${task.title}${kommentarRen ? `: «${kommentarRen}»` : ''}`,
     merkelapp: 'Saker',
   });
   try {
-    await sendHtmlEmail({ to: member.email, subject: `${heading}: ${task.title}`, html, text, fromName: actor ? `${actor} (DigiHome)` : 'DigiHome Saker', individual: false, categories: ['intern-sak'] });
+    await sendHtmlEmail({ to: member.email, subject: `${heading}: ${task.title}`, html, text, fromName: actor ? `${actor} (DigiHome)` : 'DigiHome Saker', individual: false, categories: ['intern-sak'], attachments: vedlegg });
     return true;
   } catch (e) {
     return false;
@@ -5828,7 +5883,7 @@ async function handleRoute(request, { params }) {
       const nevntIds = new Set(nevnt.map((m) => m.id));
       const komMottakere = new Set([task.assigneeId, ...(task.followers || [])].filter(Boolean));
       if (nevnt.length && body.notify !== false) {
-        const utdrag = mdTilRen(text, 500);
+        const utdrag = String(text || '').slice(0, 2000); // rå markdown — taskEpost rendrer rikt m/ bilder
         const nevntNavnKom = nevnt.map((x) => x.name).filter(Boolean);
         for (const m of nevnt) {
           if (!m.email) continue;
@@ -5841,7 +5896,7 @@ async function handleRoute(request, { params }) {
       // kan skrus av per bruker i varselinnstillingene). Nevnte fikk allerede
       // «nevnt»-e-post; forfatteren varsles aldri om egne kommentarer.
       if (komMottakere.size && body.notify !== false) {
-        const utdragKom = mdTilRen(text, 500);
+        const utdragKom = String(text || '').slice(0, 2000); // rå markdown — taskEpost rendrer rikt m/ bilder
         const nevntNavnKom2 = nevnt.map((x) => x.name).filter(Boolean);
         for (const m of allePersoner) {
           if (!komMottakere.has(m.id) || nevntIds.has(m.id) || !m.email) continue;

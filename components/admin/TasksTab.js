@@ -1686,6 +1686,7 @@ export default function TasksTab({ apiKey, user, onStats, onOpenBrukere }) {
           defaultSpace={aktivtOmrade}
           defaultStatus={typeof nyOpen === 'string' ? nyOpen : 'inbox'}
           uploadBilde={uploadBildeRoot}
+          apiKey={apiKey}
           onClose={() => setNyOpen(false)}
           onCreate={async (payload) => { await opprett(payload); setNyOpen(false); }}
         />
@@ -2059,7 +2060,7 @@ function SakKort({ t, today, member, members = [], devProducts = [], dras, fokus
       data-testid={`task-card-${t.id}`}
       data-fokus-id={t.id}
       style={{ animationDelay: `${Math.min(index * 28, 280)}ms` }}
-      className={`dh-kort-inn group relative cursor-pointer select-none rounded-xl border border-black/[0.045] bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all touch-manipulation hover:-translate-y-[1px] hover:border-black/[0.08] hover:shadow-[0_6px_18px_rgba(0,0,0,0.09)] active:scale-[0.98] ${dras ? 'opacity-50 ring-2 ring-[#cf97fc]' : ''} ${valgt ? 'ring-2 ring-[#8b5cf6] bg-[#fbfaff]' : fokus ? 'ring-2 ring-[#8b5cf6]/60 shadow-[0_6px_20px_rgba(139,92,246,0.18)]' : ''}`}
+      className={`dh-kort-inn group relative cursor-pointer select-none rounded-xl border border-black/[0.045] bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all touch-manipulation hover:-translate-y-[1px] hover:border-black/[0.08] hover:shadow-[0_6px_18px_rgba(0,0,0,0.09)] active:scale-[0.98] ${meny ? 'z-40' : ''} ${dras ? 'opacity-50 ring-2 ring-[#cf97fc]' : ''} ${valgt ? 'ring-2 ring-[#8b5cf6] bg-[#fbfaff]' : fokus ? 'ring-2 ring-[#8b5cf6]/60 shadow-[0_6px_20px_rgba(139,92,246,0.18)]' : ''}`}
     >
       {valgt && (
         <span className="absolute -left-1.5 -top-1.5 z-20 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#8b5cf6] text-white shadow-md" data-testid={`card-selected-${t.id}`}>
@@ -2508,6 +2509,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
             popover="under"
             rik
             uploadBilde={uploadBilde}
+            apiKey={apiKey}
             autoFocus={beskRediger}
             onBlurValue={() => { if (beskrivelse !== (t.description || '')) onPatch({ description: beskrivelse }); setBeskRediger(false); }}
           />
@@ -2740,6 +2742,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
               popover="over"
               rik
               uploadBilde={uploadBilde}
+              apiKey={apiKey}
               onEnterSend={sendKommentar}
             />
             <button
@@ -2871,7 +2874,7 @@ function MetaFelt({ label, children }) {
 function MentionTekstfelt({
   value, onChange, members = [], placeholder, rows = 2, testid,
   className = '', popover = 'under', onEnterSend = null, onBlurValue = null,
-  rik = false, uploadBilde = null, autoFocus = false,
+  rik = false, uploadBilde = null, autoFocus = false, apiKey = '',
 }) {
   const [sok, setSok] = useState(null);
   const [idx, setIdx] = useState(0);
@@ -2967,6 +2970,19 @@ function MentionTekstfelt({
   }, [value, members]);
 
   const typo = 'p-3 text-[13.5px] leading-relaxed';
+  // Limte/opplastede bilder vises som miniatyrer under feltet (chat-følelse) —
+  // markdown-referansen beholdes i teksten, ×-knappen fjerner begge deler.
+  const bildeRefs = useMemo(() => {
+    const ut = [];
+    const re = /!\[[^\]]*\]\((\/api\/admin\/tasks\/image\/[A-Za-z0-9-]+)\)/g;
+    let m;
+    while ((m = re.exec(String(value || ''))) !== null && ut.length < 8) ut.push({ md: m[0], url: m[1] });
+    return ut;
+  }, [value]);
+  const fjernBilde = (b) => {
+    const nv = String(value || '').replace(`\n${b.md}\n`, '\n').replace(b.md, '').replace(/\n{3,}/g, '\n\n');
+    onChange(nv);
+  };
   const VerktoyKnapp = ({ onClick, title, children }) => (
     <button type="button" title={title} onMouseDown={(e) => { e.preventDefault(); onClick(); }} className="flex h-7 w-7 items-center justify-center rounded-md text-[#777] transition-colors hover:bg-black/[0.06] hover:text-[#0a0a0a]">{children}</button>
   );
@@ -3044,6 +3060,26 @@ function MentionTekstfelt({
         className={`relative w-full resize-none rounded-xl border border-black/[0.07] bg-transparent text-transparent caret-[#0a0a0a] outline-none transition-all placeholder:text-[#bbb] selection:bg-[#8b5cf6]/25 hover:border-black/[0.14] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 ${typo}`}
       />
       </div>
+      {rik && bildeRefs.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5" data-testid={`${testid}-bilder`}>
+          {bildeRefs.map((b, i) => (
+            <span key={`${b.url}-${i}`} className="group relative inline-flex">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`${b.url}?key=${encodeURIComponent(apiKey)}`}
+                alt="Limt inn bilde"
+                className="h-12 w-12 rounded-lg border border-black/[0.08] object-cover shadow-sm"
+              />
+              <button
+                type="button"
+                title="Fjern bildet"
+                onMouseDown={(e) => { e.preventDefault(); fjernBilde(b); }}
+                className="absolute -right-1.5 -top-1.5 hidden h-[18px] w-[18px] items-center justify-center rounded-full bg-[#0a0a0a] text-[10px] leading-none text-white shadow group-hover:flex"
+              >×</button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -4015,7 +4051,7 @@ function ProsjektModal({ onClose, onCreate }) {
 }
 
 /* ═══════════════ Ny sak ═══════════════ */
-function NySakModal({ members, projects = [], omrader = ['drift'], defaultSpace = 'drift', defaultStatus, uploadBilde = null, devProducts = [], onClose, onCreate }) {
+function NySakModal({ members, projects = [], omrader = ['drift'], defaultSpace = 'drift', defaultStatus, uploadBilde = null, devProducts = [], apiKey = '', onClose, onCreate }) {
   const [tittel, setTittel] = useState('');
   const [beskrivelse, setBeskrivelse] = useState('');
   const [prosjekt, setProsjekt] = useState('');
@@ -4106,6 +4142,7 @@ function NySakModal({ members, projects = [], omrader = ['drift'], defaultSpace 
             popover="under"
             rik
             uploadBilde={uploadBilde}
+            apiKey={apiKey}
           />
         </div>
 
