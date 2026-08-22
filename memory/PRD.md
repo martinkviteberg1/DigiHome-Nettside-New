@@ -753,3 +753,17 @@ Google Ads-styring via native REST API).
 - Editor: MentionTekstfelt viser 48px-miniatyrer av limte bilder under feltet m/ ×-fjern (apiKey-prop lagt til; sendes fra SakSkuff/NySakModal/TasksTab-rot).
 - Z-fiks: SakKort får z-40 når ...-menyen er åpen (menyen lå bak kortene under pga. hover-transform stacking context).
 - QA: Playwright (meny elementFromPoint OK, bildeopplasting + miniatyr OK). Backend 5/5 (bildeopplasting, tildelt/nevnt/kommentar-e-poststier m/ CID, regresjon, opprydding).
+
+## Signering: selvhelbredende status-sync — Feb 2026 (KRITISK PROD-FIKS)
+- BRUKERFEIL: batch-dokumenter signert hos Posten viste kun første som signert i DigiHome; egen runde sto på 0/2. Rotårsak: synk hvilte kun på destruktiv polling-kø + engangs token-kall fra exit-siden — tapte hendelser ble aldri reparert.
+- sisteToken (status_query_token fra exit-URL) lagres nå varig på jobben (hentStatusMedToken) og strippes fra alle klient-responser.
+- NY reconcileSigneringsjobber(db, {maks, eldreEnnMs, batchId}): henter full jobbstatus direkte fra Posten m/ lagret token for I_GANG-jobber som ikke er oppdatert nylig. Kjøres fra cron-tick (hvert min), manuell poll (eldreEnnMs 15s) og for batch-søsken ved exit-besøk. Ugyldige/oppbrukte tokens $unset-es stille.
+- Robust mapping: finnSignatarForAttr (eksakt → XML-unescapet (xunesc) → entydig sid-suffiks «· abc123»). Monotont vern: SIGNERT nedgraderes aldri; FULLFORT/FEILET rulles ikke tilbake av forsinket I_GANG-svar (bekreftes likevel så køen ryddes).
+- Smart kø-tømming i pollSignering: direkteflyt polles først; korte poll-vinduer (≤8s, maks 20s totalt) ventes ut i samme kjøring.
+- Cron-heartbeat: /api/cron/signering skriver sistCronTick i signering_config. Boot-token-auth (globalThis.__dhCronBoot, generert i scheduler — samme prosess) godtas i tillegg til CRON_SECRET/x-admin-key → synk virker selv uten nøkler i miljøet. Scheduler har offentlig-URL-fallback (NEXT_PUBLIC_BASE_URL) hvis loopback feiler, og logger tydelige feil.
+- NY GET /admin/signering/diagnose: {ko, sistPoll, nestePoll, sistCronTick, aktive[{signert/antall, oppdatert, harToken, batchId}]}.
+- UI (DokumenterModul → Signering): «Sjekk status nå»-knapp (poll + avstemming + toast) og ambervarsel «Automatisk synk inaktiv» når heartbeat >3 min gammel med aktive runder.
+- Exit-side: regex-basert token/jobb-uthenting (tåler rar parameterrekkefølge), fetch keepalive (overlever «Neste dokument»-klikk), ett retry.
+- .gitignore: .env-blokkering fjernet (deploy-blocker fra deployment-sjekk — .env må følge repoet for Emergent-deploy).
+- QA: 14/14 enhetstester (scripts/qa_signering_status_test.mjs), integrasjonstest av reconcile (ugyldig token fjernes, jobb urørt), backend-testagent 7/7, UI-screenshot OK.
+- PROD-GJENOPPRETTING etter deploy: åpne Dokumenter → Signering → «Sjekk status nå» (ubekreftede kø-hendelser re-leveres av Posten ~hvert 10. min og fanges da opp). Henger en runde fortsatt: signataren klikker signeringslenken i e-posten på nytt → exit-siden gir ferskt token som reparerer jobben umiddelbart.

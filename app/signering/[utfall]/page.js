@@ -43,17 +43,24 @@ export default function SigneringUtfall({ params, searchParams }) {
   useEffect(() => {
     // Posten appender status_query_token på exit-URL-en — send det til API-et,
     // som henter FULL jobbstatus direkte (alle signatarer) uavhengig av
-    // polling-køens tidsvinduer. Puls-pinget beholdes som fallback.
+    // polling-køens tidsvinduer. Robust uthenting via regex (tåler uvanlig
+    // parameterrekkefølge/dobbel «?»), keepalive slik at kallet overlever at
+    // brukeren klikker «Neste dokument» umiddelbart, og ett gjenforsøk ved
+    // nettverksfeil. Puls-pinget beholdes som fallback.
     try {
-      const q = new URLSearchParams(window.location.search);
-      const token = q.get('status_query_token');
-      const jobb = q.get('jobb');
+      const href = String(window.location.href || '');
+      const tokM = href.match(/[?&]status_query_token=([^&#]+)/);
+      const jobM = href.match(/[?&]jobb=([0-9a-fA-F-]{36})/);
+      const token = tokM ? decodeURIComponent(tokM[1]) : null;
+      const jobb = jobM ? jobM[1] : null;
       if (token) {
-        fetch('/api/signering-status-token', {
+        const sendToken = () => fetch('/api/signering-status-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, jobb: jobb || null }),
-        }).catch(() => {});
+          body: JSON.stringify({ token, jobb }),
+          keepalive: true,
+        });
+        sendToken().catch(() => { setTimeout(() => { sendToken().catch(() => {}); }, 1800); });
       }
     } catch (e) { /* stille */ }
     // Fremskynd statushenting — både signert og avvist gir en statushendelse

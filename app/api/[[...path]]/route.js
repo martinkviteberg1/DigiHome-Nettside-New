@@ -5393,6 +5393,29 @@ async function handleRoute(request, { params }) {
       ]);
       // Serverhåndhevet synlighet: område (gruppe) + per-sak-begrensning.
       const tasks = alleTasks.filter((t) => sakSynlig(viewer, t));
+      // Beriker vedleggsmetadata med signeringsstatus/lås/versjon fra
+      // task_files (statusen lever på filen, ikke på saken) — slik at UI-et
+      // kan vise «Til signering»/«Signert»-badges i vedleggslisten.
+      try {
+        const vedleggIds = [];
+        for (const t of tasks) for (const a of (t.attachments || [])) if (a && a.id) vedleggIds.push(a.id);
+        if (vedleggIds.length) {
+          const filInfo = await db.collection('task_files')
+            .find({ id: { $in: vedleggIds } }, { projection: { _id: 0, id: 1, laast: 1, versjon: 1, 'signering.status': 1, 'arkiv.aktiv': 1 } })
+            .toArray();
+          const infoAvId = new Map(filInfo.map((f) => [f.id, f]));
+          for (const t of tasks) {
+            for (const a of (t.attachments || [])) {
+              const fi = a && a.id ? infoAvId.get(a.id) : null;
+              if (!fi) continue;
+              a.laast = !!fi.laast;
+              if (fi.versjon) a.versjon = fi.versjon;
+              a.signeringStatus = (fi.signering && fi.signering.status) || null;
+              if (fi.arkiv && fi.arkiv.aktiv) a.arkiv = true;
+            }
+          }
+        }
+      } catch (e) { /* stille — badges er ikke kritiske */ }
       return cors(NextResponse.json({
         ok: true, tasks, members, projects, today: osloIDag(),
         spaces: omraaderForViewer(viewer),
@@ -6443,11 +6466,11 @@ async function handleRoute(request, { params }) {
       const jbFilIds = [...new Set(alleJb.map((j) => j.filId))];
       const jbFiler = await db.collection('task_files').find({ id: { $in: jbFilIds } }, { projection: { _id: 0, id: 1, name: 1, type: 1, size: 1, versjon: 1, laast: 1 } }).toArray();
       const jbFil = Object.fromEntries(jbFiler.map((f) => [f.id, f]));
-      const jbPollCfg = await db.collection('signering_config').findOne({ id: 'posten' }, { projection: { sistPoll: 1, nestePoll: 1 } });
+      const jbPollCfg = await db.collection('signering_config').findOne({ id: 'posten' }, { projection: { sistPoll: 1, nestePoll: 1, sistCronTick: 1 } });
       return cors(NextResponse.json({
         ok: true,
-        poll: { sist: (jbPollCfg && jbPollCfg.sistPoll) || null, neste: (jbPollCfg && jbPollCfg.nestePoll) || null },
-        jobber: alleJb.map((j) => ({
+        poll: { sist: (jbPollCfg && jbPollCfg.sistPoll) || null, neste: (jbPollCfg && jbPollCfg.nestePoll) || null, cron: (jbPollCfg && jbPollCfg.sistCronTick) || null },
+        jobber: alleJb.map(({ sisteToken, ...j }) => ({
           ...j,
           // aldri signer-URL-er/sid-hemmeligheter ut i lister
           signatarer: (j.signatarer || []).map(({ signerUrl, sid, ...rest }) => rest),
@@ -6526,15 +6549,49 @@ async function handleRoute(request, { params }) {
         // Manuell oppdatering: poll hvis Posten tillater det NÅ — ellers
         // planlegg en presis poll når vinduet åpner (aldri nullstill
         // ventetiden: Posten straffer for tidlig polling med lengre 429-vinduer).
+        // I tillegg: token-avstemming (uavhengig av polling-vinduene) slik at
+        // «Sjekk status nå» henter fersk status selv når køen må vente.
+        const { reconcileSigneringsjobber } = await import('@/lib/signering');
         const rM = await pollSignering(db);
+        const rRekM = await reconcileSigneringsjobber(db, { eldreEnnMs: 15000, maks: 8 }).catch(() => ({ oppdatert: 0 }));
         if (rM.venter) {
           const rPlan = await pollSnarest(db);
-          return cors(NextResponse.json({ ...rM, planlagt: !!rPlan.planlagt }));
+          return cors(NextResponse.json({ ...rM, planlagt: !!rPlan.planlagt, avstemt: rRekM.oppdatert || 0 }));
         }
-        return cors(NextResponse.json(rM));
+        return cors(NextResponse.json({ ...rM, avstemt: rRekM.oppdatert || 0 }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: String(e && e.message || 'Polling feilet') }, { status: 502 }));
       }
+    }
+    // Diagnose: kø, poll-tider, cron-heartbeat og aktive jobber — gjør det
+    // synlig om bakgrunnssynken faktisk kjører i miljøet (preview/produksjon).
+    if (route === '/admin/signering/diagnose' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { koNavn } = await import('@/lib/signering');
+      const diaCfg = await db.collection('signering_config').findOne({ id: 'posten' }, { projection: { sistPoll: 1, nestePoll: 1, sistCronTick: 1 } });
+      const diaJobber = await db.collection(SIGN_JOBB_COLL)
+        .find({ status: 'I_GANG' }, { projection: { _id: 0, id: 1, tittel: 1, flyt: 1, ko: 1, batchId: 1, signatarer: 1, oppdatert: 1, sisteToken: 1 } })
+        .sort({ opprettet: -1 })
+        .limit(30)
+        .toArray();
+      return cors(NextResponse.json({
+        ok: true,
+        ko: koNavn(),
+        sistPoll: (diaCfg && diaCfg.sistPoll) || null,
+        nestePoll: (diaCfg && diaCfg.nestePoll) || null,
+        sistCronTick: (diaCfg && diaCfg.sistCronTick) || null,
+        aktive: diaJobber.map((dj) => ({
+          id: dj.id,
+          tittel: dj.tittel,
+          flyt: dj.flyt || 'portal',
+          ko: dj.ko || null,
+          batchId: dj.batchId || null,
+          signert: (dj.signatarer || []).filter((s) => s.status === 'SIGNERT').length,
+          antall: (dj.signatarer || []).length,
+          oppdatert: dj.oppdatert || null,
+          harToken: !!dj.sisteToken,
+        })),
+      }));
     }
     // Dokumentarkiv: rollefiltrert liste (owner/admin alt · eier investorer+alle · ellers alle)
     if (route === '/admin/dokumentarkiv' && method === 'GET') {
@@ -6584,14 +6641,32 @@ async function handleRoute(request, { params }) {
     if (route === '/cron/signering' && method === 'POST') {
       const cronSecretSig = (process.env.CRON_SECRET || '').trim();
       const gittSig = request.headers.get('x-cron-secret') || '';
-      if (!(cronSecretSig && gittSig === cronSecretSig) && !adminAuthed(request)) {
+      // Boot-token: planleggeren i SAMME prosess genererer et tilfeldig token
+      // ved oppstart — gyldig legitimasjon selv om CRON_SECRET/ADMIN_KEY
+      // skulle mangle i miljøet (gjør bakgrunnssynken miljø-robust).
+      const bootSig = request.headers.get('x-cron-boot') || '';
+      const bootOkSig = !!(globalThis.__dhCronBoot && bootSig && bootSig === globalThis.__dhCronBoot);
+      if (!bootOkSig && !(cronSecretSig && gittSig === cronSecretSig) && !adminAuthed(request)) {
         return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       }
+      // Heartbeat: gjør det synlig (diagnose/UI) om bakgrunnssynken faktisk
+      // kjører i dette miljøet — uavhengig av om selve pollingen gjør noe.
+      try {
+        await db.collection('signering_config').updateOne(
+          { id: 'posten' },
+          { $set: { sistCronTick: new Date().toISOString() } },
+          { upsert: true },
+        );
+      } catch (e) { /* stille */ }
       try {
         const rCronSig = await pollSignering(db);
-        // Automatisk purring når frist nærmer seg (én gang per runde)
         try {
-          const { autoPurring } = await import('@/lib/signering');
+          const { autoPurring, reconcileSigneringsjobber } = await import('@/lib/signering');
+          // Token-avstemming: selvhelbredende statushenting for aktive jobber
+          // som ikke er oppdatert nylig (uavhengig av polling-køens vinduer).
+          const rRek = await reconcileSigneringsjobber(db);
+          if (rRek.oppdatert) rCronSig.avstemt = rRek.oppdatert;
+          // Automatisk purring når frist nærmer seg (én gang per runde)
           const rAp = await autoPurring(db);
           if (rAp.sendt) rCronSig.autoPurret = rAp.sendt;
         } catch (e) { /* stille */ }

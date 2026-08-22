@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   PenLine, Upload, Loader2, FileText, ShieldCheck, Clock, CheckCircle2,
   XCircle, Ban, ChevronRight, Send, RefreshCw, Search, Archive, FolderOpen,
-  CheckSquare, Check,
+  CheckSquare, Check, AlertTriangle,
 } from 'lucide-react';
 import DokumentModal from './DokumentModal';
 import SigneringBatchModal from './SigneringBatchModal';
@@ -90,6 +90,30 @@ export default function DokumenterModul({ apiKey, user }) {
     const t = setInterval(hentAlt, 20000);
     return () => clearInterval(t);
   }, [harAktive, hentAlt]);
+
+  /* ── «Sjekk status nå»: poll + token-avstemming mot Posten på forespørsel ── */
+  const [sjekker, setSjekker] = useState(false);
+  const sjekkStatusNaa = async () => {
+    if (sjekker) return;
+    setSjekker(true);
+    try {
+      const r = await api('signering/poll', { method: 'POST' });
+      const j = await r.json().catch(() => ({}));
+      await hentAlt();
+      const antallNye = (j.hendelser || 0) + (j.avstemt || 0);
+      if (antallNye > 0) visToast(`Status hentet fra Posten — ${antallNye} oppdatering${antallNye === 1 ? '' : 'er'}`);
+      else if (j.venter && j.planlagt) visToast('Posten tillater ny kø-sjekk om litt — planlagt automatisk');
+      else visToast('Ingen nye statusendringer hos Posten');
+    } catch (e) { visToast('Kunne ikke sjekke status mot Posten', 'feil'); }
+    setSjekker(false);
+  };
+  // Bakgrunnssynk-helse: cron-heartbeat eldre enn 3 min (eller mangler) med
+  // aktive runder → vis varsel slik at manuell sjekk kan brukes.
+  const cronDod = useMemo(() => {
+    if (!harAktive || !pollInfo) return false;
+    if (!pollInfo.cron) return true;
+    return Date.now() - new Date(pollInfo.cron).getTime() > 3 * 60000;
+  }, [harAktive, pollInfo]);
 
   /* ── Opplasting av frittstående dokument (chunk → sentinel-taskId) ────────── */
   const lastOpp = async (file) => {
@@ -321,6 +345,19 @@ export default function DokumenterModul({ apiKey, user }) {
                 <RefreshCw className="h-3 w-3" /> Statussjekk mot Posten {new Date(pollInfo.sist).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
+            {cronDod && (
+              <span className="flex items-center gap-1.5 font-semibold text-amber-600" data-testid="signering-cron-varsel" title="Den automatiske statussjekken (hvert minutt) har ikke rapportert på over 3 minutter i dette miljøet">
+                <AlertTriangle className="h-3 w-3" /> Automatisk synk inaktiv — bruk «Sjekk status nå»
+              </span>
+            )}
+            <button
+              onClick={sjekkStatusNaa}
+              disabled={sjekker}
+              data-testid="signering-sjekk-naa"
+              className="flex items-center gap-1.5 rounded-full bg-[#f4f4f2] px-3 py-1.5 text-[11.5px] font-semibold text-[#57534e] transition-colors hover:bg-[#ecece9] disabled:opacity-60"
+            >
+              {sjekker ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} Sjekk status nå
+            </button>
           </div>
 
           {/* ── Venter på DIN signatur ──────────────────────────────────────── */}
