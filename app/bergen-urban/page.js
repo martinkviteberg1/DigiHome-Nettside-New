@@ -74,7 +74,7 @@ export default function BergenUrbanDeck() {
   return (
     <main
       onClick={klikk}
-      className={`relative h-dvh w-full select-none overflow-hidden bg-[#fafafa] font-body text-[#141414] ${musSynlig ? '' : 'cursor-none'}`}
+      className={`relative h-dvh w-full select-none overflow-hidden bg-[#fcfcfc] font-body text-[#0f0f0f] ${musSynlig ? '' : 'cursor-none'}`}
       data-testid="bu-deck"
     >
       {/* ═══ SLIDE 1 — Forside ═══ */}
@@ -91,12 +91,12 @@ export default function BergenUrbanDeck() {
         {/* Typografien er alt */}
         <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
           <h1
-            className="bu-inn font-heading text-[clamp(64px,10.5vw,158px)] font-bold leading-[0.98] tracking-[-0.045em]"
+            className="bu-inn font-heading text-[clamp(64px,10.5vw,158px)] font-bold leading-[0.98] tracking-[-0.05em]"
             style={{ animationDelay: '300ms' }}
           >
             Vibe coding
             <br />
-            <span className="text-[#98989d]">i praksis.</span>
+            i praksis.
           </h1>
           <p className="bu-inn mt-12 text-[clamp(15px,1.5vw,19px)] text-[#86868b]" style={{ animationDelay: '900ms' }}>
             Historien om hvordan DigiHome ble til
@@ -147,7 +147,7 @@ export default function BergenUrbanDeck() {
         onClick={(e) => { e.stopPropagation(); fullskjerm(); }}
         title="Fullskjerm (F)"
         aria-label="Fullskjerm"
-        className={`absolute bottom-6 right-6 flex h-9 w-9 items-center justify-center rounded-full text-[#c7c7cc] transition-opacity duration-300 hover:text-[#141414] ${musSynlig ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute bottom-6 right-6 flex h-9 w-9 items-center justify-center rounded-full text-[#c7c7cc] transition-opacity duration-300 hover:text-[#0f0f0f] ${musSynlig ? 'opacity-100' : 'opacity-0'}`}
         data-testid="bu-fullskjerm"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
