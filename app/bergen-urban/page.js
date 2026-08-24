@@ -21,20 +21,99 @@ const caveat = Caveat({ subsets: ['latin', 'latin-ext'], weight: ['500', '600', 
 
 const PROMPT = 'Lag et AI-drevet system for utleie og boligforvaltning.';
 
+// Ekte kodelinjer fra DigiHome-repoet (uten hemmeligheter) — «AI-en bygger
+// systemet» fyller skjermen med disse i akselererende tempo.
+const KODE = [
+  "export async function opprettSigneringsjobb(db, { filId, tittel, signatarer }) {",
+  "  const jobb = { id: uuidv4(), status: 'I_GANG', flyt: 'direkte', opprettet: naa() };",
+  "  const manifest = byggDirectManifest({ tittel, signatarer, exitUrls });",
+  "  const res = await postenKall({ metode: 'POST', url: BASE(), body: pakke, tls: mat.tls });",
+  "  await db.collection(SIGN_JOBB_COLL).insertOne(jobb);",
+  "  return { ok: true, jobbId: jobb.id };",
+  "}",
+  "// Leiekontrakt: genererer PDF med pdf-lib og sender til BankID-signering",
+  "const kontrakt = await byggLeiekontraktPdf({ utleier, leietaker, leie, depositum });",
+  "if (dokument.type === 'docx') pdf = await konverterDocxTilPdf(buffer);",
+  "export async function pollSignering(db) {",
+  "  const aktive = await db.collection(SIGN_JOBB_COLL).countDocuments({ status: 'I_GANG' });",
+  "  if (!aktive) return { ok: true, aktive: 0, hendelser: 0 };",
+  "  const res = await postenKall({ metode: 'GET', url: flow.url, tls: mat.tls });",
+  "  await behandleDirectStatus(db, mat, res.body.toString('utf8'));",
+  "}",
+  "const leiepris = beregnAnbefaltLeie({ soverom, kvm, bydel: 'Bergenhus', standard });",
+  "app.post('/api/leads', rateLimit(20), async (req) => opprettLead(await req.json()));",
+  "// Visning: automatisk kalenderbooking med SMS-påminnelse til interessenter",
+  "const slots = genererVisningsSlots({ fra, til, varighet: 20, perDag: 6 });",
+  "await sendEpost({ til: leietaker.epost, emne: 'Velkommen hjem', html: byggVelkomstEpost(ctx) });",
+  "export function byggSakEpost({ tittel, melding, prioritet, frist, mottaker }) {",
+  "  const badges = [prioritetChip(prioritet), statusChip(status), fristChip(frist)];",
+  "  return moderneRamme({ overskrift: tittel, innhold: renderMarkdown(melding), badges });",
+  "}",
+  "const depositum = Math.min(leie * 3, maksDepositum);",
+  "await db.collection('tenants').updateOne({ id }, { $set: { skjermet: true } });",
+  "// Økonomi: månedlig avstemming av husleie mot kontoutskrift",
+  "const avvik = transaksjoner.filter((t) => !matchMotKontrakt(t, kontrakter));",
+  "export async function reconcileSigneringsjobber(db, { maks = 5 } = {}) {",
+  "  const jobber = await db.collection(SIGN_JOBB_COLL).find(filter).limit(maks).toArray();",
+  "  for (const jobb of jobber) await hentStatusMedToken(db, jobb.sisteToken);",
+  "}",
+  "const annonse = await genererFinnAnnonse({ bolig, bilder, leiepris, visninger });",
+  "if (score > 0.82) await varsleUtleier({ kanal: 'push', lead });",
+  "// Chat: @mention-varsling med trådfølging og e-postfallback",
+  "const nevnt = ekstraherMentions(melding).filter((m) => m.id !== avsender.id);",
+  "await Promise.all(nevnt.map((m) => opprettNotifikasjon(db, m.id, 'MENTION', ctx)));",
+  "export const middleware = (req) => sikkerhetsHeadere(NextResponse.next(), req);",
+  "const brreg = await fetch(`https://data.brreg.no/enhetsregisteret/api/enheter/${orgnr}`);",
+  "await lagreDokument(db, { kategori: 'Styret · Avtaler', fil: signertPades, laast: true });",
+  "// Budsjett: re-utleie ved kontraktslutt med 14 dagers friksjonsledighet",
+  "const aarsleie = maaneder.reduce((sum, m) => sum + m.leie * m.belegg, 0);",
+  "const digest = åpneSaker.sort((a, b) => fristVekt(a) - fristVekt(b)).slice(0, 8);",
+  "export async function autoPurring(db) {",
+  "  const naerFrist = jobber.filter((j) => timerTil(j.frist) < 48 && !j.purret);",
+  "  for (const j of naerFrist) await sendPurring(db, j);",
+  "}",
+  "const worker = new Worker('/api/pdf-worker');",
+  "await instrumentation.startReminderScheduler({ intervall: 60_000 });",
+  "// Datarom: nummerert DD-struktur med innsynslogg per investor",
+  "const mapper = ['01 Selskap', '02 Avtaler', '03 Økonomi', '04 Teknisk', '05 Team'];",
+  "const zip = await pakkDatarom(mapper, { vannmerke: investor.navn });",
+  "if (!(await modulAuthed(request, db, 'dokumenter'))) return uautorisert();",
+  "const kpi = { belegg: 0.98, aapneSaker: 3, signertDenneUken: 7, leads: 42 };",
+  "await oppdaterKanban(db, sak.id, { status: 'PÅGÅR', flyttetAv: bruker.id });",
+];
+
+// Diskret syntaksfarging — to aksenter, resten dempet
+const KODE_REGEX = /('[^']*'|`[^`]*`|\/\/.*$|\b(?:const|let|await|async|function|return|export|import|if|else|for|of|new|try|catch)\b)/g;
+function KodeLinje({ tekst }) {
+  if (tekst.trim().startsWith('//')) return <span className="text-white/[0.22]">{tekst}</span>;
+  const deler = tekst.split(KODE_REGEX);
+  return deler.map((d, i) => {
+    if (!d) return null;
+    let kl = 'text-white/[0.48]';
+    if (d.startsWith("'") || d.startsWith('`')) kl = 'text-[#8fd4a8]/70';
+    else if (d.startsWith('//')) kl = 'text-white/[0.22]';
+    else if (/^(const|let|await|async|function|return|export|import|if|else|for|of|new|try|catch)$/.test(d)) kl = 'text-[#B57BFF]/80';
+    // eslint-disable-next-line react/no-array-index-key
+    return <span key={i} className={kl}>{d}</span>;
+  });
+}
+
 // Steg: 0 = cover · 1 = bar · 2 = skriver · 3 = sendt+tenker (auto→4)
-//       4 = reveal (svart) · 5 = tittel (lys) · 6 = påstand 1 · 7 = påstand 1+2
-const TOTALT = 8;
+//       4 = kodestorm (auto→5) · 5 = reveal (svart) · 6 = tittel (lys)
+//       7 = påstand 1 · 8 = påstand 1+2
+const TOTALT = 9;
 
 export default function BergenUrbanDeck() {
   const [steg, setSteg] = useState(0);
   const [antallTegn, setAntallTegn] = useState(0);
   const [tenker, setTenker] = useState(false);
+  const [kodeAntall, setKodeAntall] = useState(0);
   const [musSynlig, setMusSynlig] = useState(true);
   const [mockSkala, setMockSkala] = useState(0.78);
   const musTimer = useRef(null);
 
   const neste = useCallback(() => setSteg((s) => Math.min(TOTALT - 1, s + 1)), []);
-  const forrige = useCallback(() => setSteg((s) => (s === 4 ? 2 : Math.max(0, s - 1))), []);
+  const forrige = useCallback(() => setSteg((s) => (s === 4 || s === 5 ? 2 : Math.max(0, s - 1))), []);
 
   const fullskjerm = useCallback(() => {
     try {
@@ -68,12 +147,33 @@ export default function BergenUrbanDeck() {
     return undefined;
   }, [steg, antallTegn]);
 
-  // Send → tenkeprikker → auto-overgang til svaret
+  // Send → tenkeprikker → auto-overgang til kodestormen
   useEffect(() => {
     if (steg !== 3) { setTenker(false); return undefined; }
     const t1 = setTimeout(() => setTenker(true), 520);
     const t2 = setTimeout(() => setSteg(4), 3300);
     return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [steg]);
+
+  // Kodestorm: linjer fyller skjermen i akselererende tempo → auto til svaret
+  useEffect(() => {
+    if (steg < 4) { setKodeAntall(0); return undefined; }
+    if (steg !== 4) return undefined; // behold linjene under utfading
+    let stoppet = false;
+    let i = 0;
+    const total = 240;
+    const tikk = () => {
+      if (stoppet) return;
+      i += i > 150 ? 3 : (i > 60 ? 2 : 1);
+      setKodeAntall(Math.min(i, total));
+      if (i >= total) {
+        setTimeout(() => { if (!stoppet) setSteg(5); }, 500);
+        return;
+      }
+      setTimeout(tikk, Math.max(9, 36 - i * 0.12));
+    };
+    const start = setTimeout(tikk, 300);
+    return () => { stoppet = true; clearTimeout(start); };
   }, [steg]);
 
   // Skjul musepekeren når den ligger i ro (scene-modus)
@@ -108,13 +208,14 @@ export default function BergenUrbanDeck() {
 
   const skrevet = PROMPT.slice(0, antallTegn);
   const klarTilSend = antallTegn >= PROMPT.length && steg >= 2;
-  const morkAktiv = steg <= 4;
+  const morkAktiv = steg <= 5;
   const coverAktiv = steg === 0;
   const promptAktiv = steg >= 1 && steg <= 3;
-  const revealAktiv = steg === 4;
-  const tittelAktiv = steg === 5;
-  const hookAktiv = steg >= 6;
-  const bygg = Math.max(0, steg - 6);
+  const kodeAktiv = steg === 4;
+  const revealAktiv = steg === 5;
+  const tittelAktiv = steg === 6;
+  const hookAktiv = steg >= 7;
+  const bygg = Math.max(0, steg - 7);
 
   const telefonB = Math.round(Math.min(258, Math.max(176, 258 * mockSkala * 1.12)));
   const overheng = Math.round(telefonB * 0.4);
@@ -269,6 +370,35 @@ export default function BergenUrbanDeck() {
             <span className="bu-dot h-[7px] w-[7px] rounded-full bg-white/70" />
             <span className="bu-dot h-[7px] w-[7px] rounded-full bg-white/70" style={{ animationDelay: '0.18s' }} />
             <span className="bu-dot h-[7px] w-[7px] rounded-full bg-white/70" style={{ animationDelay: '0.36s' }} />
+          </div>
+        </div>
+
+        {/* ── AKT 1.5: KODESTORMEN — AI-en bygger systemet, live ── */}
+        <div
+          className={`absolute inset-0 transition-[opacity,filter] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${kodeAktiv ? 'opacity-100 blur-0' : 'pointer-events-none opacity-0 blur-[8px]'}`}
+          data-testid="bu-kodestorm"
+        >
+          {/* Terminal-strøm: nye linjer nederst, eldre presses opp og fader ut */}
+          <div
+            className="absolute inset-0 flex flex-col justify-end overflow-hidden px-10 pb-14 pt-10 font-mono text-[12px] leading-[1.6] md:px-16 md:text-[12.5px]"
+            style={{
+              maskImage: 'linear-gradient(to bottom, transparent 0%, black 22%, black 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 22%, black 100%)',
+            }}
+          >
+            {Array.from({ length: kodeAntall }, (_, i) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <div key={i} className="whitespace-pre">
+                <span className="mr-4 inline-block w-8 text-right text-white/[0.14] tabular-nums">{i + 1}</span>
+                <KodeLinje tekst={KODE[i % KODE.length]} />
+              </div>
+            ))}
+          </div>
+          {/* Statuslinje */}
+          <div className="absolute bottom-5 left-10 flex items-center gap-2.5 font-mono text-[11.5px] text-white/35 md:left-16">
+            <span className="bu-blink inline-block h-[13px] w-[7px] bg-white/60" />
+            genererer digihome
+            <span className="tabular-nums text-white/25">· {Math.max(1, Math.round(kodeAntall / 16))} moduler · {(kodeAntall * 47).toLocaleString('nb-NO')} linjer</span>
           </div>
         </div>
 
