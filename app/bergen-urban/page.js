@@ -1,13 +1,14 @@
 'use client';
 
 /* ═══════════════════ Bergen Urban — presentasjonsdeck ═══════════════════
-   Kinematisk firedelt sekvens:
+   Kinematisk femdelt sekvens:
+   0) COVER (svart): DigiHome-ikon + navn + «Utleie på autopilot.»
    1) PROMPT (svart): ChatGPT-aktig bar → prompten skrives → send →
-      tenkeprikker → auto-overgang («lyset skrus på»)
-   2) SVARET: DigiHome-systemet materialiserer seg — desktop-portal +
-      iPhone-mockup (gjenbrukt fra /tour) med iscenesatt inntreden og svev
-   3) TITTEL: «Historien om DigiHome.» — film-tittel mask reveal
-   4) HOOK: påstand 1 → 6-åringens håndskrift (rack focus)
+      tenkeprikker → auto-overgang
+   2) SVARET (svart): systemet materialiserer seg i ett scenelys —
+      desktop-portal + iPhone (mockups fra /tour) mot svart
+   3) TITTEL (lyset skrus på): «Historien om DigiHome.» — mask reveal
+   4) HOOK (lys): påstand 1 → 6-åringens håndskrift (rack focus)
    Navigasjon: → / mellomrom / PageDown (klikker) = neste beat,
    ← / PageUp = forrige, F = fullskjerm, R = start forfra. */
 
@@ -20,9 +21,9 @@ const caveat = Caveat({ subsets: ['latin', 'latin-ext'], weight: ['500', '600', 
 
 const PROMPT = 'Lag et AI-drevet system for utleie og boligforvaltning.';
 
-// Steg: 0 = svart+bar · 1 = skriver · 2 = sendt+tenker (auto→3)
-//       3 = reveal · 4 = tittel · 5 = påstand 1 · 6 = påstand 1+2
-const TOTALT = 7;
+// Steg: 0 = cover · 1 = bar · 2 = skriver · 3 = sendt+tenker (auto→4)
+//       4 = reveal (svart) · 5 = tittel (lys) · 6 = påstand 1 · 7 = påstand 1+2
+const TOTALT = 8;
 
 export default function BergenUrbanDeck() {
   const [steg, setSteg] = useState(0);
@@ -33,7 +34,7 @@ export default function BergenUrbanDeck() {
   const musTimer = useRef(null);
 
   const neste = useCallback(() => setSteg((s) => Math.min(TOTALT - 1, s + 1)), []);
-  const forrige = useCallback(() => setSteg((s) => (s === 3 ? 1 : Math.max(0, s - 1))), []);
+  const forrige = useCallback(() => setSteg((s) => (s === 4 ? 2 : Math.max(0, s - 1))), []);
 
   const fullskjerm = useCallback(() => {
     try {
@@ -57,8 +58,8 @@ export default function BergenUrbanDeck() {
 
   // Skriveanimasjon — naturlig, litt ujevn rytme
   useEffect(() => {
-    if (steg === 0) { setAntallTegn(0); return undefined; }
-    if (steg === 1) {
+    if (steg <= 1) { setAntallTegn(0); return undefined; }
+    if (steg === 2) {
       if (antallTegn >= PROMPT.length) return undefined;
       const t = setTimeout(() => setAntallTegn((n) => n + 1), 26 + Math.random() * 62);
       return () => clearTimeout(t);
@@ -67,11 +68,11 @@ export default function BergenUrbanDeck() {
     return undefined;
   }, [steg, antallTegn]);
 
-  // Send → tenkeprikker → auto-overgang til svaret («lyset skrus på»)
+  // Send → tenkeprikker → auto-overgang til svaret
   useEffect(() => {
-    if (steg !== 2) { setTenker(false); return undefined; }
+    if (steg !== 3) { setTenker(false); return undefined; }
     const t1 = setTimeout(() => setTenker(true), 520);
-    const t2 = setTimeout(() => setSteg(3), 3300);
+    const t2 = setTimeout(() => setSteg(4), 3300);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [steg]);
 
@@ -90,7 +91,7 @@ export default function BergenUrbanDeck() {
   // Mockup-skalering (portalens designbredde er 880 px, naturlig høyde ~540)
   useEffect(() => {
     const maal = () => {
-      const s = Math.min((window.innerWidth * 0.56) / 880, (window.innerHeight - 290) / 540, 1);
+      const s = Math.min((window.innerWidth * 0.56) / 880, (window.innerHeight - 270) / 540, 1);
       setMockSkala(Math.max(0.42, s));
     };
     maal();
@@ -106,17 +107,24 @@ export default function BergenUrbanDeck() {
   };
 
   const skrevet = PROMPT.slice(0, antallTegn);
-  const klarTilSend = antallTegn >= PROMPT.length && steg >= 1;
-  const morkAktiv = steg <= 2;
-  const revealAktiv = steg === 3;
-  const tittelAktiv = steg === 4;
-  const hookAktiv = steg >= 5;
-  const bygg = Math.max(0, steg - 5);
+  const klarTilSend = antallTegn >= PROMPT.length && steg >= 2;
+  const morkAktiv = steg <= 4;
+  const coverAktiv = steg === 0;
+  const promptAktiv = steg >= 1 && steg <= 3;
+  const revealAktiv = steg === 4;
+  const tittelAktiv = steg === 5;
+  const hookAktiv = steg >= 6;
+  const bygg = Math.max(0, steg - 6);
 
   const telefonB = Math.round(Math.min(258, Math.max(176, 258 * mockSkala * 1.12)));
   const overheng = Math.round(telefonB * 0.4);
 
-  // Cinematisk slide-overgang for de lyse slidene
+  // Cinematisk crossfade innad i den svarte scenen
+  const gruppeKlasse = (aktiv) => (aktiv
+    ? 'pointer-events-auto opacity-100 blur-0 scale-100'
+    : 'pointer-events-none opacity-0 blur-[12px] scale-[0.99]');
+
+  // Overgang for de lyse slidene
   const lysKlasse = (aktiv, retning) => (aktiv
     ? 'pointer-events-auto opacity-100 blur-0 scale-100'
     : `pointer-events-none opacity-0 blur-[16px] ${retning === 'inn' ? 'scale-[1.03]' : 'scale-[0.98]'}`);
@@ -134,52 +142,7 @@ export default function BergenUrbanDeck() {
         style={{ background: 'radial-gradient(120% 90% at 50% 42%, #ffffff 0%, #fbfbfb 55%, #f2f2f2 100%)' }}
       />
 
-      {/* ═══ AKT 2 — SVARET: DigiHome-systemet materialiserer seg ═══ */}
-      <section
-        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${lysKlasse(revealAktiv, 'inn')}`}
-        data-testid="bu-slide-reveal"
-      >
-        <header className="flex justify-start px-12 pt-11 md:px-16">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
-        </header>
-
-        {/* Prompten blir stående — spørsmålet over svaret */}
-        <p
-          className={`mt-7 px-8 text-center text-[clamp(13px,1.2vw,16px)] text-[#98989d] transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-4 opacity-0 blur-[6px]'}`}
-          style={{ transitionDelay: revealAktiv ? '250ms' : '0ms' }}
-        >
-          «{PROMPT}»
-        </p>
-
-        {/* Produktkomposisjonen — portal + telefon, iscenesatt inntreden */}
-        <div className="flex flex-1 items-center justify-center px-6 pb-10">
-          <div className="relative" style={{ width: Math.round(880 * mockSkala) + overheng, height: Math.round(540 * mockSkala) }}>
-            {/* Desktop-portalen */}
-            <div
-              className={`absolute left-0 top-0 transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-14 opacity-0 blur-[14px]'}`}
-              style={{ transitionDelay: revealAktiv ? '500ms' : '0ms' }}
-            >
-              <div className="bu-flyt">
-                <div className="origin-top-left" style={{ width: 880, transform: `scale(${mockSkala})` }}>
-                  <PortalMockup />
-                </div>
-              </div>
-            </div>
-            {/* iPhone — henger av portalens høyrekant */}
-            <div
-              className={`absolute bottom-[-16px] z-10 transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-20 opacity-0 blur-[14px]'}`}
-              style={{ right: 0, width: telefonB, transitionDelay: revealAktiv ? '950ms' : '0ms' }}
-            >
-              <div className="bu-flyt-tlf">
-                <PhoneMockup />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ AKT 3 — TITTEL ═══ */}
+      {/* ═══ AKT 3 — TITTEL (lyset skrus på) ═══ */}
       <section
         className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${lysKlasse(tittelAktiv, 'inn')}`}
         data-testid="bu-slide-tittel"
@@ -250,44 +213,104 @@ export default function BergenUrbanDeck() {
         <footer className="pb-12" />
       </section>
 
-      {/* ═══ AKT 1 — PROMPTEN (svart, ligger øverst og «skrus av») ═══ */}
+      {/* ═══ DEN SVARTE SCENEN — cover, prompt og reveal (skrus av mot tittel) ═══ */}
       <section
-        className={`absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#050505] transition-opacity duration-[1700ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${morkAktiv ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
-        data-testid="bu-slide-prompt"
+        className={`absolute inset-0 z-20 bg-[#050505] transition-opacity duration-[1700ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${morkAktiv ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
+        data-testid="bu-svart-scene"
       >
-        {/* Svak luminans bak baren — som ett scenelys */}
-        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(52% 42% at 50% 47%, rgba(255,255,255,0.055) 0%, transparent 100%)' }} />
-
-        {/* Chat-baren */}
-        <div className={`relative flex w-[min(720px,88vw)] items-center gap-3 rounded-[28px] border border-white/[0.09] bg-[#161616] py-3 pl-4 pr-3 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)] transition-transform duration-700 ${steg >= 2 ? 'scale-[0.985]' : 'scale-100'}`}>
-          {/* Pluss */}
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/40">
-            <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          </span>
-          {/* Tekstfelt */}
-          <p className="min-h-[27px] flex-1 text-[16.5px] leading-[27px] text-[#ececec] md:text-[18px]" data-testid="bu-prompt-tekst">
-            {steg === 0 && <span className="text-white/30">Spør om hva som helst</span>}
-            {steg >= 1 && (
-              <>
-                {skrevet}
-                {steg <= 1 && <span className="bu-blink ml-[1px] inline-block h-[1.1em] w-[2px] translate-y-[0.18em] bg-white/90" />}
-              </>
-            )}
+        {/* ── AKT 0: COVER — ikon, navn, «Utleie på autopilot.» ── */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center px-6 transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(coverAktiv)}`}
+          data-testid="bu-cover"
+        >
+          <div className="bu-inn overflow-hidden rounded-[24px] shadow-[0_50px_130px_-25px_rgba(155,91,214,0.55)]" style={{ animationDelay: '250ms' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/digihome-mark.svg" alt="DigiHome-ikon" className="h-[96px] w-[96px] md:h-[112px] md:w-[112px]" />
+          </div>
+          <h1 className="bu-inn mt-10 font-heading text-[clamp(52px,8vw,116px)] font-bold leading-none tracking-[-0.04em] text-white" style={{ animationDelay: '500ms' }}>
+            DigiHome
+          </h1>
+          <p className="bu-inn mt-5 font-heading text-[clamp(18px,2vw,27px)] font-medium tracking-[-0.022em] text-white/50" style={{ animationDelay: '800ms' }}>
+            Utleie på autopilot<span className="text-[#B57BFF]">.</span>
           </p>
-          {/* Send */}
-          <span
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-500 ${klarTilSend ? 'bg-white text-black' : 'bg-white/10 text-white/30'} ${steg >= 2 ? 'bu-puls' : ''}`}
-            data-testid="bu-send"
-          >
-            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
-          </span>
         </div>
 
-        {/* Tenkeprikker */}
-        <div className={`mt-10 flex items-center gap-[7px] transition-opacity duration-500 ${tenker ? 'opacity-100' : 'opacity-0'}`} data-testid="bu-tenker">
-          <span className="bu-dot h-[7px] w-[7px] rounded-full bg-white/70" />
-          <span className="bu-dot h-[7px] w-[7px] rounded-full bg-white/70" style={{ animationDelay: '0.18s' }} />
-          <span className="bu-dot h-[7px] w-[7px] rounded-full bg-white/70" style={{ animationDelay: '0.36s' }} />
+        {/* ── AKT 1: PROMPTEN ── */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(promptAktiv)}`}
+          data-testid="bu-prompt"
+        >
+          {/* Svak luminans bak baren — som ett scenelys */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(52% 42% at 50% 47%, rgba(255,255,255,0.055) 0%, transparent 100%)' }} />
+
+          <div className={`relative flex w-[min(720px,88vw)] items-center gap-3 rounded-[28px] border border-white/[0.09] bg-[#161616] py-3 pl-4 pr-3 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)] transition-transform duration-700 ${steg >= 3 ? 'scale-[0.985]' : 'scale-100'}`}>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/40">
+              <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            </span>
+            <p className="min-h-[27px] flex-1 text-[16.5px] leading-[27px] text-[#ececec] md:text-[18px]" data-testid="bu-prompt-tekst">
+              {steg <= 1 && <span className="text-white/30">Spør om hva som helst</span>}
+              {steg >= 2 && (
+                <>
+                  {skrevet}
+                  {steg <= 2 && <span className="bu-blink ml-[1px] inline-block h-[1.1em] w-[2px] translate-y-[0.18em] bg-white/90" />}
+                </>
+              )}
+            </p>
+            <span
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-500 ${klarTilSend ? 'bg-white text-black' : 'bg-white/10 text-white/30'} ${steg >= 3 ? 'bu-puls' : ''}`}
+              data-testid="bu-send"
+            >
+              <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+            </span>
+          </div>
+
+          {/* Tenkeprikker */}
+          <div className={`mt-10 flex items-center gap-[7px] transition-opacity duration-500 ${tenker ? 'opacity-100' : 'opacity-0'}`} data-testid="bu-tenker">
+            <span className="bu-dot h-[7px] w-[7px] rounded-full bg-white/70" />
+            <span className="bu-dot h-[7px] w-[7px] rounded-full bg-white/70" style={{ animationDelay: '0.18s' }} />
+            <span className="bu-dot h-[7px] w-[7px] rounded-full bg-white/70" style={{ animationDelay: '0.36s' }} />
+          </div>
+        </div>
+
+        {/* ── AKT 2: SVARET — systemet i ett scenelys, mot svart ── */}
+        <div
+          className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(revealAktiv)}`}
+          data-testid="bu-reveal"
+        >
+          {/* Scenelys bak produktet */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(64% 56% at 50% 56%, rgba(255,255,255,0.09) 0%, transparent 100%)' }} />
+
+          {/* Prompten blir stående — spørsmålet over svaret */}
+          <p
+            className={`mt-[7.5vh] px-8 text-center text-[clamp(13px,1.2vw,16px)] text-white/40 transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-4 opacity-0 blur-[6px]'}`}
+            style={{ transitionDelay: revealAktiv ? '250ms' : '0ms' }}
+          >
+            «{PROMPT}»
+          </p>
+
+          {/* Produktkomposisjonen — portal + telefon, iscenesatt inntreden */}
+          <div className="flex flex-1 items-center justify-center px-6 pb-10">
+            <div className="relative" style={{ width: Math.round(880 * mockSkala) + overheng, height: Math.round(540 * mockSkala) }}>
+              <div
+                className={`absolute left-0 top-0 transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-14 opacity-0 blur-[14px]'}`}
+                style={{ transitionDelay: revealAktiv ? '500ms' : '0ms' }}
+              >
+                <div className="bu-flyt">
+                  <div className="origin-top-left" style={{ width: 880, transform: `scale(${mockSkala})` }}>
+                    <PortalMockup />
+                  </div>
+                </div>
+              </div>
+              <div
+                className={`absolute bottom-[-16px] z-10 transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-20 opacity-0 blur-[14px]'}`}
+                style={{ right: 0, width: telefonB, transitionDelay: revealAktiv ? '950ms' : '0ms' }}
+              >
+                <div className="bu-flyt-tlf rounded-[46px]" style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.12), 0 60px 140px -30px rgba(0,0,0,0.9)' }}>
+                  <PhoneMockup />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -316,7 +339,7 @@ export default function BergenUrbanDeck() {
           from { opacity: 0; transform: translateY(14px); filter: blur(8px); }
           to { opacity: 1; transform: translateY(0); filter: blur(0); }
         }
-        .bu-inn { animation: buInn 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .bu-inn { opacity: 0; animation: buInn 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
         @keyframes buDrift {
           from { transform: scale(1); }
           to { transform: scale(1.016); }
