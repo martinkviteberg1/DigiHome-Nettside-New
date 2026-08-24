@@ -1,13 +1,13 @@
 'use client';
 
 /* ═══════════════════ Bergen Urban — presentasjonsdeck ═══════════════════
-   Superminimalistisk keynote: én varm off-white flate, ren monokrom
-   typografi, null chrome. Cinematiske overganger: blur-dissolve med subtil
-   skalering (rack focus) — Apple-nivå ro.
+   Apple-keynote-minimalisme med ekte kinematografi:
+   – Film-tittel «mask reveal»: tittellinjene glir opp fra en usynlig kant
+   – Umerkelig Ken Burns-drift på tittelen (lever, uten å mase)
+   – Myk luminans-vignett (ingen farger — kun lys)
+   – Lange blur-dissolve-overganger med rack focus på hooken
    Navigasjon: → / mellomrom / PageDown (klikker) = neste steg,
-   ← / PageUp = forrige, F = fullskjerm, Home/End = start/slutt.
-   Slide 2 har «builds»: påstand 1 alene → neste tastetrykk avslører
-   påstand 2 i blyant-håndskrift mens påstand 1 glir ut av fokus. */
+   ← / PageUp = forrige, F = fullskjerm, Home/End = start/slutt. */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Caveat } from 'next/font/google';
@@ -66,10 +66,10 @@ export default function BergenUrbanDeck() {
     if (x < 0.3) forrige(); else neste();
   };
 
-  // Cinematisk slide-overgang: blur-dissolve + subtil skalering (rack focus)
+  // Cinematisk slide-overgang: lang blur-dissolve + subtil skalering
   const slideKlasse = (aktiv, retning) => (aktiv
     ? 'pointer-events-auto opacity-100 blur-0 scale-100'
-    : `pointer-events-none opacity-0 blur-[14px] ${retning === 'inn' ? 'scale-[1.035]' : 'scale-[0.975]'}`);
+    : `pointer-events-none opacity-0 blur-[16px] ${retning === 'inn' ? 'scale-[1.03]' : 'scale-[0.98]'}`);
 
   return (
     <main
@@ -77,35 +77,41 @@ export default function BergenUrbanDeck() {
       className={`relative h-dvh w-full select-none overflow-hidden bg-[#fcfcfc] font-body text-[#0f0f0f] ${musSynlig ? '' : 'cursor-none'}`}
       data-testid="bu-deck"
     >
+      {/* ── Luminans-vignett: kun lys, ingen farge — gir scenen dybde ── */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{ background: 'radial-gradient(120% 90% at 50% 42%, #ffffff 0%, #fbfbfb 55%, #f2f2f2 100%)' }}
+      />
+
       {/* ═══ SLIDE 1 — Forside ═══ */}
       <section
-        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${slideKlasse(slide === 0, 'ut')}`}
+        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${slideKlasse(slide === 0, 'ut')}`}
         data-testid="bu-slide-1"
       >
-        {/* Eneste merke: ørlite monokromt wordmark */}
-        <header className="px-14 pt-12 md:px-24">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[17px] w-auto opacity-50 grayscale" />
+        {/* Wordmark — rent tekstmerke, sentrert som på en keynote-scene */}
+        <header className="bu-inn flex justify-center pt-14" style={{ animationDelay: '120ms' }}>
+          <p className="font-heading text-[17px] font-bold tracking-[-0.02em] text-[#0f0f0f]/80">digihome</p>
         </header>
 
-        {/* Typografien er alt */}
+        {/* Tittel — film-tittel mask reveal + umerkelig drift */}
         <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-          <h1
-            className="bu-inn font-heading text-[clamp(64px,10.5vw,158px)] font-bold leading-[0.98] tracking-[-0.05em]"
-            style={{ animationDelay: '300ms' }}
-          >
-            Vibe coding
-            <br />
-            i praksis.
+          <h1 className="bu-drift font-heading text-[clamp(44px,7vw,110px)] font-bold leading-[1.06] tracking-[-0.04em]">
+            <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
+              <span className="bu-linje block" style={{ animationDelay: '480ms' }}>Vibe coding</span>
+            </span>
+            <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
+              <span className="bu-linje block" style={{ animationDelay: '680ms' }}>i praksis.</span>
+            </span>
           </h1>
-          <p className="bu-inn mt-12 text-[clamp(15px,1.5vw,19px)] text-[#86868b]" style={{ animationDelay: '900ms' }}>
+          <p className="bu-inn mt-11 text-[clamp(14px,1.2vw,17px)] text-[#86868b]" style={{ animationDelay: '1650ms' }}>
             Historien om hvordan DigiHome ble til
           </p>
         </div>
 
         {/* Stille signatur */}
-        <footer className="bu-inn pb-12 text-center" style={{ animationDelay: '1400ms' }}>
-          <p className="text-[12.5px] tracking-tight text-[#a1a1a6]">
+        <footer className="bu-inn pb-12 text-center" style={{ animationDelay: '2300ms' }}>
+          <p className="text-[12px] tracking-tight text-[#b0b0b5]">
             Martin Kviteberg&ensp;·&ensp;Bergen Urban
           </p>
         </footer>
@@ -113,33 +119,41 @@ export default function BergenUrbanDeck() {
 
       {/* ═══ SLIDE 2 — Paradoks-hook ═══ */}
       <section
-        className={`absolute inset-0 flex flex-col items-center justify-center px-8 transition-[opacity,transform,filter] duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] md:px-16 ${slideKlasse(slide === 1, 'inn')}`}
+        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${slideKlasse(slide === 1, 'inn')}`}
         data-testid="bu-slide-2"
       >
-        {/* Kamera-glid: påstand 1 står optisk sentrert alene — hele
-            komposisjonen glir mykt opp idet påstand 2 toner inn */}
-        <div className={`flex w-full flex-col items-center transition-transform duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${bygg >= 1 ? 'translate-y-0' : 'translate-y-[13vh]'}`}>
-          {/* Påstand 1 — glir ut av fokus når påstand 2 kommer (rack focus) */}
-          <div
-            className={`max-w-[1180px] text-center transition-[opacity,transform,filter] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${bygg >= 1 ? 'scale-[0.965] opacity-25 blur-[3px]' : 'scale-100 opacity-100 blur-0'}`}
-          >
-            <p className="text-[13px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">01</p>
-            <h2 className="mt-8 font-heading text-[clamp(36px,5vw,72px)] font-bold leading-[1.12] tracking-[-0.03em]" data-testid="bu-paastand-1">
-              DigiHome er blant verdens mest avanserte <span className="whitespace-nowrap">vibe-kodede</span> applikasjoner.
-            </h2>
-          </div>
+        <header className="flex justify-center pt-14">
+          <p className="font-heading text-[15px] font-bold tracking-[-0.02em] text-[#0f0f0f]/25">digihome</p>
+        </header>
 
-          {/* Påstand 2 — blyant-håndskrift, blur-dissolve inn */}
-          <div
-            className={`mt-16 max-w-[1020px] text-center transition-[opacity,transform,filter] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)] md:mt-20 ${bygg >= 1 ? 'translate-y-0 opacity-100 blur-0' : 'pointer-events-none translate-y-7 opacity-0 blur-[10px]'}`}
-            data-testid="bu-paastand-2"
-          >
-            <p className="text-[13px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">02</p>
-            <p className={`${caveat.className} mt-7 -rotate-[1.3deg] text-[clamp(42px,5.5vw,84px)] font-semibold leading-[1.1] text-[#2d2d2f]`}>
-              «En 6-åring kunne ha <span className="whitespace-nowrap">vibe-kodet</span> DigiHome.»
-            </p>
+        <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-16">
+          {/* Kamera-glid: påstand 1 står optisk sentrert alene — hele
+              komposisjonen glir mykt opp idet påstand 2 toner inn */}
+          <div className={`flex w-full flex-col items-center transition-transform duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${bygg >= 1 ? 'translate-y-0' : 'translate-y-[12vh]'}`}>
+            {/* Påstand 1 — glir ut av fokus når påstand 2 kommer (rack focus) */}
+            <div
+              className={`max-w-[980px] text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${bygg >= 1 ? 'scale-[0.96] opacity-20 blur-[4px]' : 'scale-100 opacity-100 blur-0'}`}
+            >
+              <p className="text-[12px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">01</p>
+              <h2 className="mt-7 font-heading text-[clamp(30px,4vw,58px)] font-bold leading-[1.15] tracking-[-0.03em]" data-testid="bu-paastand-1">
+                DigiHome er blant verdens mest avanserte <span className="whitespace-nowrap">vibe-kodede</span> applikasjoner.
+              </h2>
+            </div>
+
+            {/* Påstand 2 — blyant-håndskrift, blur-dissolve inn */}
+            <div
+              className={`mt-14 max-w-[900px] text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] md:mt-[4.5rem] ${bygg >= 1 ? 'translate-y-0 opacity-100 blur-0' : 'pointer-events-none translate-y-8 opacity-0 blur-[12px]'}`}
+              data-testid="bu-paastand-2"
+            >
+              <p className="text-[12px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">02</p>
+              <p className={`${caveat.className} mt-6 -rotate-[1.3deg] text-[clamp(34px,4.6vw,68px)] font-semibold leading-[1.12] text-[#2d2d2f]`}>
+                «En 6-åring kunne ha <span className="whitespace-nowrap">vibe-kodet</span> DigiHome.»
+              </p>
+            </div>
           </div>
         </div>
+
+        <footer className="pb-12" />
       </section>
 
       {/* ── Fullskjerm (kun synlig ved musbevegelse — usynlig på scenen) ── */}
@@ -155,13 +169,26 @@ export default function BergenUrbanDeck() {
         </svg>
       </button>
 
-      {/* Cinematisk inntreden (forsiden): blur-dissolve nedenfra */}
+      {/* Kinematografi: mask reveal, blur-dissolve og umerkelig drift */}
       <style jsx global>{`
+        @keyframes buLinje {
+          from { transform: translateY(112%); }
+          to { transform: translateY(0); }
+        }
+        .bu-linje {
+          transform: translateY(112%);
+          animation: buLinje 1.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
         @keyframes buInn {
-          from { opacity: 0; transform: translateY(16px); filter: blur(10px); }
+          from { opacity: 0; transform: translateY(14px); filter: blur(8px); }
           to { opacity: 1; transform: translateY(0); filter: blur(0); }
         }
-        .bu-inn { opacity: 0; animation: buInn 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .bu-inn { opacity: 0; animation: buInn 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        @keyframes buDrift {
+          from { transform: scale(1); }
+          to { transform: scale(1.016); }
+        }
+        .bu-drift { animation: buDrift 26s ease-in-out 2.2s infinite alternate; }
       `}</style>
     </main>
   );
