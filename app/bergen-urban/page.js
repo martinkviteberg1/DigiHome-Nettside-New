@@ -74,7 +74,7 @@ export default function BergenUrbanDeck() {
   return (
     <main
       onClick={klikk}
-      className={`relative h-dvh w-full select-none overflow-hidden bg-[#fbfbfa] font-body text-[#1a1917] ${musSynlig ? '' : 'cursor-none'}`}
+      className={`relative h-dvh w-full select-none overflow-hidden bg-[#fafafa] font-body text-[#141414] ${musSynlig ? '' : 'cursor-none'}`}
       data-testid="bu-deck"
     >
       {/* ═══ SLIDE 1 — Forside ═══ */}
@@ -96,16 +96,16 @@ export default function BergenUrbanDeck() {
           >
             Vibe coding
             <br />
-            <span className="text-[#c9c5be]">i praksis.</span>
+            <span className="text-[#98989d]">i praksis.</span>
           </h1>
-          <p className="bu-inn mt-12 text-[clamp(15px,1.5vw,19px)] text-[#8a857d]" style={{ animationDelay: '900ms' }}>
+          <p className="bu-inn mt-12 text-[clamp(15px,1.5vw,19px)] text-[#86868b]" style={{ animationDelay: '900ms' }}>
             Historien om hvordan DigiHome ble til
           </p>
         </div>
 
         {/* Stille signatur */}
         <footer className="bu-inn pb-12 text-center" style={{ animationDelay: '1400ms' }}>
-          <p className="text-[12.5px] tracking-tight text-[#b3aea7]">
+          <p className="text-[12.5px] tracking-tight text-[#a1a1a6]">
             Martin Kviteberg&ensp;·&ensp;Bergen Urban
           </p>
         </footer>
@@ -123,7 +123,7 @@ export default function BergenUrbanDeck() {
           <div
             className={`max-w-[1180px] text-center transition-[opacity,transform,filter] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${bygg >= 1 ? 'scale-[0.965] opacity-25 blur-[3px]' : 'scale-100 opacity-100 blur-0'}`}
           >
-            <p className="text-[13px] font-semibold tabular-nums tracking-[0.25em] text-[#cdc9c2]">01</p>
+            <p className="text-[13px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">01</p>
             <h2 className="mt-8 font-heading text-[clamp(36px,5vw,72px)] font-bold leading-[1.12] tracking-[-0.03em]" data-testid="bu-paastand-1">
               DigiHome er blant verdens mest avanserte <span className="whitespace-nowrap">vibe-kodede</span> applikasjoner.
             </h2>
@@ -134,8 +134,8 @@ export default function BergenUrbanDeck() {
             className={`mt-16 max-w-[1020px] text-center transition-[opacity,transform,filter] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)] md:mt-20 ${bygg >= 1 ? 'translate-y-0 opacity-100 blur-0' : 'pointer-events-none translate-y-7 opacity-0 blur-[10px]'}`}
             data-testid="bu-paastand-2"
           >
-            <p className="text-[13px] font-semibold tabular-nums tracking-[0.25em] text-[#cdc9c2]">02</p>
-            <p className={`${caveat.className} mt-7 -rotate-[1.3deg] text-[clamp(42px,5.5vw,84px)] font-semibold leading-[1.1] text-[#3d3934]`}>
+            <p className="text-[13px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">02</p>
+            <p className={`${caveat.className} mt-7 -rotate-[1.3deg] text-[clamp(42px,5.5vw,84px)] font-semibold leading-[1.1] text-[#2d2d2f]`}>
               «En 6-åring kunne ha <span className="whitespace-nowrap">vibe-kodet</span> DigiHome.»
             </p>
           </div>
@@ -147,7 +147,7 @@ export default function BergenUrbanDeck() {
         onClick={(e) => { e.stopPropagation(); fullskjerm(); }}
         title="Fullskjerm (F)"
         aria-label="Fullskjerm"
-        className={`absolute bottom-6 right-6 flex h-9 w-9 items-center justify-center rounded-full text-[#cdc9c2] transition-opacity duration-300 hover:text-[#1a1917] ${musSynlig ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute bottom-6 right-6 flex h-9 w-9 items-center justify-center rounded-full text-[#c7c7cc] transition-opacity duration-300 hover:text-[#141414] ${musSynlig ? 'opacity-100' : 'opacity-0'}`}
         data-testid="bu-fullskjerm"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
