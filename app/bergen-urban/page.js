@@ -1,12 +1,13 @@
 'use client';
 
-/* ═══════════════════ Bergen Urban — presentasjonsdeck (lys) ═══════════════════
-   Moderne, redaksjonelt scenedeck i DigiHomes lyse designspråk: varmt papir,
-   dot-grid, lavendel-glød, chip-badges og hairline-metarad.
+/* ═══════════════════ Bergen Urban — presentasjonsdeck ═══════════════════
+   Keynote-minimalisme: varm off-white flate, monokrom typografi i verdens-
+   klasse, ÉN aksentfarge brukt på ett ord i hele decket. Ingen pynt —
+   typografien og luften gjør jobben.
    Navigasjon: → / mellomrom / PageDown (klikker) = neste steg,
    ← / PageUp = forrige, F = fullskjerm, Home/End = start/slutt.
    Slide 2 har «builds»: påstand 1 vises først — neste tastetrykk avslører
-   påstand 2 i 6-årings-håndskrift. Musepekeren skjules etter 2,5 s ro. */
+   påstand 2 i blyant-håndskrift. Musepekeren skjules etter 2,5 s ro. */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Caveat } from 'next/font/google';
@@ -70,136 +71,101 @@ export default function BergenUrbanDeck() {
   return (
     <main
       onClick={klikk}
-      className={`relative h-dvh w-full select-none overflow-hidden bg-[#f7f6f3] font-body text-[#0a0a0a] ${musSynlig ? '' : 'cursor-none'}`}
+      className={`relative h-dvh w-full select-none overflow-hidden bg-[#fbfbfa] font-body text-[#1a1917] ${musSynlig ? '' : 'cursor-none'}`}
       data-testid="bu-deck"
     >
-      {/* ── Bakgrunn: varmt papir + dot-grid + lavendel-glød ── */}
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div
-          className="absolute inset-0"
-          style={{ backgroundImage: 'radial-gradient(circle, rgba(28,25,23,0.06) 1px, transparent 1px)', backgroundSize: '26px 26px' }}
-        />
-        <div className="absolute -top-[28%] right-[-12%] h-[72vh] w-[56vw] rounded-full bg-[#d298ff] opacity-[0.17] blur-[130px]" />
-        <div className="absolute bottom-[-32%] left-[-14%] h-[62vh] w-[50vw] rounded-full bg-[#7c3aed] opacity-[0.07] blur-[140px]" />
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/[0.07] to-transparent" />
-      </div>
+      {/* ── Bakgrunn: én ren, varm off-white flate — ingenting annet ── */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[#fbfbfa]" />
 
-      {/* ═══ SLIDE 1 — Forside (redaksjonell, venstrestilt) ═══ */}
+      {/* ═══ SLIDE 1 — Forside ═══ */}
       <section
-        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-700 ease-out ${slide === 0 ? 'pointer-events-auto translate-y-0 opacity-100 blur-0' : 'pointer-events-none -translate-y-8 opacity-0 blur-[6px]'}`}
+        className={`absolute inset-0 flex flex-col transition-[opacity,transform] duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${slide === 0 ? 'pointer-events-auto scale-100 opacity-100' : 'pointer-events-none scale-[1.015] opacity-0'}`}
         data-testid="bu-slide-1"
       >
-        {/* Toppbar */}
-        <header className="flex items-center justify-between px-10 pt-9 md:px-20">
+        {/* Toppbar — nesten usynlig */}
+        <header className="flex items-center justify-between px-12 pt-10 md:px-20">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-6 w-auto md:h-7" />
-          <span className="flex items-center gap-2 rounded-full border border-black/[0.08] bg-white/70 px-3.5 py-1.5 backdrop-blur">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7c3aed] opacity-60" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#7c3aed]" />
-            </span>
-            <span className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#57534e]">Bergen Urban</span>
-          </span>
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-5 w-auto opacity-70" />
+          <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[#b3aea7]">Bergen Urban</p>
         </header>
 
-        {/* Midtparti — venstrestilt display-typografi */}
-        <div className="flex flex-1 flex-col justify-center px-10 md:px-20">
-          <p className="bu-inn text-[11.5px] font-bold uppercase tracking-[0.3em] text-[#7c3aed] md:text-[13px]" style={{ animationDelay: '150ms' }}>
+        {/* Midtparti — sentrert, typografien er alt */}
+        <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+          <p className="bu-inn text-[11px] font-semibold uppercase tracking-[0.34em] text-[#b3aea7]" style={{ animationDelay: '200ms' }}>
             Et foredrag om å bygge programvare med AI
           </p>
           <h1
-            className="bu-inn mt-6 font-heading text-[clamp(58px,10.5vw,150px)] font-bold leading-[0.98] tracking-[-0.045em]"
-            style={{ animationDelay: '330ms' }}
+            className="bu-inn mt-9 font-heading text-[clamp(60px,10vw,148px)] font-bold leading-[1.0] tracking-[-0.045em]"
+            style={{ animationDelay: '420ms' }}
           >
             Vibe coding
             <br />
-            <span className="bg-gradient-to-r from-[#7c3aed] via-[#9d5cf0] to-[#c084fc] bg-clip-text text-transparent">i praksis</span>
+            <span className="text-[#c6c1b9]">i praksis.</span>
           </h1>
-          <p className="bu-inn mt-8 max-w-[520px] text-[clamp(15px,1.6vw,20px)] leading-relaxed text-[#78716c]" style={{ animationDelay: '560ms' }}>
+          <p className="bu-inn mt-10 text-[clamp(15px,1.5vw,19px)] leading-relaxed text-[#8a857d]" style={{ animationDelay: '680ms' }}>
             Historien om hvordan DigiHome ble til
           </p>
         </div>
 
-        {/* Metarad — hairlines og mikroetiketter */}
-        <footer className="bu-inn px-10 pb-9 md:px-20" style={{ animationDelay: '780ms' }}>
-          <div className="flex items-end justify-between gap-8 border-t border-black/[0.08] pt-6">
-            <div className="grid grid-cols-2 gap-x-14 gap-y-4 md:grid-cols-3">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a8a29a]">Foredragsholder</p>
-                <p className="mt-1.5 text-[15px] font-semibold tracking-tight">Martin Kviteberg</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a8a29a]">Selskap</p>
-                <p className="mt-1.5 text-[15px] font-semibold tracking-tight">DigiHome · Bergen</p>
-              </div>
-              <div className="hidden md:block">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a8a29a]">Arena</p>
-                <p className="mt-1.5 text-[15px] font-semibold tracking-tight">Bergen Urban</p>
-              </div>
-            </div>
-            <p className={`mb-0.5 flex shrink-0 items-center gap-2 text-[12px] text-[#a8a29a] transition-opacity duration-500 ${harNavigert ? 'opacity-0' : 'opacity-100'}`}>
-              Bruk piltastene
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-black/10 bg-white text-[#57534e] shadow-sm">→</span>
-            </p>
-          </div>
+        {/* Bunn — stille signatur */}
+        <footer className="bu-inn relative px-12 pb-10 md:px-20" style={{ animationDelay: '920ms' }}>
+          <p className="text-center text-[12.5px] tracking-tight text-[#8a857d]">
+            <span className="font-semibold text-[#1a1917]">Martin Kviteberg</span>
+            <span className="mx-2.5 text-[#d6d2cb]">·</span>
+            DigiHome, Bergen
+          </p>
+          <p className={`absolute bottom-10 right-12 flex items-center gap-2 text-[11.5px] text-[#c0bbb3] transition-opacity duration-500 md:right-20 ${harNavigert ? 'opacity-0' : 'opacity-100'}`}>
+            Piltast
+            <span className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-[6px] border border-black/[0.08] bg-white text-[#8a857d] shadow-[0_1px_1px_rgba(0,0,0,0.03)]">→</span>
+          </p>
         </footer>
       </section>
 
       {/* ═══ SLIDE 2 — Paradoks-hook ═══ */}
       <section
-        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-700 ease-out ${slide === 1 ? 'pointer-events-auto translate-y-0 opacity-100 blur-0' : 'pointer-events-none translate-y-8 opacity-0 blur-[6px]'}`}
+        className={`absolute inset-0 flex flex-col transition-[opacity,transform] duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${slide === 1 ? 'pointer-events-auto scale-100 opacity-100' : 'pointer-events-none scale-[0.985] opacity-0'}`}
         data-testid="bu-slide-2"
       >
-        {/* Diskret toppbar for kontinuitet */}
-        <header className="flex items-center justify-between px-10 pt-9 md:px-20">
+        {/* Toppbar for kontinuitet */}
+        <header className="flex items-center justify-between px-12 pt-10 md:px-20">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-5 w-auto opacity-40" />
-          <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#a8a29a]">Bergen Urban</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[#c0bbb3]">Bergen Urban</p>
         </header>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-14">
-          {/* Påstand 1 — dempes elegant når påstand 2 kommer */}
-          <div className={`max-w-[1120px] text-center transition-all duration-700 ease-out ${bygg >= 1 ? '-translate-y-2 scale-[0.93] opacity-50' : 'translate-y-0 scale-100 opacity-100'}`}>
-            <span className="inline-flex items-center gap-2.5 rounded-full border border-black/[0.08] bg-white/80 py-1.5 pl-1.5 pr-4 shadow-sm backdrop-blur">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#7c3aed] text-[10.5px] font-bold text-white">01</span>
-              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#57534e]">Sann påstand</span>
-            </span>
-            <h2 className="mt-7 font-heading text-[clamp(32px,4.9vw,68px)] font-bold leading-[1.12] tracking-[-0.03em]" data-testid="bu-paastand-1">
+        <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-16">
+          {/* Påstand 1 — trer stille tilbake når påstand 2 kommer */}
+          <div className={`max-w-[1140px] text-center transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${bygg >= 1 ? 'scale-[0.97] opacity-30' : 'scale-100 opacity-100'}`}>
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.32em] text-[#b3aea7]">Sann påstand № 1</p>
+            <h2 className="mt-7 font-heading text-[clamp(34px,4.9vw,70px)] font-bold leading-[1.14] tracking-[-0.03em]" data-testid="bu-paastand-1">
               DigiHome er blant verdens mest avanserte{' '}
-              <span className="whitespace-nowrap bg-gradient-to-r from-[#7c3aed] to-[#b16ef2] bg-clip-text text-transparent">vibe-kodede</span>{' '}
+              <span className="whitespace-nowrap text-[#7c3aed]">vibe-kodede</span>{' '}
               applikasjoner.
             </h2>
           </div>
 
-          {/* Påstand 2 — 6-åringens fargestift */}
+          {/* Påstand 2 — blyant-håndskrift */}
           <div
-            className={`mt-12 max-w-[960px] text-center transition-all duration-700 ease-out md:mt-14 ${bygg >= 1 ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-10 opacity-0'}`}
+            className={`mt-14 max-w-[1000px] text-center transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] md:mt-16 ${bygg >= 1 ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-6 opacity-0'}`}
             data-testid="bu-paastand-2"
           >
-            <span className="inline-flex items-center gap-2.5 rounded-full border border-[#d97706]/20 bg-[#fef7ea] py-1.5 pl-1.5 pr-4 shadow-sm">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#d97706] text-[10.5px] font-bold text-white">02</span>
-              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#b45309]">Sann påstand</span>
-            </span>
-            <p className={`${caveat.className} mt-6 -rotate-[1.8deg] text-[clamp(38px,5.6vw,84px)] font-semibold leading-[1.12] text-[#d97706]`}>
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.32em] text-[#b3aea7]">Sann påstand № 2</p>
+            <p className={`${caveat.className} mt-6 -rotate-[1.4deg] text-[clamp(40px,5.4vw,82px)] font-semibold leading-[1.1] text-[#3d3934]`}>
               «En 6-åring kunne ha <span className="whitespace-nowrap">vibe-kodet</span> DigiHome.»
             </p>
-            {/* Håndtegnet strek under */}
-            <svg viewBox="0 0 420 14" className="mx-auto mt-3 h-[11px] w-[min(440px,58%)] -rotate-[1.8deg] text-[#d97706]/60" fill="none" aria-hidden>
-              <path d="M4 9 C 80 3, 150 12, 220 7 S 360 4, 416 8" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" />
-            </svg>
           </div>
         </div>
 
-        <footer className="flex items-end justify-between px-10 pb-9 md:px-20">
-          <p className="text-[12px] tabular-nums text-[#a8a29a]">02 — {String(ANTALL_SLIDES).padStart(2, '0')}</p>
-          <p className={`text-[12px] text-[#a8a29a] transition-opacity duration-500 ${bygg >= 1 ? 'opacity-0' : 'opacity-100'}`}>→ én til</p>
+        <footer className="flex items-end justify-between px-12 pb-10 md:px-20">
+          <p className="text-[11.5px] tabular-nums tracking-wide text-[#c0bbb3]">02 / 0{ANTALL_SLIDES}</p>
+          <p className={`text-[11.5px] text-[#c0bbb3] transition-opacity duration-500 ${bygg >= 1 ? 'opacity-0' : 'opacity-100'}`}>→ én til</p>
         </footer>
       </section>
 
-      {/* ── Progresjonslinje ── */}
-      <div className="pointer-events-none absolute bottom-0 left-0 h-[2.5px] w-full bg-black/[0.05]">
+      {/* ── Progresjonslinje — hårfin ── */}
+      <div className="pointer-events-none absolute bottom-0 left-0 h-[2px] w-full bg-black/[0.04]">
         <div
-          className="h-full bg-gradient-to-r from-[#7c3aed] to-[#c084fc] transition-all duration-500 ease-out"
+          className="h-full bg-[#1a1917]/60 transition-all duration-700 ease-out"
           style={{ width: `${((steg + 1) / TOTALT) * 100}%` }}
           data-testid="bu-progresjon"
         />
@@ -210,7 +176,7 @@ export default function BergenUrbanDeck() {
         onClick={(e) => { e.stopPropagation(); fullskjerm(); }}
         title="Fullskjerm (F)"
         aria-label="Fullskjerm"
-        className={`absolute bottom-6 right-6 flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.08] bg-white/80 text-[#a8a29a] shadow-sm backdrop-blur transition-all duration-300 hover:text-[#0a0a0a] ${musSynlig ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute bottom-7 right-1/2 flex h-9 w-9 translate-x-1/2 items-center justify-center rounded-full border border-black/[0.06] bg-white/70 text-[#c0bbb3] shadow-[0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur transition-all duration-300 hover:text-[#1a1917] ${musSynlig ? 'opacity-100' : 'opacity-0'}`}
         data-testid="bu-fullskjerm"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -221,10 +187,10 @@ export default function BergenUrbanDeck() {
       {/* Lokale inntreden-animasjoner (forsiden) */}
       <style jsx global>{`
         @keyframes buInn {
-          from { opacity: 0; transform: translateY(20px); }
+          from { opacity: 0; transform: translateY(16px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .bu-inn { opacity: 0; animation: buInn 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .bu-inn { opacity: 0; animation: buInn 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
       `}</style>
     </main>
   );
