@@ -89,9 +89,10 @@ export default function BergenUrbanDeck() {
         className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${slideKlasse(slide === 0, 'ut')}`}
         data-testid="bu-slide-1"
       >
-        {/* Wordmark — rent tekstmerke, sentrert som på en keynote-scene */}
-        <header className="bu-inn flex justify-center pt-14" style={{ animationDelay: '120ms' }}>
-          <p className="font-heading text-[17px] font-bold tracking-[-0.02em] text-[#0f0f0f]/80">digihome</p>
+        {/* Wordmark — samme logo som forsiden på digihome.no, oppe til venstre */}
+        <header className="bu-inn flex justify-start px-12 pt-11 md:px-16" style={{ animationDelay: '120ms' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
         </header>
 
         {/* Tittel — film-tittel mask reveal + umerkelig drift */}
@@ -122,8 +123,9 @@ export default function BergenUrbanDeck() {
         className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${slideKlasse(slide === 1, 'inn')}`}
         data-testid="bu-slide-2"
       >
-        <header className="flex justify-center pt-14">
-          <p className="font-heading text-[15px] font-bold tracking-[-0.02em] text-[#0f0f0f]/25">digihome</p>
+        <header className="flex justify-start px-12 pt-11 md:px-16">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
         </header>
 
         <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-16">
