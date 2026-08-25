@@ -6,6 +6,7 @@ import {
   Users, Wrench, BookOpen, Wand2, PieChart, ScrollText, TrendingUp, DollarSign,
   Search, PanelLeftClose, ChevronDown, Sparkles, ArrowUpRight, Home,
   Droplets, HelpCircle, Timer, Circle, Clock, ChevronLeft, ChevronRight, Plus,
+  LayoutGrid, Filter, Lock,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -434,111 +435,301 @@ export default function ForvalterFullskjerm({ vis = true, modul = 'oversikt' }: 
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// KalenderVisning — månedsvisning i portalens designspråk (C_LIGHT).
-// Februar 2026 (uken starter mandag), fiktive hendelser som speiler
-// assistentens prioriteringer (rørlegger kl. 12 i dag, signering, visninger).
+// KalenderVisning — 1:1-replika av den faktiske kalendermodulen
+// (AdminCalendar.tsx, multi-visning): Airbnb-aktig tidslinje der radene er
+// enheter og kolonnene dager. Solide event-pills (korttidsbooking #FF385C,
+// langtidsleie #6366f1, sperret #484848, vedlikehold beige), lilla
+// «i dag»-pille (#7c3aed), hårfine rutenettlinjer og priser i cellene.
+// Mål og typografi er hentet direkte fra appen: COL 76 · ROW 80 · SIDE 280.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const KAL_UKEDAGER = ['man', 'tir', 'ons', 'tor', 'fre', 'lør', 'søn'];
-const KAL_IDAG = 10;
+const KCOL = 76;   // kolonnebredde (én dag) — MULTI_COL i appen
+const KROW = 80;   // radhøyde — MULTI_ROW i appen
+const KSIDE = 280; // enhetskolonnen — SIDE i appen
 
-const KAL_HENDELSER: Record<number, { t: string; c: string; bg: string }[]> = {
-  3: [{ t: 'Visning · Marken 8', c: C.blue, bg: C.blueBg }],
-  4: [{ t: 'Visning · Nygård 12', c: C.blue, bg: C.blueBg }],
-  6: [{ t: 'Signering · BankID', c: C.purple, bg: C.purpleBg }],
-  9: [{ t: 'Innflytting · Skuteviken 5', c: C.green, bg: C.greenBg }],
-  10: [{ t: 'Rørlegger kl. 12:00', c: C.amber, bg: C.amberBg }, { t: 'Visning · Marken 8', c: C.blue, bg: C.blueBg }],
-  13: [{ t: 'Husleie forfall', c: C.slate, bg: '#f1f1f3' }],
-  17: [{ t: 'Vedlikehold · ventilasjon', c: C.amber, bg: C.amberBg }],
-  19: [{ t: 'Visning · Kong Oscars gt.', c: C.blue, bg: C.blueBg }],
-  20: [{ t: 'Oppgjør huseiere', c: C.green, bg: C.greenBg }],
-  23: [{ t: 'Utflytting · Nygård 12', c: C.rose, bg: C.roseBg }],
-  25: [{ t: 'Visning · Skuteviken 5', c: C.blue, bg: C.blueBg }],
+// Februar 2026: 4.–21. — «i dag» er tirsdag 10. (indeks 6)
+const KUKEDAG = ['On', 'To', 'Fr', 'Lø', 'Sø', 'Ma', 'Ti', 'On', 'To', 'Fr', 'Lø', 'Sø', 'Ma', 'Ti', 'On', 'To', 'Fr', 'Lø'];
+const KDATO = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+const K_IDAG = 6;
+const K_DAGER = KDATO.length;
+const kHelg = (i: number) => KUKEDAG[i] === 'Lø' || KUKEDAG[i] === 'Sø';
+const kMandag = (i: number) => KUKEDAG[i] === 'Ma';
+
+// Kanal-avatarer — som SRC-fallback i appen (farget sirkel + initial)
+const KILDE: Record<string, { farge: string; bokstav: string }> = {
+  A: { farge: '#FF5A5F', bokstav: 'A' },  // Airbnb
+  B: { farge: '#003580', bokstav: 'B' },  // Booking.com
+  D: { farge: '#7c3aed', bokstav: 'D' },  // Direkte
 };
 
-// Rutenettet: man 26. jan → søn 1. mar (35 celler)
-const KAL_CELLER: { dag: number; iFeb: boolean }[] = [
-  ...[26, 27, 28, 29, 30, 31].map((d) => ({ dag: d, iFeb: false })),
-  ...Array.from({ length: 28 }, (_, i) => ({ dag: i + 1, iFeb: true })),
-  { dag: 1, iFeb: false },
+type KBar = {
+  type: 'booking' | 'lease' | 'block' | 'maint';
+  fra: number; len: number; tittel: string;
+  kilde?: string; netter?: number; pris?: string;
+  rl?: number; rr?: number; // turnover-hjørner (4px der bookinger møtes)
+};
+type KEnhet = { navn: string; omraade: string; modell: 'KT' | 'LT'; pris?: number; barer: KBar[] };
+
+const KENHETER: KEnhet[] = [
+  { navn: 'Marken 8 · Leilighet 2', omraade: 'Bergenhus', modell: 'KT', pris: 1850, barer: [
+    { type: 'booking', fra: 0, len: 4, tittel: 'Emma Berger', kilde: 'A', netter: 4, pris: '7 400 kr', rr: 4 },
+    { type: 'booking', fra: 4, len: 5, tittel: 'Jonas Müller', kilde: 'B', netter: 5, pris: '9 250 kr', rl: 4 },
+    { type: 'booking', fra: 11, len: 5, tittel: 'Claire Dubois', kilde: 'A', netter: 5, pris: '9 250 kr' },
+  ] },
+  { navn: 'Nygård 12 · H0301', omraade: 'Årstad', modell: 'LT', barer: [
+    { type: 'lease', fra: 0, len: 18, tittel: 'Sofie Hansen', pris: '18 500 kr/m' },
+  ] },
+  { navn: 'Skuteviken 5 · Sjøbod', omraade: 'Bergenhus', modell: 'KT', pris: 2400, barer: [
+    { type: 'booking', fra: 1, len: 3, tittel: 'Liam Carter', kilde: 'A', netter: 3, pris: '7 200 kr' },
+    { type: 'maint', fra: 5, len: 2, tittel: 'Rørlegger · bad' },
+    { type: 'booking', fra: 8, len: 5, tittel: 'Nora Vik', kilde: 'B', netter: 5, pris: '12 000 kr' },
+  ] },
+  { navn: 'Kong Oscars gt. 21', omraade: 'Bergenhus', modell: 'LT', barer: [
+    { type: 'lease', fra: 0, len: 18, tittel: 'Martin Solheim', pris: '16 900 kr/m' },
+  ] },
+  { navn: 'Møhlenpris 3 · Studio', omraade: 'Årstad', modell: 'KT', pris: 1450, barer: [
+    { type: 'booking', fra: 2, len: 4, tittel: 'Yuki Tanaka', kilde: 'B', netter: 4, pris: '5 800 kr' },
+    { type: 'booking', fra: 7, len: 3, tittel: 'Ida Strøm', kilde: 'A', netter: 3, pris: '4 350 kr' },
+    { type: 'block', fra: 12, len: 4, tittel: 'Eier · privat bruk' },
+  ] },
+  { navn: 'Sandviken 44 · H0102', omraade: 'Bergenhus', modell: 'LT', barer: [
+    { type: 'lease', fra: 0, len: 18, tittel: 'Anna Ruud', pris: '21 000 kr/m' },
+  ] },
+  { navn: 'Løvstakkveien 7 · H0203', omraade: 'Årstad', modell: 'KT', pris: 1650, barer: [
+    { type: 'booking', fra: 0, len: 3, tittel: 'Piotr Nowak', kilde: 'A', netter: 3, pris: '4 950 kr' },
+    { type: 'booking', fra: 5, len: 4, tittel: 'Sara Lie', kilde: 'A', netter: 4, pris: '6 600 kr' },
+    { type: 'booking', fra: 13, len: 4, tittel: 'Direktebooking', kilde: 'D', netter: 4, pris: '6 600 kr' },
+  ] },
+  { navn: 'Strandgaten 19 · Loft', omraade: 'Bergenhus', modell: 'KT', pris: 2100, barer: [
+    { type: 'booking', fra: 3, len: 5, tittel: 'María García', kilde: 'B', netter: 5, pris: '10 500 kr' },
+    { type: 'booking', fra: 10, len: 4, tittel: 'Erik Dahl', kilde: 'A', netter: 4, pris: '8 400 kr' },
+  ] },
+  { navn: 'Fjellsiden 2 · H0401', omraade: 'Bergenhus', modell: 'LT', barer: [
+    { type: 'lease', fra: 0, len: 18, tittel: 'Kristoffer Aase', pris: '19 800 kr/m' },
+  ] },
+  { navn: 'Nordnes 14 · H0201', omraade: 'Bergenhus', modell: 'KT', pris: 1950, barer: [
+    { type: 'maint', fra: 1, len: 2, tittel: 'Ventilasjon · service' },
+    { type: 'booking', fra: 4, len: 5, tittel: 'Hannah Schmidt', kilde: 'A', netter: 5, pris: '9 750 kr' },
+    { type: 'booking', fra: 11, len: 4, tittel: 'Ola Berg', kilde: 'B', netter: 4, pris: '7 800 kr' },
+  ] },
+  { navn: 'Lille Øvregate 6', omraade: 'Bergenhus', modell: 'LT', barer: [
+    { type: 'lease', fra: 0, len: 18, tittel: 'Mia Torgersen', pris: '17 400 kr/m' },
+  ] },
 ];
+
+// Bar-fyll per type — nøyaktig som .cal-bar-* i appen
+const KBAR_STIL: Record<string, React.CSSProperties> = {
+  booking: { backgroundColor: '#FF385C', color: '#ffffff' },
+  lease: { backgroundColor: '#6366f1', color: '#ffffff' },
+  block: {
+    backgroundColor: '#484848', color: '#ffffff',
+    backgroundImage: 'repeating-linear-gradient(135deg, transparent 0 5px, rgba(255,255,255,0.08) 5px 6px)',
+  },
+  maint: { backgroundColor: '#f7f3e8', color: '#6b4a1a' },
+};
 
 function KalenderVisning({ aktiv }: { aktiv: boolean }) {
   const inn = (delay: number): React.CSSProperties => ({
     opacity: aktiv ? 1 : 0,
-    transform: aktiv ? 'translateY(0)' : 'translateY(14px)',
-    transition: `opacity 700ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 700ms cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
+    transform: aktiv ? 'translateY(0)' : 'translateY(10px)',
+    transition: `opacity 650ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 650ms cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
   });
 
   return (
-    <div className="mx-auto max-w-[1100px] px-8 pt-10">
-      {/* Topplinje */}
-      <div className="mb-7 flex items-end justify-between gap-4" style={inn(250)}>
-        <div>
-          <h1 className="text-[32px] font-bold leading-none tracking-[-0.04em]" style={{ color: C.text }}>Kalender</h1>
-          <p className="mt-2.5 text-[15px]" style={{ color: C.sub }}>Februar 2026 · 12 hendelser</p>
+    <div className="flex h-full w-full flex-col overflow-hidden bg-white">
+      {/* ── HEADER (60px) — segmentkontroll · enhetsvelger · nav · søk · filter ── */}
+      <div
+        className="flex shrink-0 items-center gap-3 px-6"
+        style={{ height: 60, borderBottom: '1px solid #f2f2f2', backgroundColor: '#ffffff', ...inn(180) }}
+      >
+        <div className="flex shrink-0 items-center rounded-full p-0.5" style={{ backgroundColor: '#fafafa', border: '1px solid #ebebeb' }}>
+          <span className="flex h-[30px] items-center rounded-full px-3.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ backgroundColor: '#ffffff', color: '#222222', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>Kalender</span>
+          <span className="flex h-[30px] items-center rounded-full px-3.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ color: '#717171' }}>Perioder</span>
         </div>
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ border: `1px solid ${C.border}`, backgroundColor: C.card }}>
-            <ChevronLeft className="h-4 w-4" style={{ color: C.sub }} strokeWidth={2} />
+        <span className="flex h-9 shrink-0 items-center gap-2 rounded-full pl-1.5 pr-3" style={{ border: '1px solid #ebebeb', backgroundColor: '#ffffff' }}>
+          <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full" style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)' }}>
+            <LayoutGrid className="h-3 w-3 text-white" />
           </span>
-          <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ border: `1px solid ${C.border}`, backgroundColor: C.card }}>
-            <ChevronRight className="h-4 w-4" style={{ color: C.sub }} strokeWidth={2} />
+          <span className="text-[12.5px] font-semibold tracking-[-0.005em]" style={{ color: '#222222' }}>Alle boliger</span>
+          <ChevronDown className="h-3 w-3" style={{ color: '#717171' }} strokeWidth={2.4} />
+        </span>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full" style={{ color: '#717171' }}>
+            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2.2} />
           </span>
-          <span className="inline-flex h-10 items-center rounded-full px-5 text-[13.5px] font-medium" style={{ border: `1px solid ${C.border}`, backgroundColor: C.card, color: C.text }}>
-            I dag
+          <span className="flex h-[30px] items-center rounded-full px-3.5 text-[12px] font-semibold" style={{ border: '1px solid #ebebeb', backgroundColor: '#ffffff', color: '#222222' }}>I dag</span>
+          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full" style={{ color: '#717171' }}>
+            <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} />
           </span>
-          <span className="inline-flex h-10 items-center gap-0.5 rounded-full p-1" style={{ border: `1px solid ${C.border}`, backgroundColor: C.card }}>
-            <span className="inline-flex h-8 items-center rounded-full px-4 text-[13px] font-semibold text-white" style={{ backgroundColor: C.invBg }}>Måned</span>
-            <span className="inline-flex h-8 items-center rounded-full px-4 text-[13px] font-medium" style={{ color: C.sub }}>Uke</span>
-          </span>
-          <span className="inline-flex h-10 items-center gap-2 rounded-full px-5 text-[13.5px] font-semibold text-white" style={{ backgroundColor: C.invBg }}>
-            <Plus className="h-4 w-4" strokeWidth={2.2} /> Ny hendelse
-          </span>
+        </div>
+        <div className="flex-1" />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ color: '#717171' }}>
+          <Search className="h-3.5 w-3.5" strokeWidth={2.2} />
+        </span>
+        <span className="flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold" style={{ color: '#717171' }}>
+          <Filter className="h-3.5 w-3.5" strokeWidth={2.2} />
+          Filter
+        </span>
+      </div>
+
+      {/* ── GRID-HEADER (58px) — månedslabel i enhetskolonnen + dagstripe ── */}
+      <div className="flex shrink-0" style={inn(280)}>
+        <div className="flex shrink-0 items-center" style={{ width: KSIDE, height: 58, borderRight: '1px solid #f2f2f2', borderBottom: '1px solid #f2f2f2', backgroundColor: '#ffffff' }}>
+          <div className="px-5">
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-[17px] font-bold capitalize leading-none tracking-[-0.02em]" style={{ color: '#222222' }}>februar</h2>
+              <span className="text-[11.5px] font-semibold tabular-nums" style={{ color: '#9b9b9b' }}>2026</span>
+            </div>
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className="h-[5px] w-[5px] rounded-full" style={{ backgroundColor: '#10b981' }} />
+              <p className="text-[10px] font-medium tabular-nums" style={{ color: '#9b9b9b' }}>11 enheter</p>
+            </div>
+          </div>
+        </div>
+        <div className="relative min-w-0 flex-1 overflow-hidden" style={{ height: 58, borderBottom: '1px solid #f2f2f2', backgroundColor: '#ffffff' }}>
+          <div className="absolute bottom-0 left-0 flex" style={{ height: 38 }}>
+            {KDATO.map((dato, i) => (
+              <div key={i} className="flex shrink-0 flex-col items-center justify-center" style={{ width: KCOL, boxShadow: kMandag(i) ? 'inset 1px 0 0 #f2f2f2' : undefined }}>
+                {i === K_IDAG ? (
+                  <span className="flex items-baseline gap-1.5 rounded-full px-2.5 py-1" style={{ backgroundColor: '#7c3aed', boxShadow: '0 1px 3px rgba(124,58,237,0.22)' }}>
+                    <span className="text-[10.5px] font-semibold leading-none tracking-[-0.01em] text-white">{KUKEDAG[i]}</span>
+                    <span className="text-[14px] font-bold leading-none tabular-nums tracking-[-0.02em] text-white">{dato}</span>
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-[10px] font-medium leading-none tracking-[-0.005em]" style={{ color: '#9b9b9b' }}>{KUKEDAG[i]}</span>
+                    <span className="mt-1 text-[15px] font-semibold leading-tight tabular-nums tracking-[-0.02em]" style={{ color: kHelg(i) ? '#717171' : '#222222' }}>{dato}</span>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Månedsrutenettet */}
-      <div className="overflow-hidden rounded-2xl" style={{ backgroundColor: C.card, border: `1px solid ${C.border}`, ...inn(420) }}>
-        <div className="grid grid-cols-7" style={{ borderBottom: `1px solid ${C.border}` }}>
-          {KAL_UKEDAGER.map((d) => (
-            <p key={d} className="py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: C.muted }}>{d}</p>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {KAL_CELLER.map((celle, i) => {
-            const idag = celle.iFeb && celle.dag === KAL_IDAG;
-            const hendelser = celle.iFeb ? (KAL_HENDELSER[celle.dag] || []) : [];
-            return (
+      {/* ── RADENE — enheter til venstre, dagsceller + event-pills til høyre ── */}
+      <div className="relative flex-1 overflow-hidden">
+        {KENHETER.map((u, ri) => (
+          <div
+            key={u.navn}
+            className="flex"
+            style={{
+              height: KROW,
+              borderBottom: '1px solid rgba(0,0,0,0.04)',
+              opacity: aktiv ? 1 : 0,
+              transform: aktiv ? 'translateY(0)' : 'translateY(12px)',
+              transition: `opacity 600ms cubic-bezier(0.22,1,0.36,1) ${340 + ri * 40}ms, transform 600ms cubic-bezier(0.22,1,0.36,1) ${340 + ri * 40}ms`,
+            }}
+          >
+            {/* Enhetskolonnen (sticky-siden i appen) */}
+            <div className="flex shrink-0 items-center gap-2.5 bg-white pl-2 pr-3" style={{ width: KSIDE, borderRight: '1px solid rgba(0,0,0,0.05)' }}>
               <div
-                key={`${celle.iFeb ? 'feb' : 'ute'}-${celle.dag}-${i}`}
-                className="h-[124px] p-2"
-                style={{
-                  borderRight: (i + 1) % 7 !== 0 ? '1px solid #f1eff5' : 'none',
-                  borderBottom: i < 28 ? '1px solid #f1eff5' : 'none',
-                  backgroundColor: idag ? '#fbf7ff' : 'transparent',
-                }}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[7px] text-[12px] font-bold"
+                style={{ background: 'linear-gradient(135deg, #f5f4f7, #ecebef)', color: '#717171', boxShadow: '0 0 0 1px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.04)' }}
               >
-                {idag ? (
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-bold" style={{ backgroundColor: C.accent, color: '#1a1a1a' }}>
-                    {celle.dag}
+                {u.navn.charAt(0)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13.5px] font-semibold leading-[1.3] tracking-[-0.005em]" style={{ color: '#222222' }}>{u.navn}</p>
+                <div className="mt-[2px] flex items-center gap-1.5">
+                  <p className="truncate text-[11.5px] leading-tight" style={{ color: '#717171' }}>{u.omraade}</p>
+                  <span
+                    className="flex h-[15px] shrink-0 items-center rounded-[3px] px-1.5 text-[9px] font-bold leading-none tracking-[0.03em] text-white"
+                    style={{ backgroundColor: u.modell === 'KT' ? '#FF385C' : '#3B82F6' }}
+                  >
+                    {u.modell}
                   </span>
-                ) : (
-                  <span className="inline-flex h-6 items-center px-0.5 text-[12.5px] font-semibold tabular-nums" style={{ color: celle.iFeb ? C.text : '#d3d0da' }}>
-                    {celle.dag}
-                  </span>
-                )}
-                <div className="mt-1 space-y-1">
-                  {hendelser.map((h) => (
-                    <p key={h.t} className="truncate rounded-md px-1.5 py-[3px] text-[10px] font-semibold leading-tight" style={{ color: h.c, backgroundColor: h.bg }}>
-                      {h.t}
-                    </p>
-                  ))}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+
+            {/* Dagscellene */}
+            <div className="relative min-w-0 flex-1 overflow-hidden">
+              <div className="absolute inset-0 flex">
+                {KDATO.map((_, i) => (
+                  <div
+                    key={i}
+                    className="relative shrink-0"
+                    style={{
+                      width: KCOL,
+                      backgroundColor: i < K_IDAG ? '#fafafa' : kHelg(i) ? '#faf7f5' : 'transparent',
+                      boxShadow: kMandag(i) ? 'inset 1px 0 0 #f2f2f2' : undefined,
+                    }}
+                  >
+                    {u.pris && (
+                      <div className="absolute bottom-[6px] left-0 right-0 flex justify-center opacity-[0.55]">
+                        <span className="text-[10px] font-medium leading-none tabular-nums tracking-[-0.01em]" style={{ color: '#9b9b9b' }}>
+                          {kr(u.pris)}<span className="ml-[1px] text-[9px]">kr</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Event-pills — Airbnb-stil: solide flater, hvit tekst */}
+              {u.barer.map((b, bi) => {
+                const bred = b.len >= 3;
+                const rundL = b.rl ?? (b.type === 'booking' || b.type === 'lease' ? 999 : 8);
+                const rundR = b.rr ?? (b.type === 'booking' || b.type === 'lease' ? 999 : 8);
+                const kilde = b.kilde ? KILDE[b.kilde] : null;
+                return (
+                  <div
+                    key={bi}
+                    className="absolute"
+                    style={{
+                      left: b.fra * KCOL + 2, width: b.len * KCOL - 4, top: 18, height: 42,
+                      borderRadius: `${rundL}px ${rundR}px ${rundR}px ${rundL}px`,
+                      zIndex: 2,
+                      ...KBAR_STIL[b.type],
+                    }}
+                  >
+                    {(b.type === 'block' || b.type === 'maint') ? (
+                      <div className="flex h-full w-full items-center gap-1.5 overflow-hidden px-3" style={{ borderRadius: 'inherit' }}>
+                        {b.type === 'maint'
+                          ? <Wrench className="h-3 w-3 shrink-0 opacity-90" strokeWidth={2.2} />
+                          : <Lock className="h-3 w-3 shrink-0 opacity-90" strokeWidth={2.2} />}
+                        <span className="truncate text-[10.5px] font-semibold tracking-[-0.005em]">{b.tittel}</span>
+                      </div>
+                    ) : (
+                      <div className="flex h-full w-full min-w-0 items-center gap-2 overflow-hidden px-2.5" style={{ borderRadius: 'inherit' }}>
+                        {kilde ? (
+                          <span
+                            className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold leading-none tracking-[-0.01em] text-white"
+                            style={{ backgroundColor: kilde.farge, boxShadow: '0 0 0 1.5px rgba(255,255,255,0.9)' }}
+                          >
+                            {kilde.bokstav}
+                          </span>
+                        ) : (
+                          <span className="h-[6px] w-[6px] shrink-0 rounded-full bg-current opacity-70" />
+                        )}
+                        <span className="flex-1 truncate text-[12px] font-semibold leading-none tracking-[-0.01em]">{b.tittel}</span>
+                        {bred && (
+                          <span className="flex shrink-0 items-center gap-1 text-[10.5px] font-semibold tabular-nums tracking-[-0.005em] opacity-80">
+                            {b.netter !== undefined && <><span aria-hidden="true" className="opacity-70">◐</span>{b.netter}</>}
+                            {b.pris && (
+                              <span className={b.netter !== undefined ? 'ml-1.5 border-l border-white/25 pl-1.5' : ''}>{b.pris}</span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {/* «I dag»-kolonnen — tynn lilla ring gjennom hele rutenettet */}
+        <div
+          className="pointer-events-none absolute bottom-0 top-0"
+          style={{
+            left: KSIDE + K_IDAG * KCOL, width: KCOL, zIndex: 1,
+            boxShadow: 'inset 1px 0 0 rgba(124,58,237,0.18), inset -1px 0 0 rgba(124,58,237,0.18)',
+            opacity: aktiv ? 1 : 0, transition: 'opacity 600ms ease 500ms',
+          }}
+        />
       </div>
     </div>
   );

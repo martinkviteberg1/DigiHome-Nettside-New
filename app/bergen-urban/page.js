@@ -151,9 +151,10 @@ const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 //       4 = kaoset (ti systemer, mørk) · 5 = bar · 6 = skriver ·
 //       7 = sendt+tenker (auto→8) · 8 = agenten bygger (auto→9) · 9 = reveal ·
 //       10 = omfanget (kameraet trekker ut til produktveggen) ·
-//       11 = påstand 1 · 12 = påstand 1+2 ·
-//       13 = sannheten (DigiHome-tall) · 14 = + tradisjonell utvikling
-const TOTALT = 15;
+//       11 = integrasjonene («Alt henger sammen.») ·
+//       12 = påstand 1 · 13 = påstand 1+2 ·
+//       14 = sannheten (DigiHome-tall) · 15 = + tradisjonell utvikling
+const TOTALT = 16;
 
 // Innholdsfortegnelse — supersubtil meny nede i venstre hjørne for å hoppe
 // direkte til en scene. Auto-beats (7) hoppes over; agent-scenen (8) spiller
@@ -169,10 +170,11 @@ const TOC = [
   { steg: 8, tittel: 'Agenten bygger' },
   { steg: 9, tittel: 'Portalen' },
   { steg: 10, tittel: 'Produktveggen' },
-  { steg: 11, tittel: 'Påstanden' },
-  { steg: 12, tittel: '«6-åringen»' },
-  { steg: 13, tittel: 'Sannheten' },
-  { steg: 14, tittel: 'Sammenligningen' },
+  { steg: 11, tittel: 'Integrasjonene' },
+  { steg: 12, tittel: 'Påstanden' },
+  { steg: 13, tittel: '«6-åringen»' },
+  { steg: 14, tittel: 'Sannheten' },
+  { steg: 15, tittel: 'Sammenligningen' },
 ];
 
 // Lappeteppet — verktøyene forvaltere jonglerer i dag. Posisjoner i % av
@@ -189,6 +191,135 @@ const VERKTOY = [
   { kategori: 'Annonsering', navn: 'Finn', x: '7%', y: '63%', rot: -3 },
   { kategori: 'Kanaler', navn: 'Lodgify', x: '9%', y: '35%', rot: 2.5 },
 ];
+
+// ── Integrasjonene — «Alt henger sammen.» (samme koreografi som /tour) ──
+// DigiHome i midten, integrasjonene i ring rundt. Hver lyser opp i reisens
+// rekkefølge med én fortellerlinje, før alt glir sammen: ett system.
+const INTEGRASJONER = [
+  { navn: 'Kartverket', vinkel: -90, tekst: 'Boligdata hentes fra Kartverket', logoer: [{ src: '/kartverket-logo.png', h: 18 }] },
+  { navn: 'FINN.no', vinkel: -50, tekst: 'Annonsen publiseres rett på FINN', logoer: [{ src: '/finn-logo-full.png', h: 15 }] },
+  { navn: 'Creditsafe', vinkel: -10, tekst: 'Kredittsjekk av kandidatene', logoer: [{ src: '/creditsafe-logo.png', h: 13 }] },
+  { navn: 'BankID', vinkel: 30, tekst: 'Signering og identitet med BankID', logoer: [{ src: '/bankid-logo.png', h: 13 }] },
+  { navn: 'Keyhole', vinkel: 70, tekst: 'Depositum opprettes og sikres med Keyhole', logoer: [{ src: '/keyhole-logo.png', h: 14 }] },
+  { navn: 'Vipps', vinkel: 110, tekst: 'Betaling med Vipps', logoer: [{ src: '/vipps-logo.png', h: 16 }] },
+  {
+    navn: 'Regnskap', vinkel: 150,
+    tekst: 'Oppgjøret rett i regnskapet — Fiken, PowerOffice eller Tripletex',
+    logoer: [
+      { src: '/fiken-logo.png', h: 13 },
+      { src: '/poweroffice-logo.png', h: 12 },
+      { src: '/tripletex-logo.png', h: 11 },
+    ],
+  },
+  { navn: 'Airbnb', vinkel: -170, tekst: 'Korttid synkroniseres med Airbnb', logoer: [{ src: '/airbnb-logo.png', h: 17 }] },
+  { navn: 'Booking.com', vinkel: -130, tekst: '— og med Booking.com', logoer: [{ src: '/booking-logo.png', h: 13 }] },
+];
+const INTEGRASJON_TRINN = [
+  { navn: 'start', ms: 1100 },
+  ...INTEGRASJONER.map((_, i) => ({ navn: `i${i}`, ms: 1500 })),
+  { navn: 'alle', ms: 6000 },
+];
+const intPos = (vinkel) => {
+  const r = (vinkel * Math.PI) / 180;
+  return { x: 50 + 43 * Math.cos(r), y: 50 + 41 * Math.sin(r) };
+};
+const INT_LILLA = '#9B5BD6';
+
+function BUIntegrasjoner({ aktiv }) {
+  const [fase, setFase] = useState(0);
+  useEffect(() => {
+    if (!aktiv) { setFase(0); return undefined; }
+    const t = setTimeout(() => setFase((f) => (f + 1) % INTEGRASJON_TRINN.length), INTEGRASJON_TRINN[fase].ms);
+    return () => clearTimeout(t);
+  }, [aktiv, fase]);
+
+  const lysende = fase >= 1 && fase <= INTEGRASJONER.length ? fase - 1 : -1;
+  const alle = INTEGRASJON_TRINN[fase].navn === 'alle';
+
+  return (
+    <div className="w-full max-w-[600px] text-center">
+      {/* Huben — DigiHome i midten, integrasjonene i ring */}
+      <div className="relative mx-auto aspect-square w-full max-w-[min(46vh,470px)]" data-testid="bu-integrasjon-hub">
+        {/* Forbindelseslinjene */}
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100">
+          {INTEGRASJONER.map((c, i) => {
+            const p = intPos(c.vinkel);
+            const lyser = i === lysende || alle;
+            return (
+              <line
+                key={c.navn}
+                x1="50" y1="50" x2={p.x} y2={p.y}
+                stroke={lyser ? INT_LILLA : '#e9e6ef'}
+                strokeOpacity={lyser ? (alle ? 0.35 : 0.6) : 1}
+                strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
+                style={{ transition: 'stroke 500ms, stroke-opacity 500ms' }}
+              />
+            );
+          })}
+        </svg>
+
+        {/* DigiHome-kjernen */}
+        <div
+          className="absolute left-1/2 top-1/2 flex h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[20px] bg-white transition-shadow duration-700"
+          style={{
+            boxShadow: lysende >= 0 || alle
+              ? '0 24px 60px -20px rgba(155,91,214,0.4), 0 0 0 1px rgba(0,0,0,0.04)'
+              : '0 18px 50px -22px rgba(10,10,10,0.25), 0 0 0 1px rgba(0,0,0,0.04)',
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-mark.svg" alt="DigiHome" className="h-10 w-10 rounded-[9px]" />
+        </div>
+
+        {/* Integrasjonene */}
+        {INTEGRASJONER.map((c, i) => {
+          const p = intPos(c.vinkel);
+          const lyser = i === lysende || alle;
+          return (
+            <div
+              key={c.navn}
+              className="absolute flex items-center justify-center rounded-2xl bg-white px-3.5 py-2.5 transition-all duration-500"
+              style={{
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                transform: `translate(-50%, -50%) scale(${i === lysende ? 1.12 : 1})`,
+                opacity: lyser ? 1 : 0.55,
+                filter: lyser ? 'grayscale(0)' : 'grayscale(1)',
+                boxShadow: i === lysende
+                  ? '0 20px 45px -16px rgba(155,91,214,0.35), 0 0 0 1.5px rgba(155,91,214,0.25)'
+                  : '0 10px 30px -14px rgba(10,10,10,0.14), 0 0 0 1px rgba(0,0,0,0.04)',
+                transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+              }}
+            >
+              <span className="flex items-center gap-2">
+                {c.logoer.map((l) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={l.src} src={l.src} alt={c.navn} style={{ height: l.h }} className="w-auto max-w-[72px] object-contain" />
+                ))}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Fortellerlinjen — én integrasjon om gangen */}
+      <div className="mx-auto mt-8 grid h-6 max-w-[460px]">
+        {INTEGRASJONER.map((c, i) => (
+          <p
+            key={c.navn}
+            className={`[grid-area:1/1] text-[14px] font-medium text-[#1d1d1f] transition-opacity duration-500 ${i === lysende ? 'opacity-100' : 'opacity-0'}`}
+          >
+            {c.tekst}
+          </p>
+        ))}
+        <p className={`[grid-area:1/1] text-[14px] font-medium text-[#1d1d1f] transition-opacity duration-500 ${alle ? 'opacity-100' : 'opacity-0'}`}>
+          Ett system<span style={{ color: INT_LILLA }}>.</span> Alt koblet sammen<span style={{ color: INT_LILLA }}>.</span>
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function BergenUrbanDeck() {
   const [steg, setSteg] = useState(-1);
@@ -336,10 +467,11 @@ export default function BergenUrbanDeck() {
   const kodeAktiv = steg === 8;
   const revealAktiv = steg === 9;
   const omfangAktiv = steg === 10;
-  const hookAktiv = steg === 11 || steg === 12;
-  const bygg = Math.max(0, steg - 11);
-  const sannhetAktiv = steg === 13 || steg === 14;
-  const sannhetBeat = Math.max(0, steg - 13); // 0 = DigiHome-tall · 1 = + tradisjonell
+  const integrasjonAktiv = steg === 11;
+  const hookAktiv = steg === 12 || steg === 13;
+  const bygg = Math.max(0, steg - 12);
+  const sannhetAktiv = steg === 14 || steg === 15;
+  const sannhetBeat = Math.max(0, steg - 14); // 0 = DigiHome-tall · 1 = + tradisjonell
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -502,7 +634,6 @@ export default function BergenUrbanDeck() {
           {/* Tittel — toner inn når kameraet har landet */}
           <div className={`mb-7 text-center opacity-0 ${omfangAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '1250ms', animationDuration: '1.4s' }}>
             <h2 className="font-heading text-[clamp(26px,3.1vw,46px)] font-bold leading-[1.1] tracking-[-0.035em] text-[#0f0f0f]">Dette er DigiHome.</h2>
-            <p className="mt-2.5 text-[clamp(14px,1.35vw,18px)] text-[#86868b]">Det dere så, var én flate. Dette er resten.</p>
           </div>
 
           {/* Kamera-uttrekket: veggen starter zoomet inn på dashbord-flisen
@@ -527,6 +658,31 @@ export default function BergenUrbanDeck() {
             <span className="mx-2.5 text-[#c7c7cc]">·</span>
             AI i alle lag
           </p>
+        </div>
+
+        <footer className="pb-8" />
+      </section>
+
+      {/* ═══ AKT 6.5 — INTEGRASJONENE: alt henger sammen ═══ */}
+      <section
+        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${lysKlasse(integrasjonAktiv, 'inn')}`}
+        data-testid="bu-slide-integrasjoner"
+      >
+        <header className="relative z-10 flex justify-start px-12 pt-11 md:px-16">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
+        </header>
+
+        <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-14">
+          <div className={`mb-8 text-center opacity-0 ${integrasjonAktiv ? 'bu-inn' : ''}`} style={{ animationDuration: '1.4s' }}>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.25em] text-[#c7c7cc]">Integrasjonene</p>
+            <h2 className="mt-5 font-heading text-[clamp(28px,3.4vw,50px)] font-bold leading-[1.1] tracking-[-0.035em] text-[#0f0f0f]">
+              Alt henger sammen<span className="text-[#9B5BD6]">.</span>
+            </h2>
+          </div>
+          <div className={`opacity-0 ${integrasjonAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '350ms', animationDuration: '1.5s' }}>
+            <BUIntegrasjoner aktiv={integrasjonAktiv} />
+          </div>
         </div>
 
         <footer className="pb-8" />
@@ -998,10 +1154,12 @@ export default function BergenUrbanDeck() {
           <ForvalterFullskjerm vis={revealAktiv} modul={revealModul} />
         </div>
 
-        {/* AI-driftsassistenten — glir inn som siste lag og «svarer» live */}
+        {/* AI-driftsassistenten — glir inn som siste lag og «svarer» live.
+            Når portalen selv navigerer til Kalender, glir chatten rolig ut
+            slik at kalendermodulen står ren og uforstyrret. */}
         <div
-          className={`absolute bottom-[4vh] right-[2vw] z-10 transition-[opacity,transform,filter] duration-[1300ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-14 opacity-0 blur-[10px]'}`}
-          style={{ width: 'clamp(300px, 20vw, 380px)', transitionDelay: revealAktiv ? '1550ms' : '0ms' }}
+          className={`absolute bottom-[4vh] right-[2vw] z-10 transition-[opacity,transform,filter] duration-[1300ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv && revealModul === 'oversikt' ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-14 opacity-0 blur-[10px]'}`}
+          style={{ width: 'clamp(300px, 20vw, 380px)', transitionDelay: revealAktiv && revealModul === 'oversikt' ? '1550ms' : '0ms' }}
         >
           <AssistentChatMockup vis={revealAktiv} />
         </div>
