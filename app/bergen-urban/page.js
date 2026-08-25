@@ -14,7 +14,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Caveat } from 'next/font/google';
-import PortalMockup from '@/components/tour/mockups/PortalMockup';
+import ForvalterMockup from '@/components/tour/mockups/ForvalterMockup';
 import PhoneMockup from '@/components/tour/mockups/PhoneMockup';
 
 const caveat = Caveat({ subsets: ['latin', 'latin-ext'], weight: ['500', '600', '700'], display: 'swap' });
@@ -407,8 +407,9 @@ export default function BergenUrbanDeck() {
           className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(revealAktiv)}`}
           data-testid="bu-reveal"
         >
-          {/* Scenelys bak produktet */}
-          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(64% 56% at 50% 56%, rgba(255,255,255,0.09) 0%, transparent 100%)' }} />
+          {/* Scenelys bak produktet — hvit kjerne med et hint av lavendel */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(64% 56% at 50% 56%, rgba(255,255,255,0.13) 0%, transparent 100%)' }} />
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(80% 64% at 50% 60%, rgba(207,151,252,0.06) 0%, transparent 100%)' }} />
 
           {/* Prompten blir stående — spørsmålet over svaret */}
           <p
@@ -426,8 +427,11 @@ export default function BergenUrbanDeck() {
                 style={{ transitionDelay: revealAktiv ? '500ms' : '0ms' }}
               >
                 <div className="bu-flyt">
-                  <div className="origin-top-left" style={{ width: 880, transform: `scale(${mockSkala})` }}>
-                    <PortalMockup />
+                  <div
+                    className="origin-top-left rounded-[20px]"
+                    style={{ width: 880, transform: `scale(${mockSkala})`, boxShadow: '0 0 0 1px rgba(255,255,255,0.11), 0 90px 180px -40px rgba(0,0,0,0.95), 0 30px 70px -30px rgba(0,0,0,0.85)' }}
+                  >
+                    <ForvalterMockup />
                   </div>
                 </div>
               </div>
