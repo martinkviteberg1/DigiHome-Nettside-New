@@ -152,10 +152,11 @@ const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 //       7 = sendt+tenker (auto→8) · 8 = agenten bygger (auto→9) · 9 = reveal ·
 //       10 = omfanget (kameraet trekker ut til produktveggen) ·
 //       11 = integrasjonene («Alt henger sammen.») ·
-//       12 = påstand 1 · 13 = påstand 1+2 ·
-//       14 = sannheten (DigiHome-tall) · 15 = + tradisjonell utvikling ·
-//       16–18 = tre AI-roller (byggeren · verktøyene · agentene, én per klikk)
-const TOTALT = 19;
+//       12–13 = driften i sanntid (loopen vender tilbake → alt våkner live) ·
+//       14 = påstand 1 · 15 = påstand 1+2 ·
+//       16 = sannheten (DigiHome-tall) · 17 = + tradisjonell utvikling ·
+//       18–20 = tre AI-roller (utviklingen · verktøyene · agentene)
+const TOTALT = 21;
 
 // Innholdsfortegnelse — supersubtil meny nede i venstre hjørne for å hoppe
 // direkte til en scene. Auto-beats (7) hoppes over; agent-scenen (8) spiller
@@ -172,11 +173,12 @@ const TOC = [
   { steg: 9, tittel: 'Portalen' },
   { steg: 10, tittel: 'Produktveggen' },
   { steg: 11, tittel: 'Integrasjonene' },
-  { steg: 12, tittel: 'Påstanden' },
-  { steg: 13, tittel: '«6-åringen»' },
-  { steg: 14, tittel: 'Sannheten' },
-  { steg: 15, tittel: 'Sammenligningen' },
-  { steg: 16, tittel: 'Tre AI-roller' },
+  { steg: 12, tittel: 'Driften i sanntid' },
+  { steg: 14, tittel: 'Påstanden' },
+  { steg: 15, tittel: '«6-åringen»' },
+  { steg: 16, tittel: 'Sannheten' },
+  { steg: 17, tittel: 'Sammenligningen' },
+  { steg: 18, tittel: 'Tre AI-roller' },
 ];
 
 // Lappeteppet — verktøyene forvaltere jonglerer i dag. Posisjoner i % av
@@ -226,6 +228,18 @@ const intPos = (vinkel) => {
   return { x: 50 + 43 * Math.cos(r), y: 50 + 41 * Math.sin(r) };
 };
 const INT_LILLA = '#9B5BD6';
+
+// ── Driften i sanntid — loopen fra åpningen vender tilbake, nå levende ──
+// Samme sju steg som prosessloopen (callback), med live-status per steg.
+const DRIFT_STEG = [
+  { navn: 'Annonsering', status: '2 aktive' },
+  { navn: 'Visning', status: '5 booket' },
+  { navn: 'Kontrakt', status: '1 til signering' },
+  { navn: 'Depositum', status: 'Sikret' },
+  { navn: 'Innflytting', status: '1. mars' },
+  { navn: 'Vedlikehold', status: '3 saker' },
+  { navn: 'Utflytting', status: '23. feb' },
+];
 
 function BUIntegrasjoner({ aktiv }) {
   const [fase, setFase] = useState(0);
@@ -473,12 +487,14 @@ export default function BergenUrbanDeck() {
   const revealAktiv = steg === 9;
   const omfangAktiv = steg === 10;
   const integrasjonAktiv = steg === 11;
-  const hookAktiv = steg === 12 || steg === 13;
-  const bygg = Math.max(0, steg - 12);
-  const sannhetAktiv = steg === 14 || steg === 15;
-  const sannhetBeat = Math.max(0, steg - 14); // 0 = DigiHome-tall · 1 = + tradisjonell
-  const rollerAktiv = steg >= 16;
-  const rollerBeat = Math.max(0, steg - 15); // 1 = byggeren · 2 = +verktøyene · 3 = +agentene
+  const driftAktiv = steg === 12 || steg === 13;
+  const driftBeat = Math.max(0, steg - 12); // 0 = linjen · 1 = alt våkner live
+  const hookAktiv = steg === 14 || steg === 15;
+  const bygg = Math.max(0, steg - 14);
+  const sannhetAktiv = steg === 16 || steg === 17;
+  const sannhetBeat = Math.max(0, steg - 16); // 0 = DigiHome-tall · 1 = + tradisjonell
+  const rollerAktiv = steg >= 18;
+  const rollerBeat = Math.max(0, steg - 17); // 1 = utviklingen · 2 = +verktøyene · 3 = +agentene
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -750,6 +766,102 @@ export default function BergenUrbanDeck() {
           </div>
           <div className={`opacity-0 ${integrasjonAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '350ms', animationDuration: '1.5s' }}>
             <BUIntegrasjoner aktiv={integrasjonAktiv} />
+          </div>
+        </div>
+
+        <footer className="pb-8" />
+      </section>
+
+      {/* ═══ AKT 6.75 — DRIFTEN I SANNTID: loopen vender tilbake, nå levende ═══ */}
+      <section
+        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${lysKlasse(driftAktiv, 'inn')}`}
+        data-testid="bu-slide-drift"
+      >
+        <header className="relative z-10 flex justify-start px-12 pt-11 md:px-16">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
+        </header>
+
+        <div className="flex flex-1 flex-col items-center justify-center px-10 md:px-16">
+          <div className="w-full max-w-[1100px]">
+            <div className={`text-center opacity-0 ${driftAktiv ? 'bu-inn' : ''}`} style={{ animationDuration: '1.4s' }}>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.25em] text-[#c7c7cc]">Driften</p>
+              <h2 className="mt-5 font-heading text-[clamp(28px,3.6vw,52px)] font-bold leading-[1.12] tracking-[-0.03em] text-[#0f0f0f]" data-testid="bu-drift-tittel">
+                Samme prosess. Ett system.{' '}
+                <span className={`inline-block opacity-0 ${driftBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDuration: '1.2s' }}>
+                  <span className="text-[#7c3aed]">I sanntid.</span>
+                </span>
+              </h2>
+            </div>
+
+            {/* Prosesslinjen — de samme sju stegene fra åpningen, nå i ro.
+                Beat 2: nodene våkner grønt, statusene tikker inn og et lys
+                glir kontinuerlig gjennom linjen — driften flyter i systemet */}
+            <div className="relative mt-24">
+              {/* Linjen tegner seg selv */}
+              <div
+                className="absolute left-0 right-0 top-[34px] h-px origin-left bg-[#e3e3e8]"
+                style={{ transform: driftAktiv ? 'scaleX(1)' : 'scaleX(0)', transition: 'transform 1500ms cubic-bezier(0.22,1,0.36,1) 400ms' }}
+              />
+              {/* Lyset som glir gjennom driften */}
+              {driftBeat >= 1 && (
+                <div aria-hidden className="pointer-events-none absolute left-0 right-0 top-[34px] h-px">
+                  <span
+                    className="bu-driftpuls absolute -top-[1px] h-[3px] w-[72px] rounded-full"
+                    style={{ background: 'linear-gradient(90deg, transparent, rgba(124,58,237,0.7), transparent)' }}
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-7">
+                {DRIFT_STEG.map((s, i) => (
+                  <div
+                    key={s.navn}
+                    className={`flex flex-col items-center opacity-0 ${driftAktiv ? 'bu-inn' : ''}`}
+                    style={{ animationDelay: `${420 + i * 110}ms` }}
+                    data-testid={`bu-drift-steg-${i + 1}`}
+                  >
+                    <p className="flex h-[18px] items-end text-[clamp(11px,0.95vw,13.5px)] font-medium tracking-[-0.01em] text-[#3c3c43]">{s.navn}</p>
+                    <span
+                      className={`relative z-[1] mt-3 h-[9px] w-[9px] rounded-full transition-colors duration-700 ${driftBeat >= 1 ? 'bu-livepuls' : ''}`}
+                      style={{
+                        backgroundColor: driftBeat >= 1 ? '#10b981' : '#d9d9de',
+                        boxShadow: '0 0 0 3px #ffffff',
+                        transitionDelay: `${i * 120}ms`,
+                        animationDelay: `${i * 200}ms`,
+                      }}
+                    />
+                    <p
+                      className={`mt-3.5 text-[clamp(10px,0.85vw,11.5px)] tabular-nums text-[#9b9b9b] opacity-0 ${driftBeat >= 1 ? 'bu-inn' : ''}`}
+                      style={{ animationDelay: `${350 + i * 90}ms` }}
+                    >
+                      {s.status}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Sanntidslinjen — nøkkeltall som teller opp når systemet våkner */}
+            <div
+              className={`mt-20 flex items-center justify-center gap-4 opacity-0 ${driftBeat >= 1 ? 'bu-inn' : ''}`}
+              style={{ animationDelay: '1150ms' }}
+              data-testid="bu-drift-kpi"
+            >
+              <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5" style={{ boxShadow: '0 0 0 1px #e8e8ed' }}>
+                <span className="bu-livedot h-[7px] w-[7px] rounded-full bg-[#10b981]" />
+                <span className="text-[11px] font-semibold tracking-[-0.005em] text-[#3c3c43]">Live</span>
+              </span>
+              <p className="text-[clamp(14px,1.35vw,18px)] text-[#86868b]">
+                <span className="font-semibold tabular-nums text-[#0f0f0f]"><Teller til={98} aktiv={driftBeat >= 1} suffiks="&nbsp;%" /></span> belegg
+                <span className="mx-3 text-[#d6d6db]">·</span>
+                <span className="font-semibold tabular-nums text-[#0f0f0f]"><Teller til={12} aktiv={driftBeat >= 1} /></span> eiendommer
+                <span className="mx-3 text-[#d6d6db]">·</span>
+                <span className="font-semibold tabular-nums text-[#0f0f0f]"><Teller til={54} aktiv={driftBeat >= 1} /></span> aktive kontrakter
+                <span className="mx-3 text-[#d6d6db]">·</span>
+                <span className="font-semibold tabular-nums text-[#0f0f0f]"><Teller til={7} aktiv={driftBeat >= 1} /></span> signert denne uken
+              </p>
+            </div>
           </div>
         </div>
 
@@ -1398,7 +1510,7 @@ export default function BergenUrbanDeck() {
           animation: buGlans 2.2s cubic-bezier(0.45, 0, 0.2, 1) 1.7s forwards;
         }
         @media (prefers-reduced-motion: reduce) {
-          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor { animation: none !important; }
+          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor, .bu-driftpuls, .bu-livepuls, .bu-livedot { animation: none !important; }
         }
         @keyframes buFlyt {
           from { transform: translateY(0); }
@@ -1406,6 +1518,25 @@ export default function BergenUrbanDeck() {
         }
         .bu-flyt { animation: buFlyt 7.5s ease-in-out infinite alternate; }
         .bu-flyt-tlf { animation: buFlyt 6.5s ease-in-out 0.8s infinite alternate; }
+
+        /* ── Driften i sanntid: nodepuls, live-prikk og lyset langs linjen ── */
+        @keyframes buLivePuls {
+          0% { box-shadow: 0 0 0 3px #ffffff, 0 0 0 4px rgba(16,185,129,0.3); }
+          70%, 100% { box-shadow: 0 0 0 3px #ffffff, 0 0 0 12px rgba(16,185,129,0); }
+        }
+        .bu-livepuls { animation: buLivePuls 2.4s ease-out infinite; }
+        @keyframes buLiveDot {
+          0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.35); }
+          70%, 100% { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+        }
+        .bu-livedot { animation: buLiveDot 2s ease-out infinite; }
+        @keyframes buDriftPuls {
+          0% { left: -7%; opacity: 0; }
+          12% { opacity: 1; }
+          88% { opacity: 1; }
+          100% { left: 101%; opacity: 0; }
+        }
+        .bu-driftpuls { animation: buDriftPuls 3.6s cubic-bezier(0.45, 0, 0.55, 1) 0.4s infinite; }
 
         /* ── Cover-koreografi ── */
         @keyframes buAurora1 {
