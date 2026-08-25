@@ -13,17 +13,18 @@
       tenkeprikker → auto-overgang
    6-8) AGENTEN (svart): AI-agenten bygger systemet → deploy → lys-tenning
    9) SVARET (lys): forvalterportalen materialiserer seg + AI-chat
-   10-11) HOOK (lys): påstand 1 → 6-åringens håndskrift (rack focus)
-   12-13) SANNHETEN (lys): «Det var ikke én prompt.» → 1 000 timer/500 k
+   10) OMFANGET (lys): kameraet trekker ut — dashbordet er én flis i en
+      produktvegg med 12 flater («Dette er DigiHome.»)
+   11-12) HOOK (lys): påstand 1 → 6-åringens håndskrift (rack focus)
+   13-14) SANNHETEN (lys): «Det var ikke én prompt.» → 1 000 timer/500 k
       mot tradisjonell utvikling 10 000 timer/5–10 mill. — proporsjonsbarer
-   14-15) OPERATIVSYSTEMET (lys): lappeteppet fra akt 1 gjenoppstår →
-      samles til ett mørkt DigiHome-panel (payoff på det plantede kaoset)
    Navigasjon: → / mellomrom / PageDown (klikker) = neste beat,
    ← / PageUp = forrige, F = fullskjerm, R = start forfra. */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Caveat } from 'next/font/google';
-import { Bot, Check, Rocket, Users, FileText, ScrollText, FileSignature, Wallet, Wrench, Megaphone } from 'lucide-react';
+import { Bot, Check, Rocket } from 'lucide-react';
+import OmfangVegg from '@/components/tour/mockups/OmfangVegg';
 import ForvalterFullskjerm from '@/components/tour/mockups/ForvalterFullskjerm';
 import AssistentChatMockup from '@/components/tour/mockups/AssistentChatMockup';
 
@@ -149,10 +150,10 @@ const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 //       1 = «Historien om DigiHome.» (mørk) · 2 = ideen · 3 = prosessloopen ·
 //       4 = kaoset (ti systemer, mørk) · 5 = bar · 6 = skriver ·
 //       7 = sendt+tenker (auto→8) · 8 = agenten bygger (auto→9) · 9 = reveal ·
-//       10 = påstand 1 · 11 = påstand 1+2 ·
-//       12 = sannheten (DigiHome-tall) · 13 = + tradisjonell utvikling ·
-//       14 = lappeteppet gjenoppstår (lys) · 15 = operativsystemet (samlet)
-const TOTALT = 16;
+//       10 = omfanget (kameraet trekker ut til produktveggen) ·
+//       11 = påstand 1 · 12 = påstand 1+2 ·
+//       13 = sannheten (DigiHome-tall) · 14 = + tradisjonell utvikling
+const TOTALT = 15;
 
 // Lappeteppet — verktøyene forvaltere jonglerer i dag. Posisjoner i % av
 // scenen (løs ring rundt sentrum, der DigiHome-panelet lander i beat 2).
@@ -167,16 +168,6 @@ const VERKTOY = [
   { kategori: 'Dialog', navn: 'Outlook', x: '24%', y: '87%', rot: 2 },
   { kategori: 'Annonsering', navn: 'Finn', x: '7%', y: '63%', rot: -3 },
   { kategori: 'Kanaler', navn: 'Lodgify', x: '9%', y: '35%', rot: 2.5 },
-];
-const OS_MODULER = [
-  { navn: 'CRM', Ikon: Users },
-  { navn: 'Tilbud', Ikon: FileText },
-  { navn: 'Kontrakter', Ikon: ScrollText },
-  { navn: 'Signering', Ikon: FileSignature },
-  { navn: 'Økonomi', Ikon: Wallet },
-  { navn: 'Drift', Ikon: Wrench },
-  { navn: 'Annonsering', Ikon: Megaphone },
-  { navn: 'AI', Ikon: Bot },
 ];
 
 export default function BergenUrbanDeck() {
@@ -309,12 +300,11 @@ export default function BergenUrbanDeck() {
   const promptAktiv = steg >= 5 && steg <= 7;
   const kodeAktiv = steg === 8;
   const revealAktiv = steg === 9;
-  const hookAktiv = steg === 10 || steg === 11;
-  const bygg = Math.max(0, steg - 10);
-  const sannhetAktiv = steg === 12 || steg === 13;
-  const sannhetBeat = Math.max(0, steg - 12); // 0 = DigiHome-tall · 1 = + tradisjonell
-  const osAktiv = steg >= 14;
-  const osBeat = Math.max(0, steg - 14); // 0 = lappeteppet · 1 = operativsystemet
+  const omfangAktiv = steg === 10;
+  const hookAktiv = steg === 11 || steg === 12;
+  const bygg = Math.max(0, steg - 11);
+  const sannhetAktiv = steg === 13 || steg === 14;
+  const sannhetBeat = Math.max(0, steg - 13); // 0 = DigiHome-tall · 1 = + tradisjonell
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -463,126 +453,48 @@ export default function BergenUrbanDeck() {
         </footer>
       </section>
 
-      {/* ═══ AKT 6 — OPERATIVSYSTEMET: lappeteppet samles til ett system ═══ */}
+      {/* ═══ AKT 6 — OMFANGET: kameraet trekker ut — dashbordet er én flate av mange ═══ */}
       <section
-        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${lysKlasse(osAktiv, 'inn')}`}
-        data-testid="bu-slide-os"
+        className={`absolute inset-0 flex flex-col overflow-hidden transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${lysKlasse(omfangAktiv, 'inn')}`}
+        data-testid="bu-slide-omfang"
       >
-        <header className="flex justify-start px-12 pt-11 md:px-16">
+        <header className="relative z-10 flex justify-start px-12 pt-11 md:px-16">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
         </header>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-16">
-          <p className="text-[12px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">04</p>
-
-          {/* Tittel-kryssfading: smerten → løsningen */}
-          <div className="relative mt-6 h-[76px] w-full max-w-[900px] md:h-[92px]">
-            <h2
-              className="absolute inset-0 flex items-start justify-center text-center font-heading text-[clamp(22px,2.7vw,40px)] font-bold leading-[1.15] tracking-[-0.03em] text-[#0f0f0f] transition-[opacity,transform,filter] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-              style={{ opacity: osBeat >= 1 ? 0 : 1, transform: osBeat >= 1 ? 'translateY(-14px)' : 'translateY(0)', filter: osBeat >= 1 ? 'blur(5px)' : 'blur(0)' }}
-            >
-              Alt dette.
-            </h2>
-            <h2
-              className="absolute inset-0 flex items-start justify-center text-center font-heading text-[clamp(24px,3.1vw,46px)] font-bold leading-[1.15] tracking-[-0.03em] transition-[opacity,transform,filter] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-              style={{ opacity: osBeat >= 1 ? 1 : 0, transform: osBeat >= 1 ? 'translateY(0)' : 'translateY(16px)', filter: osBeat >= 1 ? 'blur(0)' : 'blur(5px)', transitionDelay: osBeat >= 1 ? '250ms' : '0ms' }}
-            >
-              <span><span className="text-[#a7a7ad]">Ikke enda et verktøy.</span> <span className="text-[#0f0f0f]">Et operativsystem.</span></span>
-            </h2>
+        <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-14">
+          {/* Tittel — toner inn når kameraet har landet */}
+          <div className={`mb-7 text-center opacity-0 ${omfangAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '1250ms', animationDuration: '1.4s' }}>
+            <h2 className="font-heading text-[clamp(26px,3.1vw,46px)] font-bold leading-[1.1] tracking-[-0.035em] text-[#0f0f0f]">Dette er DigiHome.</h2>
+            <p className="mt-2.5 text-[clamp(14px,1.35vw,18px)] text-[#86868b]">Det dere så, var én flate. Dette er resten.</p>
           </div>
 
-          {/* Scenen: lappeteppet → DigiHome-panelet */}
-          <div className="relative mt-2 h-[44vh] max-h-[460px] min-h-[300px] w-full max-w-[1020px]">
-
-            {/* Brutte, stiplede forbindelser — systemene «snakker ikke sammen» */}
-            <svg
-              aria-hidden
-              className="absolute inset-0 h-full w-full transition-opacity duration-[800ms]"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              style={{ opacity: osAktiv && osBeat === 0 ? 0.8 : 0, transitionDelay: osBeat === 0 ? '900ms' : '0ms' }}
-            >
-              {[[14, 15, 40, 10], [40, 10, 66, 13], [66, 13, 88, 24], [88, 24, 92, 58], [92, 58, 76, 86], [76, 86, 50, 91], [50, 91, 24, 87], [24, 87, 7, 63], [7, 63, 9, 35], [9, 35, 14, 15], [14, 15, 92, 58], [66, 13, 24, 87], [9, 35, 76, 86]].map((l) => (
-                <line key={l.join('-')} x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]} stroke="#d8d5de" strokeWidth="0.3" strokeDasharray="1.4 2.6" />
-              ))}
-            </svg>
-
-            {/* Verktøylappene — spredt kaos som trekkes inn mot sentrum */}
-            {VERKTOY.map((v, i) => {
-              const samlet = osBeat >= 1;
-              return (
-                <div
-                  key={v.navn}
-                  className="absolute rounded-2xl border bg-white px-5 py-3 text-left shadow-[0_12px_34px_rgba(20,15,30,0.09)] md:px-6 md:py-3.5"
-                  style={{
-                    left: samlet ? '50%' : v.x,
-                    top: samlet ? '50%' : v.y,
-                    borderColor: '#eae7ef',
-                    transform: `translate(-50%, -50%) rotate(${samlet ? 0 : v.rot}deg) scale(${samlet ? 0.3 : osAktiv ? 1 : 0.9})`,
-                    opacity: samlet ? 0 : osAktiv ? 1 : 0,
-                    filter: samlet ? 'blur(6px)' : 'blur(0px)',
-                    transition: 'left 950ms cubic-bezier(0.22,1,0.36,1), top 950ms cubic-bezier(0.22,1,0.36,1), transform 950ms cubic-bezier(0.22,1,0.36,1), opacity 750ms cubic-bezier(0.22,1,0.36,1), filter 750ms',
-                    transitionDelay: samlet ? `${i * 70}ms` : `${280 + i * 120}ms`,
-                  }}
-                >
-                  <p className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-[#b0b0b5]">{v.kategori}</p>
-                  <p className="mt-0.5 whitespace-nowrap text-[15px] font-semibold tracking-[-0.01em] text-[#0f0f0f] md:text-[16px]">{v.navn}</p>
-                </div>
-              );
-            })}
-
-            {/* Lilla ambient glød bak panelet */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute left-1/2 top-1/2 h-[70%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-[1200ms]"
-              style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 70%)', filter: 'blur(40px)', opacity: osBeat >= 1 ? 1 : 0, transitionDelay: osBeat >= 1 ? '500ms' : '0ms' }}
-            />
-
-            {/* DigiHome-panelet — operativsystemet materialiserer seg i sentrum */}
-            <div
-              className="absolute left-1/2 top-1/2 w-[min(620px,78%)] rounded-[28px] bg-[#1a1a1a] p-6 md:p-8"
-              style={{
-                opacity: osBeat >= 1 ? 1 : 0,
-                transform: `translate(-50%, -50%) scale(${osBeat >= 1 ? 1 : 0.88})`,
-                filter: osBeat >= 1 ? 'blur(0)' : 'blur(8px)',
-                transition: 'opacity 900ms cubic-bezier(0.22,1,0.36,1), transform 1000ms cubic-bezier(0.22,1,0.36,1), filter 900ms',
-                transitionDelay: osBeat >= 1 ? '380ms' : '0ms',
-                boxShadow: '0 50px 130px -25px rgba(20,10,45,0.55), 0 0 0 1px rgba(255,255,255,0.06)',
-                pointerEvents: 'none',
-              }}
-            >
-              <div className="flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/digihome-logo-white.svg" alt="DigiHome" className="h-[22px] w-auto md:h-[24px]" />
-              </div>
-              <div className="mt-5 grid grid-cols-4 gap-2 md:mt-6 md:gap-2.5">
-                {OS_MODULER.map((m, i) => (
-                  <div
-                    key={m.navn}
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-white/[0.07] bg-white/[0.05] px-1.5 py-3 md:gap-2 md:py-3.5"
-                    style={{
-                      opacity: osBeat >= 1 ? 1 : 0,
-                      transform: osBeat >= 1 ? 'translateY(0)' : 'translateY(12px)',
-                      transition: 'opacity 700ms cubic-bezier(0.22,1,0.36,1), transform 700ms cubic-bezier(0.22,1,0.36,1)',
-                      transitionDelay: osBeat >= 1 ? `${560 + i * 85}ms` : '0ms',
-                    }}
-                  >
-                    <m.Ikon className="h-[17px] w-[17px] text-[#cf97fc] md:h-[18px] md:w-[18px]" strokeWidth={1.8} />
-                    <span className="text-[11px] font-medium text-white/80 md:text-[11.5px]">{m.navn}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {/* Kamera-uttrekket: veggen starter zoomet inn på dashbord-flisen
+              (rad 2, kolonne 2) og trekker seg ut til hele produktveggen */}
+          <div
+            style={{
+              transform: omfangAktiv ? 'scale(1)' : 'scale(2.7)',
+              transformOrigin: '37.6% 44%',
+              transition: 'transform 1650ms cubic-bezier(0.22,1,0.36,1)',
+            }}
+          >
+            <OmfangVegg vis={omfangAktiv} />
           </div>
 
-          {/* Punch — hviskes inn når panelet står */}
-          <p className={`mt-7 text-center text-[clamp(15px,1.6vw,22px)] text-[#86868b] opacity-0 ${osBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '1650ms' }} data-testid="bu-os-punch">
-            Én innlogging. <span className="font-semibold text-[#0f0f0f]">Én datakilde.</span> <span className="font-semibold text-[#0f0f0f]">Null lim.</span>
+          {/* Omfanget i tall */}
+          <p className={`mt-6 text-center text-[clamp(14px,1.45vw,19px)] text-[#86868b] opacity-0 ${omfangAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '2300ms' }} data-testid="bu-omfang-tall">
+            <span className="font-semibold text-[#0f0f0f]">20+ moduler</span>
+            <span className="mx-2.5 text-[#c7c7cc]">·</span>
+            <span className="font-semibold text-[#0f0f0f]">2 portaler</span>
+            <span className="mx-2.5 text-[#c7c7cc]">·</span>
+            BankID innebygd
+            <span className="mx-2.5 text-[#c7c7cc]">·</span>
+            AI i alle lag
           </p>
         </div>
 
-        <footer className="pb-10" />
+        <footer className="pb-8" />
       </section>
 
       {/* ═══ DEN SVARTE SCENEN — cover, prompt og reveal (skrus av mot tittel) ═══ */}
