@@ -1079,57 +1079,93 @@ export default function BergenUrbanDeck() {
           </div>
         </div>
 
-        {/* ── AKT 0.9: KAOSET — ti systemer, mørk versjon (problemet plantes) ── */}
+        {/* ── AKT 0.9: KAOSET — problemet: systemer som ikke snakker sammen ── */}
         <div
           className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-8 transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(kaosAktiv)}`}
           data-testid="bu-kaos"
         >
-          {/* Knapt merkbar luminans */}
-          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(48% 40% at 50% 50%, rgba(124,58,237,0.08) 0%, transparent 100%)' }} />
+          {/* Knapt merkbar nøytral luminans */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(50% 42% at 50% 46%, rgba(255,255,255,0.04) 0%, transparent 100%)' }} />
 
+          {/* Scale-settle — komposisjonen lander sakte (filmtittel) */}
+          <div className="flex w-full flex-col items-center" style={{ transform: kaosAktiv ? 'scale(1)' : 'scale(1.045)', transition: 'transform 3000ms cubic-bezier(0.22,1,0.36,1)' }}>
           <div className="bu-drift flex w-full flex-col items-center">
-            {/* Kicker + tittel */}
-            <p className={`text-[clamp(14px,1.3vw,18px)] font-medium tracking-[-0.01em] text-white/[0.4] opacity-0 ${kaosAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '200ms', animationDuration: '1.5s' }}>
-              Og i dag?
+            {/* Kicker — PROBLEMET */}
+            <p
+              className={`bu-ord-base text-[clamp(11.5px,1vw,14px)] font-semibold uppercase tracking-[0.32em] text-white/[0.42] ${kaosAktiv ? 'bu-ord' : ''}`}
+              style={{ animationDelay: '250ms', marginRight: '-0.32em' }}
+            >
+              Problemet
             </p>
-            <h2 className={`mt-5 text-center font-heading text-[clamp(26px,3.5vw,54px)] font-bold leading-[1.12] tracking-[-0.035em] text-white ${kaosAktiv ? 'bu-spor' : ''}`}>
-              <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
-                <span className={`bu-linje-base block ${kaosAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '550ms' }}>Ti systemer som ikke snakker sammen.</span>
-              </span>
+            {/* Tittel — ord for ord i blur-dissolve */}
+            <h2 className={`mt-6 text-center font-heading text-[clamp(28px,3.8vw,60px)] font-bold leading-[1.12] tracking-[-0.035em] text-white ${kaosAktiv ? 'bu-spor' : ''}`}>
+              {['Systemer', 'som', 'ikke', 'snakker', 'sammen.'].map((ord, i) => (
+                <span key={ord} className={`bu-ord-base ${kaosAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: `${600 + i * 130}ms` }}>
+                  {ord}{i < 4 ? '\u00A0' : ''}
+                </span>
+              ))}
             </h2>
 
-            {/* Lappeteppet — mørke glasslapper med brutte forbindelser */}
-            <div className="relative mt-4 h-[42vh] max-h-[440px] min-h-[280px] w-full max-w-[1020px]">
+            {/* Lappeteppet — glasskort som flyter hver for seg, med brutte
+                forbindelser som «prøver» å nå hverandre (marsjerende streker,
+                enkelte flimrer som mislykkede synkroniseringer) */}
+            <div className="relative mt-7 h-[46vh] max-h-[520px] min-h-[300px] w-full max-w-[1180px]">
               <svg
                 aria-hidden
                 className="absolute inset-0 h-full w-full transition-opacity duration-[900ms]"
                 viewBox="0 0 100 100"
                 preserveAspectRatio="none"
-                style={{ opacity: kaosAktiv ? 0.9 : 0, transitionDelay: kaosAktiv ? '1400ms' : '0ms' }}
+                style={{ opacity: kaosAktiv ? 1 : 0, transitionDelay: kaosAktiv ? '1600ms' : '0ms' }}
               >
-                {[[14, 15, 40, 10], [40, 10, 66, 13], [66, 13, 88, 24], [88, 24, 92, 58], [92, 58, 76, 86], [76, 86, 50, 91], [50, 91, 24, 87], [24, 87, 7, 63], [7, 63, 9, 35], [9, 35, 14, 15], [14, 15, 92, 58], [66, 13, 24, 87], [9, 35, 76, 86]].map((l) => (
-                  <line key={l.join('-')} x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]} stroke="rgba(255,255,255,0.11)" strokeWidth="0.3" strokeDasharray="1.4 2.6" />
+                {[[14, 15, 40, 10], [40, 10, 66, 13], [66, 13, 88, 24], [88, 24, 92, 58], [92, 58, 76, 86], [76, 86, 50, 91], [50, 91, 24, 87], [24, 87, 7, 63], [7, 63, 9, 35], [9, 35, 14, 15]].map((l) => (
+                  <line key={l.join('-')} className="bu-kaos-strek" x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]} stroke="rgba(255,255,255,0.13)" strokeWidth="0.3" strokeDasharray="1.4 2.6" />
+                ))}
+                {/* Kryssende linjer — flimrer som mislykkede synkroniseringer */}
+                {[[14, 15, 92, 58, '4.5s', '0s'], [66, 13, 24, 87, '6s', '1.2s'], [9, 35, 76, 86, '5.2s', '2.4s']].map((l) => (
+                  <line
+                    key={l.join('-')}
+                    className="bu-kaos-strek"
+                    x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]}
+                    stroke="rgba(255,255,255,0.09)" strokeWidth="0.3" strokeDasharray="1.4 2.6"
+                    style={{ animation: `buStrek 16s linear infinite, buFlimre ${l[4]} ease-in-out ${l[5]} infinite` }}
+                  />
                 ))}
               </svg>
 
               {VERKTOY.map((v, i) => (
                 <div
                   key={v.navn}
-                  className="absolute rounded-2xl border border-white/[0.09] bg-white/[0.05] px-5 py-3 text-left shadow-[0_16px_44px_rgba(0,0,0,0.5)] md:px-6 md:py-3.5"
+                  className="absolute"
                   style={{
                     left: v.x,
                     top: v.y,
-                    transform: `translate(-50%, -50%) rotate(${v.rot}deg) scale(${kaosAktiv ? 1 : 0.9})`,
+                    transform: `translate(-50%, -50%) rotate(${v.rot}deg) scale(${kaosAktiv ? 1 : 0.86})`,
                     opacity: kaosAktiv ? 1 : 0,
-                    transition: 'transform 900ms cubic-bezier(0.22,1,0.36,1), opacity 750ms cubic-bezier(0.22,1,0.36,1)',
-                    transitionDelay: kaosAktiv ? `${450 + i * 110}ms` : '0ms',
+                    filter: kaosAktiv ? 'blur(0)' : 'blur(10px)',
+                    transition: 'transform 950ms cubic-bezier(0.22,1,0.36,1), opacity 800ms cubic-bezier(0.22,1,0.36,1), filter 800ms cubic-bezier(0.22,1,0.36,1)',
+                    transitionDelay: kaosAktiv ? `${500 + i * 100}ms` : '0ms',
                   }}
                 >
-                  <p className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-white/[0.28]">{v.kategori}</p>
-                  <p className="mt-0.5 whitespace-nowrap text-[15px] font-semibold tracking-[-0.01em] text-white/[0.88] md:text-[16px]">{v.navn}</p>
+                  {/* Egen flyt-wrapper (transform-konflikt unngås) — hvert kort
+                      driver i sin egen takt: usynkronisert, frakoblet */}
+                  <div className="bu-kaos-flyt" style={{ animationDuration: `${5.5 + (i % 4) * 0.7}s`, animationDelay: `${-(i * 0.9)}s` }}>
+                    <div
+                      className="rounded-2xl px-6 py-3.5 text-left"
+                      style={{
+                        background: 'linear-gradient(180deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.035) 100%)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.07), 0 24px 60px rgba(0,0,0,0.55)',
+                        backdropFilter: 'blur(8px)',
+                      }}
+                    >
+                      <p className="text-[9.5px] font-bold uppercase tracking-[0.18em] text-white/[0.32]">{v.kategori}</p>
+                      <p className="mt-1 whitespace-nowrap text-[16px] font-semibold tracking-[-0.01em] text-white/[0.92] md:text-[17px]">{v.navn}</p>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
+          </div>
           </div>
         </div>
 
@@ -1534,7 +1570,7 @@ export default function BergenUrbanDeck() {
           animation: buGlans 2.2s cubic-bezier(0.45, 0, 0.2, 1) 1.7s forwards;
         }
         @media (prefers-reduced-motion: reduce) {
-          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor, .bu-driftpuls, .bu-livepuls, .bu-livedot { animation: none !important; }
+          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor, .bu-driftpuls, .bu-livepuls, .bu-livedot, .bu-kaos-flyt, .bu-kaos-strek { animation: none !important; }
         }
         @keyframes buFlyt {
           from { transform: translateY(0); }
@@ -1551,6 +1587,21 @@ export default function BergenUrbanDeck() {
         }
         .bu-ord-base { opacity: 0; display: inline-block; }
         .bu-ord { animation: buOrd 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* ── Kaoset: frakoblet flyt, marsjerende streker og flimrende sync ── */
+        @keyframes buKaosFlyt {
+          from { transform: translateY(-4px); }
+          to { transform: translateY(4px); }
+        }
+        .bu-kaos-flyt { animation: buKaosFlyt 6s ease-in-out infinite alternate; }
+        @keyframes buStrek {
+          to { stroke-dashoffset: -24; }
+        }
+        .bu-kaos-strek { animation: buStrek 16s linear infinite; }
+        @keyframes buFlimre {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.2; }
+        }
 
         /* ── Driften i sanntid: nodepuls, live-prikk og lyset langs linjen ── */
         @keyframes buLivePuls {
