@@ -868,39 +868,56 @@ export default function BergenUrbanDeck() {
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(50% 42% at 50% 44%, rgba(255,255,255,0.05) 0%, transparent 100%)' }} />
 
           {/* Scale-settle + kamera-liv — samme filmspråk som resten av den svarte scenen */}
-          <div className="flex flex-col items-center" style={{ transform: megAktiv ? 'scale(1)' : 'scale(1.05)', transition: 'transform 3200ms cubic-bezier(0.22,1,0.36,1)' }}>
-            <div className="bu-drift flex flex-col items-center">
-              {/* Portrettet — materialiserer seg i blur-dissolve */}
+          <div style={{ transform: megAktiv ? 'scale(1)' : 'scale(1.05)', transition: 'transform 3200ms cubic-bezier(0.22,1,0.36,1)' }}>
+            <div className="bu-drift flex flex-col items-center gap-12 md:flex-row md:gap-[5.5rem]">
+
+              {/* Portrettet — stort, editorielt beskåret. Materialiserer seg i
+                  blur-dissolve mens motivet lander i en langsom Ken Burns-settle */}
               <div className={megAktiv ? 'bu-foto' : 'opacity-0'}>
-                <div className="overflow-hidden rounded-[32px] ring-1 ring-white/[0.12] shadow-[0_50px_130px_-30px_rgba(0,0,0,0.85)]">
+                <div className="relative overflow-hidden rounded-[34px] shadow-[0_60px_160px_-30px_rgba(0,0,0,0.9)] ring-1 ring-white/[0.1]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="/martin-kviteberg.jpg"
                     alt="Martin Kviteberg"
-                    className="block h-[clamp(190px,30vh,280px)] w-[clamp(190px,30vh,280px)] object-cover"
+                    className={`block h-[clamp(340px,54vh,500px)] w-[clamp(272px,43.2vh,400px)] object-cover ${megAktiv ? 'bu-kenburns' : ''}`}
                   />
+                  {/* Diskret luminans-gradient nederst — forankrer bildet i scenen */}
+                  <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 68%, rgba(0,0,0,0.3) 100%)' }} />
+                  {/* Hårfin topplys-kant */}
+                  <div aria-hidden className="pointer-events-none absolute inset-0 rounded-[34px]" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14)' }} />
                 </div>
               </div>
 
-              {/* Navnet — ord for ord, tracking som setter seg */}
-              <h2 className={`mt-10 font-heading text-[clamp(36px,4.6vw,72px)] font-bold leading-[1.05] tracking-[-0.035em] text-white ${megAktiv ? 'bu-spor' : ''}`}>
-                <span className={`bu-ord-base ${megAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '900ms' }}>Martin</span>{' '}
-                <span className={`bu-ord-base ${megAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '1150ms' }}>
-                  <span className={megAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2600ms' }}>Kviteberg</span>
-                </span>
-              </h2>
-
-              {/* Rollen — hviskes inn med hairlines, som Historien-labelen */}
-              <div
-                className={`mt-8 flex items-center gap-5 opacity-0 ${megAktiv ? 'bu-inn' : ''}`}
-                style={{ animationDelay: '1900ms', animationDuration: '1.6s' }}
-                data-testid="bu-meg-rolle"
-              >
-                <span aria-hidden className="h-px w-12 bg-gradient-to-r from-transparent to-white/25" />
-                <p className="text-[clamp(13px,1.2vw,17px)] font-medium tracking-[-0.01em] text-white/[0.62]">
-                  Produktsjef i DigiHome
+              {/* Teksten — editoriell kolonne */}
+              <div className="max-w-[520px] text-center md:text-left">
+                <p
+                  className={`bu-ord-base text-[clamp(11px,0.95vw,13.5px)] font-semibold uppercase tracking-[0.32em] text-white/[0.4] ${megAktiv ? 'bu-ord' : ''}`}
+                  style={{ animationDelay: '650ms' }}
+                >
+                  Produktsjef&ensp;·&ensp;DigiHome
                 </p>
-                <span aria-hidden className="h-px w-12 bg-gradient-to-l from-transparent to-white/25" />
+                <h2 className={`mt-7 font-heading text-[clamp(52px,6.2vw,100px)] font-bold leading-[0.98] tracking-[-0.04em] text-white ${megAktiv ? 'bu-spor' : ''}`}>
+                  <span className="block">
+                    <span className={`bu-ord-base ${megAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '950ms' }}>Martin</span>
+                  </span>
+                  <span className="block">
+                    <span className={`bu-ord-base ${megAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '1200ms' }}>
+                      <span className={megAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2700ms' }}>Kviteberg</span>
+                    </span>
+                  </span>
+                </h2>
+
+                {/* Hook-linjen — hviskes inn til slutt */}
+                <div
+                  className={`mt-9 flex items-center justify-center gap-5 opacity-0 md:justify-start ${megAktiv ? 'bu-inn' : ''}`}
+                  style={{ animationDelay: '2000ms', animationDuration: '1.6s' }}
+                  data-testid="bu-meg-rolle"
+                >
+                  <span aria-hidden className="h-px w-10 shrink-0 bg-gradient-to-r from-white/30 to-transparent" />
+                  <p className="text-[clamp(15px,1.35vw,19px)] font-medium leading-snug tracking-[-0.012em] text-white/[0.58]">
+                    Bygde DigiHome fra idé til drift.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -1585,7 +1602,7 @@ export default function BergenUrbanDeck() {
           animation: buGlans 2.2s cubic-bezier(0.45, 0, 0.2, 1) 1.7s forwards;
         }
         @media (prefers-reduced-motion: reduce) {
-          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-drift-lys, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor, .bu-kaos-flyt, .bu-kaos-strek { animation: none !important; }
+          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-drift-lys, .bu-kenburns, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor, .bu-kaos-flyt, .bu-kaos-strek { animation: none !important; }
         }
         @keyframes buFlyt {
           from { transform: translateY(0); }
@@ -1603,13 +1620,18 @@ export default function BergenUrbanDeck() {
         .bu-ord-base { opacity: 0; display: inline-block; }
         .bu-ord { animation: buOrd 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-        /* ── Om meg: portrettet materialiserer seg ── */
+        /* ── Om meg: portrettet materialiserer seg + langsom Ken Burns-settle ── */
         @keyframes buFoto {
           from { opacity: 0; transform: translateY(16px) scale(0.94); filter: blur(18px); }
           65% { filter: blur(2px); }
           to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
         }
         .bu-foto { opacity: 0; animation: buFoto 1.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards; }
+        @keyframes buKenBurns {
+          from { transform: scale(1.12); }
+          to { transform: scale(1); }
+        }
+        .bu-kenburns { animation: buKenBurns 7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards; }
 
         /* ── Kaoset: frakoblet flyt, marsjerende streker og flimrende sync ── */
         @keyframes buKaosFlyt {
