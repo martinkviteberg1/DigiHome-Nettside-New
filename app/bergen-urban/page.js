@@ -12,6 +12,8 @@
    5-7) AGENTEN (svart): AI-agenten bygger systemet → deploy → lys-tenning
    8) SVARET (lys): forvalterportalen materialiserer seg + AI-chat
    9-10) HOOK (lys): påstand 1 → 6-åringens håndskrift (rack focus)
+   11-12) SANNHETEN (lys): «Det var ikke én prompt.» → 1 000 timer/500 k
+      mot tradisjonell utvikling 10 000 timer/5–10 mill. — proporsjonsbarer
    Navigasjon: → / mellomrom / PageDown (klikker) = neste beat,
    ← / PageUp = forrige, F = fullskjerm, R = start forfra. */
 
@@ -116,6 +118,25 @@ function KodeLinje({ tekst }) {
   });
 }
 
+// Animert teller — teller opp med myk utflating (til Sannheten-sliden)
+function Teller({ til, aktiv, varighet = 1400, prefiks = '', suffiks = '' }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!aktiv) { setN(0); return undefined; }
+    let raf;
+    const start = performance.now();
+    const tikk = (t) => {
+      const p = Math.min(1, (t - start) / varighet);
+      const e = 1 - Math.pow(1 - p, 3);
+      setN(Math.round(til * e));
+      if (p < 1) raf = requestAnimationFrame(tikk);
+    };
+    raf = requestAnimationFrame(tikk);
+    return () => cancelAnimationFrame(raf);
+  }, [aktiv, til, varighet]);
+  return <>{prefiks}{n.toLocaleString('nb-NO').replace(/\s/g, '\u00A0')}{suffiks}</>;
+}
+
 // Prosessloopen — kjernen i ideen: de samme stegene, om igjen og om igjen
 const PROSESSER = ['Annonsering', 'Visning', 'Kontrakt', 'Depositum', 'Innflytting', 'Vedlikehold', 'Utflytting'];
 const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
@@ -124,8 +145,9 @@ const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 //       1 = «Historien om DigiHome.» (mørk) · 2 = ideen · 3 = prosessloopen ·
 //       4 = bar · 5 = skriver · 6 = sendt+tenker (auto→7) ·
 //       7 = agenten bygger (auto→8) · 8 = reveal ·
-//       9 = påstand 1 · 10 = påstand 1+2
-const TOTALT = 11;
+//       9 = påstand 1 · 10 = påstand 1+2 ·
+//       11 = sannheten (DigiHome-tall) · 12 = + tradisjonell utvikling
+const TOTALT = 13;
 
 export default function BergenUrbanDeck() {
   const [steg, setSteg] = useState(-1);
@@ -256,8 +278,10 @@ export default function BergenUrbanDeck() {
   const promptAktiv = steg >= 4 && steg <= 6;
   const kodeAktiv = steg === 7;
   const revealAktiv = steg === 8;
-  const hookAktiv = steg >= 9;
+  const hookAktiv = steg === 9 || steg === 10;
   const bygg = Math.max(0, steg - 9);
+  const sannhetAktiv = steg >= 11;
+  const sannhetBeat = Math.max(0, steg - 11); // 0 = DigiHome-tall · 1 = + tradisjonell
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -323,6 +347,86 @@ export default function BergenUrbanDeck() {
 
         <footer className="pb-12 text-center">
           <p className="text-[12px] tracking-tight text-[#b0b0b5]">Martin Kviteberg&ensp;·&ensp;Bergen Urban</p>
+        </footer>
+      </section>
+
+      {/* ═══ AKT 5 — SANNHETEN: hva det faktisk kostet (proporsjonsbarer) ═══ */}
+      <section
+        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${lysKlasse(sannhetAktiv, 'inn')}`}
+        data-testid="bu-slide-sannhet"
+      >
+        <header className="flex justify-start px-12 pt-11 md:px-16">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
+        </header>
+
+        <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-16">
+          {/* Kamera-glid: tittelen sentrert alene — komposisjonen glir opp når tallene kommer */}
+          <div className={`flex w-full max-w-[960px] flex-col items-center transition-transform duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${sannhetBeat >= 1 ? 'translate-y-0' : 'translate-y-[3vh]'}`}>
+
+            {/* Kicker + tittel — glir bak i fokus når sammenligningen lander */}
+            <div className={`text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${sannhetBeat >= 1 ? 'scale-[0.86] opacity-40 blur-[1px]' : 'scale-100 opacity-100 blur-0'}`}>
+              <p className="text-[12px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">03</p>
+              <h2 className="mt-7 font-heading text-[clamp(28px,3.8vw,54px)] font-bold leading-[1.12] tracking-[-0.03em]" data-testid="bu-sannhet-tittel">
+                Det var ikke én prompt.
+              </h2>
+            </div>
+
+            {/* Tradisjonell utvikling — tegner seg tungt og langsomt over hele bredden */}
+            <div className={`mt-14 w-full transition-[opacity,transform,filter] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${sannhetBeat >= 1 ? 'translate-y-0 opacity-100 blur-0' : 'pointer-events-none translate-y-6 opacity-0 blur-[6px]'}`}>
+              <div className="mb-3 flex items-baseline justify-between gap-4">
+                <p className="text-[11.5px] font-bold uppercase tracking-[0.18em] text-[#86868b]">Tradisjonell utvikling</p>
+                <p className="font-heading text-[clamp(19px,2.3vw,33px)] font-bold tracking-[-0.02em] tabular-nums text-[#0f0f0f]">
+                  <Teller til={10000} aktiv={sannhetBeat >= 1} varighet={2000} />
+                  <span className="text-[0.6em] font-medium text-[#86868b]"> timer</span>
+                  <span className="mx-2.5 text-[0.6em] font-medium text-[#c7c7cc]">·</span>
+                  5–10<span className="text-[0.6em] font-medium text-[#86868b]"> mill. kr</span>
+                </p>
+              </div>
+              <div className="h-[14px] w-full overflow-hidden rounded-full bg-[#f1f0f3]">
+                <div
+                  className="h-full rounded-full bg-[#1a1a1a] transition-[width] duration-[2000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                  style={{ width: sannhetBeat >= 1 ? '100%' : '0%', transitionDelay: sannhetBeat >= 1 ? '250ms' : '0ms' }}
+                />
+              </div>
+            </div>
+
+            {/* DigiHome — smeller inn i lilla og stopper på en tidel */}
+            <div className="mt-9 w-full">
+              <div className="mb-3 flex items-baseline justify-between gap-4">
+                <p className="text-[11.5px] font-bold uppercase tracking-[0.18em] text-[#7c3aed]">DigiHome</p>
+                <p className="font-heading text-[clamp(19px,2.3vw,33px)] font-bold tracking-[-0.02em] tabular-nums text-[#0f0f0f]" data-testid="bu-sannhet-digihome-tall">
+                  <Teller til={1000} aktiv={sannhetAktiv} varighet={1500} />
+                  <span className="text-[0.6em] font-medium text-[#86868b]"> timer</span>
+                  <span className="mx-2.5 text-[0.6em] font-medium text-[#c7c7cc]">·</span>
+                  <Teller til={500000} aktiv={sannhetAktiv} varighet={1800} prefiks="~" />
+                  <span className="text-[0.6em] font-medium text-[#86868b]"> kr</span>
+                </p>
+              </div>
+              <div className="h-[14px] w-full overflow-hidden rounded-full bg-[#f1f0f3]">
+                <div
+                  className="h-full rounded-full transition-[width] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                  style={{
+                    width: sannhetAktiv ? '10%' : '0%',
+                    transitionDelay: sannhetAktiv ? '600ms' : '0ms',
+                    background: 'linear-gradient(90deg, #7c3aed, #cf97fc)',
+                    boxShadow: '0 4px 20px rgba(124,58,237,0.38)',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Konklusjonen — hviskes inn når barene har fått tale */}
+            <p className={`mt-14 text-center text-[clamp(16px,1.8vw,25px)] leading-snug text-[#86868b] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '2400ms' }} data-testid="bu-sannhet-konklusjon">
+              Samme system. <span className="font-semibold text-[#0f0f0f]">En tidel av tiden.</span> <span className="font-semibold text-[#0f0f0f]">7&nbsp;% av kostnaden.</span>
+            </p>
+          </div>
+        </div>
+
+        <footer className="pb-10 text-center">
+          <p className={`text-[11px] tracking-tight text-[#c7c7cc] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '3000ms' }}>
+            Estimat: tilsvarende system bygget med tradisjonelt utviklingsteam
+          </p>
         </footer>
       </section>
 
