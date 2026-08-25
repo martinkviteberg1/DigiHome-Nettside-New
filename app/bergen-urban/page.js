@@ -319,20 +319,67 @@ export default function BergenUrbanDeck() {
         className={`absolute inset-0 z-20 bg-[#050505] transition-opacity duration-[1700ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${morkAktiv ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
         data-testid="bu-svart-scene"
       >
-        {/* ── AKT 0: COVER — ikon, navn, «Utleie på autopilot.» ── */}
+        {/* ── AKT 0: COVER — levende scenelys, ikon som objekt, koreografert intro ── */}
         <div
           className={`absolute inset-0 flex flex-col items-center justify-center px-6 transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(coverAktiv)}`}
           data-testid="bu-cover"
         >
-          <div className="bu-inn overflow-hidden rounded-[24px] shadow-[0_50px_130px_-25px_rgba(155,91,214,0.55)]" style={{ animationDelay: '250ms' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/digihome-mark.svg" alt="DigiHome-ikon" className="h-[96px] w-[96px] md:h-[112px] md:w-[112px]" />
+          {/* Aurora — puster og driver umerkelig */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div
+              className="bu-aurora1 absolute left-1/2 top-[26%] h-[64vh] w-[58vw] -translate-x-1/2 rounded-full"
+              style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.55) 0%, transparent 62%)', filter: 'blur(90px)', opacity: 0.28 }}
+            />
+            <div
+              className="bu-aurora2 absolute left-[28%] top-[42%] h-[48vh] w-[42vw] rounded-full"
+              style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.5) 0%, transparent 62%)', filter: 'blur(110px)', opacity: 0.16 }}
+            />
           </div>
-          <h1 className="bu-inn mt-10 font-heading text-[clamp(52px,8vw,116px)] font-bold leading-none tracking-[-0.04em] text-white" style={{ animationDelay: '500ms' }}>
-            DigiHome
+
+          {/* Ikonet — bloom, spekulært lysdrag og glassrefleksjon */}
+          <div className="relative">
+            <div
+              aria-hidden
+              className="bu-bloom absolute -inset-10 rounded-full"
+              style={{ background: 'radial-gradient(circle, rgba(155,91,214,0.55) 0%, transparent 68%)', filter: 'blur(34px)' }}
+            />
+            <div className="bu-ikon relative">
+              <div className="relative overflow-hidden rounded-[26px] shadow-[0_40px_110px_-20px_rgba(155,91,214,0.5)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/digihome-mark.svg" alt="DigiHome-ikon" className="block h-[112px] w-[112px] md:h-[128px] md:w-[128px]" />
+                {/* Spekulært lysdrag over ikonflaten */}
+                <div aria-hidden className="bu-spek pointer-events-none absolute -inset-y-6 w-[42%] rotate-[18deg] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+              </div>
+              {/* Refleksjon — som om ikonet står på sort glass */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/digihome-mark.svg"
+                alt=""
+                aria-hidden
+                className="mt-[6px] block h-[112px] w-[112px] -scale-y-100 rounded-[26px] opacity-[0.15] blur-[2px] md:h-[128px] md:w-[128px]"
+                style={{
+                  maskImage: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 52%)',
+                  WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 52%)',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Navnet — mask reveal + lys-sweep */}
+          <h1 className="-mt-16 font-heading text-[clamp(56px,8.5vw,124px)] font-bold leading-none tracking-[-0.04em] md:-mt-[72px]">
+            <span className="block overflow-hidden pb-[0.12em] -mb-[0.12em]">
+              <span className="bu-tittelinn block">DigiHome</span>
+            </span>
           </h1>
-          <p className="bu-inn mt-5 font-heading text-[clamp(18px,2vw,27px)] font-medium tracking-[-0.022em] text-white/50" style={{ animationDelay: '800ms' }}>
+
+          {/* Setningen — eget beat, større */}
+          <p className="bu-inn mt-6 font-heading text-[clamp(19px,2.1vw,27px)] font-medium tracking-[-0.022em] text-white/[0.65]" style={{ animationDelay: '3050ms' }}>
             Utleie på autopilot<span className="text-[#B57BFF]">.</span>
+          </p>
+
+          {/* Hvisket forankring */}
+          <p className="bu-inn absolute bottom-10 text-[11.5px] tracking-[0.22em] text-white/[0.22]" style={{ animationDelay: '3700ms' }}>
+            BERGEN URBAN — 2026
           </p>
         </div>
 
@@ -513,6 +560,52 @@ export default function BergenUrbanDeck() {
         }
         .bu-flyt { animation: buFlyt 7.5s ease-in-out infinite alternate; }
         .bu-flyt-tlf { animation: buFlyt 6.5s ease-in-out 0.8s infinite alternate; }
+
+        /* ── Cover-koreografi ── */
+        @keyframes buAurora1 {
+          from { transform: translate(-50%, 0) scale(1); }
+          to { transform: translate(-42%, -6%) scale(1.18); }
+        }
+        .bu-aurora1 { animation: buAurora1 22s ease-in-out infinite alternate; }
+        @keyframes buAurora2 {
+          from { transform: translate(0, 0) scale(1.1); }
+          to { transform: translate(14%, 8%) scale(0.92); }
+        }
+        .bu-aurora2 { animation: buAurora2 28s ease-in-out infinite alternate; }
+        @keyframes buIkon {
+          from { opacity: 0; transform: translateY(14px) scale(0.7); filter: blur(16px); }
+          62% { filter: blur(0); }
+          to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+        .bu-ikon { opacity: 0; animation: buIkon 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards; }
+        @keyframes buBloom {
+          0% { opacity: 0; transform: scale(0.4); }
+          48% { opacity: 0.75; transform: scale(1.14); }
+          100% { opacity: 0.32; transform: scale(1); }
+        }
+        .bu-bloom { opacity: 0; animation: buBloom 1.9s cubic-bezier(0.22, 1, 0.36, 1) 0.45s forwards; }
+        @keyframes buSpek {
+          from { left: -55%; opacity: 0; }
+          18% { opacity: 1; }
+          to { left: 125%; opacity: 0; }
+        }
+        .bu-spek { left: -55%; opacity: 0; animation: buSpek 1.15s cubic-bezier(0.4, 0, 0.2, 1) 1.55s forwards; }
+        @keyframes buGlans {
+          from { background-position: 108% 0; }
+          to { background-position: -60% 0; }
+        }
+        .bu-tittelinn {
+          transform: translateY(112%);
+          background: linear-gradient(108deg, #ffffff 42%, #dcc6ff 50%, #ffffff 58%);
+          background-size: 260% 100%;
+          background-position: 108% 0;
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          animation:
+            buLinje 1.35s cubic-bezier(0.16, 1, 0.3, 1) 0.95s forwards,
+            buGlans 2.1s cubic-bezier(0.45, 0, 0.2, 1) 2.5s forwards;
+        }
       `}</style>
     </main>
   );
