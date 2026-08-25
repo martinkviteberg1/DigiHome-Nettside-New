@@ -14,12 +14,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Caveat } from 'next/font/google';
-import ForvalterMockup from '@/components/tour/mockups/ForvalterMockup';
-import PhoneDeckMockup from '@/components/tour/mockups/PhoneDeckMockup';
+import { Bot, Check, Rocket } from 'lucide-react';
+import ForvalterFullskjerm from '@/components/tour/mockups/ForvalterFullskjerm';
+import AssistentChatMockup from '@/components/tour/mockups/AssistentChatMockup';
 
 const caveat = Caveat({ subsets: ['latin', 'latin-ext'], weight: ['500', '600', '700'], display: 'swap' });
 
 const PROMPT = 'Lag et AI-drevet system for utleie og boligforvaltning.';
+const INTRO = 'Skal bli. Jeg bygger systemet modul for modul.';
 
 // Ekte kodelinjer fra DigiHome-repoet (uten hemmeligheter) — «AI-en bygger
 // systemet» fyller skjermen med disse i akselererende tempo.
@@ -82,6 +84,19 @@ const KODE = [
   "await oppdaterKanban(db, sak.id, { status: 'PÅGÅR', flyttetAv: bruker.id });",
 ];
 
+// Agentens verktøykall — dukker opp i samtalen i takt med kodestrømmen,
+// som en ekte AI-agent som planlegger, oppretter filer og tester.
+const AGENT_STEG = [
+  { tekst: 'Datamodell: boliger, leietakere, kontrakter', fil: 'db/schema.js · 214 linjer' },
+  { tekst: 'BankID-signering med Posten', fil: 'lib/signering.js · 412 linjer' },
+  { tekst: 'Automatisk husleie og avstemming', fil: 'lib/okonomi.js · 187 linjer' },
+  { tekst: 'AI-svar og visningsbooking', fil: 'lib/autopilot.js · 336 linjer' },
+  { tekst: 'Annonsering og utleieprosess', fil: 'app/annonser.tsx · 254 linjer' },
+  { tekst: 'Forvalterportal og eierapp', fil: 'app/portal.tsx · 598 linjer' },
+  { tekst: 'Kjører tester', fil: '34/34 grønne' },
+];
+const KODE_FILER = ['signering.js', 'kontrakter.js', 'autopilot.js', 'portal.tsx'];
+
 // Diskret syntaksfarging — to aksenter, resten dempet
 const KODE_REGEX = /('[^']*'|`[^`]*`|\/\/.*$|\b(?:const|let|await|async|function|return|export|import|if|else|for|of|new|try|catch)\b)/g;
 function KodeLinje({ tekst }) {
@@ -98,16 +113,19 @@ function KodeLinje({ tekst }) {
   });
 }
 
-// Steg: 0 = cover · 1 = bar · 2 = skriver · 3 = sendt+tenker (auto→4)
-//       4 = kodestorm (auto→5) · 5 = reveal (svart) · 6 = tittel (lys)
+// Steg: -1 = helt sort (klikk starter showet) · 0 = cover · 1 = bar ·
+//       2 = skriver · 3 = sendt+tenker (auto→4)
+//       4 = agenten bygger (auto→5) · 5 = reveal · 6 = tittel (lys)
 //       7 = påstand 1 · 8 = påstand 1+2
 const TOTALT = 9;
 
 export default function BergenUrbanDeck() {
-  const [steg, setSteg] = useState(0);
+  const [steg, setSteg] = useState(-1);
   const [antallTegn, setAntallTegn] = useState(0);
   const [tenker, setTenker] = useState(false);
   const [kodeAntall, setKodeAntall] = useState(0);
+  const [deploy, setDeploy] = useState(false);      // agenten «deployer» før overgangen
+  const [tenning, setTenning] = useState('av');     // 'av' | 'inn' | 'ut' — lysbloom-overgangen
   const [musSynlig, setMusSynlig] = useState(true);
   const [mockSkala, setMockSkala] = useState(0.78);
   const musTimer = useRef(null);
@@ -127,8 +145,8 @@ export default function BergenUrbanDeck() {
       if (['ArrowRight', ' ', 'PageDown', 'Enter', 'ArrowDown'].includes(e.key)) { e.preventDefault(); neste(); }
       else if (['ArrowLeft', 'PageUp', 'ArrowUp', 'Backspace'].includes(e.key)) { e.preventDefault(); forrige(); }
       else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); fullskjerm(); }
-      else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); setSteg(0); }
-      else if (e.key === 'Home') { e.preventDefault(); setSteg(0); }
+      else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); setSteg(-1); }
+      else if (e.key === 'Home') { e.preventDefault(); setSteg(-1); }
       else if (e.key === 'End') { e.preventDefault(); setSteg(TOTALT - 1); }
     };
     window.addEventListener('keydown', tast);
@@ -155,9 +173,9 @@ export default function BergenUrbanDeck() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [steg]);
 
-  // Kodestorm: linjer fyller skjermen i akselererende tempo → auto til svaret
+  // Kodestrøm: agenten «bygger» → deploy-beat → lys-tenning → reveal
   useEffect(() => {
-    if (steg < 4) { setKodeAntall(0); return undefined; }
+    if (steg < 4) { setKodeAntall(0); setDeploy(false); setTenning('av'); return undefined; }
     if (steg !== 4) return undefined; // behold linjene under utfading
     let stoppet = false;
     let i = 0;
@@ -167,13 +185,26 @@ export default function BergenUrbanDeck() {
       i += i > 150 ? 3 : (i > 60 ? 2 : 1);
       setKodeAntall(Math.min(i, total));
       if (i >= total) {
-        setTimeout(() => { if (!stoppet) setSteg(5); }, 500);
+        // Kinematisk deploy-koreografi:
+        // 1) agenten melder «klart» og deployer · 2) arbeidsrommet dimmes og
+        // et lys tennes i sentrum · 3) portalen materialiserer seg under lyset
+        setTimeout(() => { if (!stoppet) setDeploy(true); }, 380);
+        setTimeout(() => { if (!stoppet) setTenning('inn'); }, 2400);
+        setTimeout(() => { if (!stoppet) setSteg(5); }, 3250);
         return;
       }
       setTimeout(tikk, Math.max(9, 36 - i * 0.12));
     };
     const start = setTimeout(tikk, 300);
     return () => { stoppet = true; clearTimeout(start); };
+  }, [steg]);
+
+  // Lyset trekker seg tilbake idet portalen står ferdig
+  useEffect(() => {
+    if (steg !== 5) return undefined;
+    const t1 = setTimeout(() => setTenning((v) => (v === 'inn' ? 'ut' : v)), 300);
+    const t2 = setTimeout(() => setTenning('av'), 1900);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [steg]);
 
   // Skjul musepekeren når den ligger i ro (scene-modus)
@@ -188,12 +219,12 @@ export default function BergenUrbanDeck() {
     return () => { window.removeEventListener('mousemove', beveg); if (musTimer.current) clearTimeout(musTimer.current); };
   }, []);
 
-  // Fullskjerm «dekk»-skalering: UI-et (design 880×540) dekker alltid hele
-  // viewporten uansett skjermformat — bredere skjermer beskjærer litt i
-  // bunnen, høyere skjermer litt i høyre kant (sidebaren er alltid hel).
+  // Fullskjerm «dekk»-skalering: UI-et (design 1600×1000) dekker alltid hele
+  // viewporten uansett skjermformat — sidebaren er alltid hel, og typografien
+  // holder ekte app-størrelse (ingen «zoomet» følelse).
   useEffect(() => {
     const maal = () => {
-      setMockSkala(Math.max(window.innerWidth / 880, window.innerHeight / 540));
+      setMockSkala(Math.max(window.innerWidth / 1600, window.innerHeight / 1000));
     };
     maal();
     window.addEventListener('resize', maal);
@@ -317,7 +348,9 @@ export default function BergenUrbanDeck() {
         className={`absolute inset-0 z-20 bg-[#050505] transition-opacity duration-[1700ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${morkAktiv ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
         data-testid="bu-svart-scene"
       >
-        {/* ── AKT 0: COVER — levende scenelys, ikon som objekt, koreografert intro ── */}
+        {/* ── AKT 0: COVER — monteres først ved klikk, så intro-koreografien
+            starter presist når presentasjonen begynner (helt sort før det) ── */}
+        {steg >= 0 && (
         <div
           className={`absolute inset-0 flex flex-col items-center justify-center px-6 transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(coverAktiv)}`}
           data-testid="bu-cover"
@@ -380,6 +413,7 @@ export default function BergenUrbanDeck() {
             BERGEN URBAN — 2026
           </p>
         </div>
+        )}
 
         {/* ── AKT 1: PROMPTEN ── */}
         <div
@@ -418,32 +452,177 @@ export default function BergenUrbanDeck() {
           </div>
         </div>
 
-        {/* ── AKT 1.5: KODESTORMEN — AI-en bygger systemet, live ── */}
+        {/* ── AKT 1.5: AI-AGENTEN — mockup av agenten som bygger DigiHome ── */}
         <div
-          className={`absolute inset-0 transition-[opacity,filter] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${kodeAktiv ? 'opacity-100 blur-0' : 'pointer-events-none opacity-0 blur-[8px]'}`}
+          className={`absolute inset-0 transition-[opacity,filter,transform] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${kodeAktiv ? (tenning === 'av' ? 'opacity-100 blur-0 scale-100' : 'opacity-20 blur-[6px] scale-[0.94]') : 'pointer-events-none opacity-0 blur-[8px] scale-[0.985]'}`}
           data-testid="bu-kodestorm"
         >
-          {/* Terminal-strøm: nye linjer nederst, eldre presses opp og fader ut */}
-          <div
-            className="absolute inset-0 flex flex-col justify-end overflow-hidden px-10 pb-14 pt-10 font-mono text-[12px] leading-[1.6] md:px-16 md:text-[12.5px]"
-            style={{
-              maskImage: 'linear-gradient(to bottom, transparent 0%, black 22%, black 100%)',
-              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 22%, black 100%)',
-            }}
-          >
-            {Array.from({ length: kodeAntall }, (_, i) => (
-              // eslint-disable-next-line react/no-array-index-key
-              <div key={i} className="whitespace-pre">
-                <span className="mr-4 inline-block w-8 text-right text-white/[0.14] tabular-nums">{i + 1}</span>
-                <KodeLinje tekst={KODE[i % KODE.length]} />
+          {/* Ambient scenelys bak vinduet — løfter det fra den svarte flaten */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(58% 52% at 50% 44%, rgba(124,58,237,0.11) 0%, transparent 70%)' }} />
+          <div className="relative h-full p-7 md:p-11">
+            <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-[#0c0c0e] shadow-[0_60px_160px_-30px_rgba(0,0,0,0.9)]">
+              {/* Tittellinje — app-vindu */}
+              <div className="relative flex h-11 shrink-0 items-center border-b border-white/[0.07] bg-[#121215] px-4">
+                <span className="flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+                  <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+                  <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+                </span>
+                <span className="absolute left-1/2 -translate-x-1/2 font-mono text-[11px] text-white/35">digihome — AI-agent</span>
+                <span className="ml-auto flex items-center gap-1.5 rounded-full bg-[#4ade80]/10 px-2.5 py-1 text-[10px] font-semibold text-[#4ade80]">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#4ade80]" /> Agent aktiv
+                </span>
               </div>
-            ))}
-          </div>
-          {/* Statuslinje */}
-          <div className="absolute bottom-5 left-10 flex items-center gap-2.5 font-mono text-[11.5px] text-white/35 md:left-16">
-            <span className="bu-blink inline-block h-[13px] w-[7px] bg-white/60" />
-            genererer digihome
-            <span className="tabular-nums text-white/25">· {Math.max(1, Math.round(kodeAntall / 16))} moduler · {(kodeAntall * 47).toLocaleString('nb-NO')} linjer</span>
+
+              <div className="grid min-h-0 flex-1 grid-cols-[420px_1fr]">
+                {/* VENSTRE: agent-samtalen — agenten planlegger, bygger og tester */}
+                <div className="flex min-h-0 flex-col border-r border-white/[0.07] bg-[#0e0e11]">
+                  {/* Agent-identitet */}
+                  <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.05] px-5 py-3.5">
+                    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+                      <span className="absolute inset-0 animate-ping rounded-full bg-[#7c3aed]/25" style={{ animationDuration: '2.2s' }} />
+                      <span className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#7c3aed] to-[#cf97fc] shadow-[0_0_30px_rgba(155,91,214,0.5)]">
+                        <Bot className="h-[17px] w-[17px] text-white" strokeWidth={1.9} />
+                      </span>
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-bold tracking-tight text-white">DigiHome-agent</p>
+                      <p className="mt-[1px] flex items-center gap-1.5 text-[10.5px] text-white/40">
+                        {deploy
+                          ? (<><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#cf97fc]" /> deployer til produksjon</>)
+                          : (<><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#4ade80]" /> bygger applikasjonen</>)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Samtalen */}
+                  <div className="min-h-0 flex-1 space-y-2 overflow-hidden px-5 py-4">
+                    {/* Brukerens prompt */}
+                    <div className="ml-10 rounded-2xl rounded-tr-md bg-white/[0.08] px-3.5 py-2 text-[12px] leading-snug text-white/80">
+                      {PROMPT}
+                    </div>
+                    {/* Agentens intro — strømmer inn tegn for tegn */}
+                    {kodeAntall >= 2 && (
+                      <p className="pt-1 text-[12px] leading-snug text-white/55">
+                        {INTRO.slice(0, Math.max(0, (kodeAntall - 2) * 3))}
+                        {(kodeAntall - 2) * 3 < INTRO.length && <span className="bu-blink ml-[1px] inline-block h-[0.95em] w-[2px] translate-y-[0.15em] bg-[#cf97fc]/80" />}
+                      </p>
+                    )}
+                    {/* Verktøykall — dukker opp og fullføres i takt med koden */}
+                    {AGENT_STEG.map((s, i) => {
+                      const synlig = kodeAntall >= i * 30 + 6;
+                      const ferdig = kodeAntall >= (i + 1) * 32;
+                      if (!synlig) return null;
+                      return (
+                        <div key={s.tekst} className="bu-inn flex items-center gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-[6px]" style={{ animationDuration: '0.6s' }}>
+                          {ferdig ? (
+                            <span className="flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full bg-[#4ade80]/[0.14]">
+                              <Check className="h-[10px] w-[10px] text-[#4ade80]" strokeWidth={3} />
+                            </span>
+                          ) : (
+                            <span className="h-[15px] w-[15px] shrink-0 animate-spin rounded-full border-2 border-white/10 border-t-[#cf97fc]" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className={`truncate text-[11.5px] transition-colors duration-500 ${ferdig ? 'text-white/60' : 'font-medium text-white/90'}`}>{s.tekst}</p>
+                            <p className="truncate font-mono text-[9.5px] text-white/25">{s.fil}</p>
+                          </div>
+                          {ferdig && <span className="shrink-0 font-mono text-[9px] font-semibold text-[#4ade80]/60">ok</span>}
+                        </div>
+                      );
+                    })}
+                    {/* Sluttmelding + deploy */}
+                    {deploy && (
+                      <div className="bu-inn pt-1" style={{ animationDuration: '0.7s' }}>
+                        <p className="text-[12px] leading-relaxed text-white/70">DigiHome er klart.</p>
+                        <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-[#cf97fc]/25 bg-[#cf97fc]/[0.07] px-3 py-2">
+                          <Rocket className="h-[14px] w-[14px] shrink-0 text-[#cf97fc]" strokeWidth={1.9} />
+                          <span className="text-[11.5px] font-medium text-[#e4cfff]">Deployer til produksjon …</span>
+                          <span className="ml-auto h-[13px] w-[13px] shrink-0 animate-spin rounded-full border-2 border-white/10 border-t-[#cf97fc]" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Fremdrift */}
+                  <div className="shrink-0 border-t border-white/[0.07] px-5 py-3.5">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">{deploy ? 'Deploy' : 'Fremdrift'}</span>
+                      <span className="font-mono text-[11.5px] font-semibold text-[#cf97fc] tabular-nums">{Math.min(100, Math.round((kodeAntall / 240) * 100))} %</span>
+                    </div>
+                    <div className="mt-2 h-[4px] overflow-hidden rounded-full bg-white/[0.07]">
+                      <div
+                        className={`h-full rounded-full bg-gradient-to-r from-[#7c3aed] to-[#cf97fc] transition-[width] duration-300 ease-out ${deploy ? 'animate-pulse' : ''}`}
+                        style={{ width: `${Math.min(100, (kodeAntall / 240) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* HØYRE: editoren agenten skriver i */}
+                <div className="relative flex min-h-0 flex-col bg-[#0a0a0c]">
+                  {/* Fanelinje */}
+                  <div className="flex h-10 shrink-0 items-center gap-1.5 border-b border-white/[0.06] bg-[#101013] px-4">
+                    {KODE_FILER.map((fil, i) => {
+                      const aktivFane = Math.min(KODE_FILER.length - 1, Math.floor(kodeAntall / 62)) === i;
+                      return (
+                        <span key={fil} className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-[10.5px] transition-colors duration-300 ${aktivFane ? 'bg-white/[0.07] text-white/75' : 'text-white/25'}`}>
+                          <span className={`h-1 w-1 rounded-full ${aktivFane ? 'bg-[#cf97fc]' : 'bg-white/15'}`} />
+                          {fil}
+                        </span>
+                      );
+                    })}
+                  </div>
+              {/* Brødsmulesti — fil-kontekst som i en ekte editor */}
+              <div className="flex h-7 shrink-0 items-center gap-1.5 border-b border-white/[0.04] px-4 font-mono text-[10px] text-white/25">
+                digihome
+                <span className="text-white/[0.12]">›</span>
+                lib
+                <span className="text-white/[0.12]">›</span>
+                <span className="text-white/45">{KODE_FILER[Math.min(KODE_FILER.length - 1, Math.floor(kodeAntall / 62))]}</span>
+                <span className="ml-auto text-white/[0.18]">TypeScript · UTF-8</span>
+              </div>
+              {/* Kodestrøm */}
+              <div
+                className="relative flex min-h-0 flex-1 flex-col justify-end overflow-hidden px-5 pb-3 pt-3 font-mono text-[11.5px] leading-[1.6]"
+                style={{
+                  maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 100%)',
+                }}
+              >
+                {Array.from({ length: kodeAntall }, (_, i) => {
+                  const sist = i === kodeAntall - 1;
+                  return (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <div key={i} className={`shrink-0 truncate whitespace-pre rounded-[3px] ${sist ? 'bg-white/[0.035]' : ''}`}>
+                      <span className="mr-2.5 inline-block w-7 text-right text-white/[0.14] tabular-nums">{i + 1}</span>
+                      <span className="mr-2 inline-block w-2 text-[#4ade80]/40">+</span>
+                      <KodeLinje tekst={KODE[i % KODE.length]} />
+                      {sist && !deploy && <span className="bu-blink ml-[2px] inline-block h-[11px] w-[6px] translate-y-[1px] bg-[#cf97fc]/80" />}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Build vellykket — tilfredsstillende sluttbeat over editoren */}
+              {deploy && (
+                <div className="bu-inn absolute inset-0 z-10 flex items-center justify-center bg-[#0a0a0c]/72 backdrop-blur-[3px]" style={{ animationDuration: '0.8s' }}>
+                  <div className="flex flex-col items-center gap-3">
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#4ade80]/[0.12] ring-1 ring-[#4ade80]/30 shadow-[0_0_50px_rgba(74,222,128,0.25)]">
+                      <Check className="h-7 w-7 text-[#4ade80]" strokeWidth={2.5} />
+                    </span>
+                    <p className="text-[15px] font-semibold tracking-tight text-white/90">Build vellykket</p>
+                    <p className="font-mono text-[11px] text-white/40">34/34 tester · 11 280 linjer · 4,2 s</p>
+                  </div>
+                </div>
+              )}
+              {/* Editor-statuslinje */}
+              <div className="flex h-9 shrink-0 items-center gap-2.5 border-t border-white/[0.06] bg-[#101013] px-4 font-mono text-[10.5px] text-white/35">
+                <span className="bu-blink inline-block h-[11px] w-[6px] bg-white/60" />
+                {deploy ? 'build ok · deployer digihome' : 'genererer digihome'}
+                <span className="ml-auto tabular-nums text-white/25">{Math.max(1, Math.round(kodeAntall / 16))} moduler · {(kodeAntall * 47).toLocaleString('nb-NO')} linjer</span>
+              </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -455,21 +634,47 @@ export default function BergenUrbanDeck() {
         className={`absolute inset-0 z-10 overflow-hidden transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'pointer-events-auto opacity-100 blur-0 scale-100' : 'pointer-events-none opacity-0 blur-[14px] scale-[1.04]'}`}
         data-testid="bu-reveal"
       >
-        {/* Forvalterportalen kant til kant — «dekk»-skalert, alltid hel sidebar */}
-        <div className="origin-top-left" style={{ width: 880, transform: `scale(${mockSkala})` }}>
-          <ForvalterMockup ramme={false} />
+        {/* Forvalterportalen kant til kant — «dekk»-skalert, materialiserer seg
+            i koreografert kaskade (sidebar først, deretter seksjonene) */}
+        <div className="origin-top-left" style={{ width: 1600, transform: `scale(${mockSkala})` }}>
+          <ForvalterFullskjerm vis={revealAktiv} />
         </div>
 
-        {/* Huseier-appen — nede til høyre, svever over den lyse flaten */}
+        {/* AI-driftsassistenten — glir inn som siste lag og «svarer» live */}
         <div
-          className={`absolute bottom-[3.5vh] right-[2.5vw] z-10 transition-[opacity,transform,filter] duration-[1300ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-16 opacity-0 blur-[10px]'}`}
-          style={{ width: 'clamp(185px, 14.5vw, 275px)', transitionDelay: revealAktiv ? '800ms' : '0ms' }}
+          className={`absolute bottom-[4vh] right-[2vw] z-10 transition-[opacity,transform,filter] duration-[1300ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-14 opacity-0 blur-[10px]'}`}
+          style={{ width: 'clamp(300px, 20vw, 380px)', transitionDelay: revealAktiv ? '1550ms' : '0ms' }}
         >
-          <div className="bu-flyt-tlf drop-shadow-[0_50px_60px_rgba(20,15,30,0.45)]">
-            <PhoneDeckMockup />
-          </div>
+          <AssistentChatMockup vis={revealAktiv} />
         </div>
       </section>
+
+      {/* ── Lys-tenning: arbeidsrommet imploderer, et anamorfisk lysglimt
+          skjærer over skjermen og kjernen blomstrer opp — dekker overgangen
+          og trekker seg tilbake idet portalen materialiserer seg ── */}
+      {tenning !== 'av' && (
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute inset-0 z-40 flex items-center justify-center transition-opacity duration-[1300ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${tenning === 'inn' ? 'opacity-100' : 'opacity-0'}`}
+          data-testid="bu-tenning"
+        >
+          {/* Ytre violett halo — vokser sakte */}
+          <div
+            className="bu-tenning2 absolute h-[46vmax] w-[46vmax] rounded-full"
+            style={{ background: 'radial-gradient(circle, rgba(180,123,255,0.55) 0%, rgba(124,58,237,0.28) 45%, transparent 70%)', filter: 'blur(40px)' }}
+          />
+          {/* Anamorfisk flare — horisontalt lyssnitt */}
+          <div
+            className="bu-flare absolute h-[3px] w-[46vw] rounded-full"
+            style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.95) 50%, transparent 100%)', boxShadow: '0 0 32px 6px rgba(220,198,255,0.55)' }}
+          />
+          {/* Kjernen — hvitt lys som blomstrer opp */}
+          <div
+            className="bu-tenning absolute h-[46vmax] w-[46vmax] rounded-full"
+            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.99) 0%, rgba(233,214,255,0.8) 34%, rgba(155,91,214,0.25) 58%, transparent 72%)', filter: 'blur(14px)' }}
+          />
+        </div>
+      )}
 
       {/* ── Fullskjerm (kun synlig ved musbevegelse — usynlig på scenen) ── */}
       <button
@@ -518,6 +723,28 @@ export default function BergenUrbanDeck() {
           100% { transform: scale(1); }
         }
         .bu-puls { animation: buPuls 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+        @keyframes buTenning {
+          0% { opacity: 0; transform: scale(0.12); }
+          40% { opacity: 1; }
+          100% { opacity: 1; transform: scale(3.1); }
+        }
+        .bu-tenning { animation: buTenning 2.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        @keyframes buTenning2 {
+          0% { opacity: 0; transform: scale(0.05); }
+          45% { opacity: 0.9; }
+          100% { opacity: 0.85; transform: scale(2.2); }
+        }
+        .bu-tenning2 { animation: buTenning2 2.7s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        @keyframes buFlare {
+          0% { opacity: 0; transform: scaleX(0.05); }
+          22% { opacity: 1; }
+          70% { opacity: 0.85; transform: scaleX(2.7); }
+          100% { opacity: 0; transform: scaleX(3.6); }
+        }
+        .bu-flare { animation: buFlare 1.35s cubic-bezier(0.3, 0, 0.2, 1) forwards; }
+        @media (prefers-reduced-motion: reduce) {
+          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-spek { animation: none !important; }
+        }
         @keyframes buFlyt {
           from { transform: translateY(0); }
           to { transform: translateY(-7px); }
