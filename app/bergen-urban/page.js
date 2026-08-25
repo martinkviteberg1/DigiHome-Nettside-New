@@ -23,7 +23,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Caveat } from 'next/font/google';
-import { Bot, Check, Rocket } from 'lucide-react';
+import { Bot, Check, Rocket, Code2, Wand2, Radar } from 'lucide-react';
 import OmfangVegg from '@/components/tour/mockups/OmfangVegg';
 import ForvalterFullskjerm from '@/components/tour/mockups/ForvalterFullskjerm';
 import AssistentChatMockup from '@/components/tour/mockups/AssistentChatMockup';
@@ -153,8 +153,9 @@ const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 //       10 = omfanget (kameraet trekker ut til produktveggen) ·
 //       11 = integrasjonene («Alt henger sammen.») ·
 //       12 = påstand 1 · 13 = påstand 1+2 ·
-//       14 = sannheten (DigiHome-tall) · 15 = + tradisjonell utvikling
-const TOTALT = 16;
+//       14 = sannheten (DigiHome-tall) · 15 = + tradisjonell utvikling ·
+//       16–18 = tre AI-roller (byggeren · verktøyene · agentene, én per klikk)
+const TOTALT = 19;
 
 // Innholdsfortegnelse — supersubtil meny nede i venstre hjørne for å hoppe
 // direkte til en scene. Auto-beats (7) hoppes over; agent-scenen (8) spiller
@@ -175,6 +176,7 @@ const TOC = [
   { steg: 13, tittel: '«6-åringen»' },
   { steg: 14, tittel: 'Sannheten' },
   { steg: 15, tittel: 'Sammenligningen' },
+  { steg: 16, tittel: 'Tre AI-roller' },
 ];
 
 // Lappeteppet — verktøyene forvaltere jonglerer i dag. Posisjoner i % av
@@ -224,6 +226,28 @@ const intPos = (vinkel) => {
   return { x: 50 + 43 * Math.cos(r), y: 50 + 41 * Math.sin(r) };
 };
 const INT_LILLA = '#9B5BD6';
+
+// ── Tre AI-roller — finalen: AI-en bygde, er innebygd, og jobber selv ──
+const AI_ROLLER = [
+  {
+    navn: 'Byggeren',
+    Ikon: Code2,
+    tekst: 'AI-agenter skrev koden, designet flatene og testet systemet — modul for modul.',
+    punkter: ['Skrev koden', 'Designet flatene', 'Testet seg selv'],
+  },
+  {
+    navn: 'Verktøyene',
+    Ikon: Wand2,
+    tekst: 'AI innebygd der arbeidet skjer — i modulene forvalteren bruker hver dag.',
+    punkter: ['Styler boligbilder', 'Skriver annonsene', 'Svarer i chatten'],
+  },
+  {
+    navn: 'Agentene',
+    Ikon: Radar,
+    tekst: 'Autonome agenter som jobber alene i bakgrunnen — døgnet rundt, uten å bli bedt.',
+    punkter: ['Overvåker FINN', 'Fanger leads', 'Følger opp frister'],
+  },
+];
 
 function BUIntegrasjoner({ aktiv }) {
   const [fase, setFase] = useState(0);
@@ -472,6 +496,8 @@ export default function BergenUrbanDeck() {
   const bygg = Math.max(0, steg - 12);
   const sannhetAktiv = steg === 14 || steg === 15;
   const sannhetBeat = Math.max(0, steg - 14); // 0 = DigiHome-tall · 1 = + tradisjonell
+  const rollerAktiv = steg >= 16;
+  const rollerBeat = Math.max(0, steg - 15); // 1 = byggeren · 2 = +verktøyene · 3 = +agentene
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -617,6 +643,71 @@ export default function BergenUrbanDeck() {
           <p className={`text-[11px] tracking-tight text-[#c7c7cc] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '3000ms' }}>
             Estimat: tilsvarende system bygget med tradisjonelt utviklingsteam
           </p>
+        </footer>
+      </section>
+
+      {/* ═══ AKT 7 — TRE AI-ROLLER: bygget · innebygd · autonom (finalen) ═══ */}
+      <section
+        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${lysKlasse(rollerAktiv, 'inn')}`}
+        data-testid="bu-slide-roller"
+      >
+        <header className="relative z-10 flex justify-start px-12 pt-11 md:px-16">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
+        </header>
+
+        <div className="flex flex-1 flex-col items-center justify-center px-10 md:px-16">
+          <div className="w-full max-w-[1180px]">
+            <div className={`text-center opacity-0 ${rollerAktiv ? 'bu-inn' : ''}`} style={{ animationDuration: '1.4s' }}>
+              <p className="text-[12px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">04</p>
+              <h2 className="mt-7 font-heading text-[clamp(28px,3.6vw,52px)] font-bold leading-[1.12] tracking-[-0.03em] text-[#0f0f0f]" data-testid="bu-roller-tittel">
+                AI spiller tre roller.
+              </h2>
+            </div>
+
+            {/* Rollene — én per klikk, blur-dissolve i kaskade */}
+            <div className="mt-14 grid grid-cols-3 gap-10 md:mt-16 md:gap-14">
+              {AI_ROLLER.map((r, i) => {
+                const Ikon = r.Ikon;
+                return (
+                  <div
+                    key={r.navn}
+                    className={`opacity-0 ${rollerBeat >= i + 1 ? 'bu-inn' : ''}`}
+                    style={{ animationDuration: '1.3s' }}
+                    data-testid={`bu-rolle-${i + 1}`}
+                  >
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: '#f5f1fb' }}>
+                      <Ikon className="h-5 w-5 text-[#7c3aed]" strokeWidth={1.8} />
+                    </span>
+                    <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b0b0b5]">Rolle&nbsp;0{i + 1}</p>
+                    <h3 className="mt-2 font-heading text-[clamp(20px,1.9vw,28px)] font-bold tracking-[-0.025em] text-[#0f0f0f]">{r.navn}</h3>
+                    <p className="mt-3 max-w-[34ch] text-[clamp(13px,1.15vw,16px)] leading-relaxed text-[#86868b]">{r.tekst}</p>
+                    <ul className="mt-5 space-y-2">
+                      {r.punkter.map((p) => (
+                        <li key={p} className="flex items-center gap-2.5 text-[13px] font-medium text-[#3c3c43]">
+                          <span className="h-1 w-1 shrink-0 rounded-full bg-[#B57BFF]" />
+                          {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Payoff — lander når alle tre står */}
+            <p
+              className={`mt-16 text-center text-[clamp(16px,1.8vw,25px)] leading-snug text-[#86868b] opacity-0 ${rollerBeat >= 3 ? 'bu-inn' : ''}`}
+              style={{ animationDelay: '1400ms' }}
+              data-testid="bu-roller-payoff"
+            >
+              <span className="font-semibold text-[#0f0f0f]">Bygget av AI.</span> <span className="font-semibold text-[#0f0f0f]">Drevet av AI.</span> Passet på av AI.
+            </p>
+          </div>
+        </div>
+
+        <footer className="flex items-center justify-center pb-10">
+          <p className="text-[12px] tracking-tight text-[#b0b0b5]">Martin Kviteberg&ensp;·&ensp;Bergen Urban</p>
         </footer>
       </section>
 
