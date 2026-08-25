@@ -155,12 +155,16 @@ const TOTALT = 15;
 // Lappeteppet — verktøyene forvaltere jonglerer i dag. Posisjoner i % av
 // scenen (løs ring rundt sentrum, der DigiHome-panelet lander i beat 2).
 const VERKTOY = [
-  { kategori: 'CRM', navn: 'HubSpot', x: '16%', y: '16%', rot: -3.5 },
-  { kategori: 'Økonomi', navn: 'Tripletex', x: '76%', y: '10%', rot: 2.5 },
-  { kategori: 'Signering', navn: 'DocuSign', x: '88%', y: '52%', rot: -2 },
-  { kategori: 'Oversikt', navn: 'Excel', x: '72%', y: '86%', rot: 3 },
-  { kategori: 'Dialog', navn: 'Outlook', x: '24%', y: '88%', rot: -2.5 },
-  { kategori: 'Annonsering', navn: 'Finn', x: '8%', y: '52%', rot: 2 },
+  { kategori: 'CRM', navn: 'HubSpot', x: '14%', y: '15%', rot: -3.5 },
+  { kategori: 'Økonomi', navn: 'Tripletex', x: '40%', y: '10%', rot: 2 },
+  { kategori: 'Visninger', navn: 'Calendly', x: '66%', y: '13%', rot: -2 },
+  { kategori: 'Signering', navn: 'DocuSign', x: '88%', y: '24%', rot: 2.5 },
+  { kategori: 'Betaling', navn: 'Vipps', x: '92%', y: '58%', rot: -2 },
+  { kategori: 'Oversikt', navn: 'Excel', x: '76%', y: '86%', rot: 3 },
+  { kategori: 'Husleie', navn: 'Husleie.no', x: '50%', y: '91%', rot: -2.5 },
+  { kategori: 'Dialog', navn: 'Outlook', x: '24%', y: '87%', rot: 2 },
+  { kategori: 'Annonsering', navn: 'Finn', x: '7%', y: '63%', rot: -3 },
+  { kategori: 'Kanaler', navn: 'Lodgify', x: '9%', y: '35%', rot: 2.5 },
 ];
 const OS_MODULER = [
   { navn: 'CRM', Ikon: Users },
@@ -475,7 +479,7 @@ export default function BergenUrbanDeck() {
               className="absolute inset-0 flex items-start justify-center text-center font-heading text-[clamp(22px,2.7vw,40px)] font-bold leading-[1.15] tracking-[-0.03em] text-[#0f0f0f] transition-[opacity,transform,filter] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
               style={{ opacity: osBeat >= 1 ? 0 : 1, transform: osBeat >= 1 ? 'translateY(-14px)' : 'translateY(0)', filter: osBeat >= 1 ? 'blur(5px)' : 'blur(0)' }}
             >
-              I dag: seks systemer som ikke snakker sammen.
+              I dag: ti systemer som ikke snakker sammen.
             </h2>
             <h2
               className="absolute inset-0 flex items-start justify-center text-center font-heading text-[clamp(24px,3.1vw,46px)] font-bold leading-[1.15] tracking-[-0.03em] transition-[opacity,transform,filter] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
@@ -496,7 +500,7 @@ export default function BergenUrbanDeck() {
               preserveAspectRatio="none"
               style={{ opacity: osAktiv && osBeat === 0 ? 0.8 : 0, transitionDelay: osBeat === 0 ? '900ms' : '0ms' }}
             >
-              {[[16, 16, 76, 10], [76, 10, 88, 52], [88, 52, 72, 86], [72, 86, 24, 88], [24, 88, 8, 52], [8, 52, 16, 16], [16, 16, 88, 52], [76, 10, 24, 88]].map((l) => (
+              {[[14, 15, 40, 10], [40, 10, 66, 13], [66, 13, 88, 24], [88, 24, 92, 58], [92, 58, 76, 86], [76, 86, 50, 91], [50, 91, 24, 87], [24, 87, 7, 63], [7, 63, 9, 35], [9, 35, 14, 15], [14, 15, 92, 58], [66, 13, 24, 87], [9, 35, 76, 86]].map((l) => (
                 <line key={l.join('-')} x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]} stroke="#d8d5de" strokeWidth="0.3" strokeDasharray="1.4 2.6" />
               ))}
             </svg>
