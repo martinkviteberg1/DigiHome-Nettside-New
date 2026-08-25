@@ -1,14 +1,15 @@
 'use client';
 
 /* ═══════════════════ Bergen Urban — presentasjonsdeck ═══════════════════
-   Kinematisk femdelt sekvens:
+   Kinematisk sekvens:
+   -1) SORT: helt sort — første klikk starter showet
    0) COVER (svart): DigiHome-ikon + navn + «Utleie på autopilot.»
-   1) PROMPT (svart): ChatGPT-aktig bar → prompten skrives → send →
+   1) HISTORIEN (svart): «Historien om DigiHome.» — oppspill til origin
+   2) PROMPT (svart): ChatGPT-aktig bar → prompten skrives → send →
       tenkeprikker → auto-overgang
-   2) SVARET (svart): systemet materialiserer seg i ett scenelys —
-      desktop-portal + iPhone (mockups fra /tour) mot svart
-   3) TITTEL (lyset skrus på): «Historien om DigiHome.» — mask reveal
-   4) HOOK (lys): påstand 1 → 6-åringens håndskrift (rack focus)
+   3) AGENTEN (svart): AI-agenten bygger systemet → deploy → lys-tenning
+   4) SVARET (lys): forvalterportalen materialiserer seg + AI-chat
+   5) HOOK (lys): påstand 1 → 6-åringens håndskrift (rack focus)
    Navigasjon: → / mellomrom / PageDown (klikker) = neste beat,
    ← / PageUp = forrige, F = fullskjerm, R = start forfra. */
 
@@ -113,10 +114,10 @@ function KodeLinje({ tekst }) {
   });
 }
 
-// Steg: -1 = helt sort (klikk starter showet) · 0 = cover · 1 = bar ·
-//       2 = skriver · 3 = sendt+tenker (auto→4)
-//       4 = agenten bygger (auto→5) · 5 = reveal · 6 = tittel (lys)
-//       7 = påstand 1 · 8 = påstand 1+2
+// Steg: -1 = helt sort (klikk starter showet) · 0 = cover ·
+//       1 = «Historien om DigiHome.» (mørk) · 2 = bar · 3 = skriver ·
+//       4 = sendt+tenker (auto→5) · 5 = agenten bygger (auto→6) ·
+//       6 = reveal · 7 = påstand 1 · 8 = påstand 1+2
 const TOTALT = 9;
 
 export default function BergenUrbanDeck() {
@@ -131,7 +132,7 @@ export default function BergenUrbanDeck() {
   const musTimer = useRef(null);
 
   const neste = useCallback(() => setSteg((s) => Math.min(TOTALT - 1, s + 1)), []);
-  const forrige = useCallback(() => setSteg((s) => (s === 4 || s === 5 ? 2 : Math.max(0, s - 1))), []);
+  const forrige = useCallback(() => setSteg((s) => (s === 5 || s === 6 ? 3 : Math.max(0, s - 1))), []);
 
   const fullskjerm = useCallback(() => {
     try {
@@ -155,8 +156,8 @@ export default function BergenUrbanDeck() {
 
   // Skriveanimasjon — naturlig, litt ujevn rytme
   useEffect(() => {
-    if (steg <= 1) { setAntallTegn(0); return undefined; }
-    if (steg === 2) {
+    if (steg <= 2) { setAntallTegn(0); return undefined; }
+    if (steg === 3) {
       if (antallTegn >= PROMPT.length) return undefined;
       const t = setTimeout(() => setAntallTegn((n) => n + 1), 26 + Math.random() * 62);
       return () => clearTimeout(t);
@@ -165,18 +166,18 @@ export default function BergenUrbanDeck() {
     return undefined;
   }, [steg, antallTegn]);
 
-  // Send → tenkeprikker → auto-overgang til kodestormen
+  // Send → tenkeprikker → auto-overgang til agent-scenen
   useEffect(() => {
-    if (steg !== 3) { setTenker(false); return undefined; }
+    if (steg !== 4) { setTenker(false); return undefined; }
     const t1 = setTimeout(() => setTenker(true), 520);
-    const t2 = setTimeout(() => setSteg(4), 3300);
+    const t2 = setTimeout(() => setSteg(5), 3300);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [steg]);
 
   // Kodestrøm: agenten «bygger» → deploy-beat → lys-tenning → reveal
   useEffect(() => {
-    if (steg < 4) { setKodeAntall(0); setDeploy(false); setTenning('av'); return undefined; }
-    if (steg !== 4) return undefined; // behold linjene under utfading
+    if (steg < 5) { setKodeAntall(0); setDeploy(false); setTenning('av'); return undefined; }
+    if (steg !== 5) return undefined; // behold linjene under utfading
     let stoppet = false;
     let i = 0;
     const total = 240;
@@ -190,7 +191,7 @@ export default function BergenUrbanDeck() {
         // et lys tennes i sentrum · 3) portalen materialiserer seg under lyset
         setTimeout(() => { if (!stoppet) setDeploy(true); }, 380);
         setTimeout(() => { if (!stoppet) setTenning('inn'); }, 2400);
-        setTimeout(() => { if (!stoppet) setSteg(5); }, 3250);
+        setTimeout(() => { if (!stoppet) setSteg(6); }, 3250);
         return;
       }
       setTimeout(tikk, Math.max(9, 36 - i * 0.12));
@@ -201,7 +202,7 @@ export default function BergenUrbanDeck() {
 
   // Lyset trekker seg tilbake idet portalen står ferdig
   useEffect(() => {
-    if (steg !== 5) return undefined;
+    if (steg !== 6) return undefined;
     const t1 = setTimeout(() => setTenning((v) => (v === 'inn' ? 'ut' : v)), 300);
     const t2 = setTimeout(() => setTenning('av'), 1900);
     return () => { clearTimeout(t1); clearTimeout(t2); };
@@ -239,13 +240,13 @@ export default function BergenUrbanDeck() {
   };
 
   const skrevet = PROMPT.slice(0, antallTegn);
-  const klarTilSend = antallTegn >= PROMPT.length && steg >= 2;
-  const morkAktiv = steg <= 4; // reveal (steg 5) er nå lys fullskjerm
+  const klarTilSend = antallTegn >= PROMPT.length && steg >= 3;
+  const morkAktiv = steg <= 5; // reveal (steg 6) er lys fullskjerm
   const coverAktiv = steg === 0;
-  const promptAktiv = steg >= 1 && steg <= 3;
-  const kodeAktiv = steg === 4;
-  const revealAktiv = steg === 5;
-  const tittelAktiv = steg === 6;
+  const historieAktiv = steg === 1;
+  const promptAktiv = steg >= 2 && steg <= 4;
+  const kodeAktiv = steg === 5;
+  const revealAktiv = steg === 6;
   const hookAktiv = steg >= 7;
   const bygg = Math.max(0, steg - 7);
 
@@ -272,36 +273,7 @@ export default function BergenUrbanDeck() {
         style={{ background: 'radial-gradient(120% 90% at 50% 42%, #ffffff 0%, #fbfbfb 55%, #f2f2f2 100%)' }}
       />
 
-      {/* ═══ AKT 3 — TITTEL (lyset skrus på) ═══ */}
-      <section
-        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${lysKlasse(tittelAktiv, 'inn')}`}
-        data-testid="bu-slide-tittel"
-      >
-        <header className="flex justify-start px-12 pt-11 md:px-16">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
-        </header>
-
-        <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-          <h1 className="bu-drift font-heading text-[clamp(44px,7vw,110px)] font-bold leading-[1.06] tracking-[-0.04em]">
-            <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
-              <span className={`bu-linje-base block ${tittelAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '350ms' }}>Historien om</span>
-            </span>
-            <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
-              <span className={`bu-linje-base block ${tittelAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '550ms' }}>DigiHome.</span>
-            </span>
-          </h1>
-          <p className={`mt-11 text-[clamp(14px,1.2vw,17px)] text-[#86868b] opacity-0 ${tittelAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '1500ms' }}>
-            Vibe coding i praksis
-          </p>
-        </div>
-
-        <footer className="pb-12 text-center">
-          <p className={`text-[12px] tracking-tight text-[#b0b0b5] opacity-0 ${tittelAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '2100ms' }}>
-            Martin Kviteberg&ensp;·&ensp;Bergen Urban
-          </p>
-        </footer>
-      </section>
+      {/* (Tittel-sliden er flyttet til mørk «Historien»-beat før prompten) */}
 
       {/* ═══ AKT 4 — HOOK: paradokset ═══ */}
       <section
@@ -340,7 +312,9 @@ export default function BergenUrbanDeck() {
           </div>
         </div>
 
-        <footer className="pb-12" />
+        <footer className="pb-12 text-center">
+          <p className="text-[12px] tracking-tight text-[#b0b0b5]">Martin Kviteberg&ensp;·&ensp;Bergen Urban</p>
+        </footer>
       </section>
 
       {/* ═══ DEN SVARTE SCENEN — cover, prompt og reveal (skrus av mot tittel) ═══ */}
@@ -415,6 +389,26 @@ export default function BergenUrbanDeck() {
         </div>
         )}
 
+        {/* ── AKT 0.5: HISTORIEN — mørkt oppspill til origin-historien ── */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center px-8 text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(historieAktiv)}`}
+          data-testid="bu-historie"
+        >
+          {/* Ett dempet scenelys bak teksten */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(46% 38% at 50% 46%, rgba(124,58,237,0.13) 0%, transparent 100%)' }} />
+          <h2 className="relative font-heading text-[clamp(42px,6.4vw,98px)] font-bold leading-[1.06] tracking-[-0.04em] text-white">
+            <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
+              <span className={`bu-linje-base block ${historieAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '150ms' }}>Historien om</span>
+            </span>
+            <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
+              <span className={`bu-linje-base block ${historieAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '350ms' }}>DigiHome.</span>
+            </span>
+          </h2>
+          <p className={`relative mt-9 text-[clamp(14px,1.2vw,17px)] text-white/[0.38] opacity-0 ${historieAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '1250ms' }}>
+            Vibe coding i praksis
+          </p>
+        </div>
+
         {/* ── AKT 1: PROMPTEN ── */}
         <div
           className={`absolute inset-0 flex flex-col items-center justify-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(promptAktiv)}`}
@@ -423,21 +417,21 @@ export default function BergenUrbanDeck() {
           {/* Svak luminans bak baren — som ett scenelys */}
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(52% 42% at 50% 47%, rgba(255,255,255,0.055) 0%, transparent 100%)' }} />
 
-          <div className={`relative flex w-[min(720px,88vw)] items-center gap-3 rounded-[28px] border border-white/[0.09] bg-[#161616] py-3 pl-4 pr-3 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)] transition-transform duration-700 ${steg >= 3 ? 'scale-[0.985]' : 'scale-100'}`}>
+          <div className={`relative flex w-[min(720px,88vw)] items-center gap-3 rounded-[28px] border border-white/[0.09] bg-[#161616] py-3 pl-4 pr-3 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)] transition-transform duration-700 ${steg >= 4 ? 'scale-[0.985]' : 'scale-100'}`}>
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/40">
               <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
             </span>
             <p className="min-h-[27px] flex-1 text-[16.5px] leading-[27px] text-[#ececec] md:text-[18px]" data-testid="bu-prompt-tekst">
-              {steg <= 1 && <span className="text-white/30">Spør om hva som helst</span>}
-              {steg >= 2 && (
+              {steg <= 2 && <span className="text-white/30">Spør om hva som helst</span>}
+              {steg >= 3 && (
                 <>
                   {skrevet}
-                  {steg <= 2 && <span className="bu-blink ml-[1px] inline-block h-[1.1em] w-[2px] translate-y-[0.18em] bg-white/90" />}
+                  {steg <= 3 && <span className="bu-blink ml-[1px] inline-block h-[1.1em] w-[2px] translate-y-[0.18em] bg-white/90" />}
                 </>
               )}
             </p>
             <span
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-500 ${klarTilSend ? 'bg-white text-black' : 'bg-white/10 text-white/30'} ${steg >= 3 ? 'bu-puls' : ''}`}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-500 ${klarTilSend ? 'bg-white text-black' : 'bg-white/10 text-white/30'} ${steg >= 4 ? 'bu-puls' : ''}`}
               data-testid="bu-send"
             >
               <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
