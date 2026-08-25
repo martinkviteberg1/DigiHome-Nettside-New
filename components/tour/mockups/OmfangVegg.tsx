@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { Sparkles, Bot, Wand2 } from 'lucide-react';
 import ForvalterFullskjerm from './ForvalterFullskjerm';
@@ -268,6 +268,25 @@ const FLISER: { navn: string; Mini: () => React.ReactElement; r: number; c: numb
 const FLIS_SKALA = 281 / 1600;
 
 export default function OmfangVegg({ vis = true }: { vis?: boolean }) {
+  // «Bla gjennom»-passet: etter at veggen har landet glir et fokus rolig
+  // gjennom alle kortene i leserekkefølge — hvert kort løftes et øyeblikk
+  // mens resten demper seg, før veggen faller til ro.
+  const [fokus, setFokus] = useState(-1);
+  useEffect(() => {
+    if (!vis) { setFokus(-1); return undefined; }
+    let i = -1;
+    let intervall: ReturnType<typeof setInterval> | undefined;
+    const start = setTimeout(() => {
+      intervall = setInterval(() => {
+        i += 1;
+        if (i > 11) { setFokus(-1); if (intervall) clearInterval(intervall); }
+        else setFokus(i);
+      }, 640);
+    }, 3000);
+    return () => { clearTimeout(start); if (intervall) clearInterval(intervall); };
+  }, [vis]);
+  const passAktiv = fokus >= 0;
+
   const flisStil = (dist: number): React.CSSProperties => ({
     opacity: vis ? 1 : 0,
     transform: vis ? 'translateY(0) scale(1)' : 'translateY(10px) scale(0.94)',
@@ -275,36 +294,42 @@ export default function OmfangVegg({ vis = true }: { vis?: boolean }) {
     transition: 'opacity 750ms cubic-bezier(0.22,1,0.36,1), transform 750ms cubic-bezier(0.22,1,0.36,1), filter 750ms cubic-bezier(0.22,1,0.36,1)',
     transitionDelay: vis ? `${640 + dist * 160}ms` : '0ms',
   });
+  // Visuell indeks i leserekkefølge (dashbordet = 5)
+  const visIdx = (f: { r: number; c: number }) => (f.r === 0 ? f.c : f.r === 1 ? 4 + f.c : 8 + f.c);
 
   return (
     <div className={`${jakarta.className} mx-auto grid w-[1160px] grid-cols-4 gap-3`}>
       {/* Rad 0 */}
       {FLISER.filter((f) => f.r === 0).map((f) => (
-        <Flis key={f.navn} navn={f.navn} stil={flisStil(Math.abs(f.r - 1) + Math.abs(f.c - 1))}><f.Mini /></Flis>
+        <Flis key={f.navn} navn={f.navn} stil={flisStil(Math.abs(f.r - 1) + Math.abs(f.c - 1))} fokusert={fokus === visIdx(f)} dempet={passAktiv && fokus !== visIdx(f)}><f.Mini /></Flis>
       ))}
       {/* Rad 1 — Saker, DASHBORDET, Signering, Økonomi */}
-      <Flis navn="Saker" stil={flisStil(1)}><MiniSaker /></Flis>
+      <Flis navn="Saker" stil={flisStil(1)} fokusert={fokus === 4} dempet={passAktiv && fokus !== 4}><MiniSaker /></Flis>
       {/* Dashbordet — det publikum nettopp så, i miniatyr (kamera-ankeret).
           Én stille ringpuls når veggen har landet: «det var denne flaten». */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5 transition-opacity duration-500" style={{ opacity: passAktiv && fokus !== 5 ? 0.72 : 1 }}>
         <div
-          className={`relative aspect-[16/10] overflow-hidden rounded-xl border bg-white ${vis ? 'ov-puls' : ''}`}
-          style={{ borderColor: '#d9c9f2', boxShadow: '0 10px 34px rgba(124,58,237,0.16), 0 0 0 3px rgba(181,123,255,0.14)' }}
+          className={`relative aspect-[16/10] overflow-hidden rounded-xl border bg-white transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${vis ? 'ov-puls' : ''}`}
+          style={{
+            borderColor: '#d9c9f2',
+            boxShadow: '0 10px 34px rgba(124,58,237,0.16), 0 0 0 3px rgba(181,123,255,0.14)',
+            transform: fokus === 5 ? 'translateY(-6px) scale(1.045)' : 'none',
+          }}
         >
           <div className="origin-top-left" style={{ transform: `scale(${FLIS_SKALA})`, width: 1600, height: 1000 }}>
             <ForvalterFullskjerm />
           </div>
         </div>
-        <p className="flex items-center justify-center gap-1 text-center text-[10.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: '#9a7bc9' }}>
-          <Sparkles className="h-[10px] w-[10px]" strokeWidth={2.4} /> Oversikt
+        <p className="flex items-center justify-center gap-1 text-center text-[10.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: fokus === 5 ? '#7c3aed' : '#9a7bc9', transition: 'color 400ms' }}>
+          <Sparkles className="h-[10px] w-[10px]" strokeWidth={2.4} /> Dashboard
         </p>
       </div>
       {FLISER.filter((f) => f.r === 1).slice(1).map((f) => (
-        <Flis key={f.navn} navn={f.navn} stil={flisStil(Math.abs(f.r - 1) + Math.abs(f.c - 1))}><f.Mini /></Flis>
+        <Flis key={f.navn} navn={f.navn} stil={flisStil(Math.abs(f.r - 1) + Math.abs(f.c - 1))} fokusert={fokus === visIdx(f)} dempet={passAktiv && fokus !== visIdx(f)}><f.Mini /></Flis>
       ))}
       {/* Rad 2 */}
       {FLISER.filter((f) => f.r === 2).map((f) => (
-        <Flis key={f.navn} navn={f.navn} stil={flisStil(Math.abs(f.r - 1) + Math.abs(f.c - 1))}><f.Mini /></Flis>
+        <Flis key={f.navn} navn={f.navn} stil={flisStil(Math.abs(f.r - 1) + Math.abs(f.c - 1))} fokusert={fokus === visIdx(f)} dempet={passAktiv && fokus !== visIdx(f)}><f.Mini /></Flis>
       ))}
       <style>{`
         @keyframes ovPuls {
@@ -317,13 +342,26 @@ export default function OmfangVegg({ vis = true }: { vis?: boolean }) {
   );
 }
 
-function Flis({ navn, stil, children }: { navn: string; stil: React.CSSProperties; children: React.ReactNode }) {
+function Flis({ navn, stil, children, fokusert = false, dempet = false }: { navn: string; stil: React.CSSProperties; children: React.ReactNode; fokusert?: boolean; dempet?: boolean }) {
   return (
     <div className="flex flex-col gap-1.5" style={stil}>
-      <div className="relative aspect-[16/10] overflow-hidden rounded-xl border bg-white" style={{ borderColor: '#eae7ef', boxShadow: '0 8px 26px rgba(20,15,30,0.07)' }}>
-        {children}
+      {/* Fokus-løftet ligger på et eget indre lag så entrance-transformen
+          på ytterlaget aldri kolliderer (jf. transform-konflikt-regelen) */}
+      <div className="transition-opacity duration-500" style={{ opacity: dempet ? 0.72 : 1 }}>
+        <div
+          className="relative aspect-[16/10] overflow-hidden rounded-xl border bg-white transition-[transform,box-shadow,border-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{
+            borderColor: fokusert ? '#d9c9f2' : '#eae7ef',
+            boxShadow: fokusert
+              ? '0 26px 60px rgba(124,58,237,0.2), 0 0 0 2px rgba(181,123,255,0.4)'
+              : '0 8px 26px rgba(20,15,30,0.07)',
+            transform: fokusert ? 'translateY(-6px) scale(1.045)' : 'none',
+          }}
+        >
+          {children}
+        </div>
       </div>
-      <p className="text-center text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa0]">{navn}</p>
+      <p className="text-center text-[10.5px] font-semibold uppercase tracking-[0.14em] transition-colors duration-400" style={{ color: fokusert ? '#7c3aed' : '#9a9aa0' }}>{navn}</p>
     </div>
   );
 }
