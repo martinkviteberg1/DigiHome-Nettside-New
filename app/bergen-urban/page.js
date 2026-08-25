@@ -454,46 +454,52 @@ export default function BergenUrbanDeck() {
             />
           </div>
 
-          {/* Ikonet — bloom, spekulært lysdrag og glassrefleksjon */}
-          <div className="relative">
-            <div
-              aria-hidden
-              className="bu-bloom absolute -inset-10 rounded-full"
-              style={{ background: 'radial-gradient(circle, rgba(155,91,214,0.55) 0%, transparent 68%)', filter: 'blur(34px)' }}
-            />
-            <div className="bu-ikon relative">
-              <div className="relative overflow-hidden rounded-[26px] shadow-[0_40px_110px_-20px_rgba(155,91,214,0.5)]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/digihome-mark.svg" alt="DigiHome-ikon" className="block h-[112px] w-[112px] md:h-[128px] md:w-[128px]" />
-                {/* Spekulært lysdrag over ikonflaten */}
-                <div aria-hidden className="bu-spek pointer-events-none absolute -inset-y-6 w-[42%] rotate-[18deg] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+          {/* Levende ramme: hele komposisjonen driver umerkelig (kamera-liv) */}
+          <div className="bu-drift flex flex-col items-center">
+
+            {/* Ikonet — bloom, spekulært lysdrag, glassrefleksjon og svak levitasjon */}
+            <div className="bu-flyt">
+              <div className="relative">
+                <div
+                  aria-hidden
+                  className="bu-bloom absolute -inset-10 rounded-full"
+                  style={{ background: 'radial-gradient(circle, rgba(155,91,214,0.55) 0%, transparent 68%)', filter: 'blur(34px)' }}
+                />
+                <div className="bu-ikon relative">
+                  <div className="relative overflow-hidden rounded-[26px] shadow-[0_40px_110px_-20px_rgba(155,91,214,0.5)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/digihome-mark.svg" alt="DigiHome-ikon" className="block h-[112px] w-[112px] md:h-[128px] md:w-[128px]" />
+                    {/* Spekulært lysdrag over ikonflaten */}
+                    <div aria-hidden className="bu-spek pointer-events-none absolute -inset-y-6 w-[42%] rotate-[18deg] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+                  </div>
+                  {/* Refleksjon — som om ikonet står på sort glass */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/digihome-mark.svg"
+                    alt=""
+                    aria-hidden
+                    className="mt-[6px] block h-[112px] w-[112px] -scale-y-100 rounded-[26px] opacity-[0.11] blur-[2px] md:h-[128px] md:w-[128px]"
+                    style={{
+                      maskImage: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 40%)',
+                      WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 40%)',
+                    }}
+                  />
+                </div>
               </div>
-              {/* Refleksjon — som om ikonet står på sort glass */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/digihome-mark.svg"
-                alt=""
-                aria-hidden
-                className="mt-[6px] block h-[112px] w-[112px] -scale-y-100 rounded-[26px] opacity-[0.15] blur-[2px] md:h-[128px] md:w-[128px]"
-                style={{
-                  maskImage: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 52%)',
-                  WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 52%)',
-                }}
-              />
             </div>
+
+            {/* Navnet — mask reveal, lys-sweep og tracking som «setter seg» */}
+            <h1 className="bu-spor -mt-10 font-heading text-[clamp(56px,8.5vw,124px)] font-bold leading-none tracking-[-0.04em] md:-mt-12">
+              <span className="block overflow-hidden pb-[0.12em] -mb-[0.12em]">
+                <span className="bu-tittelinn block">DigiHome</span>
+              </span>
+            </h1>
+
+            {/* Setningen — eget beat, med luft og tilstedeværelse */}
+            <p className="bu-inn mt-10 font-heading text-[clamp(22px,2.5vw,32px)] font-medium tracking-[-0.022em] text-white/[0.72] md:mt-12" style={{ animationDelay: '3050ms', animationDuration: '1.9s' }}>
+              Utleie på autopilot<span className="text-[#B57BFF]">.</span>
+            </p>
           </div>
-
-          {/* Navnet — mask reveal + lys-sweep */}
-          <h1 className="-mt-16 font-heading text-[clamp(56px,8.5vw,124px)] font-bold leading-none tracking-[-0.04em] md:-mt-[72px]">
-            <span className="block overflow-hidden pb-[0.12em] -mb-[0.12em]">
-              <span className="bu-tittelinn block">DigiHome</span>
-            </span>
-          </h1>
-
-          {/* Setningen — eget beat, større */}
-          <p className="bu-inn mt-6 font-heading text-[clamp(19px,2.1vw,27px)] font-medium tracking-[-0.022em] text-white/[0.65]" style={{ animationDelay: '3050ms' }}>
-            Utleie på autopilot<span className="text-[#B57BFF]">.</span>
-          </p>
 
           {/* Hvisket forankring */}
           <p className="bu-inn absolute bottom-10 text-[11.5px] tracking-[0.22em] text-white/[0.22]" style={{ animationDelay: '3700ms' }}>
@@ -926,6 +932,11 @@ export default function BergenUrbanDeck() {
           100% { opacity: 0; transform: scaleX(3.6); }
         }
         .bu-flare { animation: buFlare 1.35s cubic-bezier(0.3, 0, 0.2, 1) forwards; }
+        @keyframes buSpor {
+          from { letter-spacing: -0.002em; }
+          to { letter-spacing: -0.04em; }
+        }
+        .bu-spor { animation: buSpor 2.1s cubic-bezier(0.22, 1, 0.36, 1) 0.95s both; }
         @keyframes buBaandV {
           from { transform: translateX(0); }
           to { transform: translateX(-25%); }
@@ -946,7 +957,7 @@ export default function BergenUrbanDeck() {
           animation: buGlans 2.2s cubic-bezier(0.45, 0, 0.2, 1) 1.7s forwards;
         }
         @media (prefers-reduced-motion: reduce) {
-          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-spek, .bu-baand-v, .bu-baand-h { animation: none !important; }
+          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor { animation: none !important; }
         }
         @keyframes buFlyt {
           from { transform: translateY(0); }
