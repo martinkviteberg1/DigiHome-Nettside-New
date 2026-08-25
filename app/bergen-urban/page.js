@@ -649,7 +649,7 @@ export default function BergenUrbanDeck() {
             {/* Rollene — hairline, nummer, navn, én setning. Én per klikk. */}
             <div className="mt-20 grid grid-cols-3 gap-x-14 md:mt-24">
               {[
-                { navn: 'Byggeren', tekst: 'Autonome AI-agenter utviklet, designet og kvalitetssikret hele plattformen.' },
+                { navn: 'Utviklingen', tekst: 'Autonome AI-agenter skrev, designet og kvalitetssikret hele plattformen.' },
                 { navn: 'Verktøyene', tekst: 'Innebygd intelligens i hver modul — bilder, annonser og dialog.' },
                 { navn: 'Agentene', tekst: 'Selvstendige agenter overvåker, fanger opp og følger opp. Døgnet rundt.' },
               ].map((r, i) => (
