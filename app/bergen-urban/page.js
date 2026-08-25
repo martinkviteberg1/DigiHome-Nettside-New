@@ -15,7 +15,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Caveat } from 'next/font/google';
 import ForvalterMockup from '@/components/tour/mockups/ForvalterMockup';
-import PhoneMockup from '@/components/tour/mockups/PhoneMockup';
+import PhoneDeckMockup from '@/components/tour/mockups/PhoneDeckMockup';
 
 const caveat = Caveat({ subsets: ['latin', 'latin-ext'], weight: ['500', '600', '700'], display: 'swap' });
 
@@ -191,7 +191,7 @@ export default function BergenUrbanDeck() {
   // Mockup-skalering (portalens designbredde er 880 px, naturlig høyde ~540)
   useEffect(() => {
     const maal = () => {
-      const s = Math.min((window.innerWidth * 0.56) / 880, (window.innerHeight - 270) / 540, 1);
+      const s = Math.min((window.innerWidth * 0.6) / 880, (window.innerHeight - 250) / 540, 1.05);
       setMockSkala(Math.max(0.42, s));
     };
     maal();
@@ -217,8 +217,8 @@ export default function BergenUrbanDeck() {
   const hookAktiv = steg >= 7;
   const bygg = Math.max(0, steg - 7);
 
-  const telefonB = Math.round(Math.min(258, Math.max(176, 258 * mockSkala * 1.12)));
-  const overheng = Math.round(telefonB * 0.4);
+  const telefonB = Math.round(Math.min(236, Math.max(168, 236 * mockSkala * 1.08)));
+  const overheng = Math.round(telefonB * 0.44);
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -436,12 +436,24 @@ export default function BergenUrbanDeck() {
                 </div>
               </div>
               <div
-                className={`absolute bottom-[-16px] z-10 transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-20 opacity-0 blur-[14px]'}`}
+                className={`absolute bottom-[-20px] z-10 transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-20 opacity-0 blur-[14px]'}`}
                 style={{ right: 0, width: telefonB, transitionDelay: revealAktiv ? '950ms' : '0ms' }}
               >
-                <div className="bu-flyt-tlf rounded-[46px]" style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.12), 0 60px 140px -30px rgba(0,0,0,0.9)' }}>
-                  <PhoneMockup />
+                <div className="bu-flyt-tlf">
+                  <PhoneDeckMockup />
                 </div>
+              </div>
+              {/* Bildetekster — økosystemet i én komposisjon */}
+              <div
+                className={`absolute -bottom-12 left-0 right-0 flex items-center justify-between transition-opacity duration-[1200ms] ${revealAktiv ? 'opacity-100' : 'opacity-0'}`}
+                style={{ transitionDelay: revealAktiv ? '1500ms' : '0ms' }}
+              >
+                <p className="flex items-center gap-2 text-[11.5px] tracking-tight text-white/45">
+                  <span className="h-1 w-1 rounded-full bg-[#cf97fc]/80" /> Forvalterportalen
+                </p>
+                <p className="flex items-center gap-2 text-[11.5px] tracking-tight text-white/45" style={{ width: telefonB + 24 }}>
+                  <span className="h-1 w-1 rounded-full bg-[#cf97fc]/80" /> Huseier-appen
+                </p>
               </div>
             </div>
           </div>
