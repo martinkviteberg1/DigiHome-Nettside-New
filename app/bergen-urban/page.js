@@ -344,8 +344,21 @@ export default function BergenUrbanDeck() {
   const [tocApen, setTocApen] = useState(false);
   const musTimer = useRef(null);
 
-  const neste = useCallback(() => setSteg((s) => Math.min(TOTALT - 1, s + 1)), []);
-  const forrige = useCallback(() => setSteg((s) => (s === 9 || s === 10 ? 7 : Math.max(0, s - 1))), []);
+  // Myk navigasjon: ignorer klikk som lander midt i en pågående overgang
+  // (raske dobbelklikk gir ellers halvferdige crossfades — hakkete på scenen)
+  const sisteNav = useRef(0);
+  const neste = useCallback(() => {
+    const naa = Date.now();
+    if (naa - sisteNav.current < 320) return;
+    sisteNav.current = naa;
+    setSteg((s) => Math.min(TOTALT - 1, s + 1));
+  }, []);
+  const forrige = useCallback(() => {
+    const naa = Date.now();
+    if (naa - sisteNav.current < 320) return;
+    sisteNav.current = naa;
+    setSteg((s) => (s === 9 || s === 10 ? 7 : Math.max(0, s - 1)));
+  }, []);
 
   const fullskjerm = useCallback(() => {
     try {
@@ -524,7 +537,7 @@ export default function BergenUrbanDeck() {
           <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
         </header>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-16">
+        <div className="bu-drift-lys flex flex-1 flex-col items-center justify-center px-8 md:px-16">
           {/* Kamera-glid: påstand 1 optisk sentrert alene — komposisjonen
               glir mykt opp idet påstand 2 toner inn */}
           <div className={`flex w-full flex-col items-center transition-transform duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${bygg >= 1 ? 'translate-y-0' : 'translate-y-[12vh]'}`}>
@@ -566,7 +579,7 @@ export default function BergenUrbanDeck() {
           <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
         </header>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-16">
+        <div className="bu-drift-lys flex flex-1 flex-col items-center justify-center px-8 md:px-16">
           {/* Kamera-glid: tittelen sentrert alene — komposisjonen glir opp når tallene kommer */}
           <div className={`flex w-full max-w-[960px] flex-col items-center transition-transform duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${sannhetBeat >= 1 ? 'translate-y-0' : 'translate-y-[3vh]'}`}>
 
@@ -646,7 +659,7 @@ export default function BergenUrbanDeck() {
           <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
         </header>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-10 md:px-16">
+        <div className="bu-drift-lys flex flex-1 flex-col items-center justify-center px-10 md:px-16">
           <div className="w-full max-w-[1060px]">
             <div className={`text-center opacity-0 ${rollerAktiv ? 'bu-inn' : ''}`} style={{ animationDuration: '1.4s' }}>
               <p className="text-[12px] font-semibold uppercase tracking-[0.25em] text-[#c7c7cc]">AI i alle lag</p>
@@ -707,7 +720,7 @@ export default function BergenUrbanDeck() {
           <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
         </header>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-14">
+        <div className="bu-drift-lys flex flex-1 flex-col items-center justify-center px-8 md:px-14">
           {/* Tittel — toner inn når kameraet har landet */}
           <div className={`mb-7 text-center opacity-0 ${omfangAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '1250ms', animationDuration: '1.4s' }}>
             <h2 className="font-heading text-[clamp(26px,3.1vw,46px)] font-bold leading-[1.1] tracking-[-0.035em] text-[#0f0f0f]">Dette er DigiHome.</h2>
@@ -750,7 +763,7 @@ export default function BergenUrbanDeck() {
           <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col items-center px-8 md:px-14">
+        <div className="bu-drift-lys flex min-h-0 flex-1 flex-col items-center px-8 md:px-14">
           <div className={`mb-2 mt-1 text-center opacity-0 ${integrasjonAktiv ? 'bu-inn' : ''}`} style={{ animationDuration: '1.4s' }}>
             <p className="text-[12.5px] font-semibold uppercase tracking-[0.25em] text-[#c7c7cc]">Integrasjonene</p>
             <h2 className="mt-4 font-heading text-[clamp(30px,3.8vw,56px)] font-bold leading-[1.1] tracking-[-0.035em] text-[#0f0f0f]">
@@ -1106,6 +1119,10 @@ export default function BergenUrbanDeck() {
           {/* Svak luminans bak baren — som ett scenelys */}
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(52% 42% at 50% 47%, rgba(255,255,255,0.055) 0%, transparent 100%)' }} />
 
+          {/* Scale-settle + kamera-liv — samme filmspråk som resten av den svarte scenen */}
+          <div className="flex w-full flex-col items-center" style={{ transform: promptAktiv ? 'scale(1)' : 'scale(1.05)', transition: 'transform 3200ms cubic-bezier(0.22,1,0.36,1)' }}>
+          <div className="bu-drift flex w-full flex-col items-center">
+
           <div className={`relative flex w-[min(720px,88vw)] items-center gap-3 rounded-[28px] border border-white/[0.09] bg-[#161616] py-3 pl-4 pr-3 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)] transition-transform duration-700 ${steg >= 8 ? 'scale-[0.985]' : 'scale-100'}`}>
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/40">
               <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
@@ -1132,6 +1149,9 @@ export default function BergenUrbanDeck() {
             <span className="bu-dot h-[7px] w-[7px] rounded-full bg-white/70" />
             <span className="bu-dot h-[7px] w-[7px] rounded-full bg-white/70" style={{ animationDelay: '0.18s' }} />
             <span className="bu-dot h-[7px] w-[7px] rounded-full bg-white/70" style={{ animationDelay: '0.36s' }} />
+          </div>
+
+          </div>
           </div>
         </div>
 
@@ -1421,6 +1441,17 @@ export default function BergenUrbanDeck() {
         </svg>
       </button>
 
+      {/* ── Fremdriftslinje — hårtynn, keynote-diskret, følger scenens lyshet ── */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-40 h-[2px]">
+        <div
+          className="h-full origin-left transition-[transform,background-color] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{
+            transform: `scaleX(${Math.max(0, steg + 1) / TOTALT})`,
+            backgroundColor: morkAktiv ? 'rgba(255,255,255,0.13)' : 'rgba(15,15,15,0.10)',
+          }}
+        />
+      </div>
+
       {/* Kinematografi */}
       <style jsx global>{`
         @keyframes buLinje {
@@ -1439,6 +1470,11 @@ export default function BergenUrbanDeck() {
           to { transform: scale(1.016); }
         }
         .bu-drift { animation: buDrift 26s ease-in-out 2.2s infinite alternate; }
+        @keyframes buDriftLys {
+          from { transform: scale(1); }
+          to { transform: scale(1.007); }
+        }
+        .bu-drift-lys { animation: buDriftLys 22s ease-in-out 1.5s infinite alternate; }
         @keyframes buBlink {
           0%, 46% { opacity: 1; }
           50%, 100% { opacity: 0; }
@@ -1499,7 +1535,7 @@ export default function BergenUrbanDeck() {
           animation: buGlans 2.2s cubic-bezier(0.45, 0, 0.2, 1) 1.7s forwards;
         }
         @media (prefers-reduced-motion: reduce) {
-          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor, .bu-kaos-flyt, .bu-kaos-strek { animation: none !important; }
+          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-drift-lys, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor, .bu-kaos-flyt, .bu-kaos-strek { animation: none !important; }
         }
         @keyframes buFlyt {
           from { transform: translateY(0); }
