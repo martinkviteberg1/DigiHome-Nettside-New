@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import {
   LayoutDashboard, Gauge, MessageSquare, ClipboardList, CalendarDays, Radio,
@@ -101,10 +101,19 @@ const PORTEFOLJE = [
 ];
 
 export default function ForvalterFullskjerm({ vis = true }: { vis?: boolean }) {
-  const naa = new Date();
-  const time = naa.getHours();
-  const hilsen = time < 6 ? 'God natt' : time < 12 ? 'God morgen' : time < 18 ? 'God dag' : 'God kveld';
-  const dato = naa.toLocaleDateString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long' });
+  // Hilsen/dato beregnes KUN på klienten (etter mount) — serverens klokke
+  // (UTC) og publikums klokke kan være i ulike timer, og ville ellers gitt
+  // React hydration-feil («God morgen» vs «God dag»).
+  const [naaTekst, setNaaTekst] = useState({ hilsen: 'God dag', dato: '' });
+  useEffect(() => {
+    const naa = new Date();
+    const time = naa.getHours();
+    setNaaTekst({
+      hilsen: time < 6 ? 'God natt' : time < 12 ? 'God morgen' : time < 18 ? 'God dag' : 'God kveld',
+      dato: naa.toLocaleDateString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long' }),
+    });
+  }, []);
+  const { hilsen, dato } = naaTekst;
 
   const inn = (delay: number): React.CSSProperties => ({
     opacity: vis ? 1 : 0,
