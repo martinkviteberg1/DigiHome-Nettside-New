@@ -5,7 +5,7 @@ import {
   ClipboardCheck, Bot, Building2, Rocket, FileText, FileSignature, AlertCircle,
   Users, Wrench, BookOpen, Wand2, PieChart, ScrollText, TrendingUp, DollarSign,
   Search, PanelLeftClose, ChevronDown, Sparkles, ArrowUpRight, Home,
-  Droplets, HelpCircle, Timer, Circle, Clock,
+  Droplets, HelpCircle, Timer, Circle, Clock, ChevronLeft, ChevronRight, Plus,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -100,7 +100,9 @@ const PORTEFOLJE = [
   { navn: 'Onboarding', verdi: 2, farge: C.accent },
 ];
 
-export default function ForvalterFullskjerm({ vis = true }: { vis?: boolean }) {
+export default function ForvalterFullskjerm({ vis = true, modul = 'oversikt' }: { vis?: boolean; modul?: 'oversikt' | 'kalender' }) {
+  // Aktiv modul i sidemenyen — portalen «navigerer selv» i presentasjonen
+  const aktivNavn = modul === 'kalender' ? 'Kalender' : 'Oversikt';
   // Hilsen/dato beregnes KUN på klienten (etter mount) — serverens klokke
   // (UTC) og publikums klokke kan være i ulike timer, og ville ellers gitt
   // React hydration-feil («God morgen» vs «God dag»).
@@ -163,21 +165,26 @@ export default function ForvalterFullskjerm({ vis = true }: { vis?: boolean }) {
               );
             }
             const Ikon = item.Ikon;
+            const erAktiv = item.navn === aktivNavn;
             return (
               <div
                 key={item.navn}
-                className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium ${
-                  item.aktiv ? 'bg-gradient-to-r from-[#cf97fc]/[0.20] to-[#cf97fc]/[0.04] text-white' : 'text-white/50'
-                }`}
+                className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors duration-500 ${erAktiv ? 'text-white' : 'text-white/50'}`}
               >
-                {item.aktiv && (
-                  <span className="absolute left-0 top-1/2 h-6 w-[4px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-[#cf97fc] to-[#7c5cff] shadow-[0_0_12px_rgba(207,151,252,0.65)]" />
-                )}
-                <Ikon
-                  className={`h-[18px] w-[18px] shrink-0 ${item.aktiv ? 'text-[#cf97fc]' : 'text-white/55'}`}
-                  strokeWidth={item.aktiv ? 2.2 : 1.6}
+                {/* Aktiv-bakgrunn og indikator — alltid montert, toner inn/ut */}
+                <span
+                  className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-r from-[#cf97fc]/[0.20] to-[#cf97fc]/[0.04] transition-opacity duration-500"
+                  style={{ opacity: erAktiv ? 1 : 0 }}
                 />
-                <span className="truncate">{item.navn}</span>
+                <span
+                  className="absolute left-0 top-1/2 h-6 w-[4px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-[#cf97fc] to-[#7c5cff] shadow-[0_0_12px_rgba(207,151,252,0.65)] transition-opacity duration-500"
+                  style={{ opacity: erAktiv ? 1 : 0 }}
+                />
+                <Ikon
+                  className={`relative h-[18px] w-[18px] shrink-0 transition-colors duration-500 ${erAktiv ? 'text-[#cf97fc]' : 'text-white/55'}`}
+                  strokeWidth={erAktiv ? 2.2 : 1.6}
+                />
+                <span className="relative truncate">{item.navn}</span>
                 {item.antall && (
                   <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-bold text-white">
                     {item.antall}
@@ -204,8 +211,13 @@ export default function ForvalterFullskjerm({ vis = true }: { vis?: boolean }) {
         </div>
       </aside>
 
-      {/* ═══ DASHBOARD — eksakt som AdminDashboard ═══ */}
-      <div className="min-w-0 flex-1 overflow-hidden">
+      {/* ═══ HOVEDFLATE — bytter mykt mellom Oversikt og Kalender ═══ */}
+      <div className="relative min-w-0 flex-1 overflow-hidden">
+        {/* ── OVERSIKT (dashbordet, eksakt som AdminDashboard) ── */}
+        <div
+          className="absolute inset-0 transition-[opacity,transform] duration-[800ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{ opacity: modul === 'oversikt' ? 1 : 0, transform: modul === 'oversikt' ? 'translateY(0)' : 'translateY(-24px)' }}
+        >
         <div className="mx-auto max-w-[1100px] px-8 pt-10">
           {/* ── Hilsen ── */}
           <div className="mb-10 flex items-center justify-between gap-4" style={inn(380)}>
@@ -402,6 +414,130 @@ export default function ForvalterFullskjerm({ vis = true }: { vis?: boolean }) {
               </div>
             </div>
           </div>
+        </div>
+        </div>
+
+        {/* ── KALENDER — portalen navigerer selv hit etter chatten ── */}
+        <div
+          className="absolute inset-0 transition-[opacity,transform] duration-[850ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{
+            opacity: modul === 'kalender' ? 1 : 0,
+            transform: modul === 'kalender' ? 'translateY(0)' : 'translateY(28px)',
+            transitionDelay: modul === 'kalender' ? '200ms' : '0ms',
+          }}
+        >
+          <KalenderVisning aktiv={modul === 'kalender'} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KalenderVisning — månedsvisning i portalens designspråk (C_LIGHT).
+// Februar 2026 (uken starter mandag), fiktive hendelser som speiler
+// assistentens prioriteringer (rørlegger kl. 12 i dag, signering, visninger).
+// ═══════════════════════════════════════════════════════════════════════════
+
+const KAL_UKEDAGER = ['man', 'tir', 'ons', 'tor', 'fre', 'lør', 'søn'];
+const KAL_IDAG = 10;
+
+const KAL_HENDELSER: Record<number, { t: string; c: string; bg: string }[]> = {
+  3: [{ t: 'Visning · Marken 8', c: C.blue, bg: C.blueBg }],
+  4: [{ t: 'Visning · Nygård 12', c: C.blue, bg: C.blueBg }],
+  6: [{ t: 'Signering · BankID', c: C.purple, bg: C.purpleBg }],
+  9: [{ t: 'Innflytting · Skuteviken 5', c: C.green, bg: C.greenBg }],
+  10: [{ t: 'Rørlegger kl. 12:00', c: C.amber, bg: C.amberBg }, { t: 'Visning · Marken 8', c: C.blue, bg: C.blueBg }],
+  13: [{ t: 'Husleie forfall', c: C.slate, bg: '#f1f1f3' }],
+  17: [{ t: 'Vedlikehold · ventilasjon', c: C.amber, bg: C.amberBg }],
+  19: [{ t: 'Visning · Kong Oscars gt.', c: C.blue, bg: C.blueBg }],
+  20: [{ t: 'Oppgjør huseiere', c: C.green, bg: C.greenBg }],
+  23: [{ t: 'Utflytting · Nygård 12', c: C.rose, bg: C.roseBg }],
+  25: [{ t: 'Visning · Skuteviken 5', c: C.blue, bg: C.blueBg }],
+};
+
+// Rutenettet: man 26. jan → søn 1. mar (35 celler)
+const KAL_CELLER: { dag: number; iFeb: boolean }[] = [
+  ...[26, 27, 28, 29, 30, 31].map((d) => ({ dag: d, iFeb: false })),
+  ...Array.from({ length: 28 }, (_, i) => ({ dag: i + 1, iFeb: true })),
+  { dag: 1, iFeb: false },
+];
+
+function KalenderVisning({ aktiv }: { aktiv: boolean }) {
+  const inn = (delay: number): React.CSSProperties => ({
+    opacity: aktiv ? 1 : 0,
+    transform: aktiv ? 'translateY(0)' : 'translateY(14px)',
+    transition: `opacity 700ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 700ms cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
+  });
+
+  return (
+    <div className="mx-auto max-w-[1100px] px-8 pt-10">
+      {/* Topplinje */}
+      <div className="mb-7 flex items-end justify-between gap-4" style={inn(250)}>
+        <div>
+          <h1 className="text-[32px] font-bold leading-none tracking-[-0.04em]" style={{ color: C.text }}>Kalender</h1>
+          <p className="mt-2.5 text-[15px]" style={{ color: C.sub }}>Februar 2026 · 12 hendelser</p>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ border: `1px solid ${C.border}`, backgroundColor: C.card }}>
+            <ChevronLeft className="h-4 w-4" style={{ color: C.sub }} strokeWidth={2} />
+          </span>
+          <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ border: `1px solid ${C.border}`, backgroundColor: C.card }}>
+            <ChevronRight className="h-4 w-4" style={{ color: C.sub }} strokeWidth={2} />
+          </span>
+          <span className="inline-flex h-10 items-center rounded-full px-5 text-[13.5px] font-medium" style={{ border: `1px solid ${C.border}`, backgroundColor: C.card, color: C.text }}>
+            I dag
+          </span>
+          <span className="inline-flex h-10 items-center gap-0.5 rounded-full p-1" style={{ border: `1px solid ${C.border}`, backgroundColor: C.card }}>
+            <span className="inline-flex h-8 items-center rounded-full px-4 text-[13px] font-semibold text-white" style={{ backgroundColor: C.invBg }}>Måned</span>
+            <span className="inline-flex h-8 items-center rounded-full px-4 text-[13px] font-medium" style={{ color: C.sub }}>Uke</span>
+          </span>
+          <span className="inline-flex h-10 items-center gap-2 rounded-full px-5 text-[13.5px] font-semibold text-white" style={{ backgroundColor: C.invBg }}>
+            <Plus className="h-4 w-4" strokeWidth={2.2} /> Ny hendelse
+          </span>
+        </div>
+      </div>
+
+      {/* Månedsrutenettet */}
+      <div className="overflow-hidden rounded-2xl" style={{ backgroundColor: C.card, border: `1px solid ${C.border}`, ...inn(420) }}>
+        <div className="grid grid-cols-7" style={{ borderBottom: `1px solid ${C.border}` }}>
+          {KAL_UKEDAGER.map((d) => (
+            <p key={d} className="py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: C.muted }}>{d}</p>
+          ))}
+        </div>
+        <div className="grid grid-cols-7">
+          {KAL_CELLER.map((celle, i) => {
+            const idag = celle.iFeb && celle.dag === KAL_IDAG;
+            const hendelser = celle.iFeb ? (KAL_HENDELSER[celle.dag] || []) : [];
+            return (
+              <div
+                key={`${celle.iFeb ? 'feb' : 'ute'}-${celle.dag}-${i}`}
+                className="h-[124px] p-2"
+                style={{
+                  borderRight: (i + 1) % 7 !== 0 ? '1px solid #f1eff5' : 'none',
+                  borderBottom: i < 28 ? '1px solid #f1eff5' : 'none',
+                  backgroundColor: idag ? '#fbf7ff' : 'transparent',
+                }}
+              >
+                {idag ? (
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-bold" style={{ backgroundColor: C.accent, color: '#1a1a1a' }}>
+                    {celle.dag}
+                  </span>
+                ) : (
+                  <span className="inline-flex h-6 items-center px-0.5 text-[12.5px] font-semibold tabular-nums" style={{ color: celle.iFeb ? C.text : '#d3d0da' }}>
+                    {celle.dag}
+                  </span>
+                )}
+                <div className="mt-1 space-y-1">
+                  {hendelser.map((h) => (
+                    <p key={h.t} className="truncate rounded-md px-1.5 py-[3px] text-[10px] font-semibold leading-tight" style={{ color: h.c, backgroundColor: h.bg }}>
+                      {h.t}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

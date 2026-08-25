@@ -155,6 +155,26 @@ const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 //       13 = sannheten (DigiHome-tall) · 14 = + tradisjonell utvikling
 const TOTALT = 15;
 
+// Innholdsfortegnelse — supersubtil meny nede i venstre hjørne for å hoppe
+// direkte til en scene. Auto-beats (7) hoppes over; agent-scenen (8) spiller
+// selv videre til reveal.
+const TOC = [
+  { steg: -1, tittel: 'Sort start' },
+  { steg: 0, tittel: 'Cover · Utleie på autopilot' },
+  { steg: 1, tittel: 'Historien om DigiHome' },
+  { steg: 2, tittel: 'Idéen' },
+  { steg: 3, tittel: 'Prosessloopen' },
+  { steg: 4, tittel: 'Ti systemer' },
+  { steg: 5, tittel: 'Prompten' },
+  { steg: 8, tittel: 'Agenten bygger' },
+  { steg: 9, tittel: 'Portalen' },
+  { steg: 10, tittel: 'Produktveggen' },
+  { steg: 11, tittel: 'Påstanden' },
+  { steg: 12, tittel: '«6-åringen»' },
+  { steg: 13, tittel: 'Sannheten' },
+  { steg: 14, tittel: 'Sammenligningen' },
+];
+
 // Lappeteppet — verktøyene forvaltere jonglerer i dag. Posisjoner i % av
 // scenen (løs ring rundt sentrum, der DigiHome-panelet lander i beat 2).
 const VERKTOY = [
@@ -177,8 +197,10 @@ export default function BergenUrbanDeck() {
   const [kodeAntall, setKodeAntall] = useState(0);
   const [deploy, setDeploy] = useState(false);      // agenten «deployer» før overgangen
   const [tenning, setTenning] = useState('av');     // 'av' | 'inn' | 'ut' — lysbloom-overgangen
+  const [revealModul, setRevealModul] = useState('oversikt'); // portalen navigerer selv til kalenderen
   const [musSynlig, setMusSynlig] = useState(true);
   const [mockSkala, setMockSkala] = useState(0.78);
+  const [tocApen, setTocApen] = useState(false);
   const musTimer = useRef(null);
 
   const neste = useCallback(() => setSteg((s) => Math.min(TOTALT - 1, s + 1)), []);
@@ -199,6 +221,7 @@ export default function BergenUrbanDeck() {
       else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); setSteg(-1); }
       else if (e.key === 'Home') { e.preventDefault(); setSteg(-1); }
       else if (e.key === 'End') { e.preventDefault(); setSteg(TOTALT - 1); }
+      else if (e.key === 'Escape') { setTocApen(false); }
     };
     window.addEventListener('keydown', tast);
     return () => window.removeEventListener('keydown', tast);
@@ -258,6 +281,14 @@ export default function BergenUrbanDeck() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [steg]);
 
+  // Portalen lever: etter at assistenten har svart, navigerer den selv
+  // til Kalender-modulen (sidebar-markøren glir, hovedflaten kryssfader)
+  useEffect(() => {
+    if (steg !== 9) { setRevealModul('oversikt'); return undefined; }
+    const t = setTimeout(() => setRevealModul('kalender'), 8600);
+    return () => clearTimeout(t);
+  }, [steg]);
+
   // Skjul musepekeren når den ligger i ro (scene-modus)
   useEffect(() => {
     const beveg = () => {
@@ -285,9 +316,13 @@ export default function BergenUrbanDeck() {
   // Klikk: høyre del = neste, venstre 30 % = forrige (klikker-vennlig)
   const klikk = (e) => {
     if (e.target.closest('button')) return;
+    if (tocApen) { setTocApen(false); return; } // klikk utenfor lukker menyen
     const x = e.clientX / window.innerWidth;
     if (x < 0.3) forrige(); else neste();
   };
+
+  // TOC lukkes automatisk når scenen bytter (piltaster, klikk, auto-beats)
+  useEffect(() => { setTocApen(false); }, [steg]);
 
   const skrevet = PROMPT.slice(0, antallTegn);
   const klarTilSend = antallTegn >= PROMPT.length && steg >= 6;
@@ -960,7 +995,7 @@ export default function BergenUrbanDeck() {
         {/* Forvalterportalen kant til kant — «dekk»-skalert, materialiserer seg
             i koreografert kaskade (sidebar først, deretter seksjonene) */}
         <div className="origin-top-left" style={{ width: 1600, transform: `scale(${mockSkala})` }}>
-          <ForvalterFullskjerm vis={revealAktiv} />
+          <ForvalterFullskjerm vis={revealAktiv} modul={revealModul} />
         </div>
 
         {/* AI-driftsassistenten — glir inn som siste lag og «svarer» live */}
@@ -998,6 +1033,53 @@ export default function BergenUrbanDeck() {
           />
         </div>
       )}
+
+      {/* ── Innhold (supersubtil TOC nede i venstre hjørne) ── */}
+      <div className="absolute bottom-6 left-6 z-50">
+        {/* Menypanelet — mørkt, keynote-aktig, glir opp fra knappen */}
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={`absolute bottom-12 left-0 w-[248px] origin-bottom-left rounded-2xl border border-white/[0.08] bg-[#111113]/[0.97] py-2 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${tocApen ? 'pointer-events-auto translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-2 scale-[0.97] opacity-0'}`}
+          data-testid="bu-toc-panel"
+        >
+          <p className="px-4 pb-1.5 pt-1 text-[9.5px] font-semibold uppercase tracking-[0.22em] text-white/25">Innhold</p>
+          <div className="max-h-[min(60vh,480px)] overflow-y-auto px-1.5 pb-0.5">
+            {TOC.map((s, i) => {
+              // Aktiv = siste TOC-oppføring vi har passert (auto-beats teller mot forrige)
+              const aktiv = s.steg <= steg && (i === TOC.length - 1 || TOC[i + 1].steg > steg);
+              return (
+                <button
+                  key={s.steg}
+                  onClick={(e) => { e.stopPropagation(); setSteg(s.steg); setTocApen(false); }}
+                  className={`group flex w-full items-center gap-3 rounded-lg px-2.5 py-[7px] text-left transition-colors duration-150 ${aktiv ? 'bg-white/[0.07]' : 'hover:bg-white/[0.05]'}`}
+                  data-testid={`bu-toc-item-${i}`}
+                >
+                  <span className={`w-[18px] text-[10px] font-medium tabular-nums tracking-wide ${aktiv ? 'text-[#c9a8ff]' : 'text-white/[0.22] group-hover:text-white/40'}`}>
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <span className={`flex-1 truncate text-[12.5px] tracking-[-0.01em] ${aktiv ? 'font-medium text-white/90' : 'text-white/[0.55] group-hover:text-white/80'}`}>
+                    {s.tittel}
+                  </span>
+                  {aktiv && <span className="h-1 w-1 shrink-0 rounded-full bg-[#B57BFF]" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {/* Knappen — tre diskrete streker, samme tilstedeværelse som fullskjerm */}
+        <button
+          onClick={(e) => { e.stopPropagation(); setTocApen((v) => !v); }}
+          title="Innhold"
+          aria-label="Innhold"
+          aria-expanded={tocApen}
+          className={`flex h-9 w-9 items-center justify-center rounded-full transition-opacity duration-300 ${morkAktiv ? 'text-white/25 hover:text-white/70' : 'text-[#c7c7cc] hover:text-[#0f0f0f]'} ${musSynlig || tocApen ? 'opacity-100' : 'opacity-0'}`}
+          data-testid="bu-toc-knapp"
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M4 7h16M4 12h11M4 17h7" />
+          </svg>
+        </button>
+      </div>
 
       {/* ── Fullskjerm (kun synlig ved musbevegelse — usynlig på scenen) ── */}
       <button
