@@ -197,35 +197,38 @@ const VERKTOY = [
 ];
 
 // ── Integrasjonene — «Alt henger sammen.» (samme koreografi som /tour) ──
-// DigiHome i midten, integrasjonene i ring rundt. Hver lyser opp i reisens
-// rekkefølge med én fortellerlinje, før alt glir sammen: ett system.
+// DigiHome i midten, integrasjonene i bred ellipse rundt — komposisjonen
+// fyller hele viewporten. Hver lyser opp i reisens rekkefølge med én
+// fortellerlinje, før alt glir sammen: ett system.
 const INTEGRASJONER = [
-  { navn: 'Kartverket', vinkel: -90, tekst: 'Boligdata hentes fra Kartverket', logoer: [{ src: '/kartverket-logo.png', h: 18 }] },
-  { navn: 'FINN.no', vinkel: -50, tekst: 'Annonsen publiseres rett på FINN', logoer: [{ src: '/finn-logo-full.png', h: 15 }] },
-  { navn: 'Creditsafe', vinkel: -10, tekst: 'Kredittsjekk av kandidatene', logoer: [{ src: '/creditsafe-logo.png', h: 13 }] },
-  { navn: 'BankID', vinkel: 30, tekst: 'Signering og identitet med BankID', logoer: [{ src: '/bankid-logo.png', h: 13 }] },
-  { navn: 'Keyhole', vinkel: 70, tekst: 'Depositum opprettes og sikres med Keyhole', logoer: [{ src: '/keyhole-logo.png', h: 14 }] },
-  { navn: 'Vipps', vinkel: 110, tekst: 'Betaling med Vipps', logoer: [{ src: '/vipps-logo.png', h: 16 }] },
+  { navn: 'Kartverket', vinkel: -90, tekst: 'Boligdata hentes fra Kartverket', logoer: [{ src: '/kartverket-logo.png', h: 28 }] },
+  { navn: 'FINN.no', vinkel: -50, tekst: 'Annonsen publiseres rett på FINN', logoer: [{ src: '/finn-logo-full.png', h: 24 }] },
+  { navn: 'Creditsafe', vinkel: -10, tekst: 'Kredittsjekk av kandidatene', logoer: [{ src: '/creditsafe-logo.png', h: 20 }] },
+  { navn: 'BankID', vinkel: 30, tekst: 'Signering og identitet med BankID', logoer: [{ src: '/bankid-logo.png', h: 21 }] },
+  { navn: 'Keyhole', vinkel: 70, tekst: 'Depositum opprettes og sikres med Keyhole', logoer: [{ src: '/keyhole-logo.png', h: 22 }] },
+  { navn: 'Vipps', vinkel: 110, tekst: 'Betaling med Vipps', logoer: [{ src: '/vipps-logo.png', h: 25 }] },
   {
     navn: 'Regnskap', vinkel: 150,
     tekst: 'Oppgjøret rett i regnskapet — Fiken, PowerOffice eller Tripletex',
     logoer: [
-      { src: '/fiken-logo.png', h: 13 },
-      { src: '/poweroffice-logo.png', h: 12 },
-      { src: '/tripletex-logo.png', h: 11 },
+      { src: '/fiken-logo.png', h: 20 },
+      { src: '/poweroffice-logo.png', h: 18 },
+      { src: '/tripletex-logo.png', h: 16 },
     ],
   },
-  { navn: 'Airbnb', vinkel: -170, tekst: 'Korttid synkroniseres med Airbnb', logoer: [{ src: '/airbnb-logo.png', h: 17 }] },
-  { navn: 'Booking.com', vinkel: -130, tekst: '— og med Booking.com', logoer: [{ src: '/booking-logo.png', h: 13 }] },
+  { navn: 'Airbnb', vinkel: -170, tekst: 'Korttid synkroniseres med Airbnb', logoer: [{ src: '/airbnb-logo.png', h: 26 }] },
+  { navn: 'Booking.com', vinkel: -130, tekst: '— og med Booking.com', logoer: [{ src: '/booking-logo.png', h: 20 }] },
 ];
 const INTEGRASJON_TRINN = [
   { navn: 'start', ms: 1100 },
   ...INTEGRASJONER.map((_, i) => ({ navn: `i${i}`, ms: 1500 })),
   { navn: 'alle', ms: 6000 },
 ];
+// Bred ellipse: containeren er et bredt rektangel, og prosentpunktene
+// strekkes med den — SVG-en bruker preserveAspectRatio="none" for å matche.
 const intPos = (vinkel) => {
   const r = (vinkel * Math.PI) / 180;
-  return { x: 50 + 43 * Math.cos(r), y: 50 + 41 * Math.sin(r) };
+  return { x: 50 + 44 * Math.cos(r), y: 50 + 40 * Math.sin(r) };
 };
 const INT_LILLA = '#9B5BD6';
 
@@ -253,11 +256,11 @@ function BUIntegrasjoner({ aktiv }) {
   const alle = INTEGRASJON_TRINN[fase].navn === 'alle';
 
   return (
-    <div className="w-full max-w-[600px] text-center">
-      {/* Huben — DigiHome i midten, integrasjonene i ring */}
-      <div className="relative mx-auto aspect-square w-full max-w-[min(46vh,470px)]" data-testid="bu-integrasjon-hub">
+    <div className="flex h-full w-full flex-col text-center">
+      {/* Huben — fyller all tilgjengelig flate, bred ellipse */}
+      <div className="relative mx-auto min-h-0 w-full max-w-[1280px] flex-1" data-testid="bu-integrasjon-hub">
         {/* Forbindelseslinjene */}
-        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100">
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
           {INTEGRASJONER.map((c, i) => {
             const p = intPos(c.vinkel);
             const lyser = i === lysende || alle;
@@ -277,15 +280,15 @@ function BUIntegrasjoner({ aktiv }) {
 
         {/* DigiHome-kjernen */}
         <div
-          className="absolute left-1/2 top-1/2 flex h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[20px] bg-white transition-shadow duration-700"
+          className="absolute left-1/2 top-1/2 flex h-[104px] w-[104px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[28px] bg-white transition-shadow duration-700"
           style={{
             boxShadow: lysende >= 0 || alle
-              ? '0 24px 60px -20px rgba(155,91,214,0.4), 0 0 0 1px rgba(0,0,0,0.04)'
-              : '0 18px 50px -22px rgba(10,10,10,0.25), 0 0 0 1px rgba(0,0,0,0.04)',
+              ? '0 32px 80px -24px rgba(155,91,214,0.45), 0 0 0 1px rgba(0,0,0,0.04)'
+              : '0 24px 64px -26px rgba(10,10,10,0.28), 0 0 0 1px rgba(0,0,0,0.04)',
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/digihome-mark.svg" alt="DigiHome" className="h-10 w-10 rounded-[9px]" />
+          <img src="/digihome-mark.svg" alt="DigiHome" className="h-[58px] w-[58px] rounded-[13px]" />
         </div>
 
         {/* Integrasjonene */}
@@ -295,23 +298,23 @@ function BUIntegrasjoner({ aktiv }) {
           return (
             <div
               key={c.navn}
-              className="absolute flex items-center justify-center rounded-2xl bg-white px-3.5 py-2.5 transition-all duration-500"
+              className="absolute flex items-center justify-center rounded-[20px] bg-white px-6 py-4 transition-all duration-500"
               style={{
                 left: `${p.x}%`,
                 top: `${p.y}%`,
-                transform: `translate(-50%, -50%) scale(${i === lysende ? 1.12 : 1})`,
+                transform: `translate(-50%, -50%) scale(${i === lysende ? 1.1 : 1})`,
                 opacity: lyser ? 1 : 0.55,
                 filter: lyser ? 'grayscale(0)' : 'grayscale(1)',
                 boxShadow: i === lysende
-                  ? '0 20px 45px -16px rgba(155,91,214,0.35), 0 0 0 1.5px rgba(155,91,214,0.25)'
-                  : '0 10px 30px -14px rgba(10,10,10,0.14), 0 0 0 1px rgba(0,0,0,0.04)',
+                  ? '0 26px 60px -18px rgba(155,91,214,0.38), 0 0 0 1.5px rgba(155,91,214,0.25)'
+                  : '0 14px 38px -16px rgba(10,10,10,0.15), 0 0 0 1px rgba(0,0,0,0.04)',
                 transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
               }}
             >
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-3">
                 {c.logoer.map((l) => (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img key={l.src} src={l.src} alt={c.navn} style={{ height: l.h }} className="w-auto max-w-[72px] object-contain" />
+                  <img key={l.src} src={l.src} alt={c.navn} style={{ height: l.h }} className="w-auto max-w-[130px] object-contain" />
                 ))}
               </span>
             </div>
@@ -320,16 +323,16 @@ function BUIntegrasjoner({ aktiv }) {
       </div>
 
       {/* Fortellerlinjen — én integrasjon om gangen */}
-      <div className="mx-auto mt-8 grid h-6 max-w-[460px]">
+      <div className="mx-auto mb-2 mt-5 grid h-8 w-full max-w-[640px] shrink-0">
         {INTEGRASJONER.map((c, i) => (
           <p
             key={c.navn}
-            className={`[grid-area:1/1] text-[14px] font-medium text-[#1d1d1f] transition-opacity duration-500 ${i === lysende ? 'opacity-100' : 'opacity-0'}`}
+            className={`[grid-area:1/1] text-[clamp(15px,1.5vw,20px)] font-medium tracking-[-0.01em] text-[#1d1d1f] transition-opacity duration-500 ${i === lysende ? 'opacity-100' : 'opacity-0'}`}
           >
             {c.tekst}
           </p>
         ))}
-        <p className={`[grid-area:1/1] text-[14px] font-medium text-[#1d1d1f] transition-opacity duration-500 ${alle ? 'opacity-100' : 'opacity-0'}`}>
+        <p className={`[grid-area:1/1] text-[clamp(15px,1.5vw,20px)] font-medium tracking-[-0.01em] text-[#1d1d1f] transition-opacity duration-500 ${alle ? 'opacity-100' : 'opacity-0'}`}>
           Ett system<span style={{ color: INT_LILLA }}>.</span> Alt koblet sammen<span style={{ color: INT_LILLA }}>.</span>
         </p>
       </div>
@@ -658,16 +661,16 @@ export default function BergenUrbanDeck() {
             <div className={`text-center opacity-0 ${rollerAktiv ? 'bu-inn' : ''}`} style={{ animationDuration: '1.4s' }}>
               <p className="text-[12px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">04</p>
               <h2 className="mt-7 font-heading text-[clamp(28px,3.6vw,52px)] font-bold leading-[1.12] tracking-[-0.03em] text-[#0f0f0f]" data-testid="bu-roller-tittel">
-                Én plattform. Tre AI-roller.
+                Tre måter vi har brukt AI på.
               </h2>
             </div>
 
             {/* Rollene — hairline, nummer, navn, én setning. Én per klikk. */}
             <div className="mt-20 grid grid-cols-3 gap-x-14 md:mt-24">
               {[
-                { navn: 'Utviklingen', tekst: 'Autonome AI-agenter skrev, designet og kvalitetssikret hele plattformen.' },
-                { navn: 'Verktøyene', tekst: 'Innebygd intelligens i hver modul — bilder, annonser og dialog.' },
-                { navn: 'Agentene', tekst: 'Selvstendige agenter overvåker, fanger opp og følger opp. Døgnet rundt.' },
+                { navn: 'Utvikling', tekst: 'Autonome AI-agenter skrev, designet og kvalitetssikret hele plattformen.' },
+                { navn: 'Verktøy', tekst: 'Innebygd intelligens i hver modul — bilder, annonser og dialog.' },
+                { navn: 'Agenter', tekst: 'Selvstendige agenter overvåker, fanger opp og følger opp. Døgnet rundt.' },
               ].map((r, i) => (
                 <div
                   key={r.navn}
@@ -757,19 +760,19 @@ export default function BergenUrbanDeck() {
           <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
         </header>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-14">
-          <div className={`mb-8 text-center opacity-0 ${integrasjonAktiv ? 'bu-inn' : ''}`} style={{ animationDuration: '1.4s' }}>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.25em] text-[#c7c7cc]">Integrasjonene</p>
-            <h2 className="mt-5 font-heading text-[clamp(28px,3.4vw,50px)] font-bold leading-[1.1] tracking-[-0.035em] text-[#0f0f0f]">
+        <div className="flex min-h-0 flex-1 flex-col items-center px-8 md:px-14">
+          <div className={`mb-2 mt-1 text-center opacity-0 ${integrasjonAktiv ? 'bu-inn' : ''}`} style={{ animationDuration: '1.4s' }}>
+            <p className="text-[12.5px] font-semibold uppercase tracking-[0.25em] text-[#c7c7cc]">Integrasjonene</p>
+            <h2 className="mt-4 font-heading text-[clamp(30px,3.8vw,56px)] font-bold leading-[1.1] tracking-[-0.035em] text-[#0f0f0f]">
               Alt henger sammen<span className="text-[#9B5BD6]">.</span>
             </h2>
           </div>
-          <div className={`opacity-0 ${integrasjonAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '350ms', animationDuration: '1.5s' }}>
+          <div className={`min-h-0 w-full flex-1 opacity-0 ${integrasjonAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '350ms', animationDuration: '1.5s' }}>
             <BUIntegrasjoner aktiv={integrasjonAktiv} />
           </div>
         </div>
 
-        <footer className="pb-8" />
+        <footer className="pb-6" />
       </section>
 
       {/* ═══ AKT 6.75 — DRIFTEN I SANNTID: loopen vender tilbake, nå levende ═══ */}
@@ -946,32 +949,57 @@ export default function BergenUrbanDeck() {
         </div>
         )}
 
-        {/* ── AKT 0.5: HISTORIEN — ren typografi, Apple-minimalisme ── */}
+        {/* ── AKT 0.5: HISTORIEN — kinematisk tittelreveal, Apple-minimalisme ── */}
         <div
           className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-8 text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(historieAktiv)}`}
           data-testid="bu-historie"
         >
           {/* Knapt merkbar luminans — bare nok til at svart ikke blir flatt */}
-          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(44% 36% at 50% 46%, rgba(124,58,237,0.09) 0%, transparent 100%)' }} />
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(46% 38% at 50% 46%, rgba(124,58,237,0.12) 0%, transparent 100%)' }} />
 
-          {/* Umerkelig kamera-liv */}
-          <div className="bu-drift relative flex flex-col items-center">
-            {/* Tittel — mask reveal, tracking som setter seg, ett stille lys-sweep */}
-            <h2 className={`font-heading text-[clamp(44px,6.6vw,102px)] font-bold leading-[1.05] tracking-[-0.04em] text-white ${historieAktiv ? 'bu-spor' : ''}`}>
-              <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
-                <span className={`bu-linje-base block ${historieAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '450ms' }}>Historien om</span>
-              </span>
-              <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
-                <span className={`bu-linje-base block ${historieAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '650ms' }}>
-                  <span className={historieAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '1900ms' }}>DigiHome</span>.
+          {/* Anamorfisk lyssveip — skjærer stille bak tittelen idet den lander */}
+          {historieAktiv && (
+            <div aria-hidden className="pointer-events-none absolute left-1/2 top-[47%] -translate-x-1/2 -translate-y-1/2">
+              <div
+                className="bu-flare h-[2px] w-[44vw] rounded-full"
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(220,198,255,0.9), transparent)', boxShadow: '0 0 30px 5px rgba(181,123,255,0.4)', animationDelay: '1500ms' }}
+              />
+            </div>
+          )}
+
+          {/* Scale-settle: komposisjonen lander sakte fra 1.05 → 1 (filmtittel) */}
+          <div
+            className="relative"
+            style={{ transform: historieAktiv ? 'scale(1)' : 'scale(1.05)', transition: 'transform 3200ms cubic-bezier(0.22,1,0.36,1)' }}
+          >
+            {/* Umerkelig kamera-liv */}
+            <div className="bu-drift flex flex-col items-center">
+              {/* Tittel — ord for ord i blur-dissolve, tracking som setter seg */}
+              <h2 className={`font-heading text-[clamp(44px,6.6vw,102px)] font-bold leading-[1.05] tracking-[-0.04em] text-white ${historieAktiv ? 'bu-spor' : ''}`}>
+                <span className="block">
+                  <span className={`bu-ord-base ${historieAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '350ms' }}>Historien</span>{' '}
+                  <span className={`bu-ord-base ${historieAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '600ms' }}>om</span>
                 </span>
-              </span>
-            </h2>
+                <span className="block">
+                  <span className={`bu-ord-base ${historieAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '950ms' }}>
+                    <span className={historieAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2300ms' }}>DigiHome</span>.
+                  </span>
+                </span>
+              </h2>
 
-            {/* Undertekst — stille, grå, presis */}
-            <p className={`mt-10 text-[clamp(15px,1.3vw,19px)] font-medium tracking-[-0.01em] text-white/[0.38] opacity-0 ${historieAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '1900ms', animationDuration: '1.7s' }}>
-              Vibe coding i praksis
-            </p>
+              {/* Underlinje — tydelig, presis label med hairlines */}
+              <div
+                className={`mt-11 flex items-center gap-5 opacity-0 ${historieAktiv ? 'bu-inn' : ''}`}
+                style={{ animationDelay: '2500ms', animationDuration: '1.6s' }}
+                data-testid="bu-historie-label"
+              >
+                <span aria-hidden className="h-px w-12 bg-gradient-to-r from-transparent to-white/30" />
+                <p className="text-[clamp(12px,1.05vw,15px)] font-semibold uppercase tracking-[0.3em] text-white/[0.78]" style={{ marginRight: '-0.3em' }}>
+                  Vibe coding i praksis
+                </p>
+                <span aria-hidden className="h-px w-12 bg-gradient-to-l from-transparent to-white/30" />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1518,6 +1546,15 @@ export default function BergenUrbanDeck() {
         }
         .bu-flyt { animation: buFlyt 7.5s ease-in-out infinite alternate; }
         .bu-flyt-tlf { animation: buFlyt 6.5s ease-in-out 0.8s infinite alternate; }
+
+        /* ── Historien: ord-for-ord blur-dissolve (kinematisk tittelreveal) ── */
+        @keyframes buOrd {
+          from { opacity: 0; transform: translateY(0.35em); filter: blur(16px); }
+          60% { filter: blur(2px); }
+          to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        .bu-ord-base { opacity: 0; display: inline-block; }
+        .bu-ord { animation: buOrd 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
         /* ── Driften i sanntid: nodepuls, live-prikk og lyset langs linjen ── */
         @keyframes buLivePuls {

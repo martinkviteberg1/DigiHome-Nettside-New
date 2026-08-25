@@ -199,37 +199,39 @@ const FLISER: { navn: string; Mini: () => React.ReactElement; r: number; c: numb
   { navn: 'Eierapp', Mini: MiniEierapp, r: 2, c: 3 },
 ];
 
-// Fast bredde 1000px → flis = (1000 − 3·12)/4 = 241px → 16:10 = 150,6px høy.
-// Dashbord-miniatyren skaleres eksakt: 241/1600 = 0,150625.
-const FLIS_SKALA = 241 / 1600;
+// Fast bredde 1160px → flis = (1160 − 3·12)/4 = 281px → 16:10 = 175,6px høy.
+// Dashbord-miniatyren skaleres eksakt: 281/1600 = 0,175625.
+const FLIS_SKALA = 281 / 1600;
 
 export default function OmfangVegg({ vis = true }: { vis?: boolean }) {
   const flisStil = (dist: number): React.CSSProperties => ({
     opacity: vis ? 1 : 0,
-    transform: vis ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.94)',
-    transition: 'opacity 700ms cubic-bezier(0.22,1,0.36,1), transform 700ms cubic-bezier(0.22,1,0.36,1)',
-    transitionDelay: vis ? `${520 + dist * 170}ms` : '0ms',
+    transform: vis ? 'translateY(0) scale(1)' : 'translateY(10px) scale(0.94)',
+    filter: vis ? 'blur(0)' : 'blur(10px)',
+    transition: 'opacity 750ms cubic-bezier(0.22,1,0.36,1), transform 750ms cubic-bezier(0.22,1,0.36,1), filter 750ms cubic-bezier(0.22,1,0.36,1)',
+    transitionDelay: vis ? `${640 + dist * 160}ms` : '0ms',
   });
 
   return (
-    <div className={`${jakarta.className} mx-auto grid w-[1000px] grid-cols-4 gap-3`}>
+    <div className={`${jakarta.className} mx-auto grid w-[1160px] grid-cols-4 gap-3`}>
       {/* Rad 0 */}
       {FLISER.filter((f) => f.r === 0).map((f) => (
         <Flis key={f.navn} navn={f.navn} stil={flisStil(Math.abs(f.r - 1) + Math.abs(f.c - 1))}><f.Mini /></Flis>
       ))}
       {/* Rad 1 — Saker, DASHBORDET, Signering, Økonomi */}
       <Flis navn="Saker" stil={flisStil(1)}><MiniSaker /></Flis>
-      {/* Dashbordet — det publikum nettopp så, i miniatyr (kamera-ankeret) */}
+      {/* Dashbordet — det publikum nettopp så, i miniatyr (kamera-ankeret).
+          Én stille ringpuls når veggen har landet: «det var denne flaten». */}
       <div className="flex flex-col gap-1.5">
         <div
-          className="relative aspect-[16/10] overflow-hidden rounded-xl border bg-white"
+          className={`relative aspect-[16/10] overflow-hidden rounded-xl border bg-white ${vis ? 'ov-puls' : ''}`}
           style={{ borderColor: '#d9c9f2', boxShadow: '0 10px 34px rgba(124,58,237,0.16), 0 0 0 3px rgba(181,123,255,0.14)' }}
         >
           <div className="origin-top-left" style={{ transform: `scale(${FLIS_SKALA})`, width: 1600, height: 1000 }}>
             <ForvalterFullskjerm />
           </div>
         </div>
-        <p className="flex items-center justify-center gap-1 text-center text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: '#9a7bc9' }}>
+        <p className="flex items-center justify-center gap-1 text-center text-[10.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: '#9a7bc9' }}>
           <Sparkles className="h-[10px] w-[10px]" strokeWidth={2.4} /> Oversikt
         </p>
       </div>
@@ -240,6 +242,13 @@ export default function OmfangVegg({ vis = true }: { vis?: boolean }) {
       {FLISER.filter((f) => f.r === 2).map((f) => (
         <Flis key={f.navn} navn={f.navn} stil={flisStil(Math.abs(f.r - 1) + Math.abs(f.c - 1))}><f.Mini /></Flis>
       ))}
+      <style>{`
+        @keyframes ovPuls {
+          0% { box-shadow: 0 10px 34px rgba(124,58,237,0.16), 0 0 0 3px rgba(181,123,255,0.14), 0 0 0 0 rgba(181,123,255,0.35); }
+          100% { box-shadow: 0 10px 34px rgba(124,58,237,0.16), 0 0 0 3px rgba(181,123,255,0.14), 0 0 0 26px rgba(181,123,255,0); }
+        }
+        .ov-puls { animation: ovPuls 1.5s cubic-bezier(0.22, 1, 0.36, 1) 2100ms 1 both; }
+      `}</style>
     </div>
   );
 }
@@ -250,7 +259,7 @@ function Flis({ navn, stil, children }: { navn: string; stil: React.CSSPropertie
       <div className="relative aspect-[16/10] overflow-hidden rounded-xl border bg-white" style={{ borderColor: '#eae7ef', boxShadow: '0 8px 26px rgba(20,15,30,0.07)' }}>
         {children}
       </div>
-      <p className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[#b0b0b5]">{navn}</p>
+      <p className="text-center text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa0]">{navn}</p>
     </div>
   );
 }
