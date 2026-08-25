@@ -188,11 +188,12 @@ export default function BergenUrbanDeck() {
     return () => { window.removeEventListener('mousemove', beveg); if (musTimer.current) clearTimeout(musTimer.current); };
   }, []);
 
-  // Mockup-skalering (portalens designbredde er 880 px, naturlig høyde ~540)
+  // Fullskjerm «dekk»-skalering: UI-et (design 880×540) dekker alltid hele
+  // viewporten uansett skjermformat — bredere skjermer beskjærer litt i
+  // bunnen, høyere skjermer litt i høyre kant (sidebaren er alltid hel).
   useEffect(() => {
     const maal = () => {
-      const s = Math.min((window.innerWidth * 0.6) / 880, (window.innerHeight - 250) / 540, 1.05);
-      setMockSkala(Math.max(0.42, s));
+      setMockSkala(Math.max(window.innerWidth / 880, window.innerHeight / 540));
     };
     maal();
     window.addEventListener('resize', maal);
@@ -208,7 +209,7 @@ export default function BergenUrbanDeck() {
 
   const skrevet = PROMPT.slice(0, antallTegn);
   const klarTilSend = antallTegn >= PROMPT.length && steg >= 2;
-  const morkAktiv = steg <= 5;
+  const morkAktiv = steg <= 4; // reveal (steg 5) er nå lys fullskjerm
   const coverAktiv = steg === 0;
   const promptAktiv = steg >= 1 && steg <= 3;
   const kodeAktiv = steg === 4;
@@ -216,9 +217,6 @@ export default function BergenUrbanDeck() {
   const tittelAktiv = steg === 6;
   const hookAktiv = steg >= 7;
   const bygg = Math.max(0, steg - 7);
-
-  const telefonB = Math.round(Math.min(236, Math.max(168, 236 * mockSkala * 1.08)));
-  const overheng = Math.round(telefonB * 0.44);
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -449,60 +447,26 @@ export default function BergenUrbanDeck() {
           </div>
         </div>
 
-        {/* ── AKT 2: SVARET — systemet i ett scenelys, mot svart ── */}
+        {/* (Svaret er nå en egen lys fullskjerm-slide under den svarte scenen) */}
+      </section>
+
+      {/* ═══ AKT 2 — SVARET: systemet tar over hele skjermen ═══ */}
+      <section
+        className={`absolute inset-0 z-10 overflow-hidden transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'pointer-events-auto opacity-100 blur-0 scale-100' : 'pointer-events-none opacity-0 blur-[14px] scale-[1.04]'}`}
+        data-testid="bu-reveal"
+      >
+        {/* Forvalterportalen kant til kant — «dekk»-skalert, alltid hel sidebar */}
+        <div className="origin-top-left" style={{ width: 880, transform: `scale(${mockSkala})` }}>
+          <ForvalterMockup ramme={false} />
+        </div>
+
+        {/* Huseier-appen — nede til høyre, svever over den lyse flaten */}
         <div
-          className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(revealAktiv)}`}
-          data-testid="bu-reveal"
+          className={`absolute bottom-[3.5vh] right-[2.5vw] z-10 transition-[opacity,transform,filter] duration-[1300ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-16 opacity-0 blur-[10px]'}`}
+          style={{ width: 'clamp(185px, 14.5vw, 275px)', transitionDelay: revealAktiv ? '800ms' : '0ms' }}
         >
-          {/* Scenelys bak produktet — hvit kjerne med et hint av lavendel */}
-          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(64% 56% at 50% 56%, rgba(255,255,255,0.13) 0%, transparent 100%)' }} />
-          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(80% 64% at 50% 60%, rgba(207,151,252,0.06) 0%, transparent 100%)' }} />
-
-          {/* Prompten blir stående — spørsmålet over svaret */}
-          <p
-            className={`mt-[7.5vh] px-8 text-center text-[clamp(13px,1.2vw,16px)] text-white/40 transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-4 opacity-0 blur-[6px]'}`}
-            style={{ transitionDelay: revealAktiv ? '250ms' : '0ms' }}
-          >
-            «{PROMPT}»
-          </p>
-
-          {/* Produktkomposisjonen — portal + telefon, iscenesatt inntreden */}
-          <div className="flex flex-1 items-center justify-center px-6 pb-10">
-            <div className="relative" style={{ width: Math.round(880 * mockSkala) + overheng, height: Math.round(540 * mockSkala) }}>
-              <div
-                className={`absolute left-0 top-0 transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-14 opacity-0 blur-[14px]'}`}
-                style={{ transitionDelay: revealAktiv ? '500ms' : '0ms' }}
-              >
-                <div className="bu-flyt">
-                  <div
-                    className="origin-top-left rounded-[20px]"
-                    style={{ width: 880, transform: `scale(${mockSkala})`, boxShadow: '0 0 0 1px rgba(255,255,255,0.11), 0 90px 180px -40px rgba(0,0,0,0.95), 0 30px 70px -30px rgba(0,0,0,0.85)' }}
-                  >
-                    <ForvalterMockup />
-                  </div>
-                </div>
-              </div>
-              <div
-                className={`absolute bottom-[-20px] z-10 transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-20 opacity-0 blur-[14px]'}`}
-                style={{ right: 0, width: telefonB, transitionDelay: revealAktiv ? '950ms' : '0ms' }}
-              >
-                <div className="bu-flyt-tlf">
-                  <PhoneDeckMockup />
-                </div>
-              </div>
-              {/* Bildetekster — økosystemet i én komposisjon */}
-              <div
-                className={`absolute -bottom-12 left-0 right-0 flex items-center justify-between transition-opacity duration-[1200ms] ${revealAktiv ? 'opacity-100' : 'opacity-0'}`}
-                style={{ transitionDelay: revealAktiv ? '1500ms' : '0ms' }}
-              >
-                <p className="flex items-center gap-2 text-[11.5px] tracking-tight text-white/45">
-                  <span className="h-1 w-1 rounded-full bg-[#cf97fc]/80" /> Forvalterportalen
-                </p>
-                <p className="flex items-center gap-2 text-[11.5px] tracking-tight text-white/45" style={{ width: telefonB + 24 }}>
-                  <span className="h-1 w-1 rounded-full bg-[#cf97fc]/80" /> Huseier-appen
-                </p>
-              </div>
-            </div>
+          <div className="bu-flyt-tlf drop-shadow-[0_50px_60px_rgba(20,15,30,0.45)]">
+            <PhoneDeckMockup />
           </div>
         </div>
       </section>

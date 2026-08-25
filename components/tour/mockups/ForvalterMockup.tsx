@@ -47,9 +47,9 @@ const IDAG = [
   { tid: '16:00', hva: 'Befaring', hvor: 'Nygårdsgaten 24' },
 ];
 
-export default function ForvalterMockup() {
+export default function ForvalterMockup({ ramme = true }: { ramme?: boolean }) {
   return (
-    <div className="flex overflow-hidden rounded-[20px] bg-[#fdfcfb]" style={{ height: 540 }}>
+    <div className={`flex overflow-hidden bg-[#fdfcfb] ${ramme ? 'rounded-[20px]' : ''}`} style={{ height: 540 }}>
       {/* Sidebar — mørk, med ⌘K-søk og lavendel-aksent */}
       <aside className="flex w-[176px] shrink-0 flex-col bg-[#1a1a1a] p-3.5">
         <div className="flex items-center gap-2 px-1">
