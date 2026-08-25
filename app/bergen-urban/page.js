@@ -508,38 +508,30 @@ export default function BergenUrbanDeck() {
         </div>
         )}
 
-        {/* ── AKT 0.5: HISTORIEN — mørkt oppspill til origin-historien ── */}
+        {/* ── AKT 0.5: HISTORIEN — ren typografi, Apple-minimalisme ── */}
         <div
           className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-8 text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(historieAktiv)}`}
           data-testid="bu-historie"
         >
-          {/* Levende dyp — to drivende aurorer + dempet scenelys */}
-          <div aria-hidden className="bu-aurora1 absolute left-[6%] top-[10%] h-[48vmin] w-[48vmin] rounded-full opacity-[0.15]" style={{ background: 'radial-gradient(circle, #7c3aed 0%, transparent 65%)', filter: 'blur(70px)' }} />
-          <div aria-hidden className="bu-aurora2 absolute bottom-[8%] right-[8%] h-[42vmin] w-[42vmin] rounded-full opacity-[0.11]" style={{ background: 'radial-gradient(circle, #B57BFF 0%, transparent 65%)', filter: 'blur(80px)' }} />
-          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(46% 38% at 50% 46%, rgba(124,58,237,0.13) 0%, transparent 100%)' }} />
+          {/* Knapt merkbar luminans — bare nok til at svart ikke blir flatt */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(44% 36% at 50% 46%, rgba(124,58,237,0.09) 0%, transparent 100%)' }} />
 
-          {/* Kamera-liv på hele komposisjonen */}
+          {/* Umerkelig kamera-liv */}
           <div className="bu-drift relative flex flex-col items-center">
-            {/* Tittel — mask reveal + tracking-settle + lys-sweep over navnet */}
-            <h2 className={`font-heading text-[clamp(42px,6.4vw,98px)] font-bold leading-[1.06] tracking-[-0.04em] text-white ${historieAktiv ? 'bu-spor' : ''}`}>
+            {/* Tittel — mask reveal, tracking som setter seg, ett stille lys-sweep */}
+            <h2 className={`font-heading text-[clamp(44px,6.6vw,102px)] font-bold leading-[1.05] tracking-[-0.04em] text-white ${historieAktiv ? 'bu-spor' : ''}`}>
               <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
-                <span className={`bu-linje-base block ${historieAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '550ms' }}>Historien om</span>
+                <span className={`bu-linje-base block ${historieAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '450ms' }}>Historien om</span>
               </span>
               <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
-                <span className={`bu-linje-base block ${historieAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '750ms' }}>
-                  <span className={historieAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2000ms' }}>DigiHome</span>.
+                <span className={`bu-linje-base block ${historieAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '650ms' }}>
+                  <span className={historieAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '1900ms' }}>DigiHome</span>.
                 </span>
               </span>
             </h2>
 
-            {/* Lyslinjen — scenelyset tennes under tittelen */}
-            <div
-              className={`mt-11 h-[2px] w-[min(340px,32vw)] rounded-full ${historieAktiv ? 'bu-lyslinje' : 'opacity-0'}`}
-              style={{ background: 'linear-gradient(90deg, transparent, rgba(207,151,252,0.85), transparent)', boxShadow: '0 0 22px 3px rgba(155,91,214,0.4)' }}
-            />
-
-            {/* Undertekst — hvisket label med luft */}
-            <p className={`mt-9 text-[clamp(11.5px,0.95vw,14px)] font-semibold uppercase tracking-[0.34em] text-white/[0.34] opacity-0 ${historieAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '2150ms', animationDuration: '1.6s' }}>
+            {/* Undertekst — stille, grå, presis */}
+            <p className={`mt-10 text-[clamp(15px,1.3vw,19px)] font-medium tracking-[-0.01em] text-white/[0.38] opacity-0 ${historieAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '1900ms', animationDuration: '1.7s' }}>
               Vibe coding i praksis
             </p>
           </div>
@@ -550,32 +542,25 @@ export default function BergenUrbanDeck() {
           className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(ideAktiv)}`}
           data-testid="bu-ide"
         >
-          {/* Levende dyp — aurorer + dempet scenelys */}
-          <div aria-hidden className="bu-aurora2 absolute left-[10%] top-[14%] h-[42vmin] w-[42vmin] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, #7c3aed 0%, transparent 65%)', filter: 'blur(75px)' }} />
-          <div aria-hidden className="bu-aurora1 absolute bottom-[12%] right-[8%] h-[46vmin] w-[46vmin] rounded-full opacity-[0.10]" style={{ background: 'radial-gradient(circle, #B57BFF 0%, transparent 65%)', filter: 'blur(80px)' }} />
-          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(50% 42% at 50% 46%, rgba(124,58,237,0.10) 0%, transparent 100%)' }} />
+          {/* Knapt merkbar luminans */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(48% 40% at 50% 46%, rgba(124,58,237,0.08) 0%, transparent 100%)' }} />
 
-          {/* Kamera-glid: ideen sentrert alene — glir opp idet loopen ruller inn */}
-          <div className={`relative flex w-full flex-col items-center transition-transform duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${ideBeat >= 1 ? '-translate-y-[3vh]' : 'translate-y-[2vh]'}`}>
+          {/* Kamera-glid: ideen optisk sentrert alene — hele komposisjonen
+              glir opp idet loopen ruller inn (loopen okkuperer plass under) */}
+          <div className={`relative flex w-full flex-col items-center transition-transform duration-[1300ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${ideBeat >= 1 ? '-translate-y-[3vh]' : 'translate-y-[16vh]'}`}>
             <div className="bu-drift flex w-full flex-col items-center">
 
             {/* Beat 1 — ideen (rack focus når loopen kommer) */}
             <div className={`px-8 text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${ideBeat >= 1 ? 'scale-[0.6] opacity-30 blur-[1px]' : 'scale-100 opacity-100 blur-0'}`}>
-              {/* Gnisten — én idé, bokstavelig talt ett lyspunkt som tennes */}
-              <div className="flex justify-center">
-                <span className={`relative flex h-3 w-3 items-center justify-center ${ideAktiv ? 'bu-gnist' : 'opacity-0'}`}>
-                  <span className="bu-gnist-puls absolute h-3 w-3 rounded-full bg-[#ecdcff]" style={{ boxShadow: '0 0 18px 5px rgba(207,151,252,0.85), 0 0 64px 22px rgba(124,58,237,0.45)' }} />
-                </span>
-              </div>
-              <p className={`mt-8 text-[clamp(14px,1.3vw,18px)] font-medium text-white/[0.42] opacity-0 ${ideAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '650ms' }}>
+              <p className={`text-[clamp(14px,1.3vw,18px)] font-medium tracking-[-0.01em] text-white/[0.4] opacity-0 ${ideAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '200ms', animationDuration: '1.5s' }}>
                 Alt startet med én idé.
               </p>
-              <h2 className={`mt-5 font-heading text-[clamp(38px,5.6vw,86px)] font-bold leading-[1.08] tracking-[-0.04em] text-white ${ideAktiv ? 'bu-spor' : ''}`}>
+              <h2 className={`mt-6 font-heading text-[clamp(38px,5.6vw,86px)] font-bold leading-[1.08] tracking-[-0.04em] text-white ${ideAktiv ? 'bu-spor' : ''}`}>
                 <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
-                  <span className={`bu-linje-base block ${ideAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '950ms' }}>Boligforvaltning</span>
+                  <span className={`bu-linje-base block ${ideAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '650ms' }}>Boligforvaltning</span>
                 </span>
                 <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
-                  <span className={`bu-linje-base block ${ideAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '1150ms' }}>kan <span className={ideAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2300ms' }}>automatiseres</span>.</span>
+                  <span className={`bu-linje-base block ${ideAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '850ms' }}>kan <span className={ideAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2100ms' }}>automatiseres</span>.</span>
                 </span>
               </h2>
             </div>
@@ -589,7 +574,7 @@ export default function BergenUrbanDeck() {
                 className="w-full overflow-hidden whitespace-nowrap"
                 style={{ maskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)' }}
               >
-                <div className="bu-baand-v inline-block font-heading text-[clamp(15px,1.7vw,25px)] font-semibold tracking-[-0.02em] text-white/[0.08]">
+                <div className="bu-baand-v inline-block font-heading text-[clamp(15px,1.7vw,25px)] font-semibold tracking-[-0.02em] text-white/[0.065]">
                   {PROSESSBAAND}{PROSESSBAAND}{PROSESSBAAND}{PROSESSBAAND}
                 </div>
               </div>
@@ -618,7 +603,7 @@ export default function BergenUrbanDeck() {
                 className="mt-7 w-full overflow-hidden whitespace-nowrap md:mt-9"
                 style={{ maskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)' }}
               >
-                <div className="bu-baand-h inline-block font-heading text-[clamp(15px,1.7vw,25px)] font-semibold tracking-[-0.02em] text-white/[0.08]">
+                <div className="bu-baand-h inline-block font-heading text-[clamp(15px,1.7vw,25px)] font-semibold tracking-[-0.02em] text-white/[0.065]">
                   {PROSESSBAAND}{PROSESSBAAND}{PROSESSBAAND}{PROSESSBAAND}
                 </div>
               </div>
@@ -964,23 +949,6 @@ export default function BergenUrbanDeck() {
           to { letter-spacing: -0.04em; }
         }
         .bu-spor { animation: buSpor 2.1s cubic-bezier(0.22, 1, 0.36, 1) 0.95s both; }
-        @keyframes buLysLinje {
-          0% { transform: scaleX(0); opacity: 0; }
-          35% { opacity: 1; }
-          100% { transform: scaleX(1); opacity: 1; }
-        }
-        .bu-lyslinje { transform-origin: center; animation: buLysLinje 1.3s cubic-bezier(0.22, 1, 0.36, 1) 1.5s both; }
-        @keyframes buGnist {
-          0% { transform: scale(0); opacity: 0; }
-          55% { transform: scale(1.5); opacity: 1; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        .bu-gnist { animation: buGnist 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both; }
-        @keyframes buGnistPuls {
-          0%, 100% { opacity: 0.72; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.22); }
-        }
-        .bu-gnist-puls { animation: buGnistPuls 2.6s ease-in-out 1.5s infinite; }
         @keyframes buBaandV {
           from { transform: translateX(0); }
           to { transform: translateX(-25%); }
@@ -1001,7 +969,7 @@ export default function BergenUrbanDeck() {
           animation: buGlans 2.2s cubic-bezier(0.45, 0, 0.2, 1) 1.7s forwards;
         }
         @media (prefers-reduced-motion: reduce) {
-          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor, .bu-lyslinje, .bu-gnist, .bu-gnist-puls { animation: none !important; }
+          .bu-tenning, .bu-tenning2, .bu-flare, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor { animation: none !important; }
         }
         @keyframes buFlyt {
           from { transform: translateY(0); }
