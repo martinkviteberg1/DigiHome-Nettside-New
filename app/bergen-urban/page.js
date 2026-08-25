@@ -7,15 +7,17 @@
    1) HISTORIEN (svart): «Historien om DigiHome.» — oppspill til origin
    2-3) IDEEN (svart): «Boligforvaltning kan automatiseres.» →
       prosessloopen (annonsering → visning → … om igjen og om igjen)
-   4) PROMPT (svart): ChatGPT-aktig bar → prompten skrives → send →
+   4) KAOSET (svart): «Ti systemer som ikke snakker sammen.» — mørke
+      verktøylapper med brutte forbindelser (problemet plantes)
+   5) PROMPT (svart): ChatGPT-aktig bar → prompten skrives → send →
       tenkeprikker → auto-overgang
-   5-7) AGENTEN (svart): AI-agenten bygger systemet → deploy → lys-tenning
-   8) SVARET (lys): forvalterportalen materialiserer seg + AI-chat
-   9-10) HOOK (lys): påstand 1 → 6-åringens håndskrift (rack focus)
-   11-12) SANNHETEN (lys): «Det var ikke én prompt.» → 1 000 timer/500 k
+   6-8) AGENTEN (svart): AI-agenten bygger systemet → deploy → lys-tenning
+   9) SVARET (lys): forvalterportalen materialiserer seg + AI-chat
+   10-11) HOOK (lys): påstand 1 → 6-åringens håndskrift (rack focus)
+   12-13) SANNHETEN (lys): «Det var ikke én prompt.» → 1 000 timer/500 k
       mot tradisjonell utvikling 10 000 timer/5–10 mill. — proporsjonsbarer
-   13-14) OPERATIVSYSTEMET (lys): seks løsrevne verktøy → samles til ett
-      mørkt DigiHome-panel med alle modulene («kaos → orden»)
+   14-15) OPERATIVSYSTEMET (lys): lappeteppet fra akt 1 gjenoppstår →
+      samles til ett mørkt DigiHome-panel (payoff på det plantede kaoset)
    Navigasjon: → / mellomrom / PageDown (klikker) = neste beat,
    ← / PageUp = forrige, F = fullskjerm, R = start forfra. */
 
@@ -145,12 +147,12 @@ const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 
 // Steg: -1 = helt sort (klikk starter showet) · 0 = cover ·
 //       1 = «Historien om DigiHome.» (mørk) · 2 = ideen · 3 = prosessloopen ·
-//       4 = bar · 5 = skriver · 6 = sendt+tenker (auto→7) ·
-//       7 = agenten bygger (auto→8) · 8 = reveal ·
-//       9 = påstand 1 · 10 = påstand 1+2 ·
-//       11 = sannheten (DigiHome-tall) · 12 = + tradisjonell utvikling ·
-//       13 = lappeteppet (seks verktøy) · 14 = operativsystemet (samlet)
-const TOTALT = 15;
+//       4 = kaoset (ti systemer, mørk) · 5 = bar · 6 = skriver ·
+//       7 = sendt+tenker (auto→8) · 8 = agenten bygger (auto→9) · 9 = reveal ·
+//       10 = påstand 1 · 11 = påstand 1+2 ·
+//       12 = sannheten (DigiHome-tall) · 13 = + tradisjonell utvikling ·
+//       14 = lappeteppet gjenoppstår (lys) · 15 = operativsystemet (samlet)
+const TOTALT = 16;
 
 // Lappeteppet — verktøyene forvaltere jonglerer i dag. Posisjoner i % av
 // scenen (løs ring rundt sentrum, der DigiHome-panelet lander i beat 2).
@@ -189,7 +191,7 @@ export default function BergenUrbanDeck() {
   const musTimer = useRef(null);
 
   const neste = useCallback(() => setSteg((s) => Math.min(TOTALT - 1, s + 1)), []);
-  const forrige = useCallback(() => setSteg((s) => (s === 7 || s === 8 ? 5 : Math.max(0, s - 1))), []);
+  const forrige = useCallback(() => setSteg((s) => (s === 8 || s === 9 ? 6 : Math.max(0, s - 1))), []);
 
   const fullskjerm = useCallback(() => {
     try {
@@ -213,8 +215,8 @@ export default function BergenUrbanDeck() {
 
   // Skriveanimasjon — naturlig, litt ujevn rytme
   useEffect(() => {
-    if (steg <= 4) { setAntallTegn(0); return undefined; }
-    if (steg === 5) {
+    if (steg <= 5) { setAntallTegn(0); return undefined; }
+    if (steg === 6) {
       if (antallTegn >= PROMPT.length) return undefined;
       const t = setTimeout(() => setAntallTegn((n) => n + 1), 26 + Math.random() * 62);
       return () => clearTimeout(t);
@@ -225,16 +227,16 @@ export default function BergenUrbanDeck() {
 
   // Send → tenkeprikker → auto-overgang til agent-scenen
   useEffect(() => {
-    if (steg !== 6) { setTenker(false); return undefined; }
+    if (steg !== 7) { setTenker(false); return undefined; }
     const t1 = setTimeout(() => setTenker(true), 520);
-    const t2 = setTimeout(() => setSteg(7), 3300);
+    const t2 = setTimeout(() => setSteg(8), 3300);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [steg]);
 
   // Kodestrøm: agenten «bygger» → deploy-beat → lys-tenning → reveal
   useEffect(() => {
-    if (steg < 7) { setKodeAntall(0); setDeploy(false); setTenning('av'); return undefined; }
-    if (steg !== 7) return undefined; // behold linjene under utfading
+    if (steg < 8) { setKodeAntall(0); setDeploy(false); setTenning('av'); return undefined; }
+    if (steg !== 8) return undefined; // behold linjene under utfading
     let stoppet = false;
     let i = 0;
     const total = 240;
@@ -248,7 +250,7 @@ export default function BergenUrbanDeck() {
         // et lys tennes i sentrum · 3) portalen materialiserer seg under lyset
         setTimeout(() => { if (!stoppet) setDeploy(true); }, 380);
         setTimeout(() => { if (!stoppet) setTenning('inn'); }, 2400);
-        setTimeout(() => { if (!stoppet) setSteg(8); }, 3250);
+        setTimeout(() => { if (!stoppet) setSteg(9); }, 3250);
         return;
       }
       setTimeout(tikk, Math.max(9, 36 - i * 0.12));
@@ -259,7 +261,7 @@ export default function BergenUrbanDeck() {
 
   // Lyset trekker seg tilbake idet portalen står ferdig
   useEffect(() => {
-    if (steg !== 8) return undefined;
+    if (steg !== 9) return undefined;
     const t1 = setTimeout(() => setTenning((v) => (v === 'inn' ? 'ut' : v)), 300);
     const t2 = setTimeout(() => setTenning('av'), 1900);
     return () => { clearTimeout(t1); clearTimeout(t2); };
@@ -297,21 +299,22 @@ export default function BergenUrbanDeck() {
   };
 
   const skrevet = PROMPT.slice(0, antallTegn);
-  const klarTilSend = antallTegn >= PROMPT.length && steg >= 5;
-  const morkAktiv = steg <= 7; // reveal (steg 8) er lys fullskjerm
+  const klarTilSend = antallTegn >= PROMPT.length && steg >= 6;
+  const morkAktiv = steg <= 8; // reveal (steg 9) er lys fullskjerm
   const coverAktiv = steg === 0;
   const historieAktiv = steg === 1;
   const ideAktiv = steg === 2 || steg === 3;
   const ideBeat = Math.max(0, steg - 2); // 0 = ideen · 1 = prosessloopen
-  const promptAktiv = steg >= 4 && steg <= 6;
-  const kodeAktiv = steg === 7;
-  const revealAktiv = steg === 8;
-  const hookAktiv = steg === 9 || steg === 10;
-  const bygg = Math.max(0, steg - 9);
-  const sannhetAktiv = steg === 11 || steg === 12;
-  const sannhetBeat = Math.max(0, steg - 11); // 0 = DigiHome-tall · 1 = + tradisjonell
-  const osAktiv = steg >= 13;
-  const osBeat = Math.max(0, steg - 13); // 0 = lappeteppet · 1 = operativsystemet
+  const kaosAktiv = steg === 4;
+  const promptAktiv = steg >= 5 && steg <= 7;
+  const kodeAktiv = steg === 8;
+  const revealAktiv = steg === 9;
+  const hookAktiv = steg === 10 || steg === 11;
+  const bygg = Math.max(0, steg - 10);
+  const sannhetAktiv = steg === 12 || steg === 13;
+  const sannhetBeat = Math.max(0, steg - 12); // 0 = DigiHome-tall · 1 = + tradisjonell
+  const osAktiv = steg >= 14;
+  const osBeat = Math.max(0, steg - 14); // 0 = lappeteppet · 1 = operativsystemet
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -479,7 +482,7 @@ export default function BergenUrbanDeck() {
               className="absolute inset-0 flex items-start justify-center text-center font-heading text-[clamp(22px,2.7vw,40px)] font-bold leading-[1.15] tracking-[-0.03em] text-[#0f0f0f] transition-[opacity,transform,filter] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
               style={{ opacity: osBeat >= 1 ? 0 : 1, transform: osBeat >= 1 ? 'translateY(-14px)' : 'translateY(0)', filter: osBeat >= 1 ? 'blur(5px)' : 'blur(0)' }}
             >
-              I dag: ti systemer som ikke snakker sammen.
+              Alt dette.
             </h2>
             <h2
               className="absolute inset-0 flex items-start justify-center text-center font-heading text-[clamp(24px,3.1vw,46px)] font-bold leading-[1.15] tracking-[-0.03em] transition-[opacity,transform,filter] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
@@ -769,6 +772,60 @@ export default function BergenUrbanDeck() {
           </div>
         </div>
 
+        {/* ── AKT 0.9: KAOSET — ti systemer, mørk versjon (problemet plantes) ── */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-8 transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(kaosAktiv)}`}
+          data-testid="bu-kaos"
+        >
+          {/* Knapt merkbar luminans */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(48% 40% at 50% 50%, rgba(124,58,237,0.08) 0%, transparent 100%)' }} />
+
+          <div className="bu-drift flex w-full flex-col items-center">
+            {/* Kicker + tittel */}
+            <p className={`text-[clamp(14px,1.3vw,18px)] font-medium tracking-[-0.01em] text-white/[0.4] opacity-0 ${kaosAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '200ms', animationDuration: '1.5s' }}>
+              Og i dag?
+            </p>
+            <h2 className={`mt-5 text-center font-heading text-[clamp(26px,3.5vw,54px)] font-bold leading-[1.12] tracking-[-0.035em] text-white ${kaosAktiv ? 'bu-spor' : ''}`}>
+              <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
+                <span className={`bu-linje-base block ${kaosAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '550ms' }}>Ti systemer som ikke snakker sammen.</span>
+              </span>
+            </h2>
+
+            {/* Lappeteppet — mørke glasslapper med brutte forbindelser */}
+            <div className="relative mt-4 h-[42vh] max-h-[440px] min-h-[280px] w-full max-w-[1020px]">
+              <svg
+                aria-hidden
+                className="absolute inset-0 h-full w-full transition-opacity duration-[900ms]"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                style={{ opacity: kaosAktiv ? 0.9 : 0, transitionDelay: kaosAktiv ? '1400ms' : '0ms' }}
+              >
+                {[[14, 15, 40, 10], [40, 10, 66, 13], [66, 13, 88, 24], [88, 24, 92, 58], [92, 58, 76, 86], [76, 86, 50, 91], [50, 91, 24, 87], [24, 87, 7, 63], [7, 63, 9, 35], [9, 35, 14, 15], [14, 15, 92, 58], [66, 13, 24, 87], [9, 35, 76, 86]].map((l) => (
+                  <line key={l.join('-')} x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]} stroke="rgba(255,255,255,0.11)" strokeWidth="0.3" strokeDasharray="1.4 2.6" />
+                ))}
+              </svg>
+
+              {VERKTOY.map((v, i) => (
+                <div
+                  key={v.navn}
+                  className="absolute rounded-2xl border border-white/[0.09] bg-white/[0.05] px-5 py-3 text-left shadow-[0_16px_44px_rgba(0,0,0,0.5)] md:px-6 md:py-3.5"
+                  style={{
+                    left: v.x,
+                    top: v.y,
+                    transform: `translate(-50%, -50%) rotate(${v.rot}deg) scale(${kaosAktiv ? 1 : 0.9})`,
+                    opacity: kaosAktiv ? 1 : 0,
+                    transition: 'transform 900ms cubic-bezier(0.22,1,0.36,1), opacity 750ms cubic-bezier(0.22,1,0.36,1)',
+                    transitionDelay: kaosAktiv ? `${450 + i * 110}ms` : '0ms',
+                  }}
+                >
+                  <p className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-white/[0.28]">{v.kategori}</p>
+                  <p className="mt-0.5 whitespace-nowrap text-[15px] font-semibold tracking-[-0.01em] text-white/[0.88] md:text-[16px]">{v.navn}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* ── AKT 1: PROMPTEN ── */}
         <div
           className={`absolute inset-0 flex flex-col items-center justify-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(promptAktiv)}`}
@@ -777,21 +834,21 @@ export default function BergenUrbanDeck() {
           {/* Svak luminans bak baren — som ett scenelys */}
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(52% 42% at 50% 47%, rgba(255,255,255,0.055) 0%, transparent 100%)' }} />
 
-          <div className={`relative flex w-[min(720px,88vw)] items-center gap-3 rounded-[28px] border border-white/[0.09] bg-[#161616] py-3 pl-4 pr-3 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)] transition-transform duration-700 ${steg >= 6 ? 'scale-[0.985]' : 'scale-100'}`}>
+          <div className={`relative flex w-[min(720px,88vw)] items-center gap-3 rounded-[28px] border border-white/[0.09] bg-[#161616] py-3 pl-4 pr-3 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)] transition-transform duration-700 ${steg >= 7 ? 'scale-[0.985]' : 'scale-100'}`}>
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/40">
               <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
             </span>
             <p className="min-h-[27px] flex-1 text-[16.5px] leading-[27px] text-[#ececec] md:text-[18px]" data-testid="bu-prompt-tekst">
-              {steg <= 4 && <span className="text-white/30">Spør om hva som helst</span>}
-              {steg >= 5 && (
+              {steg <= 5 && <span className="text-white/30">Spør om hva som helst</span>}
+              {steg >= 6 && (
                 <>
                   {skrevet}
-                  {steg <= 5 && <span className="bu-blink ml-[1px] inline-block h-[1.1em] w-[2px] translate-y-[0.18em] bg-white/90" />}
+                  {steg <= 6 && <span className="bu-blink ml-[1px] inline-block h-[1.1em] w-[2px] translate-y-[0.18em] bg-white/90" />}
                 </>
               )}
             </p>
             <span
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-500 ${klarTilSend ? 'bg-white text-black' : 'bg-white/10 text-white/30'} ${steg >= 6 ? 'bu-puls' : ''}`}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-500 ${klarTilSend ? 'bg-white text-black' : 'bg-white/10 text-white/30'} ${steg >= 7 ? 'bu-puls' : ''}`}
               data-testid="bu-send"
             >
               <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
