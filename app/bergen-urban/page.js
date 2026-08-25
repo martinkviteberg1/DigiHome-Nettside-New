@@ -595,62 +595,77 @@ export default function BergenUrbanDeck() {
             <div className={`text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${sannhetBeat >= 1 ? 'scale-[0.68] opacity-40 blur-[1px]' : 'scale-100 opacity-100 blur-0'}`}>
               <p className="text-[12px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">03</p>
               <h2 className="mt-7 font-heading text-[clamp(32px,4.4vw,64px)] font-bold leading-[1.1] tracking-[-0.03em]" data-testid="bu-sannhet-tittel">
-                Hva det faktisk kostet.
+                <span className={`bu-ord-base ${sannhetAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '250ms' }}>Hva</span>{' '}
+                <span className={`bu-ord-base ${sannhetAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '400ms' }}>det</span>{' '}
+                <span className={`bu-ord-base ${sannhetAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '550ms' }}>faktisk</span>{' '}
+                <span className={`bu-ord-base ${sannhetAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '700ms' }}>kostet.</span>
               </h2>
             </div>
 
-            {/* To kolonner — tradisjonell utvikling mot DigiHome, ansikt til ansikt */}
-            <div className={`mt-10 grid w-full grid-cols-[1fr_1px_1fr] items-start gap-x-[clamp(28px,4.5vw,84px)] transition-[opacity,filter] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${sannhetBeat >= 1 ? 'opacity-100 blur-0' : 'pointer-events-none opacity-0 blur-[6px]'}`} data-testid="bu-sannhet-kolonner">
+            {/* Duellen — rad for rad: tradisjonell slår først, DigiHome svarer,
+                og dommen stemples på hairlinen imellom */}
+            <div className={`mt-9 w-full transition-[opacity,filter] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${sannhetBeat >= 1 ? 'opacity-100 blur-0' : 'pointer-events-none opacity-0 blur-[6px]'}`} data-testid="bu-sannhet-kolonner">
 
-              {/* Venstre — tradisjonell utvikling (tungt, grått) */}
-              <div className="flex flex-col items-end text-right">
-                <p className={`text-[clamp(11px,1vw,13.5px)] font-bold uppercase tracking-[0.2em] text-[#86868b] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '150ms' }}>
+              {/* Kolonneheadere */}
+              <div className="grid grid-cols-[1fr_clamp(110px,11vw,170px)_1fr] items-baseline">
+                <p className={`text-right text-[clamp(11px,1vw,13.5px)] font-bold uppercase tracking-[0.2em] text-[#86868b] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '150ms' }}>
                   Tradisjonell utvikling
                 </p>
-                {[
-                  { verdi: <>2–3</>, enhet: 'år' },
-                  { verdi: <><Teller til={10000} aktiv={sannhetBeat >= 1} varighet={2000} /></>, enhet: 'timer' },
-                  { verdi: <>5–10 <span className="text-[0.52em] font-semibold text-[#6e6e73]">mill.</span></>, enhet: 'kroner' },
-                  { verdi: <span className="text-[0.62em] leading-tight">Helt utviklingsteam</span>, enhet: 'utviklere · designere · PM' },
-                ].map((r, i) => (
-                  <div key={r.enhet} className={`mt-[clamp(14px,2.6vh,26px)] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: `${350 + i * 240}ms` }}>
-                    <p className="font-heading text-[clamp(30px,3.5vw,54px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[#6e6e73]">{r.verdi}</p>
-                    <p className="mt-1.5 text-[clamp(11.5px,1.05vw,14.5px)] font-medium text-[#aeaeb2]">{r.enhet}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Hairline — tegnes ovenfra og ned */}
-              <div
-                className="h-full min-h-[240px] w-px origin-top self-stretch bg-[#e8e7ea] transition-transform duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-                style={{ transform: sannhetBeat >= 1 ? 'scaleY(1)' : 'scaleY(0)', transitionDelay: sannhetBeat >= 1 ? '200ms' : '0ms' }}
-              />
-
-              {/* Høyre — DigiHome (lett, presist, lilla) */}
-              <div className="relative flex flex-col items-start text-left">
-                {/* Knapt merkbar lilla luminans bak vinneren */}
-                <div aria-hidden className="pointer-events-none absolute -inset-x-10 -inset-y-6" style={{ background: 'radial-gradient(60% 55% at 40% 40%, rgba(124,58,237,0.05) 0%, transparent 100%)' }} />
-                <p className={`text-[clamp(11px,1vw,13.5px)] font-bold uppercase tracking-[0.2em] text-[#7c3aed] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '750ms' }}>
+                <span aria-hidden />
+                <p className={`text-left text-[clamp(11px,1vw,13.5px)] font-bold uppercase tracking-[0.2em] text-[#7c3aed] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '300ms' }}>
                   DigiHome
                 </p>
+              </div>
+
+              {/* Radene med gjennomgående hairline og delta-dommer */}
+              <div className="relative mt-1">
+                <div
+                  aria-hidden
+                  className="absolute bottom-2 left-1/2 top-2 w-px -translate-x-1/2 origin-top bg-[#e8e7ea] transition-transform duration-[1600ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                  style={{ transform: `translateX(-50%) scaleY(${sannhetBeat >= 1 ? 1 : 0})`, transitionDelay: sannhetBeat >= 1 ? '250ms' : '0ms' }}
+                />
                 {[
-                  { verdi: <>~9</>, enhet: 'måneder' },
-                  { verdi: <><Teller til={1000} aktiv={sannhetBeat >= 1} varighet={1700} /></>, enhet: 'timer', test: 'bu-sannhet-digihome-tall' },
-                  { verdi: <><Teller til={500000} aktiv={sannhetBeat >= 1} varighet={2000} prefiks="~" /></>, enhet: 'kroner' },
-                  { verdi: <span className="text-[0.62em] leading-tight">Én person <span className="text-[#7c3aed]">+ AI</span></span>, enhet: 'produktsjef · vibe coding' },
-                ].map((r, i) => (
-                  <div key={r.enhet} className={`mt-[clamp(14px,2.6vh,26px)] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: `${950 + i * 240}ms` }} data-testid={r.test}>
-                    <p className="font-heading text-[clamp(30px,3.5vw,54px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[#0f0f0f]">{r.verdi}</p>
-                    <p className="mt-1.5 text-[clamp(11.5px,1.05vw,14.5px)] font-medium text-[#86868b]">{r.enhet}</p>
-                  </div>
-                ))}
+                  { trad: <>2–3</>, tradEnhet: 'år', dh: <>~9</>, dhEnhet: 'måneder', dom: '3× raskere' },
+                  { trad: <><Teller til={10000} aktiv={sannhetBeat >= 1} varighet={1900} /></>, tradEnhet: 'timer', dh: <><Teller til={1000} aktiv={sannhetBeat >= 1} varighet={1900} /></>, dhEnhet: 'timer', dom: '10× færre timer', test: 'bu-sannhet-digihome-tall' },
+                  { trad: <>5–10 <span className="text-[0.52em] font-semibold text-[#86868b]">mill.</span></>, tradEnhet: 'kroner', dh: <><Teller til={500000} aktiv={sannhetBeat >= 1} varighet={2100} prefiks="~" /></>, dhEnhet: 'kroner', dom: '−93 %' },
+                  { trad: <span className="text-[0.6em] leading-tight">Helt utviklingsteam</span>, tradEnhet: 'utviklere · designere · PM', dh: <span className="text-[0.6em] leading-tight">Én person <span className="text-[#7c3aed]">+ AI</span></span>, dhEnhet: 'produktsjef · vibe coding', dom: null },
+                ].map((r, i) => {
+                  const base = 400 + i * 620;
+                  return (
+                    <div key={r.tradEnhet + i} className="grid grid-cols-[1fr_clamp(110px,11vw,170px)_1fr] items-center py-[clamp(9px,1.8vh,19px)]">
+                      {/* Tradisjonell — slår først, tungt og grått */}
+                      <div className={`text-right opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: `${base}ms` }}>
+                        <p className="font-heading text-[clamp(27px,3.1vw,48px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[#86868b]">{r.trad}</p>
+                        <p className="mt-1.5 text-[clamp(11px,1vw,14px)] font-medium text-[#c2c2c7]">{r.tradEnhet}</p>
+                      </div>
+                      {/* Dommen — stemples på hairlinen */}
+                      <div className="flex justify-center">
+                        {r.dom && (
+                          <span
+                            className={`whitespace-nowrap rounded-full border border-[#ece9f4] bg-white px-[clamp(10px,1vw,16px)] py-[5px] text-[clamp(10px,0.9vw,12.5px)] font-semibold tracking-[-0.005em] text-[#7c3aed] shadow-[0_10px_28px_-8px_rgba(124,58,237,0.22)] opacity-0 ${sannhetBeat >= 1 ? 'bu-stempel' : ''}`}
+                            style={{ animationDelay: `${base + 780}ms` }}
+                          >
+                            {r.dom}
+                          </span>
+                        )}
+                      </div>
+                      {/* DigiHome — svarer, presist og i ink */}
+                      <div className={`text-left opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: `${base + 380}ms` }} data-testid={r.test}>
+                        <p className="font-heading text-[clamp(30px,3.5vw,54px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[#0f0f0f]">{r.dh}</p>
+                        <p className="mt-1.5 text-[clamp(11px,1vw,14px)] font-medium text-[#86868b]">{r.dhEnhet}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Konklusjonen — hviskes inn når kolonnene har fått tale */}
-            <p className={`mt-12 text-center text-[clamp(16px,1.8vw,25px)] leading-snug text-[#86868b] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '2500ms' }} data-testid="bu-sannhet-konklusjon">
+            {/* Konklusjonen — hviskes inn når duellen er avgjort */}
+            <p className={`mt-9 text-center text-[clamp(17px,2vw,28px)] leading-snug tracking-[-0.015em] text-[#86868b] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '3300ms' }} data-testid="bu-sannhet-konklusjon">
               Samme system. <span className="font-semibold text-[#0f0f0f]">En brøkdel av tiden.</span> <span className="font-semibold text-[#0f0f0f]">7&nbsp;% av kostnaden.</span>
             </p>
+
+
           </div>
         </div>
 
@@ -1700,6 +1715,13 @@ export default function BergenUrbanDeck() {
         }
         .bu-ord-base { opacity: 0; display: inline-block; }
         .bu-ord { animation: buOrd 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* ── Sannheten: dommen stemples på hairlinen ── */
+        @keyframes buStempel {
+          0% { opacity: 0; transform: scale(1.55); filter: blur(4px); }
+          100% { opacity: 1; transform: scale(1); filter: blur(0); }
+        }
+        .bu-stempel { animation: buStempel 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
         /* ── Om meg: portrettet materialiserer seg + langsom Ken Burns-settle ── */
         @keyframes buFoto {
