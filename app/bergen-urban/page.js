@@ -7,17 +7,16 @@
    1) HISTORIEN (svart): «Historien om DigiHome.» — oppspill til origin
    2-3) IDEEN (svart): «Boligforvaltning kan automatiseres.» →
       prosessloopen (annonsering → visning → … om igjen og om igjen)
-   4) KAOSET (svart): «Ti systemer som ikke snakker sammen.» — mørke
-      verktøylapper med brutte forbindelser (problemet plantes)
-   5) PROMPT (svart): ChatGPT-aktig bar → prompten skrives → send →
+   4) KAOSET (svart): «PROBLEMET · Systemer som ikke snakker sammen.»
+   5) LØSNINGEN (svart): «Én prompt.» — speiler problemet, lader prompten
+   6) PROMPT (svart): ChatGPT-aktig bar → prompten skrives → send →
       tenkeprikker → auto-overgang
-   6-8) AGENTEN (svart): AI-agenten bygger systemet → deploy → lys-tenning
-   9) SVARET (lys): forvalterportalen materialiserer seg + AI-chat
-   10) OMFANGET (lys): kameraet trekker ut — dashbordet er én flis i en
-      produktvegg med 12 flater («Dette er DigiHome.»)
-   11-12) HOOK (lys): påstand 1 → 6-åringens håndskrift (rack focus)
-   13-14) SANNHETEN (lys): «Det var ikke én prompt.» → 1 000 timer/500 k
-      mot tradisjonell utvikling 10 000 timer/5–10 mill. — proporsjonsbarer
+   7-9) AGENTEN (svart): AI-agenten bygger systemet → deploy → lys-tenning
+   10) SVARET (lys): forvalterportalen materialiserer seg + AI-chat →
+      kalender → ny booking → enhetssiden
+   11) OMFANGET (lys): produktveggen · 12) INTEGRASJONENE ·
+   13-14) DRIFTEN I SANNTID · 15-16) HOOK · 17-18) SANNHETEN ·
+   19-21) TRE AI-ROLLER
    Navigasjon: → / mellomrom / PageDown (klikker) = neste beat,
    ← / PageUp = forrige, F = fullskjerm, R = start forfra. */
 
@@ -156,7 +155,7 @@ const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 //       14 = påstand 1 · 15 = påstand 1+2 ·
 //       16 = sannheten (DigiHome-tall) · 17 = + tradisjonell utvikling ·
 //       18–20 = tre AI-roller (utviklingen · verktøyene · agentene)
-const TOTALT = 21;
+const TOTALT = 22;
 
 // Innholdsfortegnelse — supersubtil meny nede i venstre hjørne for å hoppe
 // direkte til en scene. Auto-beats (7) hoppes over; agent-scenen (8) spiller
@@ -168,17 +167,18 @@ const TOC = [
   { steg: 2, tittel: 'Idéen' },
   { steg: 3, tittel: 'Prosessloopen' },
   { steg: 4, tittel: 'Ti systemer' },
-  { steg: 5, tittel: 'Prompten' },
-  { steg: 8, tittel: 'Agenten bygger' },
-  { steg: 9, tittel: 'Portalen' },
-  { steg: 10, tittel: 'Produktveggen' },
-  { steg: 11, tittel: 'Integrasjonene' },
-  { steg: 12, tittel: 'Driften i sanntid' },
-  { steg: 14, tittel: 'Påstanden' },
-  { steg: 15, tittel: '«6-åringen»' },
-  { steg: 16, tittel: 'Sannheten' },
-  { steg: 17, tittel: 'Sammenligningen' },
-  { steg: 18, tittel: 'Tre AI-roller' },
+  { steg: 5, tittel: 'Løsningen' },
+  { steg: 6, tittel: 'Prompten' },
+  { steg: 9, tittel: 'Agenten bygger' },
+  { steg: 10, tittel: 'Portalen' },
+  { steg: 11, tittel: 'Produktveggen' },
+  { steg: 12, tittel: 'Integrasjonene' },
+  { steg: 13, tittel: 'Driften i sanntid' },
+  { steg: 15, tittel: 'Påstanden' },
+  { steg: 16, tittel: '«6-åringen»' },
+  { steg: 17, tittel: 'Sannheten' },
+  { steg: 18, tittel: 'Sammenligningen' },
+  { steg: 19, tittel: 'Tre AI-roller' },
 ];
 
 // Lappeteppet — verktøyene forvaltere jonglerer i dag. Posisjoner i % av
@@ -202,13 +202,13 @@ const VERKTOY = [
 // fortellerlinje, før alt glir sammen: ett system.
 const INTEGRASJONER = [
   { navn: 'Kartverket', vinkel: -90, tekst: 'Boligdata hentes fra Kartverket', logoer: [{ src: '/kartverket-logo.png', h: 28 }] },
-  { navn: 'FINN.no', vinkel: -50, tekst: 'Annonsen publiseres rett på FINN', logoer: [{ src: '/finn-logo-full.png', h: 24 }] },
-  { navn: 'Creditsafe', vinkel: -10, tekst: 'Kredittsjekk av kandidatene', logoer: [{ src: '/creditsafe-logo.png', h: 20 }] },
-  { navn: 'BankID', vinkel: 30, tekst: 'Signering og identitet med BankID', logoer: [{ src: '/bankid-logo.png', h: 21 }] },
-  { navn: 'Keyhole', vinkel: 70, tekst: 'Depositum opprettes og sikres med Keyhole', logoer: [{ src: '/keyhole-logo.png', h: 22 }] },
-  { navn: 'Vipps', vinkel: 110, tekst: 'Betaling med Vipps', logoer: [{ src: '/vipps-logo.png', h: 25 }] },
+  { navn: 'FINN.no', vinkel: -45, tekst: 'Annonsen publiseres rett på FINN', logoer: [{ src: '/finn-logo-full.png', h: 24 }] },
+  { navn: 'Creditsafe', vinkel: 0, tekst: 'Kredittsjekk av kandidatene', logoer: [{ src: '/creditsafe-logo.png', h: 20 }] },
+  { navn: 'BankID', vinkel: 45, tekst: 'Signering og identitet med BankID', logoer: [{ src: '/bankid-logo.png', h: 21 }] },
+  { navn: 'Keyhole', vinkel: 90, tekst: 'Depositum opprettes og sikres med Keyhole', logoer: [{ src: '/keyhole-logo.png', h: 22 }] },
+  { navn: 'Vipps', vinkel: 135, tekst: 'Betaling med Vipps', logoer: [{ src: '/vipps-logo.png', h: 25 }] },
   {
-    navn: 'Regnskap', vinkel: 150,
+    navn: 'Regnskap', vinkel: 180,
     tekst: 'Oppgjøret rett i regnskapet — Fiken, PowerOffice eller Tripletex',
     logoer: [
       { src: '/fiken-logo.png', h: 20 },
@@ -216,8 +216,14 @@ const INTEGRASJONER = [
       { src: '/tripletex-logo.png', h: 16 },
     ],
   },
-  { navn: 'Airbnb', vinkel: -170, tekst: 'Korttid synkroniseres med Airbnb', logoer: [{ src: '/airbnb-logo.png', h: 26 }] },
-  { navn: 'Booking.com', vinkel: -130, tekst: '— og med Booking.com', logoer: [{ src: '/booking-logo.png', h: 20 }] },
+  {
+    navn: 'Kanaler', vinkel: -135,
+    tekst: 'Korttid synkroniseres med Airbnb og Booking.com',
+    logoer: [
+      { src: '/airbnb-logo.png', h: 24 },
+      { src: '/booking-logo.png', h: 19 },
+    ],
+  },
 ];
 const INTEGRASJON_TRINN = [
   { navn: 'start', ms: 1100 },
@@ -354,7 +360,7 @@ export default function BergenUrbanDeck() {
   const musTimer = useRef(null);
 
   const neste = useCallback(() => setSteg((s) => Math.min(TOTALT - 1, s + 1)), []);
-  const forrige = useCallback(() => setSteg((s) => (s === 8 || s === 9 ? 6 : Math.max(0, s - 1))), []);
+  const forrige = useCallback(() => setSteg((s) => (s === 9 || s === 10 ? 7 : Math.max(0, s - 1))), []);
 
   const fullskjerm = useCallback(() => {
     try {
@@ -379,8 +385,8 @@ export default function BergenUrbanDeck() {
 
   // Skriveanimasjon — naturlig, litt ujevn rytme
   useEffect(() => {
-    if (steg <= 5) { setAntallTegn(0); return undefined; }
-    if (steg === 6) {
+    if (steg <= 6) { setAntallTegn(0); return undefined; }
+    if (steg === 7) {
       if (antallTegn >= PROMPT.length) return undefined;
       const t = setTimeout(() => setAntallTegn((n) => n + 1), 26 + Math.random() * 62);
       return () => clearTimeout(t);
@@ -391,16 +397,16 @@ export default function BergenUrbanDeck() {
 
   // Send → tenkeprikker → auto-overgang til agent-scenen
   useEffect(() => {
-    if (steg !== 7) { setTenker(false); return undefined; }
+    if (steg !== 8) { setTenker(false); return undefined; }
     const t1 = setTimeout(() => setTenker(true), 520);
-    const t2 = setTimeout(() => setSteg(8), 3300);
+    const t2 = setTimeout(() => setSteg(9), 3300);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [steg]);
 
   // Kodestrøm: agenten «bygger» → deploy-beat → lys-tenning → reveal
   useEffect(() => {
-    if (steg < 8) { setKodeAntall(0); setDeploy(false); setTenning('av'); return undefined; }
-    if (steg !== 8) return undefined; // behold linjene under utfading
+    if (steg < 9) { setKodeAntall(0); setDeploy(false); setTenning('av'); return undefined; }
+    if (steg !== 9) return undefined; // behold linjene under utfading
     let stoppet = false;
     let i = 0;
     const total = 240;
@@ -414,7 +420,7 @@ export default function BergenUrbanDeck() {
         // et lys tennes i sentrum · 3) portalen materialiserer seg under lyset
         setTimeout(() => { if (!stoppet) setDeploy(true); }, 380);
         setTimeout(() => { if (!stoppet) setTenning('inn'); }, 2400);
-        setTimeout(() => { if (!stoppet) setSteg(9); }, 3250);
+        setTimeout(() => { if (!stoppet) setSteg(10); }, 3250);
         return;
       }
       setTimeout(tikk, Math.max(9, 36 - i * 0.12));
@@ -425,7 +431,7 @@ export default function BergenUrbanDeck() {
 
   // Lyset trekker seg tilbake idet portalen står ferdig
   useEffect(() => {
-    if (steg !== 9) return undefined;
+    if (steg !== 10) return undefined;
     const t1 = setTimeout(() => setTenning((v) => (v === 'inn' ? 'ut' : v)), 300);
     const t2 = setTimeout(() => setTenning('av'), 1900);
     return () => { clearTimeout(t1); clearTimeout(t2); };
@@ -436,7 +442,7 @@ export default function BergenUrbanDeck() {
   // lander en ny booking live (kalender-liv), før portalen åpner enheten
   // som fikk bookingen — Marken 8 — i appens enkeltvisning.
   useEffect(() => {
-    if (steg !== 9) { setRevealModul('oversikt'); return undefined; }
+    if (steg !== 10) { setRevealModul('oversikt'); return undefined; }
     const t = setTimeout(() => setRevealModul('kalender'), 8600);
     const t2 = setTimeout(() => setRevealModul('enhet'), 17400);
     return () => { clearTimeout(t); clearTimeout(t2); };
@@ -478,26 +484,27 @@ export default function BergenUrbanDeck() {
   useEffect(() => { setTocApen(false); }, [steg]);
 
   const skrevet = PROMPT.slice(0, antallTegn);
-  const klarTilSend = antallTegn >= PROMPT.length && steg >= 6;
-  const morkAktiv = steg <= 8; // reveal (steg 9) er lys fullskjerm
+  const klarTilSend = antallTegn >= PROMPT.length && steg >= 7;
+  const morkAktiv = steg <= 9; // reveal (steg 10) er lys fullskjerm
   const coverAktiv = steg === 0;
   const historieAktiv = steg === 1;
   const ideAktiv = steg === 2 || steg === 3;
   const ideBeat = Math.max(0, steg - 2); // 0 = ideen · 1 = prosessloopen
   const kaosAktiv = steg === 4;
-  const promptAktiv = steg >= 5 && steg <= 7;
-  const kodeAktiv = steg === 8;
-  const revealAktiv = steg === 9;
-  const omfangAktiv = steg === 10;
-  const integrasjonAktiv = steg === 11;
-  const driftAktiv = steg === 12 || steg === 13;
-  const driftBeat = Math.max(0, steg - 12); // 0 = linjen · 1 = alt våkner live
-  const hookAktiv = steg === 14 || steg === 15;
-  const bygg = Math.max(0, steg - 14);
-  const sannhetAktiv = steg === 16 || steg === 17;
-  const sannhetBeat = Math.max(0, steg - 16); // 0 = DigiHome-tall · 1 = + tradisjonell
-  const rollerAktiv = steg >= 18;
-  const rollerBeat = Math.max(0, steg - 17); // 1 = utviklingen · 2 = +verktøyene · 3 = +agentene
+  const losningAktiv = steg === 5;
+  const promptAktiv = steg >= 6 && steg <= 8;
+  const kodeAktiv = steg === 9;
+  const revealAktiv = steg === 10;
+  const omfangAktiv = steg === 11;
+  const integrasjonAktiv = steg === 12;
+  const driftAktiv = steg === 13 || steg === 14;
+  const driftBeat = Math.max(0, steg - 13); // 0 = linjen · 1 = alt våkner live
+  const hookAktiv = steg === 15 || steg === 16;
+  const bygg = Math.max(0, steg - 15);
+  const sannhetAktiv = steg === 17 || steg === 18;
+  const sannhetBeat = Math.max(0, steg - 17); // 0 = DigiHome-tall · 1 = + tradisjonell
+  const rollerAktiv = steg >= 19;
+  const rollerBeat = Math.max(0, steg - 18); // 1 = utviklingen · 2 = +verktøyene · 3 = +agentene
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -737,11 +744,11 @@ export default function BergenUrbanDeck() {
 
           {/* Omfanget i tall */}
           <p className={`mt-6 text-center text-[clamp(14px,1.45vw,19px)] text-[#86868b] opacity-0 ${omfangAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '2300ms' }} data-testid="bu-omfang-tall">
-            <span className="font-semibold text-[#0f0f0f]">20+ moduler</span>
+            <span className="font-semibold text-[#0f0f0f]">10+ moduler</span>
             <span className="mx-2.5 text-[#c7c7cc]">·</span>
-            <span className="font-semibold text-[#0f0f0f]">2 portaler</span>
+            <span className="font-semibold text-[#0f0f0f]">Web og mobil app</span>
             <span className="mx-2.5 text-[#c7c7cc]">·</span>
-            BankID innebygd
+            <span className="font-semibold text-[#0f0f0f]">15+ integrasjoner</span>
             <span className="mx-2.5 text-[#c7c7cc]">·</span>
             AI i alle lag
           </p>
@@ -1169,6 +1176,33 @@ export default function BergenUrbanDeck() {
           </div>
         </div>
 
+        {/* ── AKT 0.95: LØSNINGEN — speiler problemet, lader prompten ── */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-8 text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(losningAktiv)}`}
+          data-testid="bu-losning"
+        >
+          {/* Knapt merkbar nøytral luminans */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(50% 42% at 50% 46%, rgba(255,255,255,0.05) 0%, transparent 100%)' }} />
+
+          {/* Scale-settle + kamera-liv */}
+          <div className="flex flex-col items-center" style={{ transform: losningAktiv ? 'scale(1)' : 'scale(1.05)', transition: 'transform 3200ms cubic-bezier(0.22,1,0.36,1)' }}>
+            <div className="bu-drift flex flex-col items-center">
+              <p
+                className={`bu-ord-base text-[clamp(11.5px,1vw,14px)] font-semibold uppercase tracking-[0.32em] text-white/[0.42] ${losningAktiv ? 'bu-ord' : ''}`}
+                style={{ animationDelay: '300ms', marginRight: '-0.32em' }}
+              >
+                Løsningen
+              </p>
+              <h2 className={`mt-8 font-heading text-[clamp(48px,7vw,110px)] font-bold leading-[1.04] tracking-[-0.04em] text-white ${losningAktiv ? 'bu-spor' : ''}`}>
+                <span className={`bu-ord-base ${losningAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '850ms' }}>Én</span>{' '}
+                <span className={`bu-ord-base ${losningAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '1150ms' }}>
+                  <span className={losningAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2400ms' }}>prompt</span>.
+                </span>
+              </h2>
+            </div>
+          </div>
+        </div>
+
         {/* ── AKT 1: PROMPTEN ── */}
         <div
           className={`absolute inset-0 flex flex-col items-center justify-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(promptAktiv)}`}
@@ -1177,21 +1211,21 @@ export default function BergenUrbanDeck() {
           {/* Svak luminans bak baren — som ett scenelys */}
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(52% 42% at 50% 47%, rgba(255,255,255,0.055) 0%, transparent 100%)' }} />
 
-          <div className={`relative flex w-[min(720px,88vw)] items-center gap-3 rounded-[28px] border border-white/[0.09] bg-[#161616] py-3 pl-4 pr-3 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)] transition-transform duration-700 ${steg >= 7 ? 'scale-[0.985]' : 'scale-100'}`}>
+          <div className={`relative flex w-[min(720px,88vw)] items-center gap-3 rounded-[28px] border border-white/[0.09] bg-[#161616] py-3 pl-4 pr-3 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)] transition-transform duration-700 ${steg >= 8 ? 'scale-[0.985]' : 'scale-100'}`}>
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/40">
               <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
             </span>
             <p className="min-h-[27px] flex-1 text-[16.5px] leading-[27px] text-[#ececec] md:text-[18px]" data-testid="bu-prompt-tekst">
-              {steg <= 5 && <span className="text-white/30">Spør om hva som helst</span>}
-              {steg >= 6 && (
+              {steg <= 6 && <span className="text-white/30">Spør om hva som helst</span>}
+              {steg >= 7 && (
                 <>
                   {skrevet}
-                  {steg <= 6 && <span className="bu-blink ml-[1px] inline-block h-[1.1em] w-[2px] translate-y-[0.18em] bg-white/90" />}
+                  {steg <= 7 && <span className="bu-blink ml-[1px] inline-block h-[1.1em] w-[2px] translate-y-[0.18em] bg-white/90" />}
                 </>
               )}
             </p>
             <span
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-500 ${klarTilSend ? 'bg-white text-black' : 'bg-white/10 text-white/30'} ${steg >= 7 ? 'bu-puls' : ''}`}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-500 ${klarTilSend ? 'bg-white text-black' : 'bg-white/10 text-white/30'} ${steg >= 8 ? 'bu-puls' : ''}`}
               data-testid="bu-send"
             >
               <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>

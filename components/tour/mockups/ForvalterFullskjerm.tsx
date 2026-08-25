@@ -104,7 +104,7 @@ const PORTEFOLJE = [
 export default function ForvalterFullskjerm({ vis = true, modul = 'oversikt' }: { vis?: boolean; modul?: 'oversikt' | 'kalender' | 'enhet' }) {
   // Aktiv modul i sidemenyen — portalen «navigerer selv» i presentasjonen
   // ('enhet' er enkeltvisningen inne i kalendermodulen, som i appen)
-  const aktivNavn = modul === 'oversikt' ? 'Oversikt' : 'Kalender';
+  const aktivNavn = modul === 'enhet' ? 'Eiendommer' : modul === 'kalender' ? 'Kalender' : 'Oversikt';
   // Hilsen/dato beregnes KUN på klienten (etter mount) — serverens klokke
   // (UTC) og publikums klokke kan være i ulike timer, og ville ellers gitt
   // React hydration-feil («God morgen» vs «God dag»).
@@ -421,30 +421,32 @@ export default function ForvalterFullskjerm({ vis = true, modul = 'oversikt' }: 
 
         {/* ── KALENDER — portalen navigerer selv hit etter chatten ── */}
         <div
-          className="absolute inset-0 transition-[opacity,transform] duration-[850ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className="absolute inset-0 transition-[opacity,transform,filter] duration-[1300ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{
-            opacity: modul !== 'oversikt' ? 1 : 0,
-            transform: modul !== 'oversikt' ? 'translateY(0)' : 'translateY(28px)',
-            transitionDelay: modul !== 'oversikt' ? '200ms' : '0ms',
+            opacity: modul === 'kalender' ? 1 : 0,
+            transform: modul === 'kalender' ? 'translateY(0) scale(1)' : 'translateY(30px) scale(0.992)',
+            filter: modul === 'kalender' ? 'blur(0)' : 'blur(10px)',
+            transitionDelay: modul === 'kalender' ? '250ms' : '0ms',
           }}
         >
           <KalenderVisning aktiv={modul !== 'oversikt'} />
         </div>
-      </div>
 
-      {/* ── ENHETEN — Eiendommer › Marken 8 › Leilighet 2 (detaljvisning).
-          Dekker hele appen inkl. sidebar, akkurat som i appen der enheten
-          får sin egen kontekstuelle venstre-rail ── */}
-      <div
-        className="absolute inset-0 z-20 transition-[opacity,transform] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-        style={{
-          opacity: modul === 'enhet' ? 1 : 0,
-          transform: modul === 'enhet' ? 'scale(1)' : 'scale(1.015)',
-          pointerEvents: 'none',
-          transitionDelay: modul === 'enhet' ? '150ms' : '0ms',
-        }}
-      >
-        <EnhetDetalj aktiv={modul === 'enhet'} />
+        {/* ── ENHETEN — Eiendommer › Marken 8 › Leilighet 2 (detaljvisning).
+            Ligger i hovedflaten slik at hovedsidebaren står (Eiendommer
+            markeres aktiv), med egen kontekstuell rail — som i appen ── */}
+        <div
+          className="absolute inset-0 z-10 transition-[opacity,transform,filter] duration-[1300ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{
+            opacity: modul === 'enhet' ? 1 : 0,
+            transform: modul === 'enhet' ? 'translateY(0) scale(1)' : 'translateY(26px) scale(1.008)',
+            filter: modul === 'enhet' ? 'blur(0)' : 'blur(10px)',
+            pointerEvents: 'none',
+            transitionDelay: modul === 'enhet' ? '300ms' : '0ms',
+          }}
+        >
+          <EnhetDetalj aktiv={modul === 'enhet'} />
+        </div>
       </div>
     </div>
   );
@@ -475,7 +477,7 @@ const kMandag = (i: number) => KUKEDAG[i] === 'Ma';
 const KILDE: Record<string, { farge: string; bokstav: string }> = {
   A: { farge: '#FF5A5F', bokstav: 'A' },  // Airbnb
   B: { farge: '#003580', bokstav: 'B' },  // Booking.com
-  D: { farge: '#1a1a1a', bokstav: 'D' },  // Direkte
+  D: { farge: '#7c3aed', bokstav: 'D' },  // Direkte
 };
 
 type KBar = {
@@ -536,13 +538,13 @@ const KENHETER: KEnhet[] = [
 // Bar-fyll per type — DigiHome-paletten fra portalen: lilla korttid,
 // sort langtidsleie (som primærknappene), nøytral grå drift/sperring
 const KBAR_STIL: Record<string, React.CSSProperties> = {
-  booking: { backgroundColor: '#7c3aed', color: '#ffffff' },
-  lease: { backgroundColor: '#1a1a1a', color: '#ffffff' },
+  booking: { backgroundColor: '#FF385C', color: '#ffffff' },
+  lease: { backgroundColor: '#6366f1', color: '#ffffff' },
   block: {
-    backgroundColor: '#52525b', color: '#ffffff',
+    backgroundColor: '#484848', color: '#ffffff',
     backgroundImage: 'repeating-linear-gradient(135deg, transparent 0 5px, rgba(255,255,255,0.08) 5px 6px)',
   },
-  maint: { backgroundColor: '#f1f0f4', color: '#52525b' },
+  maint: { backgroundColor: '#f7f3e8', color: '#6b4a1a' },
 };
 
 function KalenderMulti({ aktiv, nyBooking }: { aktiv: boolean; nyBooking: boolean }) {
@@ -652,7 +654,7 @@ function KalenderMulti({ aktiv, nyBooking }: { aktiv: boolean; nyBooking: boolea
                   <p className="truncate text-[11.5px] leading-tight" style={{ color: '#717171' }}>{u.omraade}</p>
                   <span
                     className="flex h-[15px] shrink-0 items-center rounded-[3px] px-1.5 text-[9px] font-bold leading-none tracking-[0.03em] text-white"
-                    style={{ backgroundColor: u.modell === 'KT' ? '#7c3aed' : '#1a1a1a' }}
+                    style={{ backgroundColor: u.modell === 'KT' ? '#FF385C' : '#3B82F6' }}
                   >
                     {u.modell}
                   </span>
@@ -669,7 +671,7 @@ function KalenderMulti({ aktiv, nyBooking }: { aktiv: boolean; nyBooking: boolea
                     className="relative shrink-0"
                     style={{
                       width: KCOL,
-                      backgroundColor: i < K_IDAG ? '#fafafa' : kHelg(i) ? '#f8f6fc' : 'transparent',
+                      backgroundColor: i < K_IDAG ? '#fafafa' : kHelg(i) ? '#faf7f5' : 'transparent',
                       boxShadow: kMandag(i) ? 'inset 1px 0 0 #f2f2f2' : undefined,
                     }}
                   >
@@ -743,7 +745,7 @@ function KalenderMulti({ aktiv, nyBooking }: { aktiv: boolean; nyBooking: boolea
                   className="absolute"
                   style={{
                     left: 9 * KCOL + 2, width: 2 * KCOL - 4, top: 18, height: 42,
-                    borderRadius: 999, backgroundColor: '#7c3aed', color: '#ffffff',
+                    borderRadius: 999, backgroundColor: '#FF385C', color: '#ffffff',
                     zIndex: 3, transformOrigin: 'left center',
                     opacity: nyBooking ? 1 : 0,
                     animation: nyBooking
@@ -807,8 +809,8 @@ function KalenderVisning({ aktiv }: { aktiv: boolean }) {
           100% { opacity: 1; transform: scale(1); }
         }
         @keyframes dhBookRing {
-          0% { box-shadow: 0 0 0 0 rgba(124,58,237,0.4); }
-          100% { box-shadow: 0 0 0 16px rgba(124,58,237,0); }
+          0% { box-shadow: 0 0 0 0 rgba(255,56,92,0.4); }
+          100% { box-shadow: 0 0 0 16px rgba(255,56,92,0); }
         }
       `}</style>
     </div>

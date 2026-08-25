@@ -20,19 +20,29 @@ const C = {
   sub: '#b0b5be', accent: '#b57bff', green: '#6aab8e', blue: '#7da4c9', amber: '#c9a06a', rose: '#c47e86',
 };
 
-// Skjelett-byggeklosser
+// Mikro-byggeklosser — ekte mikrotekst og presise detaljer, én familie
 const Linje = ({ w = '70%', h = 5, c = C.strek, r = 3 }: { w?: string | number; h?: number; c?: string; r?: number }) => (
   <div style={{ width: w, height: h, backgroundColor: c, borderRadius: r }} />
 );
+const Chip = ({ tekst, bg, farge }: { tekst: string; bg: string; farge: string }) => (
+  <span className="whitespace-nowrap rounded-full px-1.5 py-[2px] text-[6.5px] font-bold leading-none" style={{ backgroundColor: bg, color: farge }}>{tekst}</span>
+);
 
 function MiniKontrakter() {
+  const rader = [
+    { navn: 'Leiekontrakt · Nygård 12', chip: <Chip tekst="Signert" bg="rgba(106,171,142,0.14)" farge={C.green} /> },
+    { navn: 'Leiekontrakt · Marken 8', chip: <Chip tekst="Til signering" bg="rgba(201,160,106,0.16)" farge="#a87f4a" /> },
+    { navn: 'Depositum · Skuteviken 5', chip: <Chip tekst="Utkast" bg={C.flate} farge={C.sub} /> },
+  ];
   return (
-    <div className="flex h-full flex-col gap-2 p-3">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="flex items-center gap-2 rounded-lg border px-2 py-1.5" style={{ borderColor: C.border }}>
-          <div className="h-5 w-4 rounded-[3px]" style={{ backgroundColor: C.flate }} />
-          <div className="flex flex-1 flex-col gap-1"><Linje w="72%" /><Linje w="45%" h={4} /></div>
-          {i === 0 && <span className="rounded-full px-1.5 py-0.5 text-[7px] font-bold" style={{ backgroundColor: 'rgba(106,171,142,0.15)', color: C.green }}>Signert</span>}
+    <div className="flex h-full flex-col justify-center gap-1.5 p-3">
+      {rader.map((r) => (
+        <div key={r.navn} className="flex items-center gap-2 rounded-lg border bg-white px-2 py-1.5" style={{ borderColor: C.border }}>
+          <div className="flex h-5 w-4 shrink-0 items-center justify-center rounded-[3px]" style={{ backgroundColor: C.flate }}>
+            <div className="flex flex-col gap-[2px]"><Linje w={7} h={1.5} c="#cfccd6" /><Linje w={7} h={1.5} c="#cfccd6" /><Linje w={5} h={1.5} c="#cfccd6" /></div>
+          </div>
+          <p className="flex-1 truncate text-[7.5px] font-semibold" style={{ color: C.tekst }}>{r.navn}</p>
+          {r.chip}
         </div>
       ))}
     </div>
@@ -41,12 +51,18 @@ function MiniKontrakter() {
 
 function MiniSignering() {
   return (
-    <div className="flex h-full items-center justify-center p-3">
-      <div className="relative flex h-full w-[58%] flex-col gap-1.5 rounded-md border bg-white p-2.5" style={{ borderColor: C.border, boxShadow: '0 4px 14px rgba(20,15,30,0.06)' }}>
-        <Linje w="85%" /><Linje w="70%" /><Linje w="78%" /><Linje w="40%" />
+    <div className="flex h-full items-center justify-center gap-3 p-3">
+      <div className="relative flex h-[86%] w-[52%] flex-col gap-1.5 rounded-md border bg-white p-2.5" style={{ borderColor: C.border, boxShadow: '0 4px 14px rgba(20,15,30,0.06)' }}>
+        <p className="text-[6.5px] font-bold" style={{ color: C.tekst }}>Leiekontrakt</p>
+        <Linje w="85%" h={3} /><Linje w="70%" h={3} /><Linje w="78%" h={3} />
+        <p className="mt-auto font-serif text-[9px] italic" style={{ color: '#6b6479' }}>Sofie Hansen</p>
         <div className="absolute -bottom-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full text-white" style={{ background: 'linear-gradient(135deg, #7c3aed, #b57bff)', boxShadow: '0 4px 12px rgba(124,58,237,0.4)' }}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
         </div>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Chip tekst="Signert med BankID" bg="rgba(106,171,142,0.14)" farge={C.green} />
+        <p className="text-[6.5px] font-medium" style={{ color: C.sub }}>2 av 2 parter</p>
       </div>
     </div>
   );
@@ -54,24 +70,41 @@ function MiniSignering() {
 
 function MiniOkonomi() {
   const h = [38, 55, 46, 68, 60, 84];
+  const mnd = ['S', 'O', 'N', 'D', 'J', 'F'];
   return (
-    <div className="flex h-full items-end justify-center gap-2 p-4 pb-5">
-      {h.map((v, i) => (
-        <div key={v} className="w-[11%] rounded-t-[3px]" style={{ height: `${v}%`, backgroundColor: i === h.length - 1 ? C.accent : C.strek }} />
-      ))}
+    <div className="flex h-full flex-col p-3.5">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[6.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: C.sub }}>Leieinntekter</p>
+          <p className="text-[11px] font-bold tabular-nums leading-tight" style={{ color: C.tekst }}>84 200 kr</p>
+        </div>
+        <Chip tekst="+12 %" bg="rgba(106,171,142,0.14)" farge={C.green} />
+      </div>
+      <div className="mt-auto flex items-end justify-between gap-1.5">
+        {h.map((v, i) => (
+          <div key={mnd[i]} className="flex flex-1 flex-col items-center gap-1">
+            <div className="w-full rounded-t-[3px]" style={{ height: `${v * 0.55}px`, backgroundColor: i === h.length - 1 ? C.accent : C.strek }} />
+            <span className="text-[6px] font-semibold" style={{ color: i === h.length - 1 ? C.accent : C.sub }}>{mnd[i]}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
 function MiniSaker() {
-  const rader = [C.blue, C.amber, C.rose];
+  const rader = [
+    { farge: C.rose, tekst: 'Rørlegger · bad', chip: <Chip tekst="Pågår" bg="rgba(196,126,134,0.14)" farge={C.rose} /> },
+    { farge: C.amber, tekst: 'Vaskemaskin bråker', chip: <Chip tekst="Tildelt" bg="rgba(201,160,106,0.16)" farge="#a87f4a" /> },
+    { farge: C.blue, tekst: 'Lyspære i oppgang', chip: <Chip tekst="Ny" bg="rgba(125,164,201,0.15)" farge={C.blue} /> },
+  ];
   return (
-    <div className="flex h-full flex-col justify-center gap-2 p-3">
-      {rader.map((farge, i) => (
-        <div key={farge} className="flex items-center gap-2 rounded-lg border px-2 py-1.5" style={{ borderColor: C.border }}>
-          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: farge }} />
-          <div className="flex-1"><Linje w={`${72 - i * 12}%`} /></div>
-          <Linje w={18} h={8} r={4} c={C.flate} />
+    <div className="flex h-full flex-col justify-center gap-1.5 p-3">
+      {rader.map((r) => (
+        <div key={r.tekst} className="flex items-center gap-2 rounded-lg border bg-white px-2 py-1.5" style={{ borderColor: C.border }}>
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: r.farge }} />
+          <p className="flex-1 truncate text-[7.5px] font-semibold" style={{ color: C.tekst }}>{r.tekst}</p>
+          {r.chip}
         </div>
       ))}
     </div>
@@ -79,11 +112,27 @@ function MiniSaker() {
 }
 
 function MiniKalender() {
+  const booket = [9, 10, 11, 16, 17, 22, 23, 24];
   return (
-    <div className="grid h-full grid-cols-7 content-center gap-[5px] p-4">
-      {Array.from({ length: 28 }, (_, i) => (
-        <div key={i} className="aspect-square rounded-[3px]" style={{ backgroundColor: [9, 12, 17, 22].includes(i) ? 'rgba(181,123,255,0.4)' : C.flate }} />
-      ))}
+    <div className="flex h-full flex-col p-3.5">
+      <div className="flex items-baseline justify-between">
+        <p className="text-[8px] font-bold" style={{ color: C.tekst }}>Februar</p>
+        <p className="text-[6.5px] font-medium tabular-nums" style={{ color: C.sub }}>98 % belegg</p>
+      </div>
+      <div className="mt-2 grid flex-1 grid-cols-7 content-center gap-[4px]">
+        {Array.from({ length: 28 }, (_, i) => (
+          <div
+            key={i}
+            className="flex aspect-square items-center justify-center rounded-[3px] text-[5.5px] font-semibold tabular-nums"
+            style={{
+              backgroundColor: booket.includes(i) ? 'rgba(181,123,255,0.35)' : C.flate,
+              color: booket.includes(i) ? '#7c3aed' : C.sub,
+            }}
+          >
+            {i + 1}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -91,9 +140,12 @@ function MiniKalender() {
 function MiniBildestudio() {
   return (
     <div className="flex h-full gap-2 p-3">
-      <div className="flex-1 rounded-md" style={{ background: 'linear-gradient(135deg, #d8d5de, #eae7ef)' }} />
-      <div className="relative flex-1 rounded-md" style={{ background: 'linear-gradient(135deg, #c9b4ec, #e6d9fb)' }}>
-        <Wand2 className="absolute bottom-1.5 right-1.5 h-3.5 w-3.5 text-white" strokeWidth={2.2} />
+      <div className="relative flex-1 overflow-hidden rounded-md" style={{ background: 'linear-gradient(135deg, #d8d5de, #eae7ef)' }}>
+        <span className="absolute bottom-1.5 left-1.5 rounded-[3px] bg-black/20 px-1 py-[1.5px] text-[6px] font-bold text-white">Før</span>
+      </div>
+      <div className="relative flex-1 overflow-hidden rounded-md" style={{ background: 'linear-gradient(135deg, #c9b4ec, #e6d9fb)' }}>
+        <span className="absolute bottom-1.5 left-1.5 rounded-[3px] bg-black/25 px-1 py-[1.5px] text-[6px] font-bold text-white">Etter</span>
+        <Wand2 className="absolute right-1.5 top-1.5 h-3 w-3 text-white" strokeWidth={2.2} />
       </div>
     </div>
   );
@@ -101,10 +153,18 @@ function MiniBildestudio() {
 
 function MiniInnboks() {
   return (
-    <div className="flex h-full flex-col justify-center gap-2 p-4">
-      <div className="mr-auto w-[62%] rounded-xl rounded-bl-[4px] px-2.5 py-2" style={{ backgroundColor: C.flate }}><Linje w="80%" h={4} c="#d8d5de" /></div>
-      <div className="ml-auto w-[52%] rounded-xl rounded-br-[4px] bg-[#1a1a1a] px-2.5 py-2"><Linje w="75%" h={4} c="rgba(255,255,255,0.4)" /></div>
-      <div className="mr-auto w-[40%] rounded-xl rounded-bl-[4px] px-2.5 py-2" style={{ backgroundColor: C.flate }}><Linje w="70%" h={4} c="#d8d5de" /></div>
+    <div className="flex h-full flex-col justify-center gap-1.5 p-3.5">
+      <div className="mb-0.5 flex items-center gap-1.5">
+        <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full text-[5.5px] font-bold text-white" style={{ background: 'linear-gradient(135deg, #9a8fb8, #7d729e)' }}>SH</span>
+        <p className="text-[7px] font-bold" style={{ color: C.tekst }}>Sofie Hansen</p>
+        <p className="text-[6px]" style={{ color: C.sub }}>· Leietaker</p>
+      </div>
+      <div className="mr-auto max-w-[78%] rounded-xl rounded-bl-[4px] px-2 py-1.5" style={{ backgroundColor: C.flate }}>
+        <p className="text-[7px] font-medium leading-snug" style={{ color: '#55505e' }}>Hei! Når kan jeg hente nøklene?</p>
+      </div>
+      <div className="ml-auto max-w-[78%] rounded-xl rounded-br-[4px] bg-[#1a1a1a] px-2 py-1.5">
+        <p className="text-[7px] font-medium leading-snug text-white/85">1. mars kl. 12 — du får kode på SMS</p>
+      </div>
     </div>
   );
 }
@@ -112,12 +172,14 @@ function MiniInnboks() {
 function MiniAnnonse() {
   return (
     <div className="flex h-full flex-col p-3">
-      <div className="h-[52%] rounded-md" style={{ background: 'linear-gradient(135deg, #dcd9e2, #edeaf1)' }} />
-      <div className="mt-2 flex flex-col gap-1.5">
-        <Linje w="78%" h={6} c="#d8d5de" />
+      <div className="relative h-[50%] overflow-hidden rounded-md" style={{ background: 'linear-gradient(135deg, #dcd9e2, #edeaf1)' }}>
+        <span className="absolute left-1.5 top-1.5 rounded-[3px] bg-white px-1 py-[1.5px] text-[6px] font-bold" style={{ color: '#0063fb', boxShadow: '0 1px 4px rgba(20,15,30,0.12)' }}>Publisert på FINN</span>
+      </div>
+      <div className="mt-2 flex flex-col gap-[3px]">
+        <p className="text-[8px] font-bold leading-tight" style={{ color: C.tekst }}>Lys 2-roms på Marken</p>
         <div className="flex items-center justify-between">
-          <Linje w="40%" h={4} />
-          <span className="text-[8px] font-bold" style={{ color: C.tekst }}>18 500 kr</span>
+          <p className="text-[6.5px] font-medium" style={{ color: C.sub }}>124 visninger · 9 henvendelser</p>
+          <p className="text-[8px] font-bold tabular-nums" style={{ color: C.tekst }}>18 500 kr</p>
         </div>
       </div>
     </div>
@@ -125,20 +187,21 @@ function MiniAnnonse() {
 }
 
 function MiniKanaler() {
-  const seg = [
-    [['30%', C.blue], ['18%', C.strek], ['34%', C.accent]],
-    [['22%', C.amber], ['40%', C.strek], ['20%', C.green]],
-    [['45%', C.accent], ['12%', C.strek], ['28%', C.blue]],
-  ] as [string, string][][];
+  const rader = [
+    { navn: 'Airbnb', farge: '#FF5A5F' },
+    { navn: 'Booking.com', farge: '#003580' },
+    { navn: 'FINN.no', farge: '#0063fb' },
+  ];
   return (
-    <div className="flex h-full flex-col justify-center gap-3 p-4">
-      {seg.map((rad, i) => (
-        // eslint-disable-next-line react/no-array-index-key
-        <div key={i} className="flex h-[10px] gap-1 overflow-hidden rounded-full">
-          {rad.map(([w, farge], j) => (
-            // eslint-disable-next-line react/no-array-index-key
-            <div key={j} className="h-full rounded-full" style={{ width: w, backgroundColor: farge, opacity: farge === C.strek ? 1 : 0.55 }} />
-          ))}
+    <div className="flex h-full flex-col justify-center gap-1.5 p-3">
+      {rader.map((r) => (
+        <div key={r.navn} className="flex items-center gap-2 rounded-lg border bg-white px-2 py-1.5" style={{ borderColor: C.border }}>
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: r.farge }} />
+          <p className="flex-1 text-[7.5px] font-semibold" style={{ color: C.tekst }}>{r.navn}</p>
+          <span className="flex items-center gap-1">
+            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            <span className="text-[6.5px] font-semibold" style={{ color: C.green }}>Synk OK</span>
+          </span>
         </div>
       ))}
     </div>
@@ -148,11 +211,20 @@ function MiniKanaler() {
 function MiniEierapp() {
   return (
     <div className="flex h-full items-center justify-center p-2">
-      <div className="flex h-[92%] w-[38%] flex-col gap-1.5 rounded-[10px] border bg-white p-1.5 pt-2.5" style={{ borderColor: '#d8d5de', boxShadow: '0 4px 14px rgba(20,15,30,0.08)' }}>
+      <div className="flex h-[92%] w-[44%] flex-col gap-1.5 rounded-[10px] border bg-white p-1.5 pt-2" style={{ borderColor: '#d8d5de', boxShadow: '0 4px 14px rgba(20,15,30,0.08)' }}>
         <div className="mx-auto h-1 w-6 rounded-full" style={{ backgroundColor: C.strek }} />
-        <div className="rounded-md p-1.5" style={{ backgroundColor: C.flate }}><Linje w="70%" h={4} c="#d8d5de" /></div>
-        <div className="rounded-md bg-[#1a1a1a] p-1.5"><Linje w="60%" h={4} c="rgba(255,255,255,0.35)" /></div>
-        <div className="rounded-md p-1.5" style={{ backgroundColor: C.flate }}><Linje w="55%" h={4} c="#d8d5de" /></div>
+        <div className="rounded-md p-1.5" style={{ backgroundColor: C.flate }}>
+          <p className="text-[5.5px] font-semibold" style={{ color: C.sub }}>Belegg</p>
+          <p className="text-[7.5px] font-bold tabular-nums" style={{ color: C.tekst }}>98 %</p>
+        </div>
+        <div className="rounded-md bg-[#1a1a1a] p-1.5">
+          <p className="text-[5.5px] font-semibold text-white/45">Utbetaling</p>
+          <p className="text-[7.5px] font-bold tabular-nums text-white">18 200 kr</p>
+        </div>
+        <div className="rounded-md p-1.5" style={{ backgroundColor: C.flate }}>
+          <p className="text-[5.5px] font-semibold" style={{ color: C.sub }}>Neste gjest</p>
+          <p className="text-[7px] font-bold" style={{ color: C.tekst }}>13. feb</p>
+        </div>
       </div>
     </div>
   );
@@ -160,26 +232,18 @@ function MiniEierapp() {
 
 function MiniAssistent() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2.5 p-4">
-      <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: 'linear-gradient(140deg, #7c3aed, #cf97fc)', boxShadow: '0 6px 18px rgba(124,58,237,0.35)' }}>
-        <Bot className="h-4 w-4 text-white" strokeWidth={2} />
-      </span>
-      <div className="flex w-full flex-col items-center gap-1.5"><Linje w="64%" h={4} /><Linje w="46%" h={4} /></div>
-    </div>
-  );
-}
-
-function MiniDrift() {
-  return (
-    <div className="flex h-full flex-col justify-center gap-2 p-4">
-      {[86, 64, 74].map((w, i) => (
-        <div key={w} className="flex items-center gap-2">
-          <span className="flex h-3.5 w-3.5 items-center justify-center rounded-[4px]" style={{ backgroundColor: i === 0 ? 'rgba(106,171,142,0.2)' : C.flate }}>
-            {i === 0 && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
-          </span>
-          <Linje w={`${w}%`} h={4} />
+    <div className="flex h-full flex-col justify-center gap-2 p-3.5">
+      <div className="flex items-start gap-1.5">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full" style={{ background: 'linear-gradient(140deg, #7c3aed, #cf97fc)', boxShadow: '0 3px 10px rgba(124,58,237,0.3)' }}>
+          <Bot className="h-2.5 w-2.5 text-white" strokeWidth={2.2} />
+        </span>
+        <div className="rounded-xl rounded-tl-[4px] px-2 py-1.5" style={{ backgroundColor: C.flate }}>
+          <p className="text-[7px] font-medium leading-snug" style={{ color: '#55505e' }}>3 saker krever oppfølging i dag — skal jeg purre rørleggeren?</p>
         </div>
-      ))}
+      </div>
+      <div className="ml-auto rounded-full border px-2 py-1" style={{ borderColor: C.border }}>
+        <p className="text-[6.5px] font-semibold" style={{ color: C.accent }}>Ja, send purring →</p>
+      </div>
     </div>
   );
 }
