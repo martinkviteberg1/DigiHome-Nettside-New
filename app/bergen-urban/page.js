@@ -727,9 +727,9 @@ export default function BergenUrbanDeck() {
 
           {/* Omfanget i tall */}
           <p className={`mt-6 text-center text-[clamp(14px,1.45vw,19px)] text-[#86868b] opacity-0 ${omfangAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '2300ms' }} data-testid="bu-omfang-tall">
-            <span className="font-semibold text-[#0f0f0f]">10+ moduler</span>
-            <span className="mx-2.5 text-[#c7c7cc]">·</span>
             <span className="font-semibold text-[#0f0f0f]">Web og mobil app</span>
+            <span className="mx-2.5 text-[#c7c7cc]">·</span>
+            <span className="font-semibold text-[#0f0f0f]">10+ moduler</span>
             <span className="mx-2.5 text-[#c7c7cc]">·</span>
             <span className="font-semibold text-[#0f0f0f]">15+ integrasjoner</span>
             <span className="mx-2.5 text-[#c7c7cc]">·</span>
