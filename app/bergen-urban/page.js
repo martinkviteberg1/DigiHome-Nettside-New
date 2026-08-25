@@ -595,7 +595,7 @@ export default function BergenUrbanDeck() {
             <div className={`text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${sannhetBeat >= 1 ? 'scale-[0.68] opacity-40 blur-[1px]' : 'scale-100 opacity-100 blur-0'}`}>
               <p className="text-[12px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">03</p>
               <h2 className="mt-7 font-heading text-[clamp(32px,4.4vw,64px)] font-bold leading-[1.1] tracking-[-0.03em]" data-testid="bu-sannhet-tittel">
-                Det var ikke én prompt.
+                Hva det faktisk kostet.
               </h2>
             </div>
 
@@ -608,13 +608,14 @@ export default function BergenUrbanDeck() {
                   Tradisjonell utvikling
                 </p>
                 {[
+                  { verdi: <>2–3</>, enhet: 'år' },
                   { verdi: <><Teller til={10000} aktiv={sannhetBeat >= 1} varighet={2000} /></>, enhet: 'timer' },
                   { verdi: <>5–10 <span className="text-[0.52em] font-semibold text-[#6e6e73]">mill.</span></>, enhet: 'kroner' },
                   { verdi: <span className="text-[0.62em] leading-tight">Helt utviklingsteam</span>, enhet: 'utviklere · designere · PM' },
                 ].map((r, i) => (
-                  <div key={r.enhet} className={`mt-[clamp(18px,3.4vh,34px)] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: `${350 + i * 260}ms` }}>
-                    <p className="font-heading text-[clamp(34px,4vw,62px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[#6e6e73]">{r.verdi}</p>
-                    <p className="mt-2 text-[clamp(11.5px,1.05vw,14.5px)] font-medium text-[#aeaeb2]">{r.enhet}</p>
+                  <div key={r.enhet} className={`mt-[clamp(14px,2.6vh,26px)] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: `${350 + i * 240}ms` }}>
+                    <p className="font-heading text-[clamp(30px,3.5vw,54px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[#6e6e73]">{r.verdi}</p>
+                    <p className="mt-1.5 text-[clamp(11.5px,1.05vw,14.5px)] font-medium text-[#aeaeb2]">{r.enhet}</p>
                   </div>
                 ))}
               </div>
@@ -633,13 +634,14 @@ export default function BergenUrbanDeck() {
                   DigiHome
                 </p>
                 {[
+                  { verdi: <>~9</>, enhet: 'måneder' },
                   { verdi: <><Teller til={1000} aktiv={sannhetBeat >= 1} varighet={1700} /></>, enhet: 'timer', test: 'bu-sannhet-digihome-tall' },
                   { verdi: <><Teller til={500000} aktiv={sannhetBeat >= 1} varighet={2000} prefiks="~" /></>, enhet: 'kroner' },
                   { verdi: <span className="text-[0.62em] leading-tight">Én person <span className="text-[#7c3aed]">+ AI</span></span>, enhet: 'produktsjef · vibe coding' },
                 ].map((r, i) => (
-                  <div key={r.enhet} className={`mt-[clamp(18px,3.4vh,34px)] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: `${950 + i * 260}ms` }} data-testid={r.test}>
-                    <p className="font-heading text-[clamp(34px,4vw,62px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[#0f0f0f]">{r.verdi}</p>
-                    <p className="mt-2 text-[clamp(11.5px,1.05vw,14.5px)] font-medium text-[#86868b]">{r.enhet}</p>
+                  <div key={r.enhet} className={`mt-[clamp(14px,2.6vh,26px)] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: `${950 + i * 240}ms` }} data-testid={r.test}>
+                    <p className="font-heading text-[clamp(30px,3.5vw,54px)] font-bold leading-none tracking-[-0.03em] tabular-nums text-[#0f0f0f]">{r.verdi}</p>
+                    <p className="mt-1.5 text-[clamp(11.5px,1.05vw,14.5px)] font-medium text-[#86868b]">{r.enhet}</p>
                   </div>
                 ))}
               </div>
@@ -647,7 +649,7 @@ export default function BergenUrbanDeck() {
 
             {/* Konklusjonen — hviskes inn når kolonnene har fått tale */}
             <p className={`mt-12 text-center text-[clamp(16px,1.8vw,25px)] leading-snug text-[#86868b] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '2500ms' }} data-testid="bu-sannhet-konklusjon">
-              Samme system. <span className="font-semibold text-[#0f0f0f]">En tidel av tiden.</span> <span className="font-semibold text-[#0f0f0f]">7&nbsp;% av kostnaden.</span>
+              Samme system. <span className="font-semibold text-[#0f0f0f]">En brøkdel av tiden.</span> <span className="font-semibold text-[#0f0f0f]">7&nbsp;% av kostnaden.</span>
             </p>
           </div>
         </div>
