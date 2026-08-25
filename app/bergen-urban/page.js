@@ -181,19 +181,22 @@ const TOC = [
 ];
 
 // Lappeteppet — verktøyene forvaltere jonglerer i dag. Posisjoner i % av
-// scenen (løs ring rundt sentrum, der DigiHome-panelet lander i beat 2).
+// scenen (løs ring rundt et tomt sentrum — hullet der DigiHome mangler).
+// Hvert kort bærer sitt eget smertepunkt: usynkronisert, utdatert, manuelt.
 const VERKTOY = [
-  { kategori: 'CRM', navn: 'HubSpot', x: '14%', y: '15%', rot: -3.5 },
-  { kategori: 'Økonomi', navn: 'Tripletex', x: '40%', y: '10%', rot: 2 },
-  { kategori: 'Visninger', navn: 'Calendly', x: '66%', y: '13%', rot: -2 },
-  { kategori: 'Signering', navn: 'DocuSign', x: '88%', y: '24%', rot: 2.5 },
-  { kategori: 'Betaling', navn: 'Vipps', x: '92%', y: '58%', rot: -2 },
-  { kategori: 'Oversikt', navn: 'Excel', x: '76%', y: '86%', rot: 3 },
-  { kategori: 'Husleie', navn: 'Husleie.no', x: '50%', y: '91%', rot: -2.5 },
-  { kategori: 'Dialog', navn: 'Outlook', x: '24%', y: '87%', rot: 2 },
-  { kategori: 'Annonsering', navn: 'Finn', x: '7%', y: '63%', rot: -3 },
-  { kategori: 'Kanaler', navn: 'Lodgify', x: '9%', y: '35%', rot: 2.5 },
+  { kategori: 'CRM', navn: 'HubSpot', status: '12 leads uten svar', nivaa: 'gul', x: '15%', y: '16%', rot: -3 },
+  { kategori: 'Økonomi', navn: 'Tripletex', status: 'Avstemming mangler', nivaa: 'rod', x: '40%', y: '9%', rot: 2 },
+  { kategori: 'Visninger', navn: 'Calendly', status: 'Dobbeltbooket', nivaa: 'rod', x: '65%', y: '14%', rot: -2 },
+  { kategori: 'Signering', navn: 'DocuSign', status: 'Venter — 4. dagen', nivaa: 'gul', x: '86%', y: '26%', rot: 2.5 },
+  { kategori: 'Betaling', navn: 'Vipps', status: 'Kontrolleres manuelt', nivaa: 'gul', x: '90%', y: '60%', rot: -2 },
+  { kategori: 'Oversikt', navn: 'Excel', status: 'Oppdatert for 3 uker siden', nivaa: 'rod', x: '74%', y: '87%', rot: 3 },
+  { kategori: 'Husleie', navn: 'Husleie.no', status: 'Purringer sendes manuelt', nivaa: 'gul', x: '50%', y: '92%', rot: -2.5 },
+  { kategori: 'Dialog', navn: 'Outlook', status: '47 uleste', nivaa: 'rod', x: '26%', y: '88%', rot: 2 },
+  { kategori: 'Annonsering', navn: 'Finn', status: 'Annonsen er utløpt', nivaa: 'gul', x: '9%', y: '64%', rot: -3 },
+  { kategori: 'Kanaler', navn: 'Lodgify', status: 'Synk feilet', nivaa: 'rod', x: '10%', y: '36%', rot: 2.5 },
 ];
+// Dempede varselfarger — UI-semantikk, ikke neon
+const KAOS_FARGE = { gul: '#d9a44a', rod: '#d96a5e' };
 
 // ── Integrasjonene — «Alt henger sammen.» (samme koreografi som /tour) ──
 // DigiHome i midten, integrasjonene i bred ellipse rundt — komposisjonen
@@ -786,6 +789,16 @@ export default function BergenUrbanDeck() {
         className={`absolute inset-0 z-20 bg-[#050505] transition-opacity duration-[1700ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${morkAktiv ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
         data-testid="bu-svart-scene"
       >
+        {/* DigiHome-logo — diskret oppe til venstre på de mørke slidene
+            (ikke på cover, som selv er logoen — og ikke over agent-vinduet) */}
+        <header
+          className={`pointer-events-none absolute left-12 top-11 z-30 transition-opacity duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] md:left-16 ${steg >= 1 && steg <= 9 ? 'opacity-100' : 'opacity-0'}`}
+          data-testid="bu-mork-logo"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-white.svg" alt="DigiHome" className="h-[24px] w-auto opacity-90" />
+        </header>
+
         {/* ── AKT 0: COVER — monteres først ved klikk, så intro-koreografien
             starter presist når presentasjonen begynner (helt sort før det) ── */}
         {steg >= 0 && (
@@ -889,14 +902,14 @@ export default function BergenUrbanDeck() {
               </div>
 
               {/* Teksten — editoriell kolonne */}
-              <div className="max-w-[520px] text-center md:text-left">
+              <div className="max-w-[560px] text-center md:text-left">
                 <p
-                  className={`bu-ord-base text-[clamp(11px,0.95vw,13.5px)] font-semibold uppercase tracking-[0.32em] text-white/[0.4] ${megAktiv ? 'bu-ord' : ''}`}
+                  className={`bu-ord-base text-[clamp(11px,0.95vw,13.5px)] font-semibold uppercase tracking-[0.32em] text-white/[0.42] ${megAktiv ? 'bu-ord' : ''}`}
                   style={{ animationDelay: '650ms' }}
                 >
-                  Produktsjef&ensp;·&ensp;DigiHome
+                  Produktsjef<span className="mx-3 text-[#B57BFF]/70">·</span>DigiHome
                 </p>
-                <h2 className={`mt-7 font-heading text-[clamp(52px,6.2vw,100px)] font-bold leading-[0.98] tracking-[-0.04em] text-white ${megAktiv ? 'bu-spor' : ''}`}>
+                <h2 className={`mt-8 font-heading text-[clamp(56px,6.8vw,110px)] font-bold leading-[0.97] tracking-[-0.04em] text-white ${megAktiv ? 'bu-spor' : ''}`}>
                   <span className="block">
                     <span className={`bu-ord-base ${megAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '950ms' }}>Martin</span>
                   </span>
@@ -906,18 +919,6 @@ export default function BergenUrbanDeck() {
                     </span>
                   </span>
                 </h2>
-
-                {/* Hook-linjen — hviskes inn til slutt */}
-                <div
-                  className={`mt-9 flex items-center justify-center gap-5 opacity-0 md:justify-start ${megAktiv ? 'bu-inn' : ''}`}
-                  style={{ animationDelay: '2000ms', animationDuration: '1.6s' }}
-                  data-testid="bu-meg-rolle"
-                >
-                  <span aria-hidden className="h-px w-10 shrink-0 bg-gradient-to-r from-white/30 to-transparent" />
-                  <p className="text-[clamp(15px,1.35vw,19px)] font-medium leading-snug tracking-[-0.012em] text-white/[0.58]">
-                    Bygde DigiHome fra idé til drift.
-                  </p>
-                </div>
               </div>
             </div>
           </div>
@@ -1080,31 +1081,43 @@ export default function BergenUrbanDeck() {
               ))}
             </h2>
 
-            {/* Lappeteppet — glasskort som flyter hver for seg, med brutte
-                forbindelser som «prøver» å nå hverandre (marsjerende streker,
-                enkelte flimrer som mislykkede synkroniseringer) */}
-            <div className="relative mt-7 h-[46vh] max-h-[520px] min-h-[300px] w-full max-w-[1180px]">
+            {/* Lappeteppet — glasskort med hvert sitt smertepunkt, brutte
+                forbindelser som «prøver» å nå hverandre, og et tomt sentrum:
+                hullet der systemet som binder alt sammen mangler */}
+            <div className="relative mt-6 h-[48vh] max-h-[540px] min-h-[320px] w-full max-w-[1220px]">
               <svg
                 aria-hidden
                 className="absolute inset-0 h-full w-full transition-opacity duration-[900ms]"
                 viewBox="0 0 100 100"
                 preserveAspectRatio="none"
-                style={{ opacity: kaosAktiv ? 1 : 0, transitionDelay: kaosAktiv ? '1600ms' : '0ms' }}
+                style={{ opacity: kaosAktiv ? 1 : 0, transitionDelay: kaosAktiv ? '1500ms' : '0ms' }}
               >
-                {[[14, 15, 40, 10], [40, 10, 66, 13], [66, 13, 88, 24], [88, 24, 92, 58], [92, 58, 76, 86], [76, 86, 50, 91], [50, 91, 24, 87], [24, 87, 7, 63], [7, 63, 9, 35], [9, 35, 14, 15]].map((l) => (
-                  <line key={l.join('-')} className="bu-kaos-strek" x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]} stroke="rgba(255,255,255,0.13)" strokeWidth="0.3" strokeDasharray="1.4 2.6" />
+                {[[15, 16, 40, 9], [40, 9, 65, 14], [65, 14, 86, 26], [86, 26, 90, 60], [90, 60, 74, 87], [74, 87, 50, 92], [50, 92, 26, 88], [26, 88, 9, 64], [9, 64, 10, 36], [10, 36, 15, 16]].map((l) => (
+                  <line key={l.join('-')} className="bu-kaos-strek" x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]} stroke="rgba(255,255,255,0.15)" strokeWidth="0.3" strokeDasharray="1.4 2.6" />
                 ))}
                 {/* Kryssende linjer — flimrer som mislykkede synkroniseringer */}
-                {[[14, 15, 92, 58, '4.5s', '0s'], [66, 13, 24, 87, '6s', '1.2s'], [9, 35, 76, 86, '5.2s', '2.4s']].map((l) => (
+                {[[15, 16, 90, 60, '4.5s', '0s'], [65, 14, 26, 88, '6s', '1.2s'], [10, 36, 74, 87, '5.2s', '2.4s']].map((l) => (
                   <line
                     key={l.join('-')}
                     className="bu-kaos-strek"
                     x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]}
-                    stroke="rgba(255,255,255,0.09)" strokeWidth="0.3" strokeDasharray="1.4 2.6"
+                    stroke="rgba(255,255,255,0.1)" strokeWidth="0.3" strokeDasharray="1.4 2.6"
                     style={{ animation: `buStrek 16s linear infinite, buFlimre ${l[4]} ease-in-out ${l[5]} infinite` }}
                   />
                 ))}
               </svg>
+
+              {/* Det tomme sentrum — plassen der systemet som binder alt
+                  sammen mangler (integrasjonssliden besvarer det senere) */}
+              <div
+                aria-hidden
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-[1200ms]"
+                style={{ opacity: kaosAktiv ? 1 : 0, transitionDelay: kaosAktiv ? '2500ms' : '0ms' }}
+              >
+                <div className="bu-savnet flex h-[92px] w-[92px] items-center justify-center rounded-[26px] border border-dashed border-white/[0.16]">
+                  <span className="font-heading text-[26px] font-semibold text-white/[0.13]">?</span>
+                </div>
+              </div>
 
               {VERKTOY.map((v, i) => (
                 <div
@@ -1113,32 +1126,52 @@ export default function BergenUrbanDeck() {
                   style={{
                     left: v.x,
                     top: v.y,
-                    transform: `translate(-50%, -50%) rotate(${v.rot}deg) scale(${kaosAktiv ? 1 : 0.86})`,
+                    transform: `translate(-50%, ${kaosAktiv ? '-50%' : '-42%'}) rotate(${v.rot}deg) scale(${kaosAktiv ? 1 : 0.88})`,
                     opacity: kaosAktiv ? 1 : 0,
-                    filter: kaosAktiv ? 'blur(0)' : 'blur(10px)',
-                    transition: 'transform 950ms cubic-bezier(0.22,1,0.36,1), opacity 800ms cubic-bezier(0.22,1,0.36,1), filter 800ms cubic-bezier(0.22,1,0.36,1)',
-                    transitionDelay: kaosAktiv ? `${500 + i * 100}ms` : '0ms',
+                    filter: kaosAktiv ? 'blur(0)' : 'blur(12px)',
+                    transition: 'transform 1050ms cubic-bezier(0.22,1,0.36,1), opacity 850ms cubic-bezier(0.22,1,0.36,1), filter 850ms cubic-bezier(0.22,1,0.36,1)',
+                    transitionDelay: kaosAktiv ? `${420 + i * 110}ms` : '0ms',
                   }}
                 >
                   {/* Egen flyt-wrapper (transform-konflikt unngås) — hvert kort
                       driver i sin egen takt: usynkronisert, frakoblet */}
                   <div className="bu-kaos-flyt" style={{ animationDuration: `${5.5 + (i % 4) * 0.7}s`, animationDelay: `${-(i * 0.9)}s` }}>
                     <div
-                      className="rounded-2xl px-6 py-3.5 text-left"
+                      className="rounded-2xl px-5 py-3.5 text-left"
                       style={{
-                        background: 'linear-gradient(180deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.035) 100%)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.07), 0 24px 60px rgba(0,0,0,0.55)',
+                        background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.038) 100%)',
+                        border: '1px solid rgba(255,255,255,0.11)',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 28px 70px rgba(0,0,0,0.6)',
                         backdropFilter: 'blur(8px)',
                       }}
                     >
-                      <p className="text-[9.5px] font-bold uppercase tracking-[0.18em] text-white/[0.32]">{v.kategori}</p>
-                      <p className="mt-1 whitespace-nowrap text-[16px] font-semibold tracking-[-0.01em] text-white/[0.92] md:text-[17px]">{v.navn}</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/[0.3]">{v.kategori}</p>
+                      <p className="mt-0.5 whitespace-nowrap text-[15.5px] font-semibold tracking-[-0.01em] text-white/[0.94] md:text-[16.5px]">{v.navn}</p>
+                      <p className="mt-1.5 flex items-center gap-[7px] whitespace-nowrap text-[10.5px] font-medium tracking-[-0.005em] text-white/[0.38]">
+                        <span
+                          className="h-[5px] w-[5px] shrink-0 rounded-full"
+                          style={{
+                            background: KAOS_FARGE[v.nivaa],
+                            opacity: 0.85,
+                            animation: `buFlimre ${3.2 + (i % 3) * 0.9}s ease-in-out ${i * 0.55}s infinite`,
+                          }}
+                        />
+                        {v.status}
+                      </p>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Payoff — hviskes inn når kaoset står */}
+            <p
+              className={`mt-5 text-center text-[clamp(14px,1.35vw,19px)] tracking-[-0.01em] text-white/[0.42] opacity-0 ${kaosAktiv ? 'bu-inn' : ''}`}
+              style={{ animationDelay: '2900ms' }}
+              data-testid="bu-kaos-payoff"
+            >
+              Alt virker. <span className="font-medium text-white/[0.85]">Hver for seg.</span>
+            </p>
           </div>
           </div>
         </div>
