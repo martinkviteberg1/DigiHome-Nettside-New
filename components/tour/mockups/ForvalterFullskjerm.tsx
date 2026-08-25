@@ -101,9 +101,10 @@ const PORTEFOLJE = [
   { navn: 'Onboarding', verdi: 2, farge: C.accent },
 ];
 
-export default function ForvalterFullskjerm({ vis = true, modul = 'oversikt' }: { vis?: boolean; modul?: 'oversikt' | 'kalender' }) {
+export default function ForvalterFullskjerm({ vis = true, modul = 'oversikt' }: { vis?: boolean; modul?: 'oversikt' | 'kalender' | 'enhet' }) {
   // Aktiv modul i sidemenyen — portalen «navigerer selv» i presentasjonen
-  const aktivNavn = modul === 'kalender' ? 'Kalender' : 'Oversikt';
+  // ('enhet' er enkeltvisningen inne i kalendermodulen, som i appen)
+  const aktivNavn = modul === 'oversikt' ? 'Oversikt' : 'Kalender';
   // Hilsen/dato beregnes KUN på klienten (etter mount) — serverens klokke
   // (UTC) og publikums klokke kan være i ulike timer, og ville ellers gitt
   // React hydration-feil («God morgen» vs «God dag»).
@@ -418,16 +419,17 @@ export default function ForvalterFullskjerm({ vis = true, modul = 'oversikt' }: 
         </div>
         </div>
 
-        {/* ── KALENDER — portalen navigerer selv hit etter chatten ── */}
+        {/* ── KALENDER — portalen navigerer selv hit etter chatten, og videre
+            inn i en enkelt enhet (Marken 8) etter at den nye bookingen lander ── */}
         <div
           className="absolute inset-0 transition-[opacity,transform] duration-[850ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{
-            opacity: modul === 'kalender' ? 1 : 0,
-            transform: modul === 'kalender' ? 'translateY(0)' : 'translateY(28px)',
-            transitionDelay: modul === 'kalender' ? '200ms' : '0ms',
+            opacity: modul !== 'oversikt' ? 1 : 0,
+            transform: modul !== 'oversikt' ? 'translateY(0)' : 'translateY(28px)',
+            transitionDelay: modul !== 'oversikt' ? '200ms' : '0ms',
           }}
         >
-          <KalenderVisning aktiv={modul === 'kalender'} />
+          <KalenderVisning aktiv={modul !== 'oversikt'} visning={modul === 'enhet' ? 'single' : 'multi'} />
         </div>
       </div>
     </div>
@@ -528,7 +530,7 @@ const KBAR_STIL: Record<string, React.CSSProperties> = {
   maint: { backgroundColor: '#f7f3e8', color: '#6b4a1a' },
 };
 
-function KalenderVisning({ aktiv }: { aktiv: boolean }) {
+function KalenderMulti({ aktiv, nyBooking }: { aktiv: boolean; nyBooking: boolean }) {
   const inn = (delay: number): React.CSSProperties => ({
     opacity: aktiv ? 1 : 0,
     transform: aktiv ? 'translateY(0)' : 'translateY(10px)',
@@ -717,6 +719,35 @@ function KalenderVisning({ aktiv }: { aktiv: boolean }) {
                   </div>
                 );
               })}
+
+              {/* KALENDER-LIV: ny helgebooking glir inn mens publikum ser på —
+                  fyller hullet 13.–15. feb på Marken 8 (rad 1) med myk pop
+                  og to pulsringer, som en kanal-sync som lander live */}
+              {ri === 0 && (
+                <div
+                  className="absolute"
+                  style={{
+                    left: 9 * KCOL + 2, width: 2 * KCOL - 4, top: 18, height: 42,
+                    borderRadius: 999, backgroundColor: '#FF385C', color: '#ffffff',
+                    zIndex: 3, transformOrigin: 'left center',
+                    opacity: nyBooking ? 1 : 0,
+                    animation: nyBooking
+                      ? 'dhBookPop 0.75s cubic-bezier(0.2, 0.9, 0.3, 1.35) both, dhBookRing 1.5s ease-out 0.55s 2'
+                      : 'none',
+                  }}
+                  data-testid="bu-ny-booking"
+                >
+                  <div className="flex h-full w-full min-w-0 items-center gap-2 overflow-hidden px-2.5" style={{ borderRadius: 'inherit' }}>
+                    <span
+                      className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold leading-none tracking-[-0.01em] text-white"
+                      style={{ backgroundColor: '#FF5A5F', boxShadow: '0 0 0 1.5px rgba(255,255,255,0.9)' }}
+                    >
+                      A
+                    </span>
+                    <span className="flex-1 truncate text-[12px] font-semibold leading-none tracking-[-0.01em]">Nina Holm</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -730,6 +761,262 @@ function KalenderVisning({ aktiv }: { aktiv: boolean }) {
             opacity: aktiv ? 1 : 0, transition: 'opacity 600ms ease 500ms',
           }}
         />
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KalenderVisning — veksler mellom multi-tidslinjen og enkeltvisningen
+// (som viewMode 'multi' → 'single' i appens AdminCalendar). Kryssfade med
+// svak skalering; den nye bookingen trigges 3,4 s etter at multi-visningen
+// er aktiv, og enkeltvisningen kaskaderer inn når portalen «åpner» enheten.
+// ═══════════════════════════════════════════════════════════════════════════
+
+function KalenderVisning({ aktiv, visning }: { aktiv: boolean; visning: 'multi' | 'single' }) {
+  const [nyBooking, setNyBooking] = useState(false);
+  useEffect(() => {
+    if (!aktiv) { setNyBooking(false); return undefined; }
+    if (visning !== 'multi') return undefined;
+    const t = setTimeout(() => setNyBooking(true), 3400);
+    return () => clearTimeout(t);
+  }, [aktiv, visning]);
+
+  return (
+    <div className="relative h-full w-full overflow-hidden bg-white">
+      {/* Multi-tidslinjen (alle boliger) */}
+      <div
+        className="absolute inset-0 transition-[opacity,transform] duration-[750ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+        style={{ opacity: visning === 'multi' ? 1 : 0, transform: visning === 'multi' ? 'scale(1)' : 'scale(0.988)' }}
+      >
+        <KalenderMulti aktiv={aktiv} nyBooking={nyBooking} />
+      </div>
+
+      {/* Enkeltvisningen (Marken 8 · Leilighet 2) */}
+      <div
+        className="absolute inset-0 transition-[opacity,transform] duration-[750ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+        style={{
+          opacity: visning === 'single' ? 1 : 0,
+          transform: visning === 'single' ? 'scale(1)' : 'scale(1.012)',
+          transitionDelay: visning === 'single' ? '150ms' : '0ms',
+        }}
+      >
+        <EnhetMaaned aktiv={aktiv && visning === 'single'} />
+      </div>
+
+      {/* Kalender-liv: pop + pulsringer for bookingen som lander */}
+      <style>{`
+        @keyframes dhBookPop {
+          0% { opacity: 0; transform: scaleX(0.3) scaleY(0.65); }
+          55% { opacity: 1; }
+          75% { transform: scaleX(1.03) scaleY(1.06); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes dhBookRing {
+          0% { box-shadow: 0 0 0 0 rgba(255,56,92,0.4); }
+          100% { box-shadow: 0 0 0 16px rgba(255,56,92,0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EnhetMaaned — 1:1-replika av appens enkeltvisning (viewMode 'single',
+// månedsmodus): Airbnb-aktig månedskalender for én enhet med halvcelle-
+// innrykk for inn-/utsjekk, lane-stabling, KT-åpen-tint, priser i cellene,
+// lilla «i dag»-sirkel og «1 mar»-merking på månedsskifte.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SGL_UKEDAGER = ['Ma', 'Ti', 'On', 'To', 'Fr', 'Lø', 'Sø'];
+
+// Rutenettet: man 26. jan → søn 15. mar 2026 (7 uker). Serial: feb-dato
+// (jan 26 = -5 … mar 15 = 43). «I dag» = 10. februar.
+type SglDag = { d: number; mnd: 0 | 1 | 2; serial: number };
+const SGL_UKER: SglDag[][] = (() => {
+  const dager: SglDag[] = [];
+  for (let d = 26; d <= 31; d++) dager.push({ d, mnd: 0, serial: d - 31 });
+  for (let d = 1; d <= 28; d++) dager.push({ d, mnd: 1, serial: d });
+  for (let d = 1; d <= 15; d++) dager.push({ d, mnd: 2, serial: 28 + d });
+  const uker: SglDag[][] = [];
+  for (let i = 0; i < dager.length; i += 7) uker.push(dager.slice(i, i + 7));
+  return uker;
+})();
+const SGL_IDAG = 10;
+
+// Bookingene på Marken 8 — samme som i multi-visningen (inkl. Nina Holm,
+// den nye), pluss en marsbooking som viser at etterspørselen fortsetter.
+const SGL_BOOKINGER = [
+  { s: 4, e: 8, tittel: 'Emma Berger', kort: 'AB', farge: '#FF5A5F' },
+  { s: 8, e: 13, tittel: 'Jonas Müller', kort: 'BK', farge: '#003580' },
+  { s: 13, e: 15, tittel: 'Nina Holm', kort: 'AB', farge: '#FF5A5F' },
+  { s: 15, e: 20, tittel: 'Claire Dubois', kort: 'AB', farge: '#FF5A5F' },
+  { s: 32, e: 36, tittel: 'Felix Braun', kort: 'AB', farge: '#FF5A5F' },
+];
+const sglBooket = (serial: number) => SGL_BOOKINGER.some((b) => serial >= b.s && serial <= b.e);
+
+// Lane-utlegg per uke — nøyaktig som layoutWeekBars i appen
+const sglUkeBarer = (ukeStart: number) => {
+  type Bar = { s: number; e: number; tittel: string; kort: string; farge: string; sc: number; ec: number; erStart: boolean; erSlutt: boolean; lane: number };
+  const barer: Bar[] = [];
+  for (const b of SGL_BOOKINGER) {
+    if (b.e < ukeStart || b.s > ukeStart + 6) continue;
+    barer.push({
+      ...b,
+      sc: Math.max(0, b.s - ukeStart),
+      ec: Math.min(6, b.e - ukeStart),
+      erStart: b.s >= ukeStart,
+      erSlutt: b.e <= ukeStart + 6,
+      lane: 0,
+    });
+  }
+  const lanes: Bar[][] = [];
+  for (const bar of barer.sort((a, b) => a.sc - b.sc)) {
+    let plassert = false;
+    for (let l = 0; l < lanes.length; l++) {
+      if (!lanes[l].some((x) => x.sc <= bar.ec && x.ec >= bar.sc)) { lanes[l].push(bar); bar.lane = l; plassert = true; break; }
+    }
+    if (!plassert) { bar.lane = lanes.length; lanes.push([bar]); }
+  }
+  return { barer, laneAntall: lanes.length };
+};
+
+function EnhetMaaned({ aktiv }: { aktiv: boolean }) {
+  const inn = (delay: number): React.CSSProperties => ({
+    opacity: aktiv ? 1 : 0,
+    transform: aktiv ? 'translateY(0)' : 'translateY(10px)',
+    transition: `opacity 650ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 650ms cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
+  });
+
+  return (
+    <div className="flex h-full w-full flex-col overflow-hidden bg-white">
+      {/* ── HEADER (60px) — enhetsvelger viser valgt enhet + månedsnav ── */}
+      <div
+        className="flex shrink-0 items-center gap-3 px-6"
+        style={{ height: 60, borderBottom: '1px solid #f2f2f2', backgroundColor: '#ffffff', ...inn(120) }}
+      >
+        <div className="flex shrink-0 items-center rounded-full p-0.5" style={{ backgroundColor: '#fafafa', border: '1px solid #ebebeb' }}>
+          <span className="flex h-[30px] items-center rounded-full px-3.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ backgroundColor: '#ffffff', color: '#222222', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>Kalender</span>
+          <span className="flex h-[30px] items-center rounded-full px-3.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ color: '#717171' }}>Perioder</span>
+        </div>
+        <span className="flex h-9 shrink-0 items-center gap-2 rounded-full pl-1.5 pr-3" style={{ border: '1px solid #222222', backgroundColor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
+          <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full" style={{ background: 'linear-gradient(135deg, #f5f4f7, #ecebef)', color: '#717171' }}>
+            <Home className="h-3 w-3" strokeWidth={2} />
+          </span>
+          <span className="text-[12.5px] font-semibold tracking-[-0.005em]" style={{ color: '#222222' }}>Marken 8 · Leilighet 2</span>
+          <ChevronDown className="h-3 w-3" style={{ color: '#717171' }} strokeWidth={2.4} />
+        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full" style={{ color: '#717171' }}>
+            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2.2} />
+          </span>
+          <h2 className="min-w-[140px] text-center text-[16px] font-bold capitalize leading-none tracking-[-0.02em]" style={{ color: '#222222' }}>februar 2026</h2>
+          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full" style={{ color: '#717171' }}>
+            <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} />
+          </span>
+        </div>
+        <div className="ml-1 flex shrink-0 items-center rounded-full p-0.5" style={{ backgroundColor: '#fafafa', border: '1px solid #ebebeb' }}>
+          <span className="flex h-[30px] items-center rounded-full px-3.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ backgroundColor: '#ffffff', color: '#222222', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>Måned</span>
+          <span className="flex h-[30px] items-center rounded-full px-3.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ color: '#717171' }}>År</span>
+        </div>
+        <div className="flex-1" />
+      </div>
+
+      {/* ── UKEDAGSHEADER ── */}
+      <div className="grid shrink-0 grid-cols-7" style={{ borderBottom: '1px solid #f2f2f2', backgroundColor: '#ffffff', ...inn(200) }}>
+        {SGL_UKEDAGER.map((ud) => (
+          <div key={ud} className="py-4 text-center text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ color: '#9b9b9b' }}>{ud}</div>
+        ))}
+      </div>
+
+      {/* ── UKERADENE — celler + bookingpills med halvcelle-innrykk ── */}
+      <div className="relative flex-1 overflow-hidden">
+        {SGL_UKER.map((uke, wi) => {
+          const ukeStart = uke[0].serial;
+          const { barer, laneAntall } = sglUkeBarer(ukeStart);
+          const cellH = Math.max(132, 52 + Math.max(laneAntall, 1) * 32);
+          const barTop = Math.round((cellH - Math.max(laneAntall, 1) * 32) / 2);
+          const halvCelle = 100 / 7 / 2;
+          return (
+            <div
+              key={wi}
+              className="relative grid grid-cols-7"
+              style={{
+                minHeight: cellH,
+                borderBottom: '1px solid #ebebeb',
+                opacity: aktiv ? 1 : 0,
+                transform: aktiv ? 'translateY(0)' : 'translateY(12px)',
+                transition: `opacity 600ms cubic-bezier(0.22,1,0.36,1) ${260 + wi * 45}ms, transform 600ms cubic-bezier(0.22,1,0.36,1) ${260 + wi * 45}ms`,
+              }}
+            >
+              {uke.map((dag, di) => {
+                const pre = dag.mnd === 0;
+                const fortid = !pre && dag.serial < SGL_IDAG;
+                const idag = dag.serial === SGL_IDAG;
+                const helg = di >= 5;
+                const booket = sglBooket(dag.serial);
+                const ktAapen = !pre && !fortid && !booket;
+                const foerste = dag.d === 1 && dag.mnd !== 0;
+                let bakgrunn = '#ffffff';
+                if (pre || fortid) bakgrunn = '#fafafa';
+                else if (ktAapen) bakgrunn = 'rgba(16,185,129,0.07)';
+                else if (helg) bakgrunn = '#faf7f5';
+                if (pre) {
+                  return <div key={di} style={{ backgroundColor: bakgrunn, borderRight: di < 6 ? '1px solid #ebebeb' : 'none' }} />;
+                }
+                return (
+                  <div key={di} className="relative" style={{ backgroundColor: bakgrunn, borderRight: di < 6 ? '1px solid #ebebeb' : 'none' }}>
+                    <div className="absolute right-3 top-2.5 z-[2]">
+                      {idag ? (
+                        <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-[13px] font-bold text-white" style={{ backgroundColor: '#7c3aed', boxShadow: '0 1px 3px rgba(124,58,237,0.2)' }}>{dag.d}</span>
+                      ) : (
+                        <span className="text-[14px] font-semibold tabular-nums" style={{ color: fortid ? '#c4c4c4' : helg ? '#717171' : '#222222' }}>
+                          {dag.d}
+                          {foerste && <span className="ml-0.5 text-[10px] font-medium" style={{ color: '#9b9b9b' }}>{dag.mnd === 1 ? 'feb' : 'mar'}</span>}
+                        </span>
+                      )}
+                    </div>
+                    {ktAapen && (
+                      <>
+                        <div className="absolute bottom-2.5 left-3 z-[2]">
+                          <p className="text-[11px] font-medium tabular-nums" style={{ color: '#9b9b9b' }}>1{'\u00A0'}850 kr</p>
+                        </div>
+                        <div className="absolute bottom-2.5 right-3 z-[2] h-[6px] w-[6px] rounded-full" style={{ backgroundColor: '#FF385C', boxShadow: '0 0 0 3px rgba(16,185,129,0.16)' }} />
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Bookingpills — halvcelle-innrykk ved inn-/utsjekk, som i appen */}
+              {barer.map((bar, bi) => {
+                let venstre = (bar.sc / 7) * 100;
+                let bredde = ((bar.ec - bar.sc + 1) / 7) * 100;
+                if (bar.erStart) { venstre += halvCelle; bredde -= halvCelle; }
+                if (bar.erSlutt) { bredde -= halvCelle; }
+                const rl = bar.erStart ? 999 : 4;
+                const rr = bar.erSlutt ? 999 : 4;
+                return (
+                  <div
+                    key={`${bar.tittel}-${bi}`}
+                    className="absolute z-[5]"
+                    style={{
+                      left: `calc(${venstre}% + 4px)`, width: `calc(${bredde}% - 8px)`,
+                      top: barTop + bar.lane * 32, height: 28,
+                      borderRadius: `${rl}px ${rr}px ${rr}px ${rl}px`,
+                      backgroundColor: '#FF385C', color: '#ffffff',
+                    }}
+                  >
+                    <div className="flex h-full min-w-0 items-center gap-1.5 overflow-hidden px-2.5" style={{ borderRadius: 'inherit' }}>
+                      <span className="shrink-0 rounded-full px-[5px] py-[1px] text-[8px] font-bold leading-none text-white" style={{ backgroundColor: bar.farge, boxShadow: '0 0 0 1px rgba(255,255,255,0.8)' }}>{bar.kort}</span>
+                      <span className="truncate text-[10.5px] font-semibold leading-none tracking-[-0.005em]">{bar.tittel}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

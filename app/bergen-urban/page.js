@@ -436,12 +436,15 @@ export default function BergenUrbanDeck() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [steg]);
 
-  // Portalen lever: etter at assistenten har svart, navigerer den selv
-  // til Kalender-modulen (sidebar-markøren glir, hovedflaten kryssfader)
+  // Portalen lever: etter at assistenten har svart, navigerer den selv til
+  // Kalender-modulen (sidebar-markøren glir, hovedflaten kryssfader). Der
+  // lander en ny booking live (kalender-liv), før portalen åpner enheten
+  // som fikk bookingen — Marken 8 — i appens enkeltvisning.
   useEffect(() => {
     if (steg !== 9) { setRevealModul('oversikt'); return undefined; }
     const t = setTimeout(() => setRevealModul('kalender'), 8600);
-    return () => clearTimeout(t);
+    const t2 = setTimeout(() => setRevealModul('enhet'), 17400);
+    return () => { clearTimeout(t); clearTimeout(t2); };
   }, [steg]);
 
   // Skjul musepekeren når den ligger i ro (scene-modus)
