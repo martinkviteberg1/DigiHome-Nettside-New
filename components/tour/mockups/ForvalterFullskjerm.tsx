@@ -6,7 +6,7 @@ import {
   Users, Wrench, BookOpen, Wand2, PieChart, ScrollText, TrendingUp, DollarSign,
   Search, PanelLeftClose, ChevronDown, Sparkles, ArrowUpRight, Home,
   Droplets, HelpCircle, Timer, Circle, Clock, ChevronLeft, ChevronRight, Plus,
-  LayoutGrid, Filter, Lock,
+  LayoutGrid, Filter, Lock, ArrowLeft, KeyRound, Wallet, Camera, Mail, Phone, BedDouble,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -126,7 +126,7 @@ export default function ForvalterFullskjerm({ vis = true, modul = 'oversikt' }: 
   });
 
   return (
-    <div className={`${jakarta.className} flex overflow-hidden`} style={{ width: 1600, height: 1000, backgroundColor: C.bg }}>
+    <div className={`${jakarta.className} relative flex overflow-hidden`} style={{ width: 1600, height: 1000, backgroundColor: C.bg }}>
       {/* ═══ SIDEBAR — eksakt som AdminLayout ═══ */}
       <aside
         className="flex shrink-0 flex-col bg-[#1a1a1a] text-white"
@@ -419,8 +419,7 @@ export default function ForvalterFullskjerm({ vis = true, modul = 'oversikt' }: 
         </div>
         </div>
 
-        {/* ── KALENDER — portalen navigerer selv hit etter chatten, og videre
-            inn i en enkelt enhet (Marken 8) etter at den nye bookingen lander ── */}
+        {/* ── KALENDER — portalen navigerer selv hit etter chatten ── */}
         <div
           className="absolute inset-0 transition-[opacity,transform] duration-[850ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{
@@ -429,8 +428,23 @@ export default function ForvalterFullskjerm({ vis = true, modul = 'oversikt' }: 
             transitionDelay: modul !== 'oversikt' ? '200ms' : '0ms',
           }}
         >
-          <KalenderVisning aktiv={modul !== 'oversikt'} visning={modul === 'enhet' ? 'single' : 'multi'} />
+          <KalenderVisning aktiv={modul !== 'oversikt'} />
         </div>
+      </div>
+
+      {/* ── ENHETEN — Eiendommer › Marken 8 › Leilighet 2 (detaljvisning).
+          Dekker hele appen inkl. sidebar, akkurat som i appen der enheten
+          får sin egen kontekstuelle venstre-rail ── */}
+      <div
+        className="absolute inset-0 z-20 transition-[opacity,transform] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+        style={{
+          opacity: modul === 'enhet' ? 1 : 0,
+          transform: modul === 'enhet' ? 'scale(1)' : 'scale(1.015)',
+          pointerEvents: 'none',
+          transitionDelay: modul === 'enhet' ? '150ms' : '0ms',
+        }}
+      >
+        <EnhetDetalj aktiv={modul === 'enhet'} />
       </div>
     </div>
   );
@@ -461,7 +475,7 @@ const kMandag = (i: number) => KUKEDAG[i] === 'Ma';
 const KILDE: Record<string, { farge: string; bokstav: string }> = {
   A: { farge: '#FF5A5F', bokstav: 'A' },  // Airbnb
   B: { farge: '#003580', bokstav: 'B' },  // Booking.com
-  D: { farge: '#7c3aed', bokstav: 'D' },  // Direkte
+  D: { farge: '#1a1a1a', bokstav: 'D' },  // Direkte
 };
 
 type KBar = {
@@ -519,15 +533,16 @@ const KENHETER: KEnhet[] = [
   ] },
 ];
 
-// Bar-fyll per type — nøyaktig som .cal-bar-* i appen
+// Bar-fyll per type — DigiHome-paletten fra portalen: lilla korttid,
+// sort langtidsleie (som primærknappene), nøytral grå drift/sperring
 const KBAR_STIL: Record<string, React.CSSProperties> = {
-  booking: { backgroundColor: '#FF385C', color: '#ffffff' },
-  lease: { backgroundColor: '#6366f1', color: '#ffffff' },
+  booking: { backgroundColor: '#7c3aed', color: '#ffffff' },
+  lease: { backgroundColor: '#1a1a1a', color: '#ffffff' },
   block: {
-    backgroundColor: '#484848', color: '#ffffff',
+    backgroundColor: '#52525b', color: '#ffffff',
     backgroundImage: 'repeating-linear-gradient(135deg, transparent 0 5px, rgba(255,255,255,0.08) 5px 6px)',
   },
-  maint: { backgroundColor: '#f7f3e8', color: '#6b4a1a' },
+  maint: { backgroundColor: '#f1f0f4', color: '#52525b' },
 };
 
 function KalenderMulti({ aktiv, nyBooking }: { aktiv: boolean; nyBooking: boolean }) {
@@ -637,7 +652,7 @@ function KalenderMulti({ aktiv, nyBooking }: { aktiv: boolean; nyBooking: boolea
                   <p className="truncate text-[11.5px] leading-tight" style={{ color: '#717171' }}>{u.omraade}</p>
                   <span
                     className="flex h-[15px] shrink-0 items-center rounded-[3px] px-1.5 text-[9px] font-bold leading-none tracking-[0.03em] text-white"
-                    style={{ backgroundColor: u.modell === 'KT' ? '#FF385C' : '#3B82F6' }}
+                    style={{ backgroundColor: u.modell === 'KT' ? '#7c3aed' : '#1a1a1a' }}
                   >
                     {u.modell}
                   </span>
@@ -654,7 +669,7 @@ function KalenderMulti({ aktiv, nyBooking }: { aktiv: boolean; nyBooking: boolea
                     className="relative shrink-0"
                     style={{
                       width: KCOL,
-                      backgroundColor: i < K_IDAG ? '#fafafa' : kHelg(i) ? '#faf7f5' : 'transparent',
+                      backgroundColor: i < K_IDAG ? '#fafafa' : kHelg(i) ? '#f8f6fc' : 'transparent',
                       boxShadow: kMandag(i) ? 'inset 1px 0 0 #f2f2f2' : undefined,
                     }}
                   >
@@ -728,7 +743,7 @@ function KalenderMulti({ aktiv, nyBooking }: { aktiv: boolean; nyBooking: boolea
                   className="absolute"
                   style={{
                     left: 9 * KCOL + 2, width: 2 * KCOL - 4, top: 18, height: 42,
-                    borderRadius: 999, backgroundColor: '#FF385C', color: '#ffffff',
+                    borderRadius: 999, backgroundColor: '#7c3aed', color: '#ffffff',
                     zIndex: 3, transformOrigin: 'left center',
                     opacity: nyBooking ? 1 : 0,
                     animation: nyBooking
@@ -767,44 +782,23 @@ function KalenderMulti({ aktiv, nyBooking }: { aktiv: boolean; nyBooking: boolea
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// KalenderVisning — veksler mellom multi-tidslinjen og enkeltvisningen
-// (som viewMode 'multi' → 'single' i appens AdminCalendar). Kryssfade med
-// svak skalering; den nye bookingen trigges 3,4 s etter at multi-visningen
-// er aktiv, og enkeltvisningen kaskaderer inn når portalen «åpner» enheten.
+// ═══════════════════════════════════════════════════════════════════════════
+// KalenderVisning — multi-tidslinjen med «kalender-liv»: den nye bookingen
+// (Nina Holm) trigges 3,4 s etter at kalenderen er aktiv, med myk pop og
+// pulsringer i DigiHome-lilla.
 // ═══════════════════════════════════════════════════════════════════════════
 
-function KalenderVisning({ aktiv, visning }: { aktiv: boolean; visning: 'multi' | 'single' }) {
+function KalenderVisning({ aktiv }: { aktiv: boolean }) {
   const [nyBooking, setNyBooking] = useState(false);
   useEffect(() => {
     if (!aktiv) { setNyBooking(false); return undefined; }
-    if (visning !== 'multi') return undefined;
     const t = setTimeout(() => setNyBooking(true), 3400);
     return () => clearTimeout(t);
-  }, [aktiv, visning]);
+  }, [aktiv]);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-white">
-      {/* Multi-tidslinjen (alle boliger) */}
-      <div
-        className="absolute inset-0 transition-[opacity,transform] duration-[750ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-        style={{ opacity: visning === 'multi' ? 1 : 0, transform: visning === 'multi' ? 'scale(1)' : 'scale(0.988)' }}
-      >
-        <KalenderMulti aktiv={aktiv} nyBooking={nyBooking} />
-      </div>
-
-      {/* Enkeltvisningen (Marken 8 · Leilighet 2) */}
-      <div
-        className="absolute inset-0 transition-[opacity,transform] duration-[750ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-        style={{
-          opacity: visning === 'single' ? 1 : 0,
-          transform: visning === 'single' ? 'scale(1)' : 'scale(1.012)',
-          transitionDelay: visning === 'single' ? '150ms' : '0ms',
-        }}
-      >
-        <EnhetMaaned aktiv={aktiv && visning === 'single'} />
-      </div>
-
-      {/* Kalender-liv: pop + pulsringer for bookingen som lander */}
+      <KalenderMulti aktiv={aktiv} nyBooking={nyBooking} />
       <style>{`
         @keyframes dhBookPop {
           0% { opacity: 0; transform: scaleX(0.3) scaleY(0.65); }
@@ -813,8 +807,8 @@ function KalenderVisning({ aktiv, visning }: { aktiv: boolean; visning: 'multi' 
           100% { opacity: 1; transform: scale(1); }
         }
         @keyframes dhBookRing {
-          0% { box-shadow: 0 0 0 0 rgba(255,56,92,0.4); }
-          100% { box-shadow: 0 0 0 16px rgba(255,56,92,0); }
+          0% { box-shadow: 0 0 0 0 rgba(124,58,237,0.4); }
+          100% { box-shadow: 0 0 0 16px rgba(124,58,237,0); }
         }
       `}</style>
     </div>
@@ -822,201 +816,177 @@ function KalenderVisning({ aktiv, visning }: { aktiv: boolean; visning: 'multi' 
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// EnhetMaaned — 1:1-replika av appens enkeltvisning (viewMode 'single',
-// månedsmodus): Airbnb-aktig månedskalender for én enhet med halvcelle-
-// innrykk for inn-/utsjekk, lane-stabling, KT-åpen-tint, priser i cellene,
-// lilla «i dag»-sirkel og «1 mar»-merking på månedsskifte.
+// EnhetDetalj — 1:1-replika av appens enhetsside (Eiendommer › Marken 8 ›
+// Leilighet 2, «Stedet»-fanen): egen kontekstuell venstre-rail (260px, varm
+// palett #fdfcfb), foto-mosaikk (1 stor + 2×2), tittelblokk med status-pill,
+// «Om boligen», soverom-kort og eier-kort i høyre rail — mål, farger og
+// typografi hentet direkte fra AdminUnitDetail/StedetTab/UnitContextSidebar.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const SGL_UKEDAGER = ['Ma', 'Ti', 'On', 'To', 'Fr', 'Lø', 'Sø'];
-
-// Rutenettet: man 26. jan → søn 15. mar 2026 (7 uker). Serial: feb-dato
-// (jan 26 = -5 … mar 15 = 43). «I dag» = 10. februar.
-type SglDag = { d: number; mnd: 0 | 1 | 2; serial: number };
-const SGL_UKER: SglDag[][] = (() => {
-  const dager: SglDag[] = [];
-  for (let d = 26; d <= 31; d++) dager.push({ d, mnd: 0, serial: d - 31 });
-  for (let d = 1; d <= 28; d++) dager.push({ d, mnd: 1, serial: d });
-  for (let d = 1; d <= 15; d++) dager.push({ d, mnd: 2, serial: 28 + d });
-  const uker: SglDag[][] = [];
-  for (let i = 0; i < dager.length; i += 7) uker.push(dager.slice(i, i + 7));
-  return uker;
-})();
-const SGL_IDAG = 10;
-
-// Bookingene på Marken 8 — samme som i multi-visningen (inkl. Nina Holm,
-// den nye), pluss en marsbooking som viser at etterspørselen fortsetter.
-const SGL_BOOKINGER = [
-  { s: 4, e: 8, tittel: 'Emma Berger', kort: 'AB', farge: '#FF5A5F' },
-  { s: 8, e: 13, tittel: 'Jonas Müller', kort: 'BK', farge: '#003580' },
-  { s: 13, e: 15, tittel: 'Nina Holm', kort: 'AB', farge: '#FF5A5F' },
-  { s: 15, e: 20, tittel: 'Claire Dubois', kort: 'AB', farge: '#FF5A5F' },
-  { s: 32, e: 36, tittel: 'Felix Braun', kort: 'AB', farge: '#FF5A5F' },
-];
-const sglBooket = (serial: number) => SGL_BOOKINGER.some((b) => serial >= b.s && serial <= b.e);
-
-// Lane-utlegg per uke — nøyaktig som layoutWeekBars i appen
-const sglUkeBarer = (ukeStart: number) => {
-  type Bar = { s: number; e: number; tittel: string; kort: string; farge: string; sc: number; ec: number; erStart: boolean; erSlutt: boolean; lane: number };
-  const barer: Bar[] = [];
-  for (const b of SGL_BOOKINGER) {
-    if (b.e < ukeStart || b.s > ukeStart + 6) continue;
-    barer.push({
-      ...b,
-      sc: Math.max(0, b.s - ukeStart),
-      ec: Math.min(6, b.e - ukeStart),
-      erStart: b.s >= ukeStart,
-      erSlutt: b.e <= ukeStart + 6,
-      lane: 0,
-    });
-  }
-  const lanes: Bar[][] = [];
-  for (const bar of barer.sort((a, b) => a.sc - b.sc)) {
-    let plassert = false;
-    for (let l = 0; l < lanes.length; l++) {
-      if (!lanes[l].some((x) => x.sc <= bar.ec && x.ec >= bar.sc)) { lanes[l].push(bar); bar.lane = l; plassert = true; break; }
-    }
-    if (!plassert) { bar.lane = lanes.length; lanes.push([bar]); }
-  }
-  return { barer, laneAntall: lanes.length };
+const ENHET_FOTO = {
+  stue: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200',
+  soverom: 'https://images.unsplash.com/photo-1616486029423-aaa4789e8c9a?crop=entropy&cs=srgb&fm=jpg&q=85&w=600',
+  kjokken: 'https://images.pexels.com/photos/19980206/pexels-photo-19980206.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  bad: 'https://images.unsplash.com/photo-1631048499052-e6d9f305d2c0?crop=entropy&cs=srgb&fm=jpg&q=85&w=600',
+  spisestue: 'https://images.unsplash.com/photo-1747336754870-ca7b10cc75f5?crop=entropy&cs=srgb&fm=jpg&q=85&w=600',
 };
 
-function EnhetMaaned({ aktiv }: { aktiv: boolean }) {
+const ENHET_FANER = [
+  { navn: 'Stedet', Ikon: Home, aktiv: true },
+  { navn: 'Utleie', Ikon: KeyRound, aktiv: false },
+  { navn: 'Saker', Ikon: Wrench, aktiv: false },
+  { navn: 'Meldinger', Ikon: MessageSquare, aktiv: false },
+  { navn: 'Kalender', Ikon: CalendarDays, aktiv: false },
+  { navn: 'Økonomi', Ikon: Wallet, aktiv: false },
+  { navn: 'Dokumenter', Ikon: FileText, aktiv: false },
+];
+
+function EnhetDetalj({ aktiv }: { aktiv: boolean }) {
   const inn = (delay: number): React.CSSProperties => ({
     opacity: aktiv ? 1 : 0,
-    transform: aktiv ? 'translateY(0)' : 'translateY(10px)',
-    transition: `opacity 650ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 650ms cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
+    transform: aktiv ? 'translateY(0)' : 'translateY(12px)',
+    transition: `opacity 700ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 700ms cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
   });
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-white">
-      {/* ── HEADER (60px) — enhetsvelger viser valgt enhet + månedsnav ── */}
-      <div
-        className="flex shrink-0 items-center gap-3 px-6"
-        style={{ height: 60, borderBottom: '1px solid #f2f2f2', backgroundColor: '#ffffff', ...inn(120) }}
-      >
-        <div className="flex shrink-0 items-center rounded-full p-0.5" style={{ backgroundColor: '#fafafa', border: '1px solid #ebebeb' }}>
-          <span className="flex h-[30px] items-center rounded-full px-3.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ backgroundColor: '#ffffff', color: '#222222', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>Kalender</span>
-          <span className="flex h-[30px] items-center rounded-full px-3.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ color: '#717171' }}>Perioder</span>
+    <div className="flex h-full w-full overflow-hidden" style={{ backgroundColor: '#fdfcfb' }}>
+      {/* ── KONTEKSTUELL VENSTRE-RAIL (UnitContextSidebar) ── */}
+      <aside className="flex shrink-0 flex-col" style={{ width: 260, borderRight: '1px solid rgba(236,232,225,0.6)', backgroundColor: '#fdfcfb', ...inn(80) }}>
+        <div className="px-5 pb-4 pt-6">
+          <div className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: '#8d867b' }}>
+            <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.8} />
+            Marken 8
+          </div>
+          <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: '#6e6357' }}>Enhet</p>
+          <h2 className="mt-1 text-[15px] font-bold leading-tight tracking-tight" style={{ color: '#1a1a1a' }}>Leilighet 2</h2>
+          <p className="mt-0.5 text-[11.5px]" style={{ color: '#8d867b' }}>Marken 8, 5017 Bergen</p>
         </div>
-        <span className="flex h-9 shrink-0 items-center gap-2 rounded-full pl-1.5 pr-3" style={{ border: '1px solid #222222', backgroundColor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
-          <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full" style={{ background: 'linear-gradient(135deg, #f5f4f7, #ecebef)', color: '#717171' }}>
-            <Home className="h-3 w-3" strokeWidth={2} />
-          </span>
-          <span className="text-[12.5px] font-semibold tracking-[-0.005em]" style={{ color: '#222222' }}>Marken 8 · Leilighet 2</span>
-          <ChevronDown className="h-3 w-3" style={{ color: '#717171' }} strokeWidth={2.4} />
-        </span>
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full" style={{ color: '#717171' }}>
-            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2.2} />
-          </span>
-          <h2 className="min-w-[140px] text-center text-[16px] font-bold capitalize leading-none tracking-[-0.02em]" style={{ color: '#222222' }}>februar 2026</h2>
-          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full" style={{ color: '#717171' }}>
-            <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} />
-          </span>
-        </div>
-        <div className="ml-1 flex shrink-0 items-center rounded-full p-0.5" style={{ backgroundColor: '#fafafa', border: '1px solid #ebebeb' }}>
-          <span className="flex h-[30px] items-center rounded-full px-3.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ backgroundColor: '#ffffff', color: '#222222', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>Måned</span>
-          <span className="flex h-[30px] items-center rounded-full px-3.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ color: '#717171' }}>År</span>
-        </div>
-        <div className="flex-1" />
-      </div>
-
-      {/* ── UKEDAGSHEADER ── */}
-      <div className="grid shrink-0 grid-cols-7" style={{ borderBottom: '1px solid #f2f2f2', backgroundColor: '#ffffff', ...inn(200) }}>
-        {SGL_UKEDAGER.map((ud) => (
-          <div key={ud} className="py-4 text-center text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ color: '#9b9b9b' }}>{ud}</div>
-        ))}
-      </div>
-
-      {/* ── UKERADENE — celler + bookingpills med halvcelle-innrykk ── */}
-      <div className="relative flex-1 overflow-hidden">
-        {SGL_UKER.map((uke, wi) => {
-          const ukeStart = uke[0].serial;
-          const { barer, laneAntall } = sglUkeBarer(ukeStart);
-          const cellH = Math.max(132, 52 + Math.max(laneAntall, 1) * 32);
-          const barTop = Math.round((cellH - Math.max(laneAntall, 1) * 32) / 2);
-          const halvCelle = 100 / 7 / 2;
-          return (
-            <div
-              key={wi}
-              className="relative grid grid-cols-7"
-              style={{
-                minHeight: cellH,
-                borderBottom: '1px solid #ebebeb',
-                opacity: aktiv ? 1 : 0,
-                transform: aktiv ? 'translateY(0)' : 'translateY(12px)',
-                transition: `opacity 600ms cubic-bezier(0.22,1,0.36,1) ${260 + wi * 45}ms, transform 600ms cubic-bezier(0.22,1,0.36,1) ${260 + wi * 45}ms`,
-              }}
+        <nav className="flex flex-col gap-0.5 px-3">
+          {ENHET_FANER.map((f) => (
+            <span
+              key={f.navn}
+              className="flex items-center gap-2.5 rounded-xl px-3 py-[9px] text-[13px] font-semibold tracking-[-0.005em]"
+              style={f.aktiv ? { backgroundColor: '#1a1a1a', color: '#ffffff', boxShadow: '0 4px 14px rgba(17,17,17,0.18)' } : { color: '#6e6357' }}
             >
-              {uke.map((dag, di) => {
-                const pre = dag.mnd === 0;
-                const fortid = !pre && dag.serial < SGL_IDAG;
-                const idag = dag.serial === SGL_IDAG;
-                const helg = di >= 5;
-                const booket = sglBooket(dag.serial);
-                const ktAapen = !pre && !fortid && !booket;
-                const foerste = dag.d === 1 && dag.mnd !== 0;
-                let bakgrunn = '#ffffff';
-                if (pre || fortid) bakgrunn = '#fafafa';
-                else if (ktAapen) bakgrunn = 'rgba(16,185,129,0.07)';
-                else if (helg) bakgrunn = '#faf7f5';
-                if (pre) {
-                  return <div key={di} style={{ backgroundColor: bakgrunn, borderRight: di < 6 ? '1px solid #ebebeb' : 'none' }} />;
-                }
-                return (
-                  <div key={di} className="relative" style={{ backgroundColor: bakgrunn, borderRight: di < 6 ? '1px solid #ebebeb' : 'none' }}>
-                    <div className="absolute right-3 top-2.5 z-[2]">
-                      {idag ? (
-                        <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-[13px] font-bold text-white" style={{ backgroundColor: '#7c3aed', boxShadow: '0 1px 3px rgba(124,58,237,0.2)' }}>{dag.d}</span>
-                      ) : (
-                        <span className="text-[14px] font-semibold tabular-nums" style={{ color: fortid ? '#c4c4c4' : helg ? '#717171' : '#222222' }}>
-                          {dag.d}
-                          {foerste && <span className="ml-0.5 text-[10px] font-medium" style={{ color: '#9b9b9b' }}>{dag.mnd === 1 ? 'feb' : 'mar'}</span>}
-                        </span>
-                      )}
-                    </div>
-                    {ktAapen && (
-                      <>
-                        <div className="absolute bottom-2.5 left-3 z-[2]">
-                          <p className="text-[11px] font-medium tabular-nums" style={{ color: '#9b9b9b' }}>1{'\u00A0'}850 kr</p>
-                        </div>
-                        <div className="absolute bottom-2.5 right-3 z-[2] h-[6px] w-[6px] rounded-full" style={{ backgroundColor: '#FF385C', boxShadow: '0 0 0 3px rgba(16,185,129,0.16)' }} />
-                      </>
-                    )}
-                  </div>
-                );
-              })}
+              <f.Ikon className="h-[15px] w-[15px]" strokeWidth={1.7} style={{ color: f.aktiv ? '#ffffff' : '#a8a092' }} />
+              {f.navn}
+            </span>
+          ))}
+        </nav>
+        <div className="mt-auto px-5 pb-6">
+          <p className="mb-2 text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: '#a8a092' }}>Andre enheter</p>
+          {['Leilighet 1', 'Leilighet 3'].map((navn) => (
+            <p key={navn} className="flex items-center gap-2 py-1 text-[12.5px] font-medium" style={{ color: '#6e6357' }}>
+              <span className="text-[13px]" style={{ color: '#c4baa8' }}>↳</span> {navn}
+            </p>
+          ))}
+        </div>
+      </aside>
 
-              {/* Bookingpills — halvcelle-innrykk ved inn-/utsjekk, som i appen */}
-              {barer.map((bar, bi) => {
-                let venstre = (bar.sc / 7) * 100;
-                let bredde = ((bar.ec - bar.sc + 1) / 7) * 100;
-                if (bar.erStart) { venstre += halvCelle; bredde -= halvCelle; }
-                if (bar.erSlutt) { bredde -= halvCelle; }
-                const rl = bar.erStart ? 999 : 4;
-                const rr = bar.erSlutt ? 999 : 4;
-                return (
-                  <div
-                    key={`${bar.tittel}-${bi}`}
-                    className="absolute z-[5]"
-                    style={{
-                      left: `calc(${venstre}% + 4px)`, width: `calc(${bredde}% - 8px)`,
-                      top: barTop + bar.lane * 32, height: 28,
-                      borderRadius: `${rl}px ${rr}px ${rr}px ${rl}px`,
-                      backgroundColor: '#FF385C', color: '#ffffff',
-                    }}
-                  >
-                    <div className="flex h-full min-w-0 items-center gap-1.5 overflow-hidden px-2.5" style={{ borderRadius: 'inherit' }}>
-                      <span className="shrink-0 rounded-full px-[5px] py-[1px] text-[8px] font-bold leading-none text-white" style={{ backgroundColor: bar.farge, boxShadow: '0 0 0 1px rgba(255,255,255,0.8)' }}>{bar.kort}</span>
-                      <span className="truncate text-[10.5px] font-semibold leading-none tracking-[-0.005em]">{bar.tittel}</span>
-                    </div>
-                  </div>
-                );
-              })}
+      {/* ── HOVEDINNHOLD (StedetTab) ── */}
+      <div className="min-w-0 flex-1 overflow-hidden px-10 pt-6">
+        {/* Breadcrumb + status */}
+        <div className="flex items-center justify-between" style={inn(160)}>
+          <p className="text-[12.5px]" style={{ color: '#8d867b' }}>
+            Eiendommer <span className="mx-1.5" style={{ color: '#c4baa8' }}>›</span> Marken 8 <span className="mx-1.5" style={{ color: '#c4baa8' }}>›</span>
+            <span className="font-semibold" style={{ color: '#1a1a1a' }}>Leilighet 2</span>
+          </p>
+          <span className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11.5px] font-semibold" style={{ backgroundColor: '#f5f0fc', color: '#6d28d9', border: '1px solid #e6d9f7' }}>
+            <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: '#7c3aed' }} />
+            Live · FINN + 2 kanaler
+          </span>
+        </div>
+
+        {/* Foto-mosaikk — 1 stor + 2×2, som appen */}
+        <div className="relative mt-4 grid h-[330px] grid-cols-4 grid-rows-2 gap-1.5 overflow-hidden rounded-2xl" style={inn(260)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ENHET_FOTO.stue} alt="Stue" className="col-span-2 row-span-2 h-full w-full object-cover" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ENHET_FOTO.kjokken} alt="Kjøkken" className="h-full w-full object-cover" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ENHET_FOTO.soverom} alt="Soverom" className="h-full w-full object-cover" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ENHET_FOTO.spisestue} alt="Spisestue" className="h-full w-full object-cover" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ENHET_FOTO.bad} alt="Bad" className="h-full w-full object-cover" />
+          <span className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-[11.5px] font-semibold" style={{ color: '#1a1a1a', boxShadow: '0 4px 14px rgba(17,17,17,0.14)' }}>
+            <Camera className="h-3.5 w-3.5" strokeWidth={1.8} />
+            Vis alle 14 bilder
+          </span>
+        </div>
+
+        {/* Tittel + innhold i 12-kolonners grid */}
+        <div className="mt-6 grid grid-cols-12 gap-8">
+          <div className="col-span-8" style={inn(380)}>
+            <h1 className="text-[30px] font-bold leading-[1.1] tracking-[-0.02em]" style={{ color: '#1a1a1a' }}>Leilighet 2 · 2. etasje</h1>
+            <p className="mt-1.5 text-[13.5px]" style={{ color: '#6e6357' }}>Leilighet · 64 m² · 2 soverom · 3 senger · 1 bad</p>
+
+            <div className="mt-6 border-t pt-5" style={{ borderColor: '#f1ede7' }}>
+              <h3 className="text-[18px] font-bold tracking-tight" style={{ color: '#1a1a1a' }}>Om boligen</h3>
+              <p className="mt-2 max-w-[62ch] text-[13.5px] leading-[1.75]" style={{ color: '#4a453d' }}>
+                Lys og gjennomgående toroms midt i Marken — Bergens mest sjarmerende smau.
+                Originale tregulv, høye vinduer og nyoppusset kjøkken. Gangavstand til
+                Bryggen, Fisketorget og Bybanen. Leiligheten driftes på korttid med
+                automatisk kanalsynk, prising og gjestekommunikasjon.
+              </p>
             </div>
-          );
-        })}
+
+            <div className="mt-6 border-t pt-5" style={{ borderColor: '#f1ede7' }}>
+              <h3 className="text-[18px] font-bold tracking-tight" style={{ color: '#1a1a1a' }}>Hvor du sover</h3>
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                {[
+                  { navn: 'Soverom 1', seng: '1 dobbeltseng' },
+                  { navn: 'Soverom 2', seng: '2 enkeltsenger' },
+                ].map((r) => (
+                  <div key={r.navn} className="rounded-xl border bg-white p-4" style={{ borderColor: '#ebebeb' }}>
+                    <BedDouble className="h-5 w-5" strokeWidth={1.6} style={{ color: '#1a1a1a' }} />
+                    <p className="mt-2.5 text-[13.5px] font-semibold" style={{ color: '#1a1a1a' }}>{r.navn}</p>
+                    <p className="mt-0.5 text-[12px]" style={{ color: '#8a8276' }}>{r.seng}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Høyre rail — Personer */}
+          <div className="col-span-4" style={inn(480)}>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: '#a8a092' }}>Personer</p>
+            <div className="mt-3 rounded-[20px] border bg-white p-5" style={{ borderColor: '#e8e4dd', boxShadow: '0 4px 18px rgba(17,17,17,0.035)' }}>
+              <div className="flex items-start gap-3">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[15px] font-bold text-white" style={{ background: 'linear-gradient(135deg, #b8a88f, #96866d)' }}>KN</span>
+                <div className="min-w-0 flex-1">
+                  <p className="mb-0.5 text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: '#a8a092' }}>Eier</p>
+                  <p className="text-[16px] font-bold leading-[1.15] tracking-tight" style={{ color: '#1a1a1a' }}>Kari Nordvik</p>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#18794E', boxShadow: '0 0 0 2px rgba(24,121,78,0.15)' }} />
+                    <span className="text-[11.5px] font-medium" style={{ color: '#3d6b54' }}>Aktiv forvaltningsavtale</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-col gap-1.5 border-t pt-3" style={{ borderColor: '#f1ede7' }}>
+                <p className="flex items-center gap-2.5 text-[12.5px]" style={{ color: '#4a453d' }}>
+                  <Mail className="h-[15px] w-[15px] shrink-0" strokeWidth={1.6} style={{ color: '#c0b7a6' }} />
+                  kari@nordvikeiendom.no
+                </p>
+                <p className="flex items-center gap-2.5 text-[12.5px] tabular-nums" style={{ color: '#4a453d' }}>
+                  <Phone className="h-[15px] w-[15px] shrink-0" strokeWidth={1.6} style={{ color: '#c0b7a6' }} />
+                  +47 934 12 880
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-[20px] border bg-white p-5" style={{ borderColor: '#e8e4dd', boxShadow: '0 4px 18px rgba(17,17,17,0.035)' }}>
+              <div className="flex items-start gap-3">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[15px] font-bold" style={{ backgroundColor: '#f5f0fc', color: '#6d28d9' }}>NH</span>
+                <div className="min-w-0 flex-1">
+                  <p className="mb-0.5 text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: '#a8a092' }}>Neste gjest</p>
+                  <p className="text-[16px] font-bold leading-[1.15] tracking-tight" style={{ color: '#1a1a1a' }}>Nina Holm</p>
+                  <p className="mt-0.5 text-[11.5px]" style={{ color: '#8a8276' }}>13.–15. feb · 2 netter · Airbnb</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

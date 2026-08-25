@@ -954,18 +954,8 @@ export default function BergenUrbanDeck() {
           className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-8 text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(historieAktiv)}`}
           data-testid="bu-historie"
         >
-          {/* Knapt merkbar luminans — bare nok til at svart ikke blir flatt */}
-          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(46% 38% at 50% 46%, rgba(124,58,237,0.12) 0%, transparent 100%)' }} />
-
-          {/* Anamorfisk lyssveip — skjærer stille bak tittelen idet den lander */}
-          {historieAktiv && (
-            <div aria-hidden className="pointer-events-none absolute left-1/2 top-[47%] -translate-x-1/2 -translate-y-1/2">
-              <div
-                className="bu-flare h-[2px] w-[44vw] rounded-full"
-                style={{ background: 'linear-gradient(90deg, transparent, rgba(220,198,255,0.9), transparent)', boxShadow: '0 0 30px 5px rgba(181,123,255,0.4)', animationDelay: '1500ms' }}
-              />
-            </div>
-          )}
+          {/* Knapt merkbar nøytral luminans — bare nok til at svart ikke blir flatt */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(50% 42% at 50% 46%, rgba(255,255,255,0.05) 0%, transparent 100%)' }} />
 
           {/* Scale-settle: komposisjonen lander sakte fra 1.05 → 1 (filmtittel) */}
           <div
@@ -1008,25 +998,30 @@ export default function BergenUrbanDeck() {
           className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(ideAktiv)}`}
           data-testid="bu-ide"
         >
-          {/* Knapt merkbar luminans */}
-          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(48% 40% at 50% 46%, rgba(124,58,237,0.08) 0%, transparent 100%)' }} />
+          {/* Knapt merkbar nøytral luminans */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(50% 42% at 50% 46%, rgba(255,255,255,0.045) 0%, transparent 100%)' }} />
 
           {/* Kamera-glid: ideen optisk sentrert alene — hele komposisjonen
               glir opp idet loopen ruller inn (loopen okkuperer plass under) */}
           <div className={`relative flex w-full flex-col items-center transition-transform duration-[1300ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${ideBeat >= 1 ? '-translate-y-[3vh]' : 'translate-y-[16vh]'}`}>
+            {/* Scale-settle — komposisjonen lander sakte, som Historien */}
+            <div className="flex w-full flex-col items-center" style={{ transform: ideAktiv ? 'scale(1)' : 'scale(1.04)', transition: 'transform 3000ms cubic-bezier(0.22,1,0.36,1)' }}>
             <div className="bu-drift flex w-full flex-col items-center">
 
             {/* Beat 1 — ideen (rack focus når loopen kommer) */}
             <div className={`px-8 text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${ideBeat >= 1 ? 'scale-[0.6] opacity-30 blur-[1px]' : 'scale-100 opacity-100 blur-0'}`}>
-              <p className={`text-[clamp(14px,1.3vw,18px)] font-medium tracking-[-0.01em] text-white/[0.4] opacity-0 ${ideAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '200ms', animationDuration: '1.5s' }}>
+              <p className={`bu-ord-base text-[clamp(14px,1.3vw,18px)] font-medium tracking-[-0.01em] text-white/[0.45] ${ideAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '250ms' }}>
                 Alt startet med én idé.
               </p>
               <h2 className={`mt-6 font-heading text-[clamp(38px,5.6vw,86px)] font-bold leading-[1.08] tracking-[-0.04em] text-white ${ideAktiv ? 'bu-spor' : ''}`}>
-                <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
-                  <span className={`bu-linje-base block ${ideAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '650ms' }}>Boligforvaltning</span>
+                <span className="block">
+                  <span className={`bu-ord-base ${ideAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '800ms' }}>Boligforvaltning</span>
                 </span>
-                <span className="block overflow-hidden pb-[0.14em] -mb-[0.14em]">
-                  <span className={`bu-linje-base block ${ideAktiv ? 'bu-linje' : ''}`} style={{ animationDelay: '850ms' }}>kan <span className={ideAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2100ms' }}>automatiseres</span>.</span>
+                <span className="block">
+                  <span className={`bu-ord-base ${ideAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '1100ms' }}>kan</span>{' '}
+                  <span className={`bu-ord-base ${ideAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '1350ms' }}>
+                    <span className={ideAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2600ms' }}>automatiseres</span>.
+                  </span>
                 </span>
               </h2>
             </div>
@@ -1078,6 +1073,7 @@ export default function BergenUrbanDeck() {
               <p className={`mt-9 text-center text-[clamp(14px,1.35vw,19px)] text-white/[0.48] opacity-0 md:mt-12 ${ideBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '2100ms' }}>
                 De samme prosessene. Om igjen — og om igjen.
               </p>
+            </div>
             </div>
             </div>
           </div>
