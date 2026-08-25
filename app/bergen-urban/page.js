@@ -1080,10 +1080,18 @@ export default function BergenUrbanDeck() {
               >
                 Løsningen
               </p>
-              <h2 className={`mt-8 font-heading text-[clamp(48px,7vw,110px)] font-bold leading-[1.04] tracking-[-0.04em] text-white ${losningAktiv ? 'bu-spor' : ''}`}>
-                <span className={`bu-ord-base ${losningAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '850ms' }}>Én</span>{' '}
-                <span className={`bu-ord-base ${losningAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '1150ms' }}>
-                  <span className={losningAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2400ms' }}>prompt</span>.
+              <h2 className={`mt-8 font-heading text-[clamp(30px,4.4vw,70px)] font-bold leading-[1.12] tracking-[-0.035em] text-white ${losningAktiv ? 'bu-spor' : ''}`}>
+                <span className="block">
+                  <span className={`bu-ord-base ${losningAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '750ms' }}>En</span>{' '}
+                  <span className={`bu-ord-base ${losningAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '950ms' }}>
+                    <span className={losningAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2600ms' }}>AI-drevet</span>
+                  </span>{' '}
+                  <span className={`bu-ord-base ${losningAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '1150ms' }}>plattform</span>
+                </span>
+                <span className="block">
+                  <span className={`bu-ord-base ${losningAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '1400ms' }}>for</span>{' '}
+                  <span className={`bu-ord-base ${losningAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '1550ms' }}>automatisert</span>{' '}
+                  <span className={`bu-ord-base ${losningAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '1750ms' }}>boligforvaltning.</span>
                 </span>
               </h2>
             </div>
