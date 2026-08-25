@@ -153,8 +153,9 @@ const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 //       12 = omfanget (produktveggen) · 13 = integrasjonene ·
 //       14–16 = tre AI-roller (utvikling · verktøy · agenter) ·
 //       17 = påstand 1 · 18 = påstand 1+2 ·
-//       19 = sannheten (DigiHome-tall) · 20 = + tradisjonell utvikling
-const TOTALT = 21;
+//       19 = sannheten (DigiHome-tall) · 20 = + tradisjonell utvikling ·
+//       21 = book et møte (QR, bookend)
+const TOTALT = 22;
 
 // Innholdsfortegnelse — supersubtil meny nede i venstre hjørne for å hoppe
 // direkte til en scene. Auto-beats (8) hoppes over; agent-scenen (10) spiller
@@ -178,173 +179,24 @@ const TOC = [
   { steg: 18, tittel: '«6-åringen»' },
   { steg: 19, tittel: 'Sannheten' },
   { steg: 20, tittel: 'Sammenligningen' },
+  { steg: 21, tittel: 'Book et møte' },
 ];
 
-// Problemet — den samme informasjonen skrives inn på nytt, system for system.
-// Fem systemvinduer med hvert sitt skjema; teksten skriver seg selv inn i
-// hvert av dem etter tur, mens brutte koblinger viser at ingenting deles.
-const KAOS_SYSTEMER = [
-  { navn: 'Outlook', felt: 'Ny kontakt', rot: -1.6 },
-  { navn: 'Calendly', felt: 'Ny visning', rot: 1.2 },
-  { navn: 'DocuSign', felt: 'Ny signatar', rot: -0.8 },
-  { navn: 'Tripletex', felt: 'Ny kunde', rot: 1.6 },
-  { navn: 'Excel', felt: 'Ny rad', rot: -1.2 },
+// Problemet — ti systemnavn som dempet typografi i randsonen, og
+// konsekvensene krystallklare i sentrum. Ren typografi, ingen bokser.
+const KAOS_NAVN = [
+  { navn: 'Outlook', x: '10%', y: '13%', s: 19, o: 0.2 },
+  { navn: 'Tripletex', x: '30%', y: '5%', s: 15, o: 0.15 },
+  { navn: 'Calendly', x: '56%', y: '8%', s: 17, o: 0.18 },
+  { navn: 'DocuSign', x: '81%', y: '12%', s: 14, o: 0.14 },
+  { navn: 'Vipps', x: '94%', y: '37%', s: 16, o: 0.17 },
+  { navn: 'Excel', x: '89%', y: '75%', s: 20, o: 0.21 },
+  { navn: 'Husleie.no', x: '67%', y: '92%', s: 14, o: 0.14 },
+  { navn: 'FINN', x: '42%', y: '95%', s: 17, o: 0.18 },
+  { navn: 'HubSpot', x: '15%', y: '87%', s: 15, o: 0.16 },
+  { navn: 'Lodgify', x: '4%', y: '48%', s: 13, o: 0.13 },
 ];
-const KAOS_TEKST = 'Sofie Hansen · Marken 8';
-const KAOS_KONSEKVENSER = ['Manuelt arbeid', 'Høye lønnskostnader', 'Ingen samlet oversikt', 'Vanskelig å skalere'];
-
-function BUKaosSkriving({ aktiv }) {
-  const [kort, setKort] = useState(-1);   // -1 = venter · 0..4 = skriver · 5 = pass ferdig
-  const [tegn, setTegn] = useState(0);
-  const [passFerdig, setPassFerdig] = useState(false);
-
-  useEffect(() => {
-    if (!aktiv) { setKort(-1); setTegn(0); setPassFerdig(false); return undefined; }
-    // Vent til kortene har landet før første tastetrykk
-    if (kort === -1) {
-      const t = setTimeout(() => setKort(0), 1900);
-      return () => clearTimeout(t);
-    }
-    // Pass ferdig — hvil, nullstill og begynn forfra (sliden lever videre)
-    if (kort >= KAOS_SYSTEMER.length) {
-      const t = setTimeout(() => { setKort(0); setTegn(0); }, 3600);
-      return () => clearTimeout(t);
-    }
-    // Skriver — naturlig, litt ujevn rytme
-    if (tegn < KAOS_TEKST.length) {
-      const t = setTimeout(() => setTegn((n) => n + 1), 26 + Math.random() * 30);
-      return () => clearTimeout(t);
-    }
-    // Kortet er fylt ut — kort pust, så neste system
-    const t = setTimeout(() => {
-      setTegn(0);
-      setKort((k) => {
-        if (k === KAOS_SYSTEMER.length - 1) setPassFerdig(true);
-        return k + 1;
-      });
-    }, 520);
-    return () => clearTimeout(t);
-  }, [aktiv, kort, tegn]);
-
-  const antall = Math.max(0, Math.min(kort, KAOS_SYSTEMER.length));
-
-  return (
-    <div className="relative flex w-full flex-col items-center">
-      {/* Spøkelsestallet — hvor mange ganger den samme informasjonen er
-          skrevet inn. Vokser stille bak vinduene. */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-[13vh] bottom-0 flex items-center justify-center">
-        {antall > 0 && (
-          <span key={antall} className="bu-inn font-heading text-[clamp(180px,34vh,320px)] font-bold leading-none tracking-[-0.05em] text-white/[0.045]" style={{ animationDuration: '0.9s' }}>
-            {antall}×
-          </span>
-        )}
-      </div>
-
-      {/* Systemvinduene — samme skjema, fem steder */}
-      <div className="relative z-10 flex items-center justify-center">
-        {KAOS_SYSTEMER.map((s, i) => {
-          const ferdig = kort > i;
-          const skriver = kort === i;
-          return (
-            <div key={s.navn} className="flex items-center">
-              {/* Brutt kobling mellom vinduene — data flyter ikke videre */}
-              {i > 0 && (
-                <div aria-hidden className="flex w-[clamp(20px,2.2vw,42px)] shrink-0 items-center justify-center">
-                  <span className="relative block h-px w-full border-t border-dashed border-white/[0.14]">
-                    <span
-                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] leading-none text-white/[0.3]"
-                      style={{ animation: `buFlimre ${3.4 + (i % 3) * 0.8}s ease-in-out ${i * 0.6}s infinite` }}
-                    >
-                      ✕
-                    </span>
-                  </span>
-                </div>
-              )}
-
-              {/* Vinduet — entré i blur-dissolve, egen drift, lys når det skrives */}
-              <div
-                style={{
-                  transform: `rotate(${s.rot}deg) scale(${aktiv ? (skriver ? 1.05 : 1) : 0.9}) translateY(${aktiv ? 0 : 18}px)`,
-                  opacity: aktiv ? 1 : 0,
-                  filter: aktiv ? 'blur(0)' : 'blur(12px)',
-                  transition: 'transform 900ms cubic-bezier(0.22,1,0.36,1), opacity 800ms cubic-bezier(0.22,1,0.36,1), filter 800ms cubic-bezier(0.22,1,0.36,1)',
-                  transitionDelay: aktiv && kort === -1 ? `${350 + i * 150}ms` : '0ms',
-                }}
-              >
-                <div className="bu-kaos-flyt" style={{ animationDuration: `${5.8 + (i % 3) * 0.8}s`, animationDelay: `${-(i * 1.1)}s` }}>
-                  <div
-                    className="w-[clamp(180px,12.2vw,234px)] overflow-hidden rounded-[14px] transition-[box-shadow,border-color] duration-500"
-                    style={{
-                      background: 'linear-gradient(180deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.035) 100%)',
-                      border: `1px solid ${skriver ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.1)'}`,
-                      boxShadow: skriver
-                        ? 'inset 0 1px 0 rgba(255,255,255,0.1), 0 34px 90px rgba(0,0,0,0.7), 0 0 44px rgba(255,255,255,0.05)'
-                        : 'inset 0 1px 0 rgba(255,255,255,0.07), 0 26px 64px rgba(0,0,0,0.55)',
-                      backdropFilter: 'blur(8px)',
-                    }}
-                  >
-                    {/* Vinduslinje */}
-                    <div className="flex items-center gap-2 border-b border-white/[0.07] px-3.5 py-2">
-                      <span className="flex items-center gap-[4px]">
-                        <span className="h-[7px] w-[7px] rounded-full bg-white/[0.14]" />
-                        <span className="h-[7px] w-[7px] rounded-full bg-white/[0.14]" />
-                        <span className="h-[7px] w-[7px] rounded-full bg-white/[0.14]" />
-                      </span>
-                      <span className={`ml-1 text-[11px] font-semibold tracking-[-0.005em] transition-colors duration-500 ${skriver ? 'text-white/[0.85]' : 'text-white/[0.45]'}`}>
-                        {s.navn}
-                      </span>
-                      {ferdig && (
-                        <span className="ml-auto flex h-[15px] w-[15px] items-center justify-center rounded-full bg-white/[0.08]">
-                          <Check className="h-[9px] w-[9px] text-white/50" strokeWidth={3} />
-                        </span>
-                      )}
-                    </div>
-                    {/* Skjemaet — samme felt, hver gang */}
-                    <div className="px-3.5 pb-3.5 pt-2.5 text-left">
-                      <p className="text-[8.5px] font-bold uppercase tracking-[0.16em] text-white/[0.28]">{s.felt}</p>
-                      <div className={`mt-1.5 flex h-[30px] items-center rounded-[8px] border px-2.5 transition-colors duration-500 ${skriver ? 'border-white/[0.2] bg-black/[0.3]' : 'border-white/[0.08] bg-black/[0.2]'}`}>
-                        <p className="truncate text-[11.5px] tracking-[-0.005em]">
-                          {ferdig && <span className="text-white/[0.72]">{KAOS_TEKST}</span>}
-                          {skriver && (
-                            <>
-                              <span className="text-white/[0.92]">{KAOS_TEKST.slice(0, tegn)}</span>
-                              <span className="bu-blink ml-[1px] inline-block h-[13px] w-[1.5px] translate-y-[2px] bg-white/80" />
-                            </>
-                          )}
-                          {!ferdig && !skriver && <span className="text-white/[0.18]">Skriv inn …</span>}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Payoff — lander når første runde er fullført, og blir stående */}
-      <div className={`relative z-10 mt-11 text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${passFerdig ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-4 opacity-0 blur-[8px]'}`} data-testid="bu-kaos-payoff">
-        <p className="text-[clamp(16px,1.7vw,24px)] tracking-[-0.015em] text-white/[0.45]">
-          Samme informasjon. <span className="font-semibold text-white/[0.9]">Skrevet inn på nytt. System for system.</span>
-        </p>
-      </div>
-
-      {/* Konsekvensene — prisen for systemer som ikke snakker sammen */}
-      <div className="relative z-10 mt-8 flex items-stretch justify-center" data-testid="bu-kaos-konsekvenser">
-        {KAOS_KONSEKVENSER.map((k, i) => (
-          <div
-            key={k}
-            className={`px-[clamp(16px,2vw,34px)] opacity-0 ${i > 0 ? 'border-l border-white/[0.09]' : ''} ${passFerdig ? 'bu-inn' : ''}`}
-            style={{ animationDelay: `${700 + i * 240}ms`, animationDuration: '1.2s' }}
-          >
-            <p className="whitespace-nowrap text-[clamp(12.5px,1.15vw,16px)] font-medium tracking-[-0.01em] text-white/[0.58]">{k}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+const KAOS_KONSEKVENSER = ['Manuelt arbeid.', 'Høye lønnskostnader.', 'Ingen samlet oversikt.', 'Vanskelig å skalere.'];
 
 // ── Integrasjonene — «Alt henger sammen.» (samme koreografi som /tour) ──
 // DigiHome i midten, integrasjonene i bred ellipse rundt — komposisjonen
@@ -656,6 +508,7 @@ export default function BergenUrbanDeck() {
   const sannhetBeat = Math.max(0, steg - 19); // 0 = DigiHome-tall · 1 = + tradisjonell
   const rollerAktiv = steg >= 14 && steg <= 16;
   const rollerBeat = Math.max(0, steg - 13); // 1 = utviklingen · 2 = +verktøyene · 3 = +agentene
+  const sluttAktiv = steg === 21;
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -1230,12 +1083,59 @@ export default function BergenUrbanDeck() {
               ))}
             </h2>
 
-            {/* Beviset — den samme informasjonen skriver seg selv inn i
-                system etter system, med brutte koblinger imellom. Deretter
-                lander konsekvensene: manuelt arbeid, kostnader, null oversikt */}
-            <div className="mt-12 w-full md:mt-14">
-              <BUKaosSkriving aktiv={kaosAktiv} />
+            {/* Randsonen — ti systemnavn som dempet typografi, hver i sin
+                egen sakte drift. I sentrum: konsekvensene, én etter én. */}
+            <div className="relative mt-2 flex h-[52vh] max-h-[560px] min-h-[340px] w-full max-w-[1280px] items-center justify-center">
+              {KAOS_NAVN.map((n, i) => (
+                <div
+                  key={n.navn}
+                  className="absolute"
+                  style={{
+                    left: n.x,
+                    top: n.y,
+                    transform: `translate(-50%, -50%) translateY(${kaosAktiv ? 0 : 14}px)`,
+                    opacity: kaosAktiv ? 1 : 0,
+                    filter: kaosAktiv ? 'blur(0)' : 'blur(10px)',
+                    transition: 'transform 1000ms cubic-bezier(0.22,1,0.36,1), opacity 900ms cubic-bezier(0.22,1,0.36,1), filter 900ms cubic-bezier(0.22,1,0.36,1)',
+                    transitionDelay: kaosAktiv ? `${500 + i * 120}ms` : '0ms',
+                  }}
+                >
+                  <div className="bu-kaos-flyt" style={{ animationDuration: `${6 + (i % 4) * 0.8}s`, animationDelay: `${-(i * 1.2)}s` }}>
+                    <span
+                      className="whitespace-nowrap font-heading font-semibold tracking-[-0.01em] text-white"
+                      style={{ fontSize: n.s, opacity: n.o }}
+                    >
+                      {n.navn}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              {/* Konsekvensene — krystallklare mot den dempede randsonen */}
+              <div className="relative z-10 flex flex-col items-center gap-[1.6vh]">
+                {KAOS_KONSEKVENSER.map((k, i) => (
+                  <p
+                    key={k}
+                    className={`bu-ord-base font-heading text-[clamp(26px,3.3vw,50px)] font-bold leading-[1.05] tracking-[-0.03em] text-white/[0.94] ${kaosAktiv ? 'bu-ord' : ''}`}
+                    style={{ animationDelay: `${1800 + i * 600}ms` }}
+                    data-testid={`bu-kaos-konsekvens-${i + 1}`}
+                  >
+                    {i === KAOS_KONSEKVENSER.length - 1
+                      ? <span className={kaosAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '4700ms' }}>{k}</span>
+                      : k}
+                  </p>
+                ))}
+              </div>
             </div>
+
+            {/* Payoff — hviskes inn til slutt */}
+            <p
+              className={`text-center text-[clamp(14px,1.4vw,20px)] tracking-[-0.01em] text-white/[0.42] opacity-0 ${kaosAktiv ? 'bu-inn' : ''}`}
+              style={{ animationDelay: '4600ms' }}
+              data-testid="bu-kaos-payoff"
+            >
+              Ti systemer. <span className="font-medium text-white/[0.85]">Null sammenheng.</span>
+            </p>
           </div>
           </div>
         </div>
@@ -1593,7 +1493,7 @@ export default function BergenUrbanDeck() {
           title="Innhold"
           aria-label="Innhold"
           aria-expanded={tocApen}
-          className={`flex h-9 w-9 items-center justify-center rounded-full transition-opacity duration-300 ${morkAktiv ? 'text-white/25 hover:text-white/70' : 'text-[#c7c7cc] hover:text-[#0f0f0f]'} ${musSynlig || tocApen ? 'opacity-100' : 'opacity-0'}`}
+          className={`flex h-9 w-9 items-center justify-center rounded-full transition-opacity duration-300 ${morkAktiv || sluttAktiv ? 'text-white/25 hover:text-white/70' : 'text-[#c7c7cc] hover:text-[#0f0f0f]'} ${musSynlig || tocApen ? 'opacity-100' : 'opacity-0'}`}
           data-testid="bu-toc-knapp"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -1607,7 +1507,7 @@ export default function BergenUrbanDeck() {
         onClick={(e) => { e.stopPropagation(); fullskjerm(); }}
         title="Fullskjerm (F)"
         aria-label="Fullskjerm"
-        className={`absolute bottom-6 right-6 z-30 flex h-9 w-9 items-center justify-center rounded-full transition-opacity duration-300 ${morkAktiv ? 'text-white/25 hover:text-white/70' : 'text-[#c7c7cc] hover:text-[#0f0f0f]'} ${musSynlig ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute bottom-6 right-6 z-40 flex h-9 w-9 items-center justify-center rounded-full transition-opacity duration-300 ${morkAktiv || sluttAktiv ? 'text-white/25 hover:text-white/70' : 'text-[#c7c7cc] hover:text-[#0f0f0f]'} ${musSynlig ? 'opacity-100' : 'opacity-0'}`}
         data-testid="bu-fullskjerm"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1615,13 +1515,70 @@ export default function BergenUrbanDeck() {
         </svg>
       </button>
 
+      {/* ═══ AKT 8 — BOOK ET MØTE: bookend, QR og takk ═══ */}
+      <section
+        className={`absolute inset-0 z-30 flex flex-col items-center justify-center overflow-hidden bg-[#050505] px-8 text-center transition-opacity duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${sluttAktiv ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
+        data-testid="bu-slutt"
+      >
+        {/* Aurora — samme pust som cover: showet slutter der det begynte */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div
+            className="bu-aurora1 absolute left-1/2 top-[24%] h-[64vh] w-[58vw] -translate-x-1/2 rounded-full"
+            style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.5) 0%, transparent 62%)', filter: 'blur(90px)', opacity: 0.24 }}
+          />
+          <div
+            className="bu-aurora2 absolute left-[30%] top-[46%] h-[48vh] w-[42vw] rounded-full"
+            style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.45) 0%, transparent 62%)', filter: 'blur(110px)', opacity: 0.14 }}
+          />
+        </div>
+
+        {/* Scale-settle + kamera-liv */}
+        <div className="flex flex-col items-center" style={{ transform: sluttAktiv ? 'scale(1)' : 'scale(1.05)', transition: 'transform 3200ms cubic-bezier(0.22,1,0.36,1)' }}>
+          <div className="bu-drift flex flex-col items-center">
+            {/* Tittelen — ord for ord */}
+            <h2 className={`font-heading text-[clamp(40px,5.6vw,88px)] font-bold leading-[1.05] tracking-[-0.04em] text-white ${sluttAktiv ? 'bu-spor' : ''}`}>
+              <span className={`bu-ord-base ${sluttAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '350ms' }}>Book</span>{' '}
+              <span className={`bu-ord-base ${sluttAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '550ms' }}>et</span>{' '}
+              <span className={`bu-ord-base ${sluttAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '750ms' }}>
+                <span className={sluttAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2400ms' }}>møte</span>.
+              </span>
+            </h2>
+
+            {/* QR-brikken — materialiserer seg som app-ikonet */}
+            <div className={`mt-12 ${sluttAktiv ? 'bu-foto' : 'opacity-0'}`} style={{ animationDelay: '1100ms' }}>
+              <div className="relative">
+                <div
+                  aria-hidden
+                  className="absolute -inset-8 rounded-full"
+                  style={{ background: 'radial-gradient(circle, rgba(155,91,214,0.32) 0%, transparent 68%)', filter: 'blur(30px)' }}
+                />
+                <div className="relative rounded-[30px] bg-white p-6 shadow-[0_50px_140px_-20px_rgba(155,91,214,0.45)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/qr-kontakt.svg" alt="QR — book et møte" className="h-[clamp(150px,24vh,196px)] w-[clamp(150px,24vh,196px)]" />
+                </div>
+              </div>
+            </div>
+
+            {/* Fallback for de bakerst i rommet */}
+            <p className={`mt-9 text-[clamp(13.5px,1.2vw,17px)] text-white/[0.55] opacity-0 ${sluttAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '2100ms' }}>
+              Skann — eller gå til <span className="font-semibold text-white/[0.9]">digihome.no/book-mote</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Hvisket forankring */}
+        <p className={`absolute bottom-10 text-[11.5px] tracking-[0.22em] text-white/[0.22] opacity-0 ${sluttAktiv ? 'bu-inn' : ''}`} style={{ animationDelay: '2800ms' }}>
+          MARTIN KVITEBERG&ensp;·&ensp;PRODUKTSJEF&ensp;·&ensp;DIGIHOME
+        </p>
+      </section>
+
       {/* ── Fremdriftslinje — hårtynn, keynote-diskret, følger scenens lyshet ── */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-40 h-[2px]">
         <div
           className="h-full origin-left transition-[transform,background-color] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{
             transform: `scaleX(${Math.max(0, steg + 1) / TOTALT})`,
-            backgroundColor: morkAktiv ? 'rgba(255,255,255,0.13)' : 'rgba(15,15,15,0.10)',
+            backgroundColor: morkAktiv || sluttAktiv ? 'rgba(255,255,255,0.13)' : 'rgba(15,15,15,0.10)',
           }}
         />
       </div>
