@@ -14,12 +14,14 @@
    9-10) HOOK (lys): påstand 1 → 6-åringens håndskrift (rack focus)
    11-12) SANNHETEN (lys): «Det var ikke én prompt.» → 1 000 timer/500 k
       mot tradisjonell utvikling 10 000 timer/5–10 mill. — proporsjonsbarer
+   13-14) OPERATIVSYSTEMET (lys): seks løsrevne verktøy → samles til ett
+      mørkt DigiHome-panel med alle modulene («kaos → orden»)
    Navigasjon: → / mellomrom / PageDown (klikker) = neste beat,
    ← / PageUp = forrige, F = fullskjerm, R = start forfra. */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Caveat } from 'next/font/google';
-import { Bot, Check, Rocket } from 'lucide-react';
+import { Bot, Check, Rocket, Users, FileText, ScrollText, FileSignature, Wallet, Wrench, Megaphone } from 'lucide-react';
 import ForvalterFullskjerm from '@/components/tour/mockups/ForvalterFullskjerm';
 import AssistentChatMockup from '@/components/tour/mockups/AssistentChatMockup';
 
@@ -146,8 +148,30 @@ const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 //       4 = bar · 5 = skriver · 6 = sendt+tenker (auto→7) ·
 //       7 = agenten bygger (auto→8) · 8 = reveal ·
 //       9 = påstand 1 · 10 = påstand 1+2 ·
-//       11 = sannheten (DigiHome-tall) · 12 = + tradisjonell utvikling
-const TOTALT = 13;
+//       11 = sannheten (DigiHome-tall) · 12 = + tradisjonell utvikling ·
+//       13 = lappeteppet (seks verktøy) · 14 = operativsystemet (samlet)
+const TOTALT = 15;
+
+// Lappeteppet — verktøyene forvaltere jonglerer i dag. Posisjoner i % av
+// scenen (løs ring rundt sentrum, der DigiHome-panelet lander i beat 2).
+const VERKTOY = [
+  { kategori: 'CRM', navn: 'HubSpot', x: '16%', y: '16%', rot: -3.5 },
+  { kategori: 'Økonomi', navn: 'Tripletex', x: '76%', y: '10%', rot: 2.5 },
+  { kategori: 'Signering', navn: 'DocuSign', x: '88%', y: '52%', rot: -2 },
+  { kategori: 'Oversikt', navn: 'Excel', x: '72%', y: '86%', rot: 3 },
+  { kategori: 'Dialog', navn: 'Outlook', x: '24%', y: '88%', rot: -2.5 },
+  { kategori: 'Annonsering', navn: 'Finn', x: '8%', y: '52%', rot: 2 },
+];
+const OS_MODULER = [
+  { navn: 'CRM', Ikon: Users },
+  { navn: 'Tilbud', Ikon: FileText },
+  { navn: 'Kontrakter', Ikon: ScrollText },
+  { navn: 'Signering', Ikon: FileSignature },
+  { navn: 'Økonomi', Ikon: Wallet },
+  { navn: 'Drift', Ikon: Wrench },
+  { navn: 'Annonsering', Ikon: Megaphone },
+  { navn: 'AI', Ikon: Bot },
+];
 
 export default function BergenUrbanDeck() {
   const [steg, setSteg] = useState(-1);
@@ -280,8 +304,10 @@ export default function BergenUrbanDeck() {
   const revealAktiv = steg === 8;
   const hookAktiv = steg === 9 || steg === 10;
   const bygg = Math.max(0, steg - 9);
-  const sannhetAktiv = steg >= 11;
+  const sannhetAktiv = steg === 11 || steg === 12;
   const sannhetBeat = Math.max(0, steg - 11); // 0 = DigiHome-tall · 1 = + tradisjonell
+  const osAktiv = steg >= 13;
+  const osBeat = Math.max(0, steg - 13); // 0 = lappeteppet · 1 = operativsystemet
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -428,6 +454,128 @@ export default function BergenUrbanDeck() {
             Estimat: tilsvarende system bygget med tradisjonelt utviklingsteam
           </p>
         </footer>
+      </section>
+
+      {/* ═══ AKT 6 — OPERATIVSYSTEMET: lappeteppet samles til ett system ═══ */}
+      <section
+        className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${lysKlasse(osAktiv, 'inn')}`}
+        data-testid="bu-slide-os"
+      >
+        <header className="flex justify-start px-12 pt-11 md:px-16">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
+        </header>
+
+        <div className="flex flex-1 flex-col items-center justify-center px-8 md:px-16">
+          <p className="text-[12px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">04</p>
+
+          {/* Tittel-kryssfading: smerten → løsningen */}
+          <div className="relative mt-6 h-[76px] w-full max-w-[900px] md:h-[92px]">
+            <h2
+              className="absolute inset-0 flex items-start justify-center text-center font-heading text-[clamp(22px,2.7vw,40px)] font-bold leading-[1.15] tracking-[-0.03em] text-[#0f0f0f] transition-[opacity,transform,filter] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+              style={{ opacity: osBeat >= 1 ? 0 : 1, transform: osBeat >= 1 ? 'translateY(-14px)' : 'translateY(0)', filter: osBeat >= 1 ? 'blur(5px)' : 'blur(0)' }}
+            >
+              I dag: seks systemer som ikke snakker sammen.
+            </h2>
+            <h2
+              className="absolute inset-0 flex items-start justify-center text-center font-heading text-[clamp(24px,3.1vw,46px)] font-bold leading-[1.15] tracking-[-0.03em] transition-[opacity,transform,filter] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+              style={{ opacity: osBeat >= 1 ? 1 : 0, transform: osBeat >= 1 ? 'translateY(0)' : 'translateY(16px)', filter: osBeat >= 1 ? 'blur(0)' : 'blur(5px)', transitionDelay: osBeat >= 1 ? '250ms' : '0ms' }}
+            >
+              <span><span className="text-[#a7a7ad]">Ikke enda et verktøy.</span> <span className="text-[#0f0f0f]">Et operativsystem.</span></span>
+            </h2>
+          </div>
+
+          {/* Scenen: lappeteppet → DigiHome-panelet */}
+          <div className="relative mt-2 h-[44vh] max-h-[460px] min-h-[300px] w-full max-w-[1020px]">
+
+            {/* Brutte, stiplede forbindelser — systemene «snakker ikke sammen» */}
+            <svg
+              aria-hidden
+              className="absolute inset-0 h-full w-full transition-opacity duration-[800ms]"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              style={{ opacity: osAktiv && osBeat === 0 ? 0.8 : 0, transitionDelay: osBeat === 0 ? '900ms' : '0ms' }}
+            >
+              {[[16, 16, 76, 10], [76, 10, 88, 52], [88, 52, 72, 86], [72, 86, 24, 88], [24, 88, 8, 52], [8, 52, 16, 16], [16, 16, 88, 52], [76, 10, 24, 88]].map((l) => (
+                <line key={l.join('-')} x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]} stroke="#d8d5de" strokeWidth="0.3" strokeDasharray="1.4 2.6" />
+              ))}
+            </svg>
+
+            {/* Verktøylappene — spredt kaos som trekkes inn mot sentrum */}
+            {VERKTOY.map((v, i) => {
+              const samlet = osBeat >= 1;
+              return (
+                <div
+                  key={v.navn}
+                  className="absolute rounded-2xl border bg-white px-5 py-3 text-left shadow-[0_12px_34px_rgba(20,15,30,0.09)] md:px-6 md:py-3.5"
+                  style={{
+                    left: samlet ? '50%' : v.x,
+                    top: samlet ? '50%' : v.y,
+                    borderColor: '#eae7ef',
+                    transform: `translate(-50%, -50%) rotate(${samlet ? 0 : v.rot}deg) scale(${samlet ? 0.3 : osAktiv ? 1 : 0.9})`,
+                    opacity: samlet ? 0 : osAktiv ? 1 : 0,
+                    filter: samlet ? 'blur(6px)' : 'blur(0px)',
+                    transition: 'left 950ms cubic-bezier(0.22,1,0.36,1), top 950ms cubic-bezier(0.22,1,0.36,1), transform 950ms cubic-bezier(0.22,1,0.36,1), opacity 750ms cubic-bezier(0.22,1,0.36,1), filter 750ms',
+                    transitionDelay: samlet ? `${i * 70}ms` : `${280 + i * 120}ms`,
+                  }}
+                >
+                  <p className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-[#b0b0b5]">{v.kategori}</p>
+                  <p className="mt-0.5 whitespace-nowrap text-[15px] font-semibold tracking-[-0.01em] text-[#0f0f0f] md:text-[16px]">{v.navn}</p>
+                </div>
+              );
+            })}
+
+            {/* Lilla ambient glød bak panelet */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute left-1/2 top-1/2 h-[70%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-[1200ms]"
+              style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 70%)', filter: 'blur(40px)', opacity: osBeat >= 1 ? 1 : 0, transitionDelay: osBeat >= 1 ? '500ms' : '0ms' }}
+            />
+
+            {/* DigiHome-panelet — operativsystemet materialiserer seg i sentrum */}
+            <div
+              className="absolute left-1/2 top-1/2 w-[min(620px,78%)] rounded-[28px] bg-[#1a1a1a] p-6 md:p-8"
+              style={{
+                opacity: osBeat >= 1 ? 1 : 0,
+                transform: `translate(-50%, -50%) scale(${osBeat >= 1 ? 1 : 0.88})`,
+                filter: osBeat >= 1 ? 'blur(0)' : 'blur(8px)',
+                transition: 'opacity 900ms cubic-bezier(0.22,1,0.36,1), transform 1000ms cubic-bezier(0.22,1,0.36,1), filter 900ms',
+                transitionDelay: osBeat >= 1 ? '380ms' : '0ms',
+                boxShadow: '0 50px 130px -25px rgba(20,10,45,0.55), 0 0 0 1px rgba(255,255,255,0.06)',
+                pointerEvents: 'none',
+              }}
+            >
+              <div className="flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/digihome-logo-white.svg" alt="DigiHome" className="h-[22px] w-auto md:h-[24px]" />
+              </div>
+              <div className="mt-5 grid grid-cols-4 gap-2 md:mt-6 md:gap-2.5">
+                {OS_MODULER.map((m, i) => (
+                  <div
+                    key={m.navn}
+                    className="flex flex-col items-center gap-1.5 rounded-xl border border-white/[0.07] bg-white/[0.05] px-1.5 py-3 md:gap-2 md:py-3.5"
+                    style={{
+                      opacity: osBeat >= 1 ? 1 : 0,
+                      transform: osBeat >= 1 ? 'translateY(0)' : 'translateY(12px)',
+                      transition: 'opacity 700ms cubic-bezier(0.22,1,0.36,1), transform 700ms cubic-bezier(0.22,1,0.36,1)',
+                      transitionDelay: osBeat >= 1 ? `${560 + i * 85}ms` : '0ms',
+                    }}
+                  >
+                    <m.Ikon className="h-[17px] w-[17px] text-[#cf97fc] md:h-[18px] md:w-[18px]" strokeWidth={1.8} />
+                    <span className="text-[11px] font-medium text-white/80 md:text-[11.5px]">{m.navn}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Punch — hviskes inn når panelet står */}
+          <p className={`mt-7 text-center text-[clamp(15px,1.6vw,22px)] text-[#86868b] opacity-0 ${osBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '1650ms' }} data-testid="bu-os-punch">
+            Én innlogging. <span className="font-semibold text-[#0f0f0f]">Én datakilde.</span> <span className="font-semibold text-[#0f0f0f]">Null lim.</span>
+          </p>
+        </div>
+
+        <footer className="pb-10" />
       </section>
 
       {/* ═══ DEN SVARTE SCENEN — cover, prompt og reveal (skrus av mot tittel) ═══ */}
