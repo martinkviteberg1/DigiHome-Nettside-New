@@ -4,18 +4,19 @@
    Kinematisk sekvens:
    -1) SORT: helt sort — første klikk starter showet
    0) COVER (svart): DigiHome-ikon + navn + «Utleie på autopilot.»
-   1) HISTORIEN (svart): «Historien om DigiHome.» — oppspill til origin
-   2-3) IDEEN (svart): «Boligforvaltning kan automatiseres.» →
+   1) OM MEG (svart): Martin Kviteberg — Produktsjef i DigiHome
+   2) HISTORIEN (svart): «Historien om DigiHome.» — oppspill til origin
+   3-4) IDEEN (svart): «Boligforvaltning kan automatiseres.» →
       prosessloopen (annonsering → visning → … om igjen og om igjen)
-   4) KAOSET (svart): «PROBLEMET · Systemer som ikke snakker sammen.»
-   5) LØSNINGEN (svart): «Én prompt.» — speiler problemet, lader prompten
-   6) PROMPT (svart): ChatGPT-aktig bar → prompten skrives → send →
+   5) KAOSET (svart): «PROBLEMET · Systemer som ikke snakker sammen.»
+   6) LØSNINGEN (svart): «En AI-drevet plattform …» — lader prompten
+   7) PROMPT (svart): ChatGPT-aktig bar → prompten skrives → send →
       tenkeprikker → auto-overgang
-   7-9) AGENTEN (svart): AI-agenten bygger systemet → deploy → lys-tenning
-   10) SVARET (lys): forvalterportalen materialiserer seg + AI-chat →
+   8-10) AGENTEN (svart): AI-agenten bygger systemet → deploy → lys-tenning
+   11) SVARET (lys): forvalterportalen materialiserer seg + AI-chat →
       kalender → ny booking → enhetssiden
-   11) OMFANGET (lys): produktveggen · 12) INTEGRASJONENE ·
-   13-15) TRE AI-ROLLER · 16-17) HOOK · 18-19) SANNHETEN
+   12) OMFANGET (lys): produktveggen · 13) INTEGRASJONENE ·
+   14-16) TRE AI-ROLLER · 17-18) HOOK · 19-20) SANNHETEN
    Navigasjon: → / mellomrom / PageDown (klikker) = neste beat,
    ← / PageUp = forrige, F = fullskjerm, R = start forfra. */
 
@@ -145,37 +146,38 @@ const PROSESSER = ['Annonsering', 'Visning', 'Kontrakt', 'Depositum', 'Innflytti
 const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 
 // Steg: -1 = helt sort (klikk starter showet) · 0 = cover ·
-//       1 = «Historien om DigiHome.» (mørk) · 2 = ideen · 3 = prosessloopen ·
-//       4 = kaoset (PROBLEMET, mørk) · 5 = løsningen («Én prompt.») ·
-//       6 = bar · 7 = skriver · 8 = sendt+tenker (auto→9) ·
-//       9 = agenten bygger (auto→10) · 10 = reveal ·
-//       11 = omfanget (produktveggen) · 12 = integrasjonene ·
-//       13–15 = tre AI-roller (utvikling · verktøy · agenter) ·
-//       16 = påstand 1 · 17 = påstand 1+2 ·
-//       18 = sannheten (DigiHome-tall) · 19 = + tradisjonell utvikling
-const TOTALT = 20;
+//       1 = «Om meg» (Martin Kviteberg) · 2 = «Historien om DigiHome.» ·
+//       3 = ideen · 4 = prosessloopen · 5 = kaoset (PROBLEMET) ·
+//       6 = løsningen · 7 = bar · 8 = skriver · 9 = sendt+tenker (auto→10) ·
+//       10 = agenten bygger (auto→11) · 11 = reveal ·
+//       12 = omfanget (produktveggen) · 13 = integrasjonene ·
+//       14–16 = tre AI-roller (utvikling · verktøy · agenter) ·
+//       17 = påstand 1 · 18 = påstand 1+2 ·
+//       19 = sannheten (DigiHome-tall) · 20 = + tradisjonell utvikling
+const TOTALT = 21;
 
 // Innholdsfortegnelse — supersubtil meny nede i venstre hjørne for å hoppe
-// direkte til en scene. Auto-beats (7) hoppes over; agent-scenen (8) spiller
+// direkte til en scene. Auto-beats (8) hoppes over; agent-scenen (10) spiller
 // selv videre til reveal.
 const TOC = [
   { steg: -1, tittel: 'Sort start' },
   { steg: 0, tittel: 'Cover · Utleie på autopilot' },
-  { steg: 1, tittel: 'Historien om DigiHome' },
-  { steg: 2, tittel: 'Idéen' },
-  { steg: 3, tittel: 'Prosessloopen' },
-  { steg: 4, tittel: 'Ti systemer' },
-  { steg: 5, tittel: 'Løsningen' },
-  { steg: 6, tittel: 'Prompten' },
-  { steg: 9, tittel: 'Agenten bygger' },
-  { steg: 10, tittel: 'Portalen' },
-  { steg: 11, tittel: 'Produktveggen' },
-  { steg: 12, tittel: 'Integrasjonene' },
-  { steg: 13, tittel: 'Tre AI-roller' },
-  { steg: 16, tittel: 'Påstanden' },
-  { steg: 17, tittel: '«6-åringen»' },
-  { steg: 18, tittel: 'Sannheten' },
-  { steg: 19, tittel: 'Sammenligningen' },
+  { steg: 1, tittel: 'Martin Kviteberg' },
+  { steg: 2, tittel: 'Historien om DigiHome' },
+  { steg: 3, tittel: 'Idéen' },
+  { steg: 4, tittel: 'Prosessloopen' },
+  { steg: 5, tittel: 'Ti systemer' },
+  { steg: 6, tittel: 'Løsningen' },
+  { steg: 7, tittel: 'Prompten' },
+  { steg: 10, tittel: 'Agenten bygger' },
+  { steg: 11, tittel: 'Portalen' },
+  { steg: 12, tittel: 'Produktveggen' },
+  { steg: 13, tittel: 'Integrasjonene' },
+  { steg: 14, tittel: 'Tre AI-roller' },
+  { steg: 17, tittel: 'Påstanden' },
+  { steg: 18, tittel: '«6-åringen»' },
+  { steg: 19, tittel: 'Sannheten' },
+  { steg: 20, tittel: 'Sammenligningen' },
 ];
 
 // Lappeteppet — verktøyene forvaltere jonglerer i dag. Posisjoner i % av
@@ -357,7 +359,7 @@ export default function BergenUrbanDeck() {
     const naa = Date.now();
     if (naa - sisteNav.current < 320) return;
     sisteNav.current = naa;
-    setSteg((s) => (s === 9 || s === 10 ? 7 : Math.max(0, s - 1)));
+    setSteg((s) => (s === 10 || s === 11 ? 8 : Math.max(0, s - 1)));
   }, []);
 
   const fullskjerm = useCallback(() => {
@@ -383,8 +385,8 @@ export default function BergenUrbanDeck() {
 
   // Skriveanimasjon — naturlig, litt ujevn rytme
   useEffect(() => {
-    if (steg <= 6) { setAntallTegn(0); return undefined; }
-    if (steg === 7) {
+    if (steg <= 7) { setAntallTegn(0); return undefined; }
+    if (steg === 8) {
       if (antallTegn >= PROMPT.length) return undefined;
       const t = setTimeout(() => setAntallTegn((n) => n + 1), 26 + Math.random() * 62);
       return () => clearTimeout(t);
@@ -395,16 +397,16 @@ export default function BergenUrbanDeck() {
 
   // Send → tenkeprikker → auto-overgang til agent-scenen
   useEffect(() => {
-    if (steg !== 8) { setTenker(false); return undefined; }
+    if (steg !== 9) { setTenker(false); return undefined; }
     const t1 = setTimeout(() => setTenker(true), 520);
-    const t2 = setTimeout(() => setSteg(9), 3300);
+    const t2 = setTimeout(() => setSteg(10), 3300);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [steg]);
 
   // Kodestrøm: agenten «bygger» → deploy-beat → lys-tenning → reveal
   useEffect(() => {
-    if (steg < 9) { setKodeAntall(0); setDeploy(false); setTenning('av'); return undefined; }
-    if (steg !== 9) return undefined; // behold linjene under utfading
+    if (steg < 10) { setKodeAntall(0); setDeploy(false); setTenning('av'); return undefined; }
+    if (steg !== 10) return undefined; // behold linjene under utfading
     let stoppet = false;
     let i = 0;
     const total = 240;
@@ -418,7 +420,7 @@ export default function BergenUrbanDeck() {
         // et lys tennes i sentrum · 3) portalen materialiserer seg under lyset
         setTimeout(() => { if (!stoppet) setDeploy(true); }, 380);
         setTimeout(() => { if (!stoppet) setTenning('inn'); }, 2400);
-        setTimeout(() => { if (!stoppet) setSteg(10); }, 3250);
+        setTimeout(() => { if (!stoppet) setSteg(11); }, 3250);
         return;
       }
       setTimeout(tikk, Math.max(9, 36 - i * 0.12));
@@ -429,7 +431,7 @@ export default function BergenUrbanDeck() {
 
   // Lyset trekker seg tilbake idet portalen står ferdig
   useEffect(() => {
-    if (steg !== 10) return undefined;
+    if (steg !== 11) return undefined;
     const t1 = setTimeout(() => setTenning((v) => (v === 'inn' ? 'ut' : v)), 300);
     const t2 = setTimeout(() => setTenning('av'), 1900);
     return () => { clearTimeout(t1); clearTimeout(t2); };
@@ -440,7 +442,7 @@ export default function BergenUrbanDeck() {
   // lander en ny booking live (kalender-liv), før portalen åpner enheten
   // som fikk bookingen — Marken 8 — i appens enkeltvisning.
   useEffect(() => {
-    if (steg !== 10) { setRevealModul('oversikt'); return undefined; }
+    if (steg !== 11) { setRevealModul('oversikt'); return undefined; }
     const t = setTimeout(() => setRevealModul('kalender'), 8600);
     const t2 = setTimeout(() => setRevealModul('enhet'), 17400);
     return () => { clearTimeout(t); clearTimeout(t2); };
@@ -482,25 +484,26 @@ export default function BergenUrbanDeck() {
   useEffect(() => { setTocApen(false); }, [steg]);
 
   const skrevet = PROMPT.slice(0, antallTegn);
-  const klarTilSend = antallTegn >= PROMPT.length && steg >= 7;
-  const morkAktiv = steg <= 9; // reveal (steg 10) er lys fullskjerm
+  const klarTilSend = antallTegn >= PROMPT.length && steg >= 8;
+  const morkAktiv = steg <= 10; // reveal (steg 11) er lys fullskjerm
   const coverAktiv = steg === 0;
-  const historieAktiv = steg === 1;
-  const ideAktiv = steg === 2 || steg === 3;
-  const ideBeat = Math.max(0, steg - 2); // 0 = ideen · 1 = prosessloopen
-  const kaosAktiv = steg === 4;
-  const losningAktiv = steg === 5;
-  const promptAktiv = steg >= 6 && steg <= 8;
-  const kodeAktiv = steg === 9;
-  const revealAktiv = steg === 10;
-  const omfangAktiv = steg === 11;
-  const integrasjonAktiv = steg === 12;
-  const hookAktiv = steg === 16 || steg === 17;
-  const bygg = Math.max(0, steg - 16);
-  const sannhetAktiv = steg === 18 || steg === 19;
-  const sannhetBeat = Math.max(0, steg - 18); // 0 = DigiHome-tall · 1 = + tradisjonell
-  const rollerAktiv = steg >= 13 && steg <= 15;
-  const rollerBeat = Math.max(0, steg - 12); // 1 = utviklingen · 2 = +verktøyene · 3 = +agentene
+  const megAktiv = steg === 1;
+  const historieAktiv = steg === 2;
+  const ideAktiv = steg === 3 || steg === 4;
+  const ideBeat = Math.max(0, steg - 3); // 0 = ideen · 1 = prosessloopen
+  const kaosAktiv = steg === 5;
+  const losningAktiv = steg === 6;
+  const promptAktiv = steg >= 7 && steg <= 9;
+  const kodeAktiv = steg === 10;
+  const revealAktiv = steg === 11;
+  const omfangAktiv = steg === 12;
+  const integrasjonAktiv = steg === 13;
+  const hookAktiv = steg === 17 || steg === 18;
+  const bygg = Math.max(0, steg - 17);
+  const sannhetAktiv = steg === 19 || steg === 20;
+  const sannhetBeat = Math.max(0, steg - 19); // 0 = DigiHome-tall · 1 = + tradisjonell
+  const rollerAktiv = steg >= 14 && steg <= 16;
+  const rollerBeat = Math.max(0, steg - 13); // 1 = utviklingen · 2 = +verktøyene · 3 = +agentene
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -856,6 +859,53 @@ export default function BergenUrbanDeck() {
         </div>
         )}
 
+        {/* ── AKT 0.25: OM MEG — Martin Kviteberg, Produktsjef i DigiHome ── */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-8 text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(megAktiv)}`}
+          data-testid="bu-meg"
+        >
+          {/* Knapt merkbar nøytral luminans */}
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(50% 42% at 50% 44%, rgba(255,255,255,0.05) 0%, transparent 100%)' }} />
+
+          {/* Scale-settle + kamera-liv — samme filmspråk som resten av den svarte scenen */}
+          <div className="flex flex-col items-center" style={{ transform: megAktiv ? 'scale(1)' : 'scale(1.05)', transition: 'transform 3200ms cubic-bezier(0.22,1,0.36,1)' }}>
+            <div className="bu-drift flex flex-col items-center">
+              {/* Portrettet — materialiserer seg i blur-dissolve */}
+              <div className={megAktiv ? 'bu-foto' : 'opacity-0'}>
+                <div className="overflow-hidden rounded-[32px] ring-1 ring-white/[0.12] shadow-[0_50px_130px_-30px_rgba(0,0,0,0.85)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/martin-kviteberg.jpg"
+                    alt="Martin Kviteberg"
+                    className="block h-[clamp(190px,30vh,280px)] w-[clamp(190px,30vh,280px)] object-cover"
+                  />
+                </div>
+              </div>
+
+              {/* Navnet — ord for ord, tracking som setter seg */}
+              <h2 className={`mt-10 font-heading text-[clamp(36px,4.6vw,72px)] font-bold leading-[1.05] tracking-[-0.035em] text-white ${megAktiv ? 'bu-spor' : ''}`}>
+                <span className={`bu-ord-base ${megAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '900ms' }}>Martin</span>{' '}
+                <span className={`bu-ord-base ${megAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '1150ms' }}>
+                  <span className={megAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '2600ms' }}>Kviteberg</span>
+                </span>
+              </h2>
+
+              {/* Rollen — hviskes inn med hairlines, som Historien-labelen */}
+              <div
+                className={`mt-8 flex items-center gap-5 opacity-0 ${megAktiv ? 'bu-inn' : ''}`}
+                style={{ animationDelay: '1900ms', animationDuration: '1.6s' }}
+                data-testid="bu-meg-rolle"
+              >
+                <span aria-hidden className="h-px w-12 bg-gradient-to-r from-transparent to-white/25" />
+                <p className="text-[clamp(13px,1.2vw,17px)] font-medium tracking-[-0.01em] text-white/[0.62]">
+                  Produktsjef i DigiHome
+                </p>
+                <span aria-hidden className="h-px w-12 bg-gradient-to-l from-transparent to-white/25" />
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* ── AKT 0.5: HISTORIEN — kinematisk tittelreveal, Apple-minimalisme ── */}
         <div
           className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-8 text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${gruppeKlasse(historieAktiv)}`}
@@ -1123,21 +1173,21 @@ export default function BergenUrbanDeck() {
           <div className="flex w-full flex-col items-center" style={{ transform: promptAktiv ? 'scale(1)' : 'scale(1.05)', transition: 'transform 3200ms cubic-bezier(0.22,1,0.36,1)' }}>
           <div className="bu-drift flex w-full flex-col items-center">
 
-          <div className={`relative flex w-[min(720px,88vw)] items-center gap-3 rounded-[28px] border border-white/[0.09] bg-[#161616] py-3 pl-4 pr-3 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)] transition-transform duration-700 ${steg >= 8 ? 'scale-[0.985]' : 'scale-100'}`}>
+          <div className={`relative flex w-[min(720px,88vw)] items-center gap-3 rounded-[28px] border border-white/[0.09] bg-[#161616] py-3 pl-4 pr-3 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)] transition-transform duration-700 ${steg >= 9 ? 'scale-[0.985]' : 'scale-100'}`}>
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/40">
               <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
             </span>
             <p className="min-h-[27px] flex-1 text-[16.5px] leading-[27px] text-[#ececec] md:text-[18px]" data-testid="bu-prompt-tekst">
-              {steg <= 6 && <span className="text-white/30">Spør om hva som helst</span>}
-              {steg >= 7 && (
+              {steg <= 7 && <span className="text-white/30">Spør om hva som helst</span>}
+              {steg >= 8 && (
                 <>
                   {skrevet}
-                  {steg <= 7 && <span className="bu-blink ml-[1px] inline-block h-[1.1em] w-[2px] translate-y-[0.18em] bg-white/90" />}
+                  {steg <= 8 && <span className="bu-blink ml-[1px] inline-block h-[1.1em] w-[2px] translate-y-[0.18em] bg-white/90" />}
                 </>
               )}
             </p>
             <span
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-500 ${klarTilSend ? 'bg-white text-black' : 'bg-white/10 text-white/30'} ${steg >= 8 ? 'bu-puls' : ''}`}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-500 ${klarTilSend ? 'bg-white text-black' : 'bg-white/10 text-white/30'} ${steg >= 9 ? 'bu-puls' : ''}`}
               data-testid="bu-send"
             >
               <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
@@ -1552,6 +1602,14 @@ export default function BergenUrbanDeck() {
         }
         .bu-ord-base { opacity: 0; display: inline-block; }
         .bu-ord { animation: buOrd 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* ── Om meg: portrettet materialiserer seg ── */
+        @keyframes buFoto {
+          from { opacity: 0; transform: translateY(16px) scale(0.94); filter: blur(18px); }
+          65% { filter: blur(2px); }
+          to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+        .bu-foto { opacity: 0; animation: buFoto 1.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards; }
 
         /* ── Kaoset: frakoblet flyt, marsjerende streker og flimrende sync ── */
         @keyframes buKaosFlyt {
