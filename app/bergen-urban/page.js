@@ -23,7 +23,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Caveat } from 'next/font/google';
-import { Bot, Check, Rocket, Code2, Wand2, Radar, Sparkles } from 'lucide-react';
+import { Bot, Check, Rocket } from 'lucide-react';
 import OmfangVegg from '@/components/tour/mockups/OmfangVegg';
 import ForvalterFullskjerm from '@/components/tour/mockups/ForvalterFullskjerm';
 import AssistentChatMockup from '@/components/tour/mockups/AssistentChatMockup';
@@ -226,13 +226,6 @@ const intPos = (vinkel) => {
   return { x: 50 + 43 * Math.cos(r), y: 50 + 41 * Math.sin(r) };
 };
 const INT_LILLA = '#9B5BD6';
-
-// ── Tre AI-roller — finalen: hendelsene i Agentene-kortets live-feed ──
-const AGENT_FEED = [
-  { t: 'Nytt lead registrert fra FINN', tid: 'nå', c: '#06BFFC' },
-  { t: 'Visning booket automatisk', tid: '2 min', c: '#7c3aed' },
-  { t: 'Frist fulgt opp — påminnelse sendt', tid: '14 min', c: '#f59e0b' },
-];
 
 function BUIntegrasjoner({ aktiv }) {
   const [fase, setFase] = useState(0);
@@ -634,7 +627,7 @@ export default function BergenUrbanDeck() {
         </footer>
       </section>
 
-      {/* ═══ AKT 7 — TRE AI-ROLLER: bygget · innebygd · autonom (finalen) ═══ */}
+      {/* ═══ AKT 7 — TRE AI-ROLLER: ren typografi, hairlines og luft ═══ */}
       <section
         className={`absolute inset-0 flex flex-col transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${lysKlasse(rollerAktiv, 'inn')}`}
         data-testid="bu-slide-roller"
@@ -645,137 +638,46 @@ export default function BergenUrbanDeck() {
         </header>
 
         <div className="flex flex-1 flex-col items-center justify-center px-10 md:px-16">
-          <div className="w-full max-w-[1180px]">
+          <div className="w-full max-w-[1060px]">
             <div className={`text-center opacity-0 ${rollerAktiv ? 'bu-inn' : ''}`} style={{ animationDuration: '1.4s' }}>
               <p className="text-[12px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">04</p>
               <h2 className="mt-7 font-heading text-[clamp(28px,3.6vw,52px)] font-bold leading-[1.12] tracking-[-0.03em] text-[#0f0f0f]" data-testid="bu-roller-tittel">
                 Én plattform. Tre AI-roller.
               </h2>
-              <p className="mx-auto mt-4 max-w-[52ch] text-[clamp(14px,1.25vw,17px)] leading-relaxed text-[#86868b]">
-                Fra utviklingen av systemet til den daglige driften — intelligensen ligger i alle lag.
-              </p>
             </div>
 
-            {/* Rollene — én per klikk: kort med levende mini-scener */}
-            <div className="mt-10 grid grid-cols-3 gap-8 md:mt-12">
-
-              {/* ── ROLLE 01 · BYGGEREN — mini-editoren der agenten bygger ── */}
-              <div className={`opacity-0 ${rollerBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDuration: '1.3s' }} data-testid="bu-rolle-1">
-                <div className="h-full overflow-hidden rounded-3xl bg-white" style={{ border: '1px solid #eceaf2', boxShadow: '0 26px 70px -32px rgba(15,15,15,0.13)' }}>
-                  <div className="relative flex h-[172px] items-center overflow-hidden px-7" style={{ background: 'linear-gradient(180deg, #f8f7fc 0%, #fbfbfc 100%)', borderBottom: '1px solid #f2f1f6' }}>
-                    <div className="w-full rounded-xl bg-[#0c0c10] px-4 pb-4 pt-3" style={{ boxShadow: '0 22px 44px -20px rgba(12,12,16,0.5)' }}>
-                      <div className="mb-2.5 flex items-center gap-1.5">
-                        <span className="h-[6px] w-[6px] rounded-full bg-white/10" />
-                        <span className="h-[6px] w-[6px] rounded-full bg-white/10" />
-                        <span className="h-[6px] w-[6px] rounded-full bg-white/10" />
-                        <span className="ml-auto font-mono text-[9px] tracking-tight text-white/25">digihome · agent</span>
-                      </div>
-                      <div className="space-y-1.5 font-mono text-[10.5px] leading-relaxed">
-                        <p className={`whitespace-nowrap opacity-0 ${rollerBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '550ms' }}>
-                          <span className="text-[#B57BFF]/80">const</span><span className="text-white/50"> portal = </span><span className="text-[#B57BFF]/80">await</span><span className="text-white/50"> agent.bygg(</span><span className="text-[#8fd4a8]/70">&apos;digihome&apos;</span><span className="text-white/50">)</span>
-                        </p>
-                        <p className={`whitespace-nowrap opacity-0 ${rollerBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '850ms' }}>
-                          <span className="text-white/[0.22]">{'// 20+ moduler · BankID · økonomi'}</span>
-                        </p>
-                        <div className={`flex items-center gap-1.5 pt-1 opacity-0 ${rollerBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '1250ms' }}>
-                          <span className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-[#22c55e]/15">
-                            <Check className="h-2.5 w-2.5 text-[#4ade80]" strokeWidth={3} />
-                          </span>
-                          <span className="whitespace-nowrap text-[10px] font-semibold text-white/70">Bygg fullført · 34/34 tester bestått</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="px-7 pb-7 pt-6 text-left">
-                    <div className="flex items-center gap-2">
-                      <Code2 className="h-[15px] w-[15px] text-[#7c3aed]" strokeWidth={2} />
-                      <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#b0b0b5]">Rolle 01</p>
-                    </div>
-                    <h3 className="mt-2 font-heading text-[clamp(19px,1.7vw,25px)] font-bold tracking-[-0.025em] text-[#0f0f0f]">Byggeren</h3>
-                    <p className="mt-1.5 text-[clamp(12.5px,1.05vw,14.5px)] leading-relaxed text-[#86868b]">Autonome utviklingsagenter skrev, designet og kvalitetssikret hele plattformen — modul for modul.</p>
+            {/* Rollene — hairline, nummer, navn, én setning. Én per klikk. */}
+            <div className="mt-20 grid grid-cols-3 gap-x-14 md:mt-24">
+              {[
+                { navn: 'Byggeren', tekst: 'Autonome AI-agenter utviklet, designet og kvalitetssikret hele plattformen.' },
+                { navn: 'Verktøyene', tekst: 'Innebygd intelligens i hver modul — bilder, annonser og dialog.' },
+                { navn: 'Agentene', tekst: 'Selvstendige agenter overvåker, fanger opp og følger opp. Døgnet rundt.' },
+              ].map((r, i) => (
+                <div
+                  key={r.navn}
+                  className={`opacity-0 ${rollerBeat >= i + 1 ? 'bu-inn' : ''}`}
+                  style={{ animationDuration: '1.3s' }}
+                  data-testid={`bu-rolle-${i + 1}`}
+                >
+                  <div className="border-t border-[#e8e8ed] pt-7">
+                    <p className="text-[13px] font-semibold tabular-nums tracking-[0.02em] text-[#7c3aed]">0{i + 1}</p>
+                    <h3 className="mt-4 font-heading text-[clamp(20px,1.9vw,28px)] font-bold tracking-[-0.025em] text-[#0f0f0f]">{r.navn}</h3>
+                    <p className="mt-3 max-w-[30ch] text-[clamp(13.5px,1.15vw,16px)] leading-relaxed text-[#86868b]">{r.tekst}</p>
                   </div>
                 </div>
-              </div>
-
-              {/* ── ROLLE 02 · VERKTØYENE — Bildestudio: før → etter med lyssveip ── */}
-              <div className={`opacity-0 ${rollerBeat >= 2 ? 'bu-inn' : ''}`} style={{ animationDuration: '1.3s' }} data-testid="bu-rolle-2">
-                <div className="h-full overflow-hidden rounded-3xl bg-white" style={{ border: '1px solid #eceaf2', boxShadow: '0 26px 70px -32px rgba(15,15,15,0.13)' }}>
-                  <div className="relative flex h-[172px] flex-col items-center justify-center gap-3 overflow-hidden px-7" style={{ background: 'linear-gradient(180deg, #f8f7fc 0%, #fbfbfc 100%)', borderBottom: '1px solid #f2f1f6' }}>
-                    <div className="flex w-full items-center gap-3">
-                      <div className="relative h-[86px] flex-1 overflow-hidden rounded-xl" style={{ background: 'linear-gradient(140deg, #dcdce1 0%, #cbcbd2 55%, #bebec6 100%)', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.04)' }}>
-                        <span className="absolute bottom-2 left-2.5 rounded-md bg-black/25 px-1.5 py-0.5 text-[8.5px] font-semibold text-white/85">Før</span>
-                      </div>
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white" style={{ boxShadow: '0 6px 16px -6px rgba(124,58,237,0.4), 0 0 0 1px #f0eaf9' }}>
-                        <Sparkles className="h-3.5 w-3.5 text-[#7c3aed]" />
-                      </span>
-                      <div className="relative h-[86px] flex-1 overflow-hidden rounded-xl" style={{ background: 'linear-gradient(140deg, #f3e8ff 0%, #d8b4fe 45%, #a78bfa 100%)', boxShadow: 'inset 0 0 0 1px rgba(124,58,237,0.08)' }}>
-                        {rollerBeat >= 2 && (
-                          <span aria-hidden className="bu-sveip absolute inset-y-0 w-1/3" style={{ background: 'linear-gradient(105deg, transparent, rgba(255,255,255,0.6), transparent)' }} />
-                        )}
-                        <span className="absolute bottom-2 left-2.5 rounded-md bg-black/25 px-1.5 py-0.5 text-[8.5px] font-semibold text-white">Etter</span>
-                      </div>
-                    </div>
-                    <div className={`opacity-0 ${rollerBeat >= 2 ? 'bu-inn' : ''}`} style={{ animationDelay: '800ms' }}>
-                      <span className="rounded-full bg-white px-3 py-1 text-[10px] font-semibold text-[#3c3c43]" style={{ boxShadow: '0 8px 20px -10px rgba(15,15,15,0.25), 0 0 0 1px #f0f0f3' }}>
-                        Bildestudio · foredlet på sekunder
-                      </span>
-                    </div>
-                  </div>
-                  <div className="px-7 pb-7 pt-6 text-left">
-                    <div className="flex items-center gap-2">
-                      <Wand2 className="h-[15px] w-[15px] text-[#7c3aed]" strokeWidth={2} />
-                      <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#b0b0b5]">Rolle 02</p>
-                    </div>
-                    <h3 className="mt-2 font-heading text-[clamp(19px,1.7vw,25px)] font-bold tracking-[-0.025em] text-[#0f0f0f]">Verktøyene</h3>
-                    <p className="mt-1.5 text-[clamp(12.5px,1.05vw,14.5px)] leading-relaxed text-[#86868b]">Innebygd intelligens der arbeidet skjer — bildeforedling, annonsetekster og kundedialog, rett i arbeidsflaten.</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── ROLLE 03 · AGENTENE — live hendelsesfeed som tikker inn ── */}
-              <div className={`opacity-0 ${rollerBeat >= 3 ? 'bu-inn' : ''}`} style={{ animationDuration: '1.3s' }} data-testid="bu-rolle-3">
-                <div className="h-full overflow-hidden rounded-3xl bg-white" style={{ border: '1px solid #eceaf2', boxShadow: '0 26px 70px -32px rgba(15,15,15,0.13)' }}>
-                  <div className="relative flex h-[172px] flex-col justify-center overflow-hidden px-7" style={{ background: 'linear-gradient(180deg, #f8f7fc 0%, #fbfbfc 100%)', borderBottom: '1px solid #f2f1f6' }}>
-                    <div className="mb-2 flex items-center gap-1.5">
-                      <span className="bu-livedot h-[7px] w-[7px] rounded-full bg-[#10b981]" />
-                      <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#9b9b9b]">Agenter i drift</span>
-                    </div>
-                    <div className="space-y-1.5">
-                      {AGENT_FEED.map((r, i) => (
-                        <div
-                          key={r.t}
-                          className={`flex items-center gap-2 rounded-[10px] bg-white px-3 py-[7px] opacity-0 ${rollerBeat >= 3 ? 'bu-inn' : ''}`}
-                          style={{ boxShadow: '0 8px 18px -12px rgba(15,15,15,0.18), 0 0 0 1px #f1f1f4', animationDelay: `${520 + i * 280}ms` }}
-                        >
-                          <span className="h-[6px] w-[6px] shrink-0 rounded-full" style={{ backgroundColor: r.c }} />
-                          <span className="flex-1 truncate text-[11px] font-medium text-[#3c3c43]">{r.t}</span>
-                          <span className="shrink-0 text-[9.5px] font-medium tabular-nums text-[#b0b0b5]">{r.tid}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="px-7 pb-7 pt-6 text-left">
-                    <div className="flex items-center gap-2">
-                      <Radar className="h-[15px] w-[15px] text-[#7c3aed]" strokeWidth={2} />
-                      <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#b0b0b5]">Rolle 03</p>
-                    </div>
-                    <h3 className="mt-2 font-heading text-[clamp(19px,1.7vw,25px)] font-bold tracking-[-0.025em] text-[#0f0f0f]">Agentene</h3>
-                    <p className="mt-1.5 text-[clamp(12.5px,1.05vw,14.5px)] leading-relaxed text-[#86868b]">Selvstendige agenter overvåker markedet, fanger opp henvendelser og følger opp frister — kontinuerlig, døgnet rundt.</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
 
-            {/* Payoff — lander når alle tre står */}
+            {/* Payoff — lander stille når alle tre står */}
             <p
-              className={`mt-12 text-center text-[clamp(16px,1.8vw,25px)] leading-snug text-[#86868b] opacity-0 ${rollerBeat >= 3 ? 'bu-inn' : ''}`}
+              className={`mt-24 text-center text-[clamp(15px,1.6vw,22px)] leading-snug opacity-0 ${rollerBeat >= 3 ? 'bu-inn' : ''}`}
               style={{ animationDelay: '1400ms' }}
               data-testid="bu-roller-payoff"
             >
               <span className="font-semibold text-[#0f0f0f]">Bygget av AI</span>
-              <span className="mx-3 text-[#c7c7cc]">·</span>
+              <span className="mx-3.5 text-[#d6d6db]">·</span>
               <span className="font-semibold text-[#0f0f0f]">Drevet av AI</span>
-              <span className="mx-3 text-[#c7c7cc]">·</span>
+              <span className="mx-3.5 text-[#d6d6db]">·</span>
               <span className="font-semibold text-[#0f0f0f]">Overvåket av AI</span>
             </p>
           </div>
@@ -1504,18 +1406,6 @@ export default function BergenUrbanDeck() {
         }
         .bu-flyt { animation: buFlyt 7.5s ease-in-out infinite alternate; }
         .bu-flyt-tlf { animation: buFlyt 6.5s ease-in-out 0.8s infinite alternate; }
-
-        /* ── Tre AI-roller: live-puls og bildesveip ── */
-        @keyframes buLiveDot {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.35); }
-          50% { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
-        }
-        .bu-livedot { animation: buLiveDot 2s ease-out infinite; }
-        @keyframes buSveip {
-          from { transform: translateX(-130%); }
-          to { transform: translateX(320%); }
-        }
-        .bu-sveip { animation: buSveip 2.6s cubic-bezier(0.4, 0, 0.2, 1) 0.9s infinite; }
 
         /* ── Cover-koreografi ── */
         @keyframes buAurora1 {
