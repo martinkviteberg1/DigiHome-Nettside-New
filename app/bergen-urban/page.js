@@ -1326,7 +1326,7 @@ export default function BergenUrbanDeck() {
 
         {/* ── AKT 1.5: AI-AGENTEN — mockup av agenten som bygger DigiHome ── */}
         <div
-          className={`absolute inset-0 transition-[opacity,filter,transform] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${kodeAktiv ? (tenning === 'av' ? 'opacity-100 blur-0 scale-100 translate-y-0' : 'opacity-20 blur-[6px] scale-[0.94] translate-y-0') : 'pointer-events-none opacity-0 blur-[10px] scale-[0.97] translate-y-[16px]'}`}
+          className={`absolute inset-0 transition-[opacity,filter,transform] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${kodeAktiv ? (tenning === 'av' ? 'opacity-100 blur-0 scale-100 translate-y-0' : 'opacity-[0.1] blur-[10px] scale-[0.88] translate-y-[1.5vh]') : 'pointer-events-none opacity-0 blur-[10px] scale-[0.97] translate-y-[16px]'}`}
           data-testid="bu-kodestorm"
         >
           {/* Ambient scenelys bak vinduet — løfter det fra den svarte flaten */}
@@ -1567,6 +1567,10 @@ export default function BergenUrbanDeck() {
           {/* App-ikonet — DigiHome «lanseres»: popper inn i lyset, holder et
               øyeblikk, og åpner seg mot kamera idet portalen står klar under */}
           <div className={`absolute ${tenning === 'inn' ? 'bu-appikon-inn' : 'bu-appikon-ut'}`}>
+            {/* Sjokkbølge — én ekspanderende ring idet ikonet lander */}
+            {tenning === 'inn' && (
+              <span aria-hidden className="bu-sjokk absolute left-1/2 top-1/2 h-[150%] w-[150%] -translate-x-1/2 -translate-y-1/2 rounded-[40px] border border-white/50" />
+            )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/digihome-mark.svg"
@@ -1776,6 +1780,12 @@ export default function BergenUrbanDeck() {
           100% { opacity: 0; transform: scale(14); filter: blur(10px); }
         }
         .bu-appikon-ut { animation: buAppIkonUt 1.1s cubic-bezier(0.55, 0, 0.85, 0.35) both; }
+        @keyframes buSjokk {
+          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+          18% { opacity: 0.6; }
+          100% { opacity: 0; transform: translate(-50%, -50%) scale(2.7); }
+        }
+        .bu-sjokk { animation: buSjokk 1.3s cubic-bezier(0.22, 1, 0.36, 1) 1.05s both; }
         @keyframes buSpor {
           from { letter-spacing: -0.002em; }
           to { letter-spacing: -0.04em; }
@@ -1801,7 +1811,7 @@ export default function BergenUrbanDeck() {
           animation: buGlans 2.2s cubic-bezier(0.45, 0, 0.2, 1) 1.7s forwards;
         }
         @media (prefers-reduced-motion: reduce) {
-          .bu-tenning, .bu-tenning2, .bu-flare, .bu-appikon-inn, .bu-appikon-ut, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-drift-lys, .bu-kenburns, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor, .bu-kaos-flyt, .bu-kaos-strek { animation: none !important; }
+          .bu-tenning, .bu-tenning2, .bu-flare, .bu-appikon-inn, .bu-appikon-ut, .bu-sjokk, .bu-aurora1, .bu-aurora2, .bu-flyt, .bu-flyt-tlf, .bu-drift, .bu-drift-lys, .bu-kenburns, .bu-spek, .bu-baand-v, .bu-baand-h, .bu-spor, .bu-kaos-flyt, .bu-kaos-strek { animation: none !important; }
         }
         @keyframes buFlyt {
           from { transform: translateY(0); }

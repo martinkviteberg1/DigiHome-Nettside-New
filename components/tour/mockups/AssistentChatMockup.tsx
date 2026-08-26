@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Plus_Jakarta_Sans } from 'next/font/google';
-import { Bot, ArrowUp, Minus, Droplets, FileSignature, Home } from 'lucide-react';
+import { ArrowUp, Minus, Droplets, FileSignature, Home } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // AssistentChatMockup — DigiHomes AI-driftsassistent som flytende chatpanel
@@ -24,9 +24,9 @@ const C = {
 };
 
 const PRIORITERINGER = [
-  { Ikon: Droplets, c: C.blue, bg: C.blueBg, tekst: 'Vannlekkasje på badet', detalj: 'rørlegger bekreftet kl. 12:00' },
-  { Ikon: FileSignature, c: C.purple, bg: C.purpleBg, tekst: 'Leiekontrakt Marken 8', detalj: 'sendt til BankID-signering' },
-  { Ikon: Home, c: C.amber, bg: C.amberBg, tekst: '2 ledige enheter', detalj: 'annonseutkast klart til godkjenning' },
+  { Ikon: Droplets, c: C.blue, tekst: 'Vannlekkasje på badet', detalj: 'Rørlegger bekreftet', status: 'kl. 12:00', sc: C.blue, sbg: C.blueBg },
+  { Ikon: FileSignature, c: C.purple, tekst: 'Leiekontrakt Marken 8', detalj: 'BankID-signering', status: 'Sendt', sc: C.purple, sbg: C.purpleBg },
+  { Ikon: Home, c: C.amber, tekst: '2 ledige enheter', detalj: 'Annonseutkast', status: 'Klar', sc: C.amber, sbg: C.amberBg },
 ];
 
 export default function AssistentChatMockup({ vis = true }: { vis?: boolean }) {
@@ -51,19 +51,12 @@ export default function AssistentChatMockup({ vis = true }: { vis?: boolean }) {
     >
       {/* Topplinje — som portalens kort */}
       <div className="flex shrink-0 items-center gap-3 px-4 py-3" style={{ borderBottom: `1px solid ${C.border}` }}>
-        <span className="relative flex h-9 w-9 shrink-0 items-center justify-center">
-          <span className="absolute inset-0 animate-ping rounded-full bg-[#7c3aed]/15" style={{ animationDuration: '2.6s' }} />
-          <span className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]">
-            <Bot className="h-[16px] w-[16px] text-white" strokeWidth={2} />
-          </span>
-        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/digihome-favicon-purple.svg" alt="" className="h-9 w-9 shrink-0 rounded-[10px]" style={{ boxShadow: `inset 0 0 0 1px ${C.border}` }} />
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-2 text-[13.5px] font-bold tracking-tight" style={{ color: C.text }}>
-            Driftsassistent
-            <span className="rounded-full px-1.5 py-[1px] text-[8.5px] font-bold tracking-wide" style={{ backgroundColor: C.accentSoft, color: '#7c3aed' }}>AI</span>
-          </p>
+          <p className="text-[13.5px] font-bold tracking-tight" style={{ color: C.text }}>Driftsassistent</p>
           <p className="mt-[1px] flex items-center gap-1.5 text-[10.5px]" style={{ color: C.sub }}>
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#34c759]" /> Aktiv nå · svarer på sekunder
+            <span className="h-[5px] w-[5px] rounded-full bg-[#34c759]" /> Koblet til hele driften
           </p>
         </div>
         <Minus className="h-4 w-4" style={{ color: C.muted }} strokeWidth={2} />
@@ -96,17 +89,24 @@ export default function AssistentChatMockup({ vis = true }: { vis?: boolean }) {
           <div className="dh-ai-inn">
             <div className="rounded-2xl rounded-bl-md px-3.5 py-3" style={{ backgroundColor: C.card, border: `1px solid ${C.border}` }}>
               <p className="text-[12.5px] leading-snug" style={{ color: C.text }}>
-                God morgen! Tre ting krever oppmerksomhet i dag:
+                Tre ting skiller seg ut:
               </p>
-              <div className="mt-2.5 space-y-2">
+              <div className="mt-1.5">
                 {PRIORITERINGER.map((p, i) => (
-                  <div key={p.tekst} className="dh-ai-inn flex items-center gap-2.5" style={{ animationDelay: `${160 + i * 150}ms` }}>
-                    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[10px]" style={{ backgroundColor: p.bg }}>
-                      <p.Ikon className="h-[14px] w-[14px]" style={{ color: p.c }} strokeWidth={1.8} />
+                  <div
+                    key={p.tekst}
+                    className="dh-ai-inn flex items-center gap-2.5 py-[9px]"
+                    style={{ animationDelay: `${160 + i * 150}ms`, borderTop: i > 0 ? `1px solid ${C.border}` : 'none' }}
+                  >
+                    <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[9px]" style={{ backgroundColor: '#f6f5f8' }}>
+                      <p.Ikon className="h-[13px] w-[13px]" style={{ color: p.c }} strokeWidth={1.9} />
                     </span>
-                    <span className="min-w-0">
+                    <span className="min-w-0 flex-1">
                       <span className="block truncate text-[12px] font-semibold leading-tight" style={{ color: C.text }}>{p.tekst}</span>
-                      <span className="block truncate text-[11px] leading-tight" style={{ color: C.sub }}>{p.detalj}</span>
+                      <span className="block truncate text-[10.5px] leading-tight" style={{ color: C.sub }}>{p.detalj}</span>
+                    </span>
+                    <span className="shrink-0 rounded-full px-2 py-[3px] text-[9.5px] font-bold tabular-nums" style={{ backgroundColor: p.sbg, color: p.sc }}>
+                      {p.status}
                     </span>
                   </div>
                 ))}
@@ -116,11 +116,11 @@ export default function AssistentChatMockup({ vis = true }: { vis?: boolean }) {
             {/* Handlinger — som portalens piller (aksent + omriss) */}
             {fase >= 4 && (
               <div className="dh-ai-inn mt-2.5 flex gap-2" style={{ animationDelay: '80ms' }}>
-                <span className="rounded-full px-3.5 py-2 text-[11.5px] font-semibold" style={{ backgroundColor: C.accent, color: '#1a1a1a' }}>
+                <span className="rounded-full px-3.5 py-[7px] text-[11.5px] font-semibold text-white" style={{ backgroundColor: C.invBg }}>
                   Godkjenn annonser
                 </span>
-                <span className="rounded-full px-3.5 py-2 text-[11.5px] font-semibold" style={{ border: `1px solid ${C.border}`, backgroundColor: C.card, color: C.text }}>
-                  Åpne saker
+                <span className="rounded-full px-3.5 py-[7px] text-[11.5px] font-semibold" style={{ border: `1px solid ${C.border}`, backgroundColor: C.card, color: C.text }}>
+                  Se alle saker
                 </span>
               </div>
             )}
