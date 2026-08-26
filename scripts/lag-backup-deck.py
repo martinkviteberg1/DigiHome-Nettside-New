@@ -60,6 +60,8 @@ SKJUL_JS = """
   const mode = window.__skjul ? 'hidden' : '';
   const fs = document.querySelector('button[title="Fullskjerm (F)"]');
   if (fs) fs.style.visibility = mode;
+  const lyd = document.querySelector('[data-testid="bu-lyd-knapp"]');
+  if (lyd) lyd.style.visibility = mode;
   const toc = document.querySelector('button[title="Innhold"]');
   if (toc && toc.parentElement) toc.parentElement.style.visibility = mode;
   document.querySelectorAll('div[aria-hidden="true"]').forEach((d) => {

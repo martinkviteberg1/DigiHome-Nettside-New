@@ -26,8 +26,37 @@ import { Bot, Check, Rocket } from 'lucide-react';
 import OmfangVegg from '@/components/tour/mockups/OmfangVegg';
 import ForvalterFullskjerm from '@/components/tour/mockups/ForvalterFullskjerm';
 import AssistentChatMockup from '@/components/tour/mockups/AssistentChatMockup';
+import { lyd } from './lyd';
 
 const caveat = Caveat({ subsets: ['latin', 'latin-ext'], weight: ['500', '600', '700'], display: 'swap' });
+
+// ── Preload: alt decket trenger, lastes bak den sorte startskjermen slik at
+// ingen bilder «popper inn» midt i presentasjonen ──
+const PRELOAD_BILDER = [
+  '/digihome-mark.svg',
+  '/digihome-logo-white.svg',
+  '/digihome-wordmark-ink.svg',
+  '/digihome-favicon-purple.svg',
+  '/martin-kviteberg.jpg',
+  '/qr-kontakt.svg',
+  '/kartverket-logo.png',
+  '/finn-logo-full.png',
+  '/creditsafe-logo.png',
+  '/bankid-logo.png',
+  '/keyhole-logo.png',
+  '/vipps-logo.png',
+  '/fiken-logo.png',
+  '/poweroffice-logo.png',
+  '/tripletex-logo.png',
+  '/airbnb-logo.png',
+  '/booking-logo.png',
+  // Boligfotoene i portalens enhetsvisning
+  'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200',
+  'https://images.unsplash.com/photo-1616486029423-aaa4789e8c9a?crop=entropy&cs=srgb&fm=jpg&q=85&w=600',
+  'https://images.unsplash.com/photo-1631048499052-e6d9f305d2c0?crop=entropy&cs=srgb&fm=jpg&q=85&w=600',
+  'https://images.unsplash.com/photo-1747336754870-ca7b10cc75f5?crop=entropy&cs=srgb&fm=jpg&q=85&w=600',
+  'https://images.pexels.com/photos/19980206/pexels-photo-19980206.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+];
 
 const PROMPT = 'Lag et AI-drevet system for utleie og boligforvaltning.';
 const INTRO = 'Skal bli. Jeg bygger systemet modul for modul.';
@@ -254,20 +283,15 @@ const TOC = [
   { steg: 21, tittel: 'Book et møte' },
 ];
 
-// Problemet — ti systemnavn som dempet typografi i randsonen, og
-// konsekvensene krystallklare i sentrum. Ren typografi, ingen bokser.
-const KAOS_NAVN = [
-  { navn: 'Outlook', x: '10%', y: '13%', s: 19, o: 0.2 },
-  { navn: 'Tripletex', x: '30%', y: '5%', s: 15, o: 0.15 },
-  { navn: 'Calendly', x: '56%', y: '8%', s: 17, o: 0.18 },
-  { navn: 'DocuSign', x: '81%', y: '12%', s: 14, o: 0.14 },
-  { navn: 'Vipps', x: '94%', y: '37%', s: 16, o: 0.17 },
-  { navn: 'Excel', x: '89%', y: '75%', s: 20, o: 0.21 },
-  { navn: 'Husleie.no', x: '67%', y: '92%', s: 14, o: 0.14 },
-  { navn: 'FINN', x: '42%', y: '95%', s: 17, o: 0.18 },
-  { navn: 'HubSpot', x: '15%', y: '87%', s: 15, o: 0.16 },
-  { navn: 'Lodgify', x: '4%', y: '48%', s: 13, o: 0.13 },
-];
+// Problemet — ti systemer på en presis ellipse rundt et tomt sentrum.
+// Samme geometri som «Alt henger sammen»-sliden, men uten hub: de stiplede
+// forbindelsene når aldri frem. Problemet er integrasjonsslidens antitese —
+// og i tomrommet der plattformen skulle stått, står konsekvensene.
+const KAOS_SYSTEMER = ['Outlook', 'Tripletex', 'Calendly', 'DocuSign', 'Vipps', 'Excel', 'Hybel.no', 'FINN', 'HubSpot', 'Lodgify'];
+const KAOS_PUNKTER = KAOS_SYSTEMER.map((navn, i) => {
+  const vinkel = ((-90 + i * 36) * Math.PI) / 180;
+  return { navn, x: 50 + 44 * Math.cos(vinkel), y: 50 + 41.5 * Math.sin(vinkel) };
+});
 const KAOS_KONSEKVENSER = ['Manuelt arbeid.', 'Høye lønnskostnader.', 'Ingen samlet oversikt.', 'Vanskelig å skalere.'];
 
 // ── Integrasjonene — «Alt henger sammen.» (samme koreografi som /tour) ──
@@ -419,6 +443,8 @@ export default function BergenUrbanDeck() {
   const [musSynlig, setMusSynlig] = useState(true);
   const [mockSkala, setMockSkala] = useState(0.78);
   const [tocApen, setTocApen] = useState(false);
+  const [lydPaa, setLydPaa] = useState(false);       // lyddesign — av som standard, «M» skrur på
+  const [lastAndel, setLastAndel] = useState(0);     // preload-fremdrift (0–1) bak sort start
   const musTimer = useRef(null);
 
   // Myk navigasjon: ignorer klikk som lander midt i en pågående overgang
@@ -444,11 +470,61 @@ export default function BergenUrbanDeck() {
     } catch (e) { /* stille */ }
   }, []);
 
+  // ── Lyddesign: «M» eller høyttalerknappen skrur på/av. Preferansen huskes. ──
+  const veksleLyd = useCallback(() => {
+    setLydPaa((v) => {
+      const ny = !v;
+      try { localStorage.setItem('bu-lyd', ny ? '1' : '0'); } catch (e) { /* stille */ }
+      return ny;
+    });
+  }, []);
+  useEffect(() => {
+    try { if (localStorage.getItem('bu-lyd') === '1') setLydPaa(true); } catch (e) { /* stille */ }
+  }, []);
+  useEffect(() => {
+    if (!lydPaa) { lyd.deaktiver(); return undefined; }
+    // AudioContext krever en brukerhandling — aktiver på første gest
+    const vekk = () => lyd.aktiver();
+    vekk();
+    window.addEventListener('pointerdown', vekk);
+    window.addEventListener('keydown', vekk);
+    return () => { window.removeEventListener('pointerdown', vekk); window.removeEventListener('keydown', vekk); };
+  }, [lydPaa]);
+
+  // ── Preload: last alle bilder + fonter bak den sorte startskjermen ──
+  useEffect(() => {
+    let avbrutt = false;
+    let ferdig = 0;
+    const totalt = PRELOAD_BILDER.length + 1; // +1 for fontene
+    const oppdater = () => { if (!avbrutt) setLastAndel(ferdig / totalt); };
+    PRELOAD_BILDER.forEach((src) => {
+      const img = new Image();
+      img.onload = () => { ferdig += 1; oppdater(); };
+      img.onerror = () => { ferdig += 1; oppdater(); };
+      img.src = src;
+    });
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      document.fonts.ready.then(() => { ferdig += 1; oppdater(); }).catch(() => { ferdig += 1; oppdater(); });
+    } else {
+      ferdig += 1; oppdater();
+    }
+    return () => { avbrutt = true; };
+  }, []);
+
+  // ── Offline-sikring: service worker med nettverk-først + cache-fallback,
+  // scopet til /bergen-urban så resten av appen ikke berøres ──
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw-deck.js', { scope: '/bergen-urban' }).catch(() => { /* stille */ });
+    }
+  }, []);
+
   useEffect(() => {
     const tast = (e) => {
       if (['ArrowRight', ' ', 'PageDown', 'Enter', 'ArrowDown'].includes(e.key)) { e.preventDefault(); neste(); }
       else if (['ArrowLeft', 'PageUp', 'ArrowUp', 'Backspace'].includes(e.key)) { e.preventDefault(); forrige(); }
       else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); fullskjerm(); }
+      else if (e.key === 'm' || e.key === 'M') { e.preventDefault(); veksleLyd(); }
       else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); setSteg(-1); }
       else if (e.key === 'Home') { e.preventDefault(); setSteg(-1); }
       else if (e.key === 'End') { e.preventDefault(); setSteg(TOTALT - 1); }
@@ -456,14 +532,17 @@ export default function BergenUrbanDeck() {
     };
     window.addEventListener('keydown', tast);
     return () => window.removeEventListener('keydown', tast);
-  }, [neste, forrige, fullskjerm]);
+  }, [neste, forrige, fullskjerm, veksleLyd]);
 
   // Skriveanimasjon — naturlig, litt ujevn rytme
   useEffect(() => {
     if (steg <= 8) { setAntallTegn(0); return undefined; }
     if (steg === 9) {
       if (antallTegn >= PROMPT.length) return undefined;
-      const t = setTimeout(() => setAntallTegn((n) => n + 1), 26 + Math.random() * 62);
+      const t = setTimeout(() => {
+        setAntallTegn((n) => n + 1);
+        lyd.tast();
+      }, 26 + Math.random() * 62);
       return () => clearTimeout(t);
     }
     setAntallTegn(PROMPT.length);
@@ -473,6 +552,7 @@ export default function BergenUrbanDeck() {
   // Send → tenkeprikker → auto-overgang til agent-scenen
   useEffect(() => {
     if (steg !== 10) { setTenker(false); return undefined; }
+    lyd.send();
     const t1 = setTimeout(() => setTenker(true), 520);
     const t2 = setTimeout(() => setSteg(11), 3300);
     return () => { clearTimeout(t1); clearTimeout(t2); };
@@ -494,13 +574,15 @@ export default function BergenUrbanDeck() {
         // 1) agenten melder «klart» og deployer · 2) arbeidsrommet dimmes og
         // DigiHome-ikonet tennes i sentrum · 3) ikonet åpner seg mot kamera
         // og portalen materialiserer seg under lyset
-        setTimeout(() => { if (!stoppet) setDeploy(true); }, 380);
-        setTimeout(() => { if (!stoppet) setTenning('inn'); }, 2400);
+        lyd.modul();
+        setTimeout(() => { if (!stoppet) { setDeploy(true); lyd.deploy(); } }, 380);
+        setTimeout(() => { if (!stoppet) { setTenning('inn'); lyd.reveal(); } }, 2400);
         setTimeout(() => { if (!stoppet) setSteg(12); }, 3900);
         return;
       }
       // Kort pust når en fil er ferdig og agenten åpner den neste
       const nyFil = MODUL_GRENSER.includes(i);
+      if (nyFil) lyd.modul();
       setTimeout(tikk, nyFil ? 640 : 52 + Math.random() * 42);
     };
     const start = setTimeout(tikk, 300);
@@ -1102,59 +1184,86 @@ export default function BergenUrbanDeck() {
               ))}
             </h2>
 
-            {/* Randsonen — ti systemnavn som dempet typografi, hver i sin
-                egen sakte drift. I sentrum: konsekvensene, én etter én. */}
-            <div className="relative mt-2 flex h-[52vh] max-h-[560px] min-h-[340px] w-full max-w-[1280px] items-center justify-center">
-              {KAOS_NAVN.map((n, i) => (
+            {/* Randsonen — ti systemer som presise brikker på en ellipse rundt
+                et tomt sentrum. Stiplede forbindelser strekker seg innover,
+                men når aldri frem: det finnes ingen hub. I tomrommet der
+                plattformen skulle stått, lander konsekvensene. */}
+            <div className="relative mt-4 flex h-[58vh] max-h-[640px] min-h-[380px] w-full max-w-[1240px] items-center justify-center">
+              {/* Brutte forbindelser — stubber som dør ut mot sentrum */}
+              <svg
+                aria-hidden
+                className="absolute inset-0 h-full w-full transition-opacity duration-[1400ms] ease-out"
+                style={{ opacity: kaosAktiv ? 1 : 0, transitionDelay: kaosAktiv ? '2400ms' : '0ms' }}
+              >
+                {KAOS_PUNKTER.map((p) => {
+                  const x1 = p.x + (50 - p.x) * 0.18;
+                  const y1 = p.y + (50 - p.y) * 0.18;
+                  const x2 = p.x + (50 - p.x) * 0.4;
+                  const y2 = p.y + (50 - p.y) * 0.4;
+                  return (
+                    <line
+                      key={p.navn}
+                      x1={`${x1}%`} y1={`${y1}%`} x2={`${x2}%`} y2={`${y2}%`}
+                      stroke="rgba(255,255,255,0.13)"
+                      strokeWidth="1"
+                      strokeDasharray="3 6"
+                      strokeLinecap="round"
+                    />
+                  );
+                })}
+              </svg>
+
+              {/* Systembrikkene — lander én etter én rundt ellipsen */}
+              {KAOS_PUNKTER.map((p, i) => (
                 <div
-                  key={n.navn}
+                  key={p.navn}
                   className="absolute"
                   style={{
-                    left: n.x,
-                    top: n.y,
-                    transform: `translate(-50%, -50%) translateY(${kaosAktiv ? 0 : 14}px)`,
+                    left: `${p.x}%`,
+                    top: `${p.y}%`,
+                    transform: `translate(-50%, -50%) translateY(${kaosAktiv ? 0 : 12}px) scale(${kaosAktiv ? 1 : 0.92})`,
                     opacity: kaosAktiv ? 1 : 0,
-                    filter: kaosAktiv ? 'blur(0)' : 'blur(10px)',
-                    transition: 'transform 1000ms cubic-bezier(0.22,1,0.36,1), opacity 900ms cubic-bezier(0.22,1,0.36,1), filter 900ms cubic-bezier(0.22,1,0.36,1)',
-                    transitionDelay: kaosAktiv ? `${500 + i * 120}ms` : '0ms',
+                    filter: kaosAktiv ? 'blur(0)' : 'blur(8px)',
+                    transition: 'transform 950ms cubic-bezier(0.22,1,0.36,1), opacity 850ms cubic-bezier(0.22,1,0.36,1), filter 850ms cubic-bezier(0.22,1,0.36,1)',
+                    transitionDelay: kaosAktiv ? `${1650 + i * 95}ms` : '0ms',
                   }}
+                  data-testid={`bu-kaos-system-${i + 1}`}
                 >
-                  <div className="bu-kaos-flyt" style={{ animationDuration: `${6 + (i % 4) * 0.8}s`, animationDelay: `${-(i * 1.2)}s` }}>
-                    <span
-                      className="whitespace-nowrap font-heading font-semibold tracking-[-0.01em] text-white"
-                      style={{ fontSize: n.s, opacity: n.o }}
-                    >
-                      {n.navn}
+                  <div className="bu-kaos-flyt" style={{ animationDuration: `${7 + (i % 4) * 0.9}s`, animationDelay: `${-(i * 1.3)}s` }}>
+                    <span className="whitespace-nowrap rounded-full border border-white/[0.1] bg-white/[0.025] px-[1.15em] py-[0.55em] text-[clamp(12px,1.02vw,15px)] font-medium tracking-[-0.005em] text-white/[0.55]">
+                      {p.navn}
                     </span>
                   </div>
                 </div>
               ))}
 
-              {/* Konsekvensene — krystallklare mot den dempede randsonen */}
-              <div className="relative z-10 flex flex-col items-center gap-[1.6vh]">
-                {KAOS_KONSEKVENSER.map((k, i) => (
-                  <p
-                    key={k}
-                    className={`bu-ord-base font-heading text-[clamp(26px,3.3vw,50px)] font-bold leading-[1.05] tracking-[-0.03em] text-white/[0.94] ${kaosAktiv ? 'bu-ord' : ''}`}
-                    style={{ animationDelay: `${1800 + i * 600}ms` }}
-                    data-testid={`bu-kaos-konsekvens-${i + 1}`}
-                  >
-                    {i === KAOS_KONSEKVENSER.length - 1
-                      ? <span className={kaosAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '4700ms' }}>{k}</span>
-                      : k}
-                  </p>
-                ))}
+              {/* Tomrommet i sentrum — konsekvensene, krystallklare */}
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="flex flex-col items-center gap-[1.5vh]">
+                  {KAOS_KONSEKVENSER.map((k, i) => (
+                    <p
+                      key={k}
+                      className={`bu-ord-base font-heading text-[clamp(24px,3vw,46px)] font-bold leading-[1.05] tracking-[-0.03em] text-white/[0.94] ${kaosAktiv ? 'bu-ord' : ''}`}
+                      style={{ animationDelay: `${2750 + i * 650}ms` }}
+                      data-testid={`bu-kaos-konsekvens-${i + 1}`}
+                    >
+                      {i === KAOS_KONSEKVENSER.length - 1
+                        ? <span className={kaosAktiv ? 'bu-glans-tekst' : ''} style={{ animationDelay: '5900ms' }}>{k}</span>
+                        : k}
+                    </p>
+                  ))}
+                </div>
+
+                {/* Payoff — hviskes inn til slutt, i samme tomrom */}
+                <p
+                  className={`mt-[3.2vh] text-center text-[clamp(14px,1.4vw,20px)] tracking-[-0.01em] text-white/[0.42] opacity-0 ${kaosAktiv ? 'bu-inn' : ''}`}
+                  style={{ animationDelay: '5700ms' }}
+                  data-testid="bu-kaos-payoff"
+                >
+                  Ti systemer. <span className="font-medium text-white/[0.85]">Null sammenheng.</span>
+                </p>
               </div>
             </div>
-
-            {/* Payoff — hviskes inn til slutt */}
-            <p
-              className={`text-center text-[clamp(14px,1.4vw,20px)] tracking-[-0.01em] text-white/[0.42] opacity-0 ${kaosAktiv ? 'bu-inn' : ''}`}
-              style={{ animationDelay: '4600ms' }}
-              data-testid="bu-kaos-payoff"
-            >
-              Ti systemer. <span className="font-medium text-white/[0.85]">Null sammenheng.</span>
-            </p>
           </div>
           </div>
         </div>
@@ -1653,6 +1762,27 @@ export default function BergenUrbanDeck() {
         </button>
       </div>
 
+      {/* ── Lyd (M) — samme diskrete tilstedeværelse som fullskjerm ── */}
+      <button
+        onClick={(e) => { e.stopPropagation(); veksleLyd(); }}
+        title={lydPaa ? 'Lyd på (M)' : 'Lyd av (M)'}
+        aria-label={lydPaa ? 'Skru av lyd' : 'Skru på lyd'}
+        className={`absolute bottom-6 right-16 z-40 flex h-9 w-9 items-center justify-center rounded-full transition-opacity duration-300 ${morkAktiv || sluttAktiv ? (lydPaa ? 'text-white/60 hover:text-white/90' : 'text-white/25 hover:text-white/70') : (lydPaa ? 'text-[#7a7a80] hover:text-[#0f0f0f]' : 'text-[#c7c7cc] hover:text-[#0f0f0f]')} ${musSynlig ? 'opacity-100' : 'opacity-0'}`}
+        data-testid="bu-lyd-knapp"
+      >
+        {lydPaa ? (
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 5 6 9H3v6h3l5 4V5z" />
+            <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 5 6 9H3v6h3l5 4V5z" />
+            <path d="m16 9 5 5M21 9l-5 5" />
+          </svg>
+        )}
+      </button>
+
       {/* ── Fullskjerm (kun synlig ved musbevegelse — usynlig på scenen) ── */}
       <button
         onClick={(e) => { e.stopPropagation(); fullskjerm(); }}
@@ -1733,6 +1863,23 @@ export default function BergenUrbanDeck() {
           }}
         />
       </div>
+
+      {/* ── Preload-indikator — hårtynn strek på den sorte startskjermen som
+          fyller seg mens bilder og fonter lastes, og toner stille bort ── */}
+      {steg === -1 && (
+        <div
+          className="pointer-events-none absolute bottom-[14vh] left-1/2 z-40 -translate-x-1/2 transition-opacity duration-[900ms] ease-out"
+          style={{ opacity: lastAndel >= 1 ? 0 : 1 }}
+          data-testid="bu-preload"
+        >
+          <div className="h-px w-[148px] overflow-hidden rounded-full bg-white/[0.07]">
+            <div
+              className="h-full origin-left rounded-full bg-white/[0.32] transition-transform duration-500 ease-out"
+              style={{ transform: `scaleX(${lastAndel})` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Kinematografi */}
       <style jsx global>{`
