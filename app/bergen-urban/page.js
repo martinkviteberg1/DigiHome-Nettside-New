@@ -257,6 +257,10 @@ const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 //       21 = book et møte (QR, bookend)
 const TOTALT = 22;
 
+// Midlertidig skjulte steg — hoppes over i navigasjon og TOC.
+// Slå på igjen ved å fjerne stegene fra settet: 15/16 = Kostnaden · 17 = Påstanden.
+const SKJULTE_STEG = new Set([15, 16, 17]);
+
 // Innholdsfortegnelse — supersubtil meny nede i venstre hjørne for å hoppe
 // direkte til en scene. Auto-beats (8) hoppes over; agent-scenen (10) spiller
 // selv videre til reveal.
@@ -454,13 +458,21 @@ export default function BergenUrbanDeck() {
     const naa = Date.now();
     if (naa - sisteNav.current < 320) return;
     sisteNav.current = naa;
-    setSteg((s) => Math.min(TOTALT - 1, s + 1));
+    setSteg((s) => {
+      let n = Math.min(TOTALT - 1, s + 1);
+      while (SKJULTE_STEG.has(n) && n < TOTALT - 1) n += 1;
+      return SKJULTE_STEG.has(n) ? s : n;
+    });
   }, []);
   const forrige = useCallback(() => {
     const naa = Date.now();
     if (naa - sisteNav.current < 320) return;
     sisteNav.current = naa;
-    setSteg((s) => (s === 11 || s === 12 ? 9 : Math.max(0, s - 1)));
+    setSteg((s) => {
+      let n = s === 11 || s === 12 ? 9 : Math.max(0, s - 1);
+      while (SKJULTE_STEG.has(n) && n > 0) n -= 1;
+      return n;
+    });
   }, []);
 
   const fullskjerm = useCallback(() => {
@@ -583,7 +595,7 @@ export default function BergenUrbanDeck() {
       // Kort pust når en fil er ferdig og agenten åpner den neste
       const nyFil = MODUL_GRENSER.includes(i);
       if (nyFil) lyd.modul();
-      setTimeout(tikk, nyFil ? 640 : 52 + Math.random() * 42);
+      setTimeout(tikk, nyFil ? 440 : 34 + Math.random() * 28);
     };
     const start = setTimeout(tikk, 300);
     return () => { stoppet = true; clearTimeout(start); };
@@ -711,7 +723,9 @@ export default function BergenUrbanDeck() {
           {/* Kamera-glid: påstand 1 optisk sentrert alene — komposisjonen
               glir mykt opp idet påstand 2 toner inn */}
           <div className={`flex w-full flex-col items-center transition-transform duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${bygg >= 1 ? 'translate-y-0' : 'translate-y-[12vh]'}`}>
-            {/* Påstand 1 — glir ut av fokus når påstand 2 kommer (rack focus) */}
+            {/* Påstand 1 — glir ut av fokus når påstand 2 kommer (rack focus).
+                Rendres ikke når steget er midlertidig skjult. */}
+            {!SKJULTE_STEG.has(17) && (
             <div
               className={`max-w-[980px] text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${bygg >= 1 ? 'scale-[0.96] opacity-20 blur-[4px]' : 'scale-100 opacity-100 blur-0'}`}
             >
@@ -720,13 +734,16 @@ export default function BergenUrbanDeck() {
                 DigiHome er blant verdens mest avanserte <span className="whitespace-nowrap">vibe-kodede</span> applikasjoner.
               </h2>
             </div>
+            )}
 
             {/* Påstand 2 — blyant-håndskrift, blur-dissolve inn */}
             <div
-              className={`mt-14 max-w-[900px] text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] md:mt-[4.5rem] ${bygg >= 1 ? 'translate-y-0 opacity-100 blur-0' : 'pointer-events-none translate-y-8 opacity-0 blur-[12px]'}`}
+              className={`${SKJULTE_STEG.has(17) ? '' : 'mt-14 md:mt-[4.5rem] '}max-w-[900px] text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${bygg >= 1 ? 'translate-y-0 opacity-100 blur-0' : 'pointer-events-none translate-y-8 opacity-0 blur-[12px]'}`}
               data-testid="bu-paastand-2"
             >
+              {!SKJULTE_STEG.has(17) && (
               <p className="text-[12px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">02</p>
+              )}
               <p className={`${caveat.className} mt-6 -rotate-[1.3deg] text-[clamp(34px,4.6vw,68px)] font-semibold leading-[1.12] text-[#2d2d2f]`}>
                 «En 6-åring kunne ha <span className="whitespace-nowrap">vibe-kodet</span> DigiHome.»
               </p>
@@ -1723,9 +1740,9 @@ export default function BergenUrbanDeck() {
         >
           <p className="px-4 pb-1.5 pt-1 text-[9.5px] font-semibold uppercase tracking-[0.22em] text-white/25">Innhold</p>
           <div className="max-h-[min(60vh,480px)] overflow-y-auto px-1.5 pb-0.5">
-            {TOC.map((s, i) => {
+            {TOC.filter((s) => !SKJULTE_STEG.has(s.steg)).map((s, i, liste) => {
               // Aktiv = siste TOC-oppføring vi har passert (auto-beats teller mot forrige)
-              const aktiv = s.steg <= steg && (i === TOC.length - 1 || TOC[i + 1].steg > steg);
+              const aktiv = s.steg <= steg && (i === liste.length - 1 || liste[i + 1].steg > steg);
               return (
                 <button
                   key={s.steg}

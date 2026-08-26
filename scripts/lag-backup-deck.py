@@ -46,13 +46,11 @@ SLIDES = [
     ("14-produktveggen",    [("toc", 12), ("wait", 9000),  ("shoot",)]),
     # Integrasjonene: «alle»-fasen (alt lyser) inntreffer 13.1–19.1s
     ("15-integrasjonene",   [("toc", 13), ("wait", 15500), ("shoot",)]),
-    ("16-kostnad-tittel",   [("toc", 14), ("wait", 5000),  ("shoot",)]),
-    ("17-kostnad-tall",     [("key", "ArrowRight"), ("wait", 6000), ("shoot",)]),
-    ("18-paastanden",       [("toc", 15), ("wait", 6000),  ("shoot",)]),
-    ("19-seksaaringen",     [("toc", 16), ("wait", 6000),  ("shoot",)]),
-    ("20-ai-verktoy",       [("toc", 17), ("wait", 5500),  ("shoot",)]),
+    # (Kostnaden og Påstanden er midlertidig skjult i decket)
+    ("19-seksaaringen",     [("toc", 14), ("wait", 6000),  ("shoot",)]),
+    ("20-ai-verktoy",       [("toc", 15), ("wait", 5500),  ("shoot",)]),
     ("21-ai-agenter",       [("key", "ArrowRight"), ("wait", 6000), ("shoot",)]),
-    ("22-book-mote",        [("toc", 19), ("wait", 7000),  ("shoot",)]),
+    ("22-book-mote",        [("toc", 17), ("wait", 7000),  ("shoot",)]),
 ]
 
 SKJUL_JS = """
