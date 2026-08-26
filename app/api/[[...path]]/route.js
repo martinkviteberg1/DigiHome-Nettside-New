@@ -420,6 +420,10 @@ function leieforholdTarget() {
   };
 }
 
+// Minnecache for plattformens kontrakteksport (~4s å hente, endres sjelden).
+// Brukes kun som oppslagshjelp for kontrakt-PDF — 5 min TTL er rikelig.
+let _leieEksportCache = { data: null, tid: 0 };
+
 // Kostnadskilde for budsjettforslag/-veiviser: ÉN KILDE — finance_costs
 // (Økonomi → Kostnader). Gamle enhetsokonomi-felles-poster migreres inn
 // idempotent før lesing, og pausede poster teller ikke.
@@ -4014,6 +4018,26 @@ async function handleRoute(request, { params }) {
         { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
       );
       try {
+        // ── 1) SERVERCACHE FØRST: signerte kontrakter er immutable — én gang
+        // hentet serveres de på millisekunder i stedet for å vente på
+        // plattformen (eksport ~4s + PDF 1–6s per åpning). 7 dagers TTL,
+        // og utløpt cache beholdes som nødfallback ved plattformtrøbbel. ──
+        const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+        const pdfCache = db.collection('kontrakt_pdf_cache');
+        const tilBuffer = (b) => (Buffer.isBuffer(b) ? b : Buffer.from(b?.buffer || b));
+        const cachet = await pdfCache.findOne({ _id: idPdf }).catch(() => null);
+        const serverPdf = (buf, contentType) => new NextResponse(buf, {
+          status: 200,
+          headers: {
+            'Content-Type': contentType || 'application/pdf',
+            'Content-Disposition': `inline; filename="digihome-kontrakt-${idPdf.slice(0, 8)}.pdf"`,
+            'Cache-Control': 'private, max-age=3600',
+          },
+        });
+        if (cachet?.bytes && Date.now() - new Date(cachet.hentet || 0).getTime() < CACHE_TTL_MS) {
+          return serverPdf(tilBuffer(cachet.bytes), cachet.contentType);
+        }
+
         // Komposit-id (avtaleId:enhetId) er plattformens kanoniske nøkkel for
         // PDF. Rader fra units/export har ofte bare REN avtale-uuid — og én
         // avtale kan dekke flere enheter/adresser (samme eier). Da slår vi opp
@@ -4021,14 +4045,14 @@ async function handleRoute(request, { params }) {
         // flertydighet — ellers risikerer vi å vise feil eiendom.
         const adresseHint = (() => { try { return (new URL(request.url).searchParams.get('adresse') || '').slice(0, 100); } catch (e) { return ''; } })();
         const naAdr = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
-        let eksportKontrakter = null;
         const hentEksport = async () => {
-          if (eksportKontrakter) return eksportKontrakter;
+          if (_leieEksportCache.data && Date.now() - _leieEksportCache.tid < 5 * 60 * 1000) return _leieEksportCache.data;
           const rEx = await fetch(`${mTarget.url}/api/contracts/export`, { headers: { 'X-API-Key': mTarget.key }, signal: AbortSignal.timeout(15000) });
-          if (!rEx.ok) { eksportKontrakter = []; return eksportKontrakter; }
+          if (!rEx.ok) return _leieEksportCache.data || [];
           const jEx = await rEx.json();
-          eksportKontrakter = Array.isArray(jEx) ? jEx : (jEx.contracts || jEx.data || []);
-          return eksportKontrakter;
+          const liste = Array.isArray(jEx) ? jEx : (jEx.contracts || jEx.data || []);
+          _leieEksportCache = { data: liste, tid: Date.now() };
+          return liste;
         };
         const finnKontrakt = async () => {
           const treff = (await hentEksport()).filter((c) => {
@@ -4044,23 +4068,18 @@ async function handleRoute(request, { params }) {
           return null;
         };
 
+        // ── 2) DIREKTE FØRST: plattformen svarer som regel på rå id på under
+        // sekundet. Det trege eksport-oppslaget (~4s) gjøres KUN hvis de
+        // direkte forsøkene bommer — ikke i forkant av hver åpning. ──
+        const provPdf = (kand) => fetch(`${mTarget.url}/api/contracts/${encodeURIComponent(kand)}/pdf`, {
+          headers: { 'X-API-Key': mTarget.key }, signal: AbortSignal.timeout(20000),
+        });
         const kandidater = [idPdf];
         if (idPdf.includes(':')) kandidater.push(idPdf.split(':')[0]);
         let kontraktEx = null;
-        if (!idPdf.includes(':')) {
-          // Ren avtale-uuid → finn komposit-id FØR PDF-forsøket, slik at
-          // plattformens PDF-endepunkt (som krever komposit) kan treffe.
-          try {
-            kontraktEx = await finnKontrakt();
-            const cid = kontraktEx ? String(kontraktEx.contract_id || '') : '';
-            if (cid && cid.includes(':')) kandidater.unshift(cid);
-          } catch (e) { /* prøver videre med rå id */ }
-        }
         let rPdf = null; let sisteDetalj = '';
         for (const kand of kandidater) {
-          rPdf = await fetch(`${mTarget.url}/api/contracts/${encodeURIComponent(kand)}/pdf`, {
-            headers: { 'X-API-Key': mTarget.key }, signal: AbortSignal.timeout(20000),
-          });
+          rPdf = await provPdf(kand);
           if (rPdf.ok) break;
           try { sisteDetalj = String((await rPdf.clone().json())?.detail || ''); } catch (e) { sisteDetalj = ''; }
           // «ikke tilgjengelig» betyr at kontrakten BLE funnet men mangler
@@ -4068,7 +4087,20 @@ async function handleRoute(request, { params }) {
           // (som bare ville gitt «Kontrakt ikke funnet» og skjult detaljen).
           if (/ikke tilgjengelig/i.test(sisteDetalj)) break;
         }
+        if ((!rPdf || !rPdf.ok) && !idPdf.includes(':') && !/ikke tilgjengelig/i.test(sisteDetalj)) {
+          // Ren avtale-uuid som bommet direkte → slå opp komposit-id i eksporten
+          try {
+            kontraktEx = await finnKontrakt();
+            const cid = kontraktEx ? String(kontraktEx.contract_id || '') : '';
+            if (cid && cid.includes(':') && cid !== idPdf) {
+              rPdf = await provPdf(cid);
+              if (!rPdf.ok) { try { sisteDetalj = String((await rPdf.clone().json())?.detail || ''); } catch (e) { /* behold forrige */ } }
+            }
+          } catch (e) { /* faller videre til sammendrag/venteside */ }
+        }
         if (!rPdf || !rPdf.ok) {
+          // Utløpt cache er bedre enn venteside når plattformen ikke leverer
+          if (cachet?.bytes) return serverPdf(tilBuffer(cachet.bytes), cachet.contentType);
           // FALLBACK: plattformen mangler lagret PDF-fil (typisk forvaltnings-
           // avtaler uten signed_agreement_url). I stedet for en venteside
           // genererer vi et profesjonelt AVTALESAMMENDRAG fra plattformens
@@ -4101,14 +4133,12 @@ async function handleRoute(request, { params }) {
           );
         }
         const bufPdf = Buffer.from(await rPdf.arrayBuffer());
-        return new NextResponse(bufPdf, {
-          status: 200,
-          headers: {
-            'Content-Type': rPdf.headers.get('content-type') || 'application/pdf',
-            'Content-Disposition': `inline; filename="digihome-kontrakt-${idPdf.slice(0, 8)}.pdf"`,
-            'Cache-Control': 'private, max-age=300',
-          },
-        });
+        const ctPdf = rPdf.headers.get('content-type') || 'application/pdf';
+        // Legg i servercache (best effort, Mongo-dokumentgrense 16MB)
+        if (bufPdf.length > 0 && bufPdf.length < 14 * 1024 * 1024) {
+          pdfCache.updateOne({ _id: idPdf }, { $set: { bytes: bufPdf, contentType: ctPdf, hentet: new Date() } }, { upsert: true }).catch(() => {});
+        }
+        return serverPdf(bufPdf, ctPdf);
       } catch (e) {
         return ventSide('Fikk ikke kontakt med plattformen', 'Prøv å lukke og åpne PDF-en igjen om et øyeblikk.');
       }

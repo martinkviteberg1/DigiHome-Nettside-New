@@ -304,6 +304,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const [lagrer, setLagrer] = useState(false);
   const [valgtRad, setValgtRad] = useState(null); // enhets-skuff (side drawer)
   const [pdfVisning, setPdfVisning] = useState(null); // {id, tittel} → PDF-modal
+  const [pdfLaster, setPdfLaster] = useState(false);  // lasteindikator mens PDF hentes fra plattformen
+  useEffect(() => { setPdfLaster(!!pdfVisning); }, [pdfVisning]);
 
   // Tabellen skal fylle skjermen helt ned (ingen blank plass nederst):
   // vi måler hvor tabellboksen starter og gir den nøyaktig resthøyde.
@@ -1329,11 +1331,20 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
               </a>
               <button onClick={() => setPdfVisning(null)} className="flex h-7 w-7 items-center justify-center rounded-[7px] text-[#b3ada3] transition-colors hover:bg-[#f7f6f3] hover:text-[#57534e]"><X className="h-4 w-4" /></button>
             </div>
-            <iframe
-              title={pdfVisning.tittel}
-              src={`/api/admin/leieforhold/kontrakt-pdf?key=${encodeURIComponent(apiKey)}&id=${encodeURIComponent(pdfVisning.id)}&adresse=${encodeURIComponent(pdfVisning.adresse || '')}`}
-              className="h-full w-full flex-1 border-0 bg-[#faf9f7]"
-            />
+            <div className="relative h-full w-full flex-1">
+              {pdfLaster && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#faf9f7]" data-testid="leieforhold-pdf-laster">
+                  <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#e7e5e0] border-t-[#8b5cf6]" />
+                  <p className="text-[12.5px] font-medium text-[#a8a29a]">Henter signert kontrakt …</p>
+                </div>
+              )}
+              <iframe
+                title={pdfVisning.tittel}
+                src={`/api/admin/leieforhold/kontrakt-pdf?key=${encodeURIComponent(apiKey)}&id=${encodeURIComponent(pdfVisning.id)}&adresse=${encodeURIComponent(pdfVisning.adresse || '')}`}
+                onLoad={() => setPdfLaster(false)}
+                className="h-full w-full border-0 bg-[#faf9f7]"
+              />
+            </div>
           </div>
         </div>
       )}
