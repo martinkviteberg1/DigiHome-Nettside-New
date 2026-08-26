@@ -50,8 +50,8 @@ SLIDES = [
     ("17-kostnad-tall",     [("key", "ArrowRight"), ("wait", 6000), ("shoot",)]),
     ("18-paastanden",       [("toc", 15), ("wait", 6000),  ("shoot",)]),
     ("19-seksaaringen",     [("toc", 16), ("wait", 6000),  ("shoot",)]),
-    ("20-ai-agenter",       [("toc", 17), ("wait", 5500),  ("shoot",)]),
-    ("21-ai-verktoy",       [("key", "ArrowRight"), ("wait", 6000), ("shoot",)]),
+    ("20-ai-verktoy",       [("toc", 17), ("wait", 5500),  ("shoot",)]),
+    ("21-ai-agenter",       [("key", "ArrowRight"), ("wait", 6000), ("shoot",)]),
     ("22-book-mote",        [("toc", 19), ("wait", 7000),  ("shoot",)]),
 ]
 

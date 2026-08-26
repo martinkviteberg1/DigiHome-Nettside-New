@@ -15,8 +15,8 @@
    11-12) AGENTEN (svart) → SVARET (lys): agenten bygger → portalen
    13) OMFANGET (lys): produktveggen · 14) INTEGRASJONENE ·
    15-16) SANNHETEN (hva det kostet) · 17-18) HOOK ·
-   19) AI-KAPITTEL 2 (svart): «Agenter» ·
-   20) AI-KAPITTEL 3 (svart): «Verktøy» + payoff
+   19) AI-KAPITTEL 2 (svart): «Verktøy» ·
+   20) AI-KAPITTEL 3 (svart): «Agenter» + payoff
    Navigasjon: → / mellomrom / PageDown (klikker) = neste beat,
    ← / PageUp = forrige, F = fullskjerm, R = start forfra. */
 
@@ -278,8 +278,8 @@ const TOC = [
   { steg: 15, tittel: 'Hva det kostet' },
   { steg: 17, tittel: 'Påstanden' },
   { steg: 18, tittel: '«6-åringen»' },
-  { steg: 19, tittel: 'AI-måte 2 · Agenter' },
-  { steg: 20, tittel: 'AI-måte 3 · Verktøy' },
+  { steg: 19, tittel: 'AI-måte 2 · Verktøy' },
+  { steg: 20, tittel: 'AI-måte 3 · Agenter' },
   { steg: 21, tittel: 'Book et møte' },
 ];
 
@@ -1336,12 +1336,12 @@ export default function BergenUrbanDeck() {
               <div className="mt-16 grid grid-cols-3 gap-x-[clamp(28px,4vw,64px)] md:mt-20">
                 {[
                   { navn: 'Utvikling', tekst: 'Autonome AI-agenter skrev, designet og kvalitetssikret hele plattformen.' },
-                  { navn: 'Agenter', tekst: 'Selvstendige agenter overvåker, fanger opp og følger opp. Døgnet rundt.' },
                   { navn: 'Verktøy', tekst: 'Innebygd intelligens i hver modul — bilder, annonser og dialog.' },
+                  { navn: 'Agenter', tekst: 'Selvstendige agenter overvåker, fanger opp og følger opp. Døgnet rundt.' },
                 ].map((r, i) => {
                   // Kapittel-tilstand: 01 Utvikling avsløres på steg 7 og
-                  // kvitteres ved gjenbesøkene · 02 Agenter avsløres på steg 19
-                  // og kvitteres på steg 20 · 03 Verktøy avsløres på steg 20.
+                  // kvitteres ved gjenbesøkene · 02 Verktøy avsløres på steg 19
+                  // og kvitteres på steg 20 · 03 Agenter avsløres på steg 20.
                   const tilstand = i === 0
                     ? (steg >= 19 ? 'kvittert' : 'avslort')
                     : i === 1
@@ -1406,9 +1406,9 @@ export default function BergenUrbanDeck() {
               >
                 <span className="font-semibold text-white/[0.9]">Bygget av AI</span>
                 <span className="mx-3.5 text-white/[0.18]">·</span>
-                <span className="font-semibold text-white/[0.9]">Overvåket av AI</span>
-                <span className="mx-3.5 text-white/[0.18]">·</span>
                 <span className="font-semibold text-white/[0.9]">Drevet av AI</span>
+                <span className="mx-3.5 text-white/[0.18]">·</span>
+                <span className="font-semibold text-white/[0.9]">Overvåket av AI</span>
               </p>
             </div>
           </div>
