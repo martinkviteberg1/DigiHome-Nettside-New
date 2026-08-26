@@ -258,8 +258,9 @@ const PROSESSBAAND = `${PROSESSER.join('   →   ')}   →   `;
 const TOTALT = 22;
 
 // Midlertidig skjulte steg — hoppes over i navigasjon og TOC.
-// Slå på igjen ved å fjerne stegene fra settet: 15/16 = Kostnaden · 17 = Påstanden.
-const SKJULTE_STEG = new Set([15, 16, 17]);
+// Slå på igjen ved å fjerne stegene fra settet:
+// 15/16 = Kostnaden · 17 = Påstanden · 18 = «6-åringen».
+const SKJULTE_STEG = new Set([15, 16, 17, 18]);
 
 // Innholdsfortegnelse — supersubtil meny nede i venstre hjørne for å hoppe
 // direkte til en scene. Auto-beats (8) hoppes over; agent-scenen (10) spiller
