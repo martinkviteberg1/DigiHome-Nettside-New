@@ -1,10 +1,10 @@
-import SystemFilm from '@/components/deck/SystemFilm';
+import ProduktFilm from '@/components/deck/ProduktFilm';
 
 export const metadata = {
-  title: 'DigiHome — Systemet',
+  title: 'DigiHome — Filmen',
   robots: { index: false, follow: false },
 };
 
 export default function FilmPage() {
-  return <SystemFilm />;
+  return <ProduktFilm />;
 }
