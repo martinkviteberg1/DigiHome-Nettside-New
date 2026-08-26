@@ -1239,26 +1239,51 @@ export default function BergenUrbanDeck() {
                       ? (steg >= 20 ? 'kvittert' : steg >= 19 ? 'avslort' : 'ghost')
                       : (steg >= 20 ? 'avslort' : 'ghost');
                   const avslort = tilstand !== 'ghost';
+                  // Kapitlet som avsløres på akkurat dette steget venter til
+                  // tittelen er ferdig skrevet; kjente kapitler kommer tidligere
+                  const nettopp = (i === 0 && steg === 7) || (i === 1 && steg === 19) || (i === 2 && steg === 20);
+                  // Nytt kapittel venter til tittel + struktur står (2050ms);
+                  // kjente kapitler lander sammen med strukturen (1700ms)
+                  const base = nettopp ? 2050 : 1700;
+                  const t = (ms) => ({ transitionDelay: rollerAktiv ? `${ms}ms` : '0ms' });
                   return (
                     <div
                       key={r.navn}
-                      className="transition-[opacity,transform,filter] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-                      style={{
-                        opacity: tilstand === 'avslort' ? 1 : tilstand === 'kvittert' ? 0.45 : rollerAktiv ? 0.07 : 0,
-                        transform: avslort ? 'translateY(0)' : 'translateY(14px)',
-                        filter: avslort ? 'blur(0)' : 'blur(6px)',
-                        transitionDelay: avslort ? '150ms' : '0ms',
-                      }}
+                      className="transition-opacity duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                      style={{ opacity: tilstand === 'kvittert' ? 0.45 : 1 }}
                       data-testid={`bu-rolle-${i + 1}`}
                     >
-                      <div className="border-t pt-7 transition-colors duration-700" style={{ borderColor: avslort ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.1)' }}>
-                        <p className="text-[13px] font-semibold tabular-nums tracking-[0.02em] text-[#B57BFF]">
-                          0{i + 1}
-                          {tilstand === 'kvittert' && <Check className="mb-[2px] ml-2 inline h-[13px] w-[13px]" strokeWidth={3} />}
-                        </p>
-                        <h3 className="mt-4 font-heading text-[clamp(22px,2.2vw,32px)] font-bold tracking-[-0.025em] text-white">{r.navn}</h3>
-                        <p className="mt-3 max-w-[30ch] text-[clamp(13.5px,1.15vw,16.5px)] leading-relaxed text-white/[0.5]">{r.tekst}</p>
-                      </div>
+                      {/* Hairline — tegnes etter tittelen, alle tre med lett stagger:
+                          strukturen «tre kapitler» avsløres før innholdet */}
+                      <div
+                        className="h-px w-full origin-left transition-[transform,background-color] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                        style={{ transform: `scaleX(${rollerAktiv ? 1 : 0})`, backgroundColor: avslort ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.1)', ...t(1600 + i * 170) }}
+                      />
+                      {/* Nummeret — antydes for alle tre kapitler */}
+                      <p
+                        className="mt-7 text-[13px] font-semibold tabular-nums tracking-[0.02em] text-[#B57BFF] transition-[opacity,transform] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                        style={{ opacity: rollerAktiv ? (avslort ? 1 : 0.3) : 0, transform: rollerAktiv ? 'translateY(0)' : 'translateY(10px)', ...t(1780 + i * 170) }}
+                      >
+                        0{i + 1}
+                        {tilstand === 'kvittert' && <Check className="mb-[2px] ml-2 inline h-[13px] w-[13px]" strokeWidth={3} />}
+                      </p>
+                      {/* Navnet — blur-dissolve når kapitlet får ordet. Krever
+                          rollerAktiv slik at transition + delay faktisk kjører
+                          ved sceneinngang (ellers står kjente kapitler ferdig
+                          synlige mens tittelen fortsatt skrives). */}
+                      <h3
+                        className="mt-4 font-heading text-[clamp(22px,2.2vw,32px)] font-bold tracking-[-0.025em] text-white transition-[opacity,transform,filter] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                        style={{ opacity: rollerAktiv && avslort ? 1 : 0, transform: rollerAktiv && avslort ? 'translateY(0)' : 'translateY(12px)', filter: rollerAktiv && avslort ? 'blur(0)' : 'blur(8px)', ...t(base) }}
+                      >
+                        {r.navn}
+                      </h3>
+                      {/* Teksten — følger navnet */}
+                      <p
+                        className="mt-3 max-w-[30ch] text-[clamp(13.5px,1.15vw,16.5px)] leading-relaxed text-white/[0.5] transition-[opacity,transform] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                        style={{ opacity: rollerAktiv && avslort ? 1 : 0, transform: rollerAktiv && avslort ? 'translateY(0)' : 'translateY(10px)', ...t(base + 170) }}
+                      >
+                        {r.tekst}
+                      </p>
                     </div>
                   );
                 })}
