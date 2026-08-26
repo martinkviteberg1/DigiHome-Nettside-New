@@ -238,7 +238,7 @@ function Teller({ til, aktiv, varighet = 1400, prefiks = '', suffiks = '' }) {
     raf = requestAnimationFrame(tikk);
     return () => cancelAnimationFrame(raf);
   }, [aktiv, til, varighet]);
-  return <>{prefiks}{n.toLocaleString('nb-NO').replace(/\s/g, '\u00A0')}{suffiks}</>;
+  return <>{prefiks}{n.toLocaleString('nb-NO').replace(/\s/g, '\u202F')}{suffiks}</>;
 }
 
 // Prosessloopen — kjernen i ideen: de samme stegene, om igjen og om igjen
@@ -275,7 +275,7 @@ const TOC = [
   { steg: 12, tittel: 'Portalen' },
   { steg: 13, tittel: 'Produktveggen' },
   { steg: 14, tittel: 'Integrasjonene' },
-  { steg: 15, tittel: 'Hva det kostet' },
+  { steg: 15, tittel: 'Kostnaden' },
   { steg: 17, tittel: 'Påstanden' },
   { steg: 18, tittel: '«6-åringen»' },
   { steg: 19, tittel: 'AI-måte 2 · Verktøy' },
@@ -755,30 +755,29 @@ export default function BergenUrbanDeck() {
 
             {/* Kicker + tittel — glir bak i fokus når sammenligningen lander */}
             <div className={`text-center transition-[opacity,transform,filter] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${sannhetBeat >= 1 ? 'scale-[0.68] opacity-40 blur-[1px]' : 'scale-100 opacity-100 blur-0'}`}>
-              <p className="text-[12px] font-semibold tabular-nums tracking-[0.25em] text-[#c7c7cc]">03</p>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.25em] text-[#c7c7cc]">Kostnaden</p>
               <h2 className="mt-7 font-heading text-[clamp(32px,4.4vw,64px)] font-bold leading-[1.1] tracking-[-0.03em]" data-testid="bu-sannhet-tittel">
-                <span className={`bu-ord-base ${sannhetAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '250ms' }}>Hva</span>{' '}
-                <span className={`bu-ord-base ${sannhetAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '400ms' }}>det</span>{' '}
-                <span className={`bu-ord-base ${sannhetAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '550ms' }}>faktisk</span>{' '}
-                <span className={`bu-ord-base ${sannhetAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '700ms' }}>kostet.</span>
+                <span className={`bu-ord-base ${sannhetAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '250ms' }}>Bygget</span>{' '}
+                <span className={`bu-ord-base ${sannhetAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '400ms' }}>for</span>{' '}
+                <span className={`bu-ord-base ${sannhetAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '550ms' }}>en</span>{' '}
+                <span className={`bu-ord-base ${sannhetAktiv ? 'bu-ord' : ''}`} style={{ animationDelay: '700ms' }}>brøkdel.</span>
               </h2>
             </div>
 
-            {/* Sammenligningen — ett tall per side. Poenget er ikke presisjon,
-                men proporsjon: tradisjonelt hadde dette vaert urealistisk */}
+            {/* Sammenligningen — samme enhet på begge sider gjør proporsjonen
+                umiddelbar: poenget er ikke presisjon, men størrelsesorden */}
             <div className={`mt-10 grid w-full grid-cols-[1fr_1px_1fr] items-stretch gap-x-[clamp(28px,4.5vw,84px)] transition-[opacity,filter] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${sannhetBeat >= 1 ? 'opacity-100 blur-0' : 'pointer-events-none opacity-0 blur-[6px]'}`} data-testid="bu-sannhet-kolonner">
 
-              {/* Tradisjonelt — tungt, graatt, stort */}
+              {/* Tradisjonelt — tungt, grått */}
               <div className="flex flex-col items-end justify-center text-right">
                 <p className={`text-[clamp(11px,1vw,13.5px)] font-bold uppercase tracking-[0.2em] text-[#86868b] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '150ms' }}>
-                  Tradisjonell utvikling
+                  Tradisjonelt
                 </p>
-                <div className={`mt-7 opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '450ms' }}>
-                  <p className="font-heading text-[clamp(52px,6.2vw,104px)] font-bold leading-none tracking-[-0.04em] tabular-nums text-[#6e6e73]">18–45</p>
-                  <p className="mt-2 text-[clamp(13px,1.2vw,17px)] font-medium text-[#aeaeb2]">millioner kroner</p>
-                </div>
+                <p className={`mt-7 font-heading text-[clamp(52px,6.2vw,104px)] font-bold leading-none tracking-[-0.04em] tabular-nums text-[#6e6e73] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '450ms' }}>
+                  18–45<span className="ml-[0.18em] text-[0.36em] font-semibold tracking-[-0.02em] text-[#aeaeb2]">mill.</span>
+                </p>
                 <p className={`mt-6 text-[clamp(12px,1.1vw,15px)] font-medium text-[#aeaeb2] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '750ms' }}>
-                  6–9 personer&ensp;·&ensp;2–3 år
+                  6–9 utviklere&ensp;·&ensp;2–3 år
                 </p>
               </div>
 
@@ -793,19 +792,18 @@ export default function BergenUrbanDeck() {
                 <p className={`text-[clamp(11px,1vw,13.5px)] font-bold uppercase tracking-[0.2em] text-[#7c3aed] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '1050ms' }}>
                   DigiHome
                 </p>
-                <div className={`mt-7 opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '1350ms' }}>
-                  <p className="font-heading text-[clamp(52px,6.2vw,104px)] font-bold leading-none tracking-[-0.04em] tabular-nums text-[#0f0f0f]"><Teller til={500000} aktiv={sannhetBeat >= 1} varighet={2100} prefiks="~" /></p>
-                  <p className="mt-2 text-[clamp(13px,1.2vw,17px)] font-medium text-[#86868b]">kroner</p>
-                </div>
+                <p className={`mt-7 font-heading text-[clamp(52px,6.2vw,104px)] font-bold leading-none tracking-[-0.04em] tabular-nums text-[#0f0f0f] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '1350ms' }}>
+                  0,5<span className="ml-[0.18em] text-[0.36em] font-semibold tracking-[-0.02em] text-[#86868b]">mill.</span>
+                </p>
                 <p className={`mt-6 text-[clamp(12px,1.1vw,15px)] font-medium text-[#86868b] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '1650ms' }}>
-                  Én person <span className="font-semibold text-[#7c3aed]">+ AI</span>&ensp;·&ensp;~9 måneder
+                  Én person <span className="font-semibold text-[#7c3aed]">+ AI</span>&ensp;·&ensp;9 måneder
                 </p>
               </div>
             </div>
 
             {/* Konklusjonen — det egentlige poenget */}
             <p className={`mt-12 text-center text-[clamp(17px,2vw,28px)] leading-snug tracking-[-0.015em] text-[#86868b] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '2500ms' }} data-testid="bu-sannhet-konklusjon">
-              Å bygge DigiHome tradisjonelt hadde i praksis vært <span className="font-semibold text-[#0f0f0f]">urealistisk.</span>
+              Regnestykket går bare opp <span className="font-semibold text-[#0f0f0f]">med AI.</span>
             </p>
 
 
@@ -814,7 +812,7 @@ export default function BergenUrbanDeck() {
 
         <footer className="pb-10 text-center">
           <p className={`text-[11px] tracking-tight text-[#c7c7cc] opacity-0 ${sannhetBeat >= 1 ? 'bu-inn' : ''}`} style={{ animationDelay: '3000ms' }}>
-            Estimat: tilsvarende plattform bygget med tradisjonelt utviklingsteam — in-house eller konsulent
+            Grove estimater — tilsvarende plattform bygget av et tradisjonelt utviklingsteam
           </p>
         </footer>
       </section>
