@@ -13,9 +13,10 @@
    7) AI-KAPITTEL 1 (svart): «Utvikling» avsløres — demoen beviser den
    8-10) PROMPT (svart): bar → prompten skrives → send → auto-overgang
    11-12) AGENTEN (svart) → SVARET (lys): agenten bygger → portalen
-   13-14) AI-KAPITTEL 2+3 (svart): «Verktøy» og «Agenter» + payoff
-   15) OMFANGET (lys): produktveggen · 16) INTEGRASJONENE ·
-   17-18) SANNHETEN (hva det kostet) · 19-20) HOOK
+   13) AI-KAPITTEL 2 (svart): «Agenter»
+   14) OMFANGET (lys): produktveggen · 15) INTEGRASJONENE ·
+   16-17) SANNHETEN (hva det kostet) · 18-19) HOOK ·
+   20) AI-KAPITTEL 3 (svart): «Verktøy» + payoff
    Navigasjon: → / mellomrom / PageDown (klikker) = neste beat,
    ← / PageUp = forrige, F = fullskjerm, R = start forfra. */
 
@@ -172,12 +173,13 @@ const TOC = [
   { steg: 8, tittel: 'Prompten' },
   { steg: 11, tittel: 'Agenten bygger' },
   { steg: 12, tittel: 'Portalen' },
-  { steg: 13, tittel: 'AI-måte 2 og 3' },
-  { steg: 15, tittel: 'Produktveggen' },
-  { steg: 16, tittel: 'Integrasjonene' },
-  { steg: 17, tittel: 'Hva det kostet' },
-  { steg: 19, tittel: 'Påstanden' },
-  { steg: 20, tittel: '«6-åringen»' },
+  { steg: 13, tittel: 'AI-måte 2 · Agenter' },
+  { steg: 14, tittel: 'Produktveggen' },
+  { steg: 15, tittel: 'Integrasjonene' },
+  { steg: 16, tittel: 'Hva det kostet' },
+  { steg: 18, tittel: 'Påstanden' },
+  { steg: 19, tittel: '«6-åringen»' },
+  { steg: 20, tittel: 'AI-måte 3 · Verktøy' },
   { steg: 21, tittel: 'Book et møte' },
 ];
 
@@ -488,7 +490,7 @@ export default function BergenUrbanDeck() {
 
   const skrevet = PROMPT.slice(0, antallTegn);
   const klarTilSend = antallTegn >= PROMPT.length && steg >= 9;
-  const morkAktiv = steg <= 11 || steg === 13 || steg === 14; // reveal (12) og alt fra 15 er lyst
+  const morkAktiv = steg <= 11 || steg === 13 || steg === 20; // reveal (12) og 14–19 er lyst
   const coverAktiv = steg === 0;
   const megAktiv = steg === 1;
   const historieAktiv = steg === 2;
@@ -499,13 +501,13 @@ export default function BergenUrbanDeck() {
   const promptAktiv = steg >= 8 && steg <= 10;
   const kodeAktiv = steg === 11;
   const revealAktiv = steg === 12;
-  const omfangAktiv = steg === 15;
-  const integrasjonAktiv = steg === 16;
-  const hookAktiv = steg === 19 || steg === 20;
-  const bygg = Math.max(0, steg - 19);
-  const sannhetAktiv = steg === 17 || steg === 18;
-  const sannhetBeat = Math.max(0, steg - 17); // 0 = tittel alene · 1 = + sammenligningen
-  const rollerAktiv = steg === 7 || steg === 13 || steg === 14; // kapittel 1 foer prompten, 2+3 etter portalen
+  const omfangAktiv = steg === 14;
+  const integrasjonAktiv = steg === 15;
+  const hookAktiv = steg === 18 || steg === 19;
+  const bygg = Math.max(0, steg - 18);
+  const sannhetAktiv = steg === 16 || steg === 17;
+  const sannhetBeat = Math.max(0, steg - 16); // 0 = tittel alene · 1 = + sammenligningen
+  const rollerAktiv = steg === 7 || steg === 13 || steg === 20; // kap 1 foer prompten · kap 2 etter portalen · kap 3 etter paastanden
   const sluttAktiv = steg === 21;
 
   // Cinematisk crossfade innad i den svarte scenen
@@ -731,7 +733,7 @@ export default function BergenUrbanDeck() {
         {/* DigiHome-logo — diskret oppe til venstre på de mørke slidene
             (ikke på cover, som selv er logoen — og ikke over agent-vinduet) */}
         <header
-          className={`pointer-events-none absolute left-12 top-11 z-30 transition-opacity duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] md:left-16 ${(steg >= 1 && steg <= 10) || steg === 13 || steg === 14 ? 'opacity-100' : 'opacity-0'}`}
+          className={`pointer-events-none absolute left-12 top-11 z-30 transition-opacity duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] md:left-16 ${(steg >= 1 && steg <= 10) || steg === 13 || steg === 20 ? 'opacity-100' : 'opacity-0'}`}
           data-testid="bu-mork-logo"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1145,17 +1147,17 @@ export default function BergenUrbanDeck() {
               <div className="mt-16 grid grid-cols-3 gap-x-[clamp(28px,4vw,64px)] md:mt-20">
                 {[
                   { navn: 'Utvikling', tekst: 'Autonome AI-agenter skrev, designet og kvalitetssikret hele plattformen.' },
-                  { navn: 'Verktøy', tekst: 'Innebygd intelligens i hver modul — bilder, annonser og dialog.' },
                   { navn: 'Agenter', tekst: 'Selvstendige agenter overvåker, fanger opp og følger opp. Døgnet rundt.' },
+                  { navn: 'Verktøy', tekst: 'Innebygd intelligens i hver modul — bilder, annonser og dialog.' },
                 ].map((r, i) => {
-                  // Kapittel-tilstand: 01 avsløres i kapittel 1 (steg 7) og
-                  // kvitteres ved gjenbesøket · 02 avsløres på steg 13 ·
-                  // 03 på steg 14. Uavslørte står som spøkelser i layouten.
+                  // Kapittel-tilstand: 01 Utvikling avsløres på steg 7 og
+                  // kvitteres ved gjenbesøkene · 02 Agenter avsløres på steg 13
+                  // og kvitteres på steg 20 · 03 Verktøy avsløres på steg 20.
                   const tilstand = i === 0
                     ? (steg >= 13 ? 'kvittert' : 'avslort')
                     : i === 1
-                      ? (steg >= 13 ? 'avslort' : 'ghost')
-                      : (steg >= 14 ? 'avslort' : 'ghost');
+                      ? (steg >= 20 ? 'kvittert' : steg >= 13 ? 'avslort' : 'ghost')
+                      : (steg >= 20 ? 'avslort' : 'ghost');
                   const avslort = tilstand !== 'ghost';
                   return (
                     <div
@@ -1184,15 +1186,15 @@ export default function BergenUrbanDeck() {
 
               {/* Payoff — lander stille når alle tre står */}
               <p
-                className={`mt-16 text-center text-[clamp(14px,1.5vw,21px)] leading-snug opacity-0 md:mt-20 ${steg >= 14 ? 'bu-inn' : ''}`}
+                className={`mt-16 text-center text-[clamp(14px,1.5vw,21px)] leading-snug opacity-0 md:mt-20 ${steg >= 20 ? 'bu-inn' : ''}`}
                 style={{ animationDelay: '1300ms' }}
                 data-testid="bu-roller-payoff"
               >
                 <span className="font-semibold text-white/[0.9]">Bygget av AI</span>
                 <span className="mx-3.5 text-white/[0.18]">·</span>
-                <span className="font-semibold text-white/[0.9]">Drevet av AI</span>
-                <span className="mx-3.5 text-white/[0.18]">·</span>
                 <span className="font-semibold text-white/[0.9]">Overvåket av AI</span>
+                <span className="mx-3.5 text-white/[0.18]">·</span>
+                <span className="font-semibold text-white/[0.9]">Drevet av AI</span>
               </p>
             </div>
           </div>
