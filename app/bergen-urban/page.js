@@ -34,77 +34,148 @@ const INTRO = 'Skal bli. Jeg bygger systemet modul for modul.';
 
 // Ekte kodelinjer fra DigiHome-repoet (uten hemmeligheter) — «AI-en bygger
 // systemet» fyller skjermen med disse i akselererende tempo.
-const KODE = [
-  "export async function opprettSigneringsjobb(db, { filId, tittel, signatarer }) {",
-  "  const jobb = { id: uuidv4(), status: 'I_GANG', flyt: 'direkte', opprettet: naa() };",
-  "  const manifest = byggDirectManifest({ tittel, signatarer, exitUrls });",
-  "  const res = await postenKall({ metode: 'POST', url: BASE(), body: pakke, tls: mat.tls });",
-  "  await db.collection(SIGN_JOBB_COLL).insertOne(jobb);",
-  "  return { ok: true, jobbId: jobb.id };",
-  "}",
-  "// Leiekontrakt: genererer PDF med pdf-lib og sender til BankID-signering",
-  "const kontrakt = await byggLeiekontraktPdf({ utleier, leietaker, leie, depositum });",
-  "if (dokument.type === 'docx') pdf = await konverterDocxTilPdf(buffer);",
-  "export async function pollSignering(db) {",
-  "  const aktive = await db.collection(SIGN_JOBB_COLL).countDocuments({ status: 'I_GANG' });",
-  "  if (!aktive) return { ok: true, aktive: 0, hendelser: 0 };",
-  "  const res = await postenKall({ metode: 'GET', url: flow.url, tls: mat.tls });",
-  "  await behandleDirectStatus(db, mat, res.body.toString('utf8'));",
-  "}",
-  "const leiepris = beregnAnbefaltLeie({ soverom, kvm, bydel: 'Bergenhus', standard });",
-  "app.post('/api/leads', rateLimit(20), async (req) => opprettLead(await req.json()));",
-  "// Visning: automatisk kalenderbooking med SMS-påminnelse til interessenter",
-  "const slots = genererVisningsSlots({ fra, til, varighet: 20, perDag: 6 });",
-  "await sendEpost({ til: leietaker.epost, emne: 'Velkommen hjem', html: byggVelkomstEpost(ctx) });",
-  "export function byggSakEpost({ tittel, melding, prioritet, frist, mottaker }) {",
-  "  const badges = [prioritetChip(prioritet), statusChip(status), fristChip(frist)];",
-  "  return moderneRamme({ overskrift: tittel, innhold: renderMarkdown(melding), badges });",
-  "}",
-  "const depositum = Math.min(leie * 3, maksDepositum);",
-  "await db.collection('tenants').updateOne({ id }, { $set: { skjermet: true } });",
-  "// Økonomi: månedlig avstemming av husleie mot kontoutskrift",
-  "const avvik = transaksjoner.filter((t) => !matchMotKontrakt(t, kontrakter));",
-  "export async function reconcileSigneringsjobber(db, { maks = 5 } = {}) {",
-  "  const jobber = await db.collection(SIGN_JOBB_COLL).find(filter).limit(maks).toArray();",
-  "  for (const jobb of jobber) await hentStatusMedToken(db, jobb.sisteToken);",
-  "}",
-  "const annonse = await genererFinnAnnonse({ bolig, bilder, leiepris, visninger });",
-  "if (score > 0.82) await varsleUtleier({ kanal: 'push', lead });",
-  "// Chat: @mention-varsling med trådfølging og e-postfallback",
-  "const nevnt = ekstraherMentions(melding).filter((m) => m.id !== avsender.id);",
-  "await Promise.all(nevnt.map((m) => opprettNotifikasjon(db, m.id, 'MENTION', ctx)));",
-  "export const middleware = (req) => sikkerhetsHeadere(NextResponse.next(), req);",
-  "const brreg = await fetch(`https://data.brreg.no/enhetsregisteret/api/enheter/${orgnr}`);",
-  "await lagreDokument(db, { kategori: 'Styret · Avtaler', fil: signertPades, laast: true });",
-  "// Budsjett: re-utleie ved kontraktslutt med 14 dagers friksjonsledighet",
-  "const aarsleie = maaneder.reduce((sum, m) => sum + m.leie * m.belegg, 0);",
-  "const digest = åpneSaker.sort((a, b) => fristVekt(a) - fristVekt(b)).slice(0, 8);",
-  "export async function autoPurring(db) {",
-  "  const naerFrist = jobber.filter((j) => timerTil(j.frist) < 48 && !j.purret);",
-  "  for (const j of naerFrist) await sendPurring(db, j);",
-  "}",
-  "const worker = new Worker('/api/pdf-worker');",
-  "await instrumentation.startReminderScheduler({ intervall: 60_000 });",
-  "// Datarom: nummerert DD-struktur med innsynslogg per investor",
-  "const mapper = ['01 Selskap', '02 Avtaler', '03 Økonomi', '04 Teknisk', '05 Team'];",
-  "const zip = await pakkDatarom(mapper, { vannmerke: investor.navn });",
-  "if (!(await modulAuthed(request, db, 'dokumenter'))) return uautorisert();",
-  "const kpi = { belegg: 0.98, aapneSaker: 3, signertDenneUken: 7, leads: 42 };",
-  "await oppdaterKanban(db, sak.id, { status: 'PÅGÅR', flyttetAv: bruker.id });",
+// Agenten bygger DigiHome modul for modul — hver modul er en egen fil med
+// et sammenhengende, kuratert kodeutdrag. Editoren åpner filene etter tur,
+// fanene følger, og oppgavelisten til venstre kvitteres i takt.
+const KODE_MODULER = [
+  {
+    oppgave: 'Datamodell — boliger, leietakere, kontrakter',
+    fil: 'schema.js',
+    sti: ['digihome', 'db', 'schema.js'],
+    info: 'db/schema.js · 214 linjer',
+    start: 12,
+    linjer: [
+      "export const Bolig = modell('boliger', {",
+      "  id: uuid(),",
+      "  adresse: tekst().kreves(),",
+      "  bydel: valg(['Bergenhus', 'Årstad', 'Laksevåg', 'Fana']),",
+      "  soverom: heltall().min(1),",
+      "  kvm: tall().positiv(),",
+      "  eier: referanse('eiere'),",
+      "});",
+      "",
+      "export const Leiekontrakt = modell('kontrakter', {",
+      "  bolig: referanse('boliger'),",
+      "  leietaker: referanse('leietakere'),",
+      "  leie: tall(),",
+      "  depositum: tall().maks((k) => k.leie * 3),",
+      "  status: valg(['UTKAST', 'TIL_SIGNERING', 'AKTIV']),",
+      "});",
+    ],
+  },
+  {
+    oppgave: 'Annonsering — FINN og digihome.no',
+    fil: 'annonser.js',
+    sti: ['digihome', 'lib', 'annonser.js'],
+    info: 'lib/annonser.js · 254 linjer',
+    start: 118,
+    linjer: [
+      "export async function publiserAnnonse(db, bolig) {",
+      "  const leiepris = beregnAnbefaltLeie({",
+      "    soverom: bolig.soverom, kvm: bolig.kvm, bydel: bolig.bydel,",
+      "  });",
+      "",
+      "  const tekst = await ai.annonsetekst({ bolig, tone: 'varm, presis' });",
+      "  const bilder = await velgBesteBilder(bolig.bilder, { maks: 12 });",
+      "",
+      "  const annonse = await finn.publiser({ tekst, bilder, leiepris });",
+      "  await db.collection('annonser').insertOne({ ...annonse, status: 'AKTIV' });",
+      "  return { ok: true, url: annonse.url };",
+      "}",
+    ],
+  },
+  {
+    oppgave: 'Visninger — kalender og booking',
+    fil: 'booking.js',
+    sti: ['digihome', 'lib', 'booking.js'],
+    info: 'lib/booking.js · 187 linjer',
+    start: 41,
+    linjer: [
+      "export function genererVisningsSlots({ fra, til }) {",
+      "  return dagerMellom(fra, til).flatMap((dag) =>",
+      "    slotsForDag(dag, { varighet: 20, perDag: 6 }));",
+      "}",
+      "",
+      "export async function bookVisning(db, { slot, interessent }) {",
+      "  await db.collection('visninger').insertOne({ slot, interessent });",
+      "  await kalender.blokker(slot);",
+      "",
+      "  await sendSms(interessent.tlf, påminnelse(slot, { timerFør: 3 }));",
+      "  return { bekreftet: true, slot };",
+      "}",
+    ],
+  },
+  {
+    oppgave: 'BankID-signering med Posten',
+    fil: 'signering.js',
+    sti: ['digihome', 'lib', 'signering.js'],
+    info: 'lib/signering.js · 412 linjer',
+    start: 203,
+    linjer: [
+      "export async function opprettSigneringsjobb(db, { kontrakt, signatarer }) {",
+      "  const pdf = await byggLeiekontraktPdf(kontrakt);",
+      "  const manifest = byggDirectManifest({ pdf, signatarer, exitUrls });",
+      "",
+      "  const res = await postenKall({ metode: 'POST', body: manifest, tls: mat.tls });",
+      "  await db.collection('signeringsjobber').insertOne({ status: 'I_GANG' });",
+      "  return { ok: true, jobbId: res.jobbId };",
+      "}",
+      "",
+      "export async function pollSignering(db) {",
+      "  for (const jobb of await hentAktiveJobber(db)) {",
+      "    await behandleDirectStatus(db, jobb);  // SIGNERT → lås PAdES",
+      "  }",
+      "}",
+    ],
+  },
+  {
+    oppgave: 'Økonomi — husleie og avstemming',
+    fil: 'okonomi.js',
+    sti: ['digihome', 'lib', 'okonomi.js'],
+    info: 'lib/okonomi.js · 187 linjer',
+    start: 77,
+    linjer: [
+      "export async function månedligAvstemming(db, konto) {",
+      "  const transaksjoner = await hentKontoutskrift(konto);",
+      "  const avvik = transaksjoner.filter((t) => !matchMotKontrakt(t));",
+      "",
+      "  for (const t of avvik) {",
+      "    await opprettSak(db, { type: 'AVVIK', beløp: t.beløp });",
+      "    if (timerTil(t.frist) < 48) await sendPurring(db, t);",
+      "  }",
+      "",
+      "  return { avstemt: transaksjoner.length - avvik.length, avvik };",
+      "}",
+    ],
+  },
+  {
+    oppgave: 'Forvalterportal — web og mobil',
+    fil: 'portal.tsx',
+    sti: ['digihome', 'app', 'portal.tsx'],
+    info: 'app/portal.tsx · 598 linjer',
+    start: 24,
+    linjer: [
+      "export default function Portal({ bruker }: { bruker: Bruker }) {",
+      "  const kpi = useKpi();  // belegg, åpne saker, leads",
+      "",
+      "  return (",
+      "    <Skall meny={moduler(bruker.rolle)}>",
+      "      <Dashboard belegg={kpi.belegg} saker={kpi.saker} />",
+      "      <Kalender bookinger={kpi.bookinger} />",
+      "      <Assistent onSpør={ai.svar} />",
+      "    </Skall>",
+      "  );",
+      "}",
+    ],
+  },
 ];
 
-// Agentens verktøykall — dukker opp i samtalen i takt med kodestrømmen,
-// som en ekte AI-agent som planlegger, oppretter filer og tester.
-const AGENT_STEG = [
-  { tekst: 'Datamodell: boliger, leietakere, kontrakter', fil: 'db/schema.js · 214 linjer' },
-  { tekst: 'BankID-signering med Posten', fil: 'lib/signering.js · 412 linjer' },
-  { tekst: 'Automatisk husleie og avstemming', fil: 'lib/okonomi.js · 187 linjer' },
-  { tekst: 'AI-svar og visningsbooking', fil: 'lib/autopilot.js · 336 linjer' },
-  { tekst: 'Annonsering og utleieprosess', fil: 'app/annonser.tsx · 254 linjer' },
-  { tekst: 'Forvalterportal og eierapp', fil: 'app/portal.tsx · 598 linjer' },
-  { tekst: 'Kjører tester', fil: '34/34 grønne' },
-];
-const KODE_FILER = ['signering.js', 'kontrakter.js', 'autopilot.js', 'portal.tsx'];
+// Kumulative modulgrenser — synkroniserer oppgaver, faner og editor
+const MODUL_GRENSER = KODE_MODULER.reduce((acc, m) => {
+  acc.push((acc.length ? acc[acc.length - 1] : 0) + m.linjer.length);
+  return acc;
+}, []);
+const KODE_TOTALT = MODUL_GRENSER[MODUL_GRENSER.length - 1];
 
 // Diskret syntaksfarging — to aksenter, resten dempet
 const KODE_REGEX = /('[^']*'|`[^`]*`|\/\/.*$|\b(?:const|let|await|async|function|return|export|import|if|else|for|of|new|try|catch)\b)/g;
@@ -413,10 +484,10 @@ export default function BergenUrbanDeck() {
     if (steg !== 11) return undefined; // behold linjene under utfading
     let stoppet = false;
     let i = 0;
-    const total = 240;
+    const total = KODE_TOTALT;
     const tikk = () => {
       if (stoppet) return;
-      i += i > 150 ? 3 : (i > 60 ? 2 : 1);
+      i += 1;
       setKodeAntall(Math.min(i, total));
       if (i >= total) {
         // Kinematisk deploy-koreografi:
@@ -428,7 +499,9 @@ export default function BergenUrbanDeck() {
         setTimeout(() => { if (!stoppet) setSteg(12); }, 3900);
         return;
       }
-      setTimeout(tikk, Math.max(9, 36 - i * 0.12));
+      // Kort pust når en fil er ferdig og agenten åpner den neste
+      const nyFil = MODUL_GRENSER.includes(i);
+      setTimeout(tikk, nyFil ? 640 : 52 + Math.random() * 42);
     };
     const start = setTimeout(tikk, 300);
     return () => { stoppet = true; clearTimeout(start); };
@@ -509,6 +582,13 @@ export default function BergenUrbanDeck() {
   const sannhetBeat = Math.max(0, steg - 16); // 0 = tittel alene · 1 = + sammenligningen
   const rollerAktiv = steg === 7 || steg === 13 || steg === 20; // kap 1 foer prompten · kap 2 etter portalen · kap 3 etter paastanden
   const sluttAktiv = steg === 21;
+
+  // Agent-scenen: hvilken modul skrives nå, og hvor langt i den er vi
+  const modulIdx = Math.min(KODE_MODULER.length - 1, MODUL_GRENSER.filter((g) => kodeAntall > g).length);
+  const modulStart = modulIdx === 0 ? 0 : MODUL_GRENSER[modulIdx - 1];
+  const aktivModul = KODE_MODULER[modulIdx];
+  const modulSkrevet = Math.max(0, kodeAntall - modulStart);
+  const ferdigeModuler = MODUL_GRENSER.filter((g) => kodeAntall >= g).length;
 
   // Cinematisk crossfade innad i den svarte scenen
   const gruppeKlasse = (aktiv) => (aktiv
@@ -1294,19 +1374,20 @@ export default function BergenUrbanDeck() {
                       {PROMPT}
                     </div>
                     {/* Agentens intro — strømmer inn tegn for tegn */}
-                    {kodeAntall >= 2 && (
+                    {kodeAntall >= 1 && (
                       <p className="pt-1 text-[12px] leading-snug text-white/55">
-                        {INTRO.slice(0, Math.max(0, (kodeAntall - 2) * 3))}
-                        {(kodeAntall - 2) * 3 < INTRO.length && <span className="bu-blink ml-[1px] inline-block h-[0.95em] w-[2px] translate-y-[0.15em] bg-[#cf97fc]/80" />}
+                        {INTRO.slice(0, Math.max(0, kodeAntall * 6))}
+                        {kodeAntall * 6 < INTRO.length && <span className="bu-blink ml-[1px] inline-block h-[0.95em] w-[2px] translate-y-[0.15em] bg-[#cf97fc]/80" />}
                       </p>
                     )}
-                    {/* Verktøykall — dukker opp og fullføres i takt med koden */}
-                    {AGENT_STEG.map((s, i) => {
-                      const synlig = kodeAntall >= i * 30 + 6;
-                      const ferdig = kodeAntall >= (i + 1) * 32;
+                    {/* Oppgavelisten — én modul per fil, kvitteres i takt med editoren */}
+                    {KODE_MODULER.map((m, i) => {
+                      const fra = i === 0 ? 0 : MODUL_GRENSER[i - 1];
+                      const synlig = kodeAntall > fra;
+                      const ferdig = kodeAntall >= MODUL_GRENSER[i];
                       if (!synlig) return null;
                       return (
-                        <div key={s.tekst} className="bu-inn flex items-center gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-[6px]" style={{ animationDuration: '0.6s' }}>
+                        <div key={m.fil} className="bu-inn flex items-center gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-[6px]" style={{ animationDuration: '0.6s' }}>
                           {ferdig ? (
                             <span className="flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full bg-[#4ade80]/[0.14]">
                               <Check className="h-[10px] w-[10px] text-[#4ade80]" strokeWidth={3} />
@@ -1315,13 +1396,30 @@ export default function BergenUrbanDeck() {
                             <span className="h-[15px] w-[15px] shrink-0 animate-spin rounded-full border-2 border-white/10 border-t-[#cf97fc]" />
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className={`truncate text-[11.5px] transition-colors duration-500 ${ferdig ? 'text-white/60' : 'font-medium text-white/90'}`}>{s.tekst}</p>
-                            <p className="truncate font-mono text-[9.5px] text-white/25">{s.fil}</p>
+                            <p className={`truncate text-[11.5px] transition-colors duration-500 ${ferdig ? 'text-white/60' : 'font-medium text-white/90'}`}>{m.oppgave}</p>
+                            <p className="truncate font-mono text-[9.5px] text-white/25">{m.info}</p>
                           </div>
                           {ferdig && <span className="shrink-0 font-mono text-[9px] font-semibold text-[#4ade80]/60">ok</span>}
                         </div>
                       );
                     })}
+                    {/* Testene — siste kvittering før deploy */}
+                    {kodeAntall >= KODE_TOTALT && (
+                      <div className="bu-inn flex items-center gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-[6px]" style={{ animationDuration: '0.6s' }}>
+                        {deploy ? (
+                          <span className="flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full bg-[#4ade80]/[0.14]">
+                            <Check className="h-[10px] w-[10px] text-[#4ade80]" strokeWidth={3} />
+                          </span>
+                        ) : (
+                          <span className="h-[15px] w-[15px] shrink-0 animate-spin rounded-full border-2 border-white/10 border-t-[#cf97fc]" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className={`truncate text-[11.5px] transition-colors duration-500 ${deploy ? 'text-white/60' : 'font-medium text-white/90'}`}>Kjører tester</p>
+                          <p className="truncate font-mono text-[9.5px] text-white/25">34/34 grønne</p>
+                        </div>
+                        {deploy && <span className="shrink-0 font-mono text-[9px] font-semibold text-[#4ade80]/60">ok</span>}
+                      </div>
+                    )}
                     {/* Sluttmelding + deploy */}
                     {deploy && (
                       <div className="bu-inn pt-1" style={{ animationDuration: '0.7s' }}>
@@ -1339,12 +1437,12 @@ export default function BergenUrbanDeck() {
                   <div className="shrink-0 border-t border-white/[0.07] px-5 py-3.5">
                     <div className="flex items-baseline justify-between">
                       <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">{deploy ? 'Deploy' : 'Fremdrift'}</span>
-                      <span className="font-mono text-[11.5px] font-semibold text-[#cf97fc] tabular-nums">{Math.min(100, Math.round((kodeAntall / 240) * 100))} %</span>
+                      <span className="font-mono text-[11.5px] font-semibold text-[#cf97fc] tabular-nums">{Math.min(100, Math.round((kodeAntall / KODE_TOTALT) * 100))} %</span>
                     </div>
                     <div className="mt-2 h-[4px] overflow-hidden rounded-full bg-white/[0.07]">
                       <div
                         className={`h-full rounded-full bg-gradient-to-r from-[#7c3aed] to-[#cf97fc] transition-[width] duration-300 ease-out ${deploy ? 'animate-pulse' : ''}`}
-                        style={{ width: `${Math.min(100, (kodeAntall / 240) * 100)}%` }}
+                        style={{ width: `${Math.min(100, (kodeAntall / KODE_TOTALT) * 100)}%` }}
                       />
                     </div>
                   </div>
@@ -1354,45 +1452,44 @@ export default function BergenUrbanDeck() {
                 <div className="relative flex min-h-0 flex-col bg-[#0a0a0c]">
                   {/* Fanelinje */}
                   <div className="flex h-10 shrink-0 items-center gap-1.5 border-b border-white/[0.06] bg-[#101013] px-4">
-                    {KODE_FILER.map((fil, i) => {
-                      const aktivFane = Math.min(KODE_FILER.length - 1, Math.floor(kodeAntall / 62)) === i;
+                    {KODE_MODULER.map((m, i) => {
+                      if (i > modulIdx) return null; // fanen åpnes først når agenten starter på filen
+                      const aktivFane = i === modulIdx;
+                      const fanenFerdig = kodeAntall >= MODUL_GRENSER[i];
                       return (
-                        <span key={fil} className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-[10.5px] transition-colors duration-300 ${aktivFane ? 'bg-white/[0.07] text-white/75' : 'text-white/25'}`}>
-                          <span className={`h-1 w-1 rounded-full ${aktivFane ? 'bg-[#cf97fc]' : 'bg-white/15'}`} />
-                          {fil}
+                        <span key={m.fil} className={`bu-inn flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-[10.5px] transition-colors duration-300 ${aktivFane ? 'bg-white/[0.07] text-white/75' : 'text-white/30'}`} style={{ animationDuration: '0.45s' }}>
+                          <span className={`h-1 w-1 rounded-full ${fanenFerdig ? 'bg-[#4ade80]/70' : aktivFane ? 'bg-[#cf97fc]' : 'bg-white/15'}`} />
+                          {m.fil}
                         </span>
                       );
                     })}
                   </div>
               {/* Brødsmulesti — fil-kontekst som i en ekte editor */}
               <div className="flex h-7 shrink-0 items-center gap-1.5 border-b border-white/[0.04] px-4 font-mono text-[10px] text-white/25">
-                digihome
-                <span className="text-white/[0.12]">›</span>
-                lib
-                <span className="text-white/[0.12]">›</span>
-                <span className="text-white/45">{KODE_FILER[Math.min(KODE_FILER.length - 1, Math.floor(kodeAntall / 62))]}</span>
+                {aktivModul.sti.map((del, i) => (
+                  <span key={del} className="flex items-center gap-1.5">
+                    {i > 0 && <span className="text-white/[0.12]">›</span>}
+                    <span className={i === aktivModul.sti.length - 1 ? 'text-white/45' : ''}>{del}</span>
+                  </span>
+                ))}
                 <span className="ml-auto text-white/[0.18]">TypeScript · UTF-8</span>
               </div>
-              {/* Kodestrøm */}
-              <div
-                className="relative flex min-h-0 flex-1 flex-col justify-end overflow-hidden px-5 pb-3 pt-3 font-mono text-[11.5px] leading-[1.6]"
-                style={{
-                  maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 100%)',
-                }}
-              >
-                {Array.from({ length: kodeAntall }, (_, i) => {
-                  const sist = i === kodeAntall - 1;
-                  return (
-                    // eslint-disable-next-line react/no-array-index-key
-                    <div key={i} className={`shrink-0 truncate whitespace-pre rounded-[3px] ${sist ? 'bg-white/[0.035]' : ''}`}>
-                      <span className="mr-2.5 inline-block w-7 text-right text-white/[0.14] tabular-nums">{i + 1}</span>
-                      <span className="mr-2 inline-block w-2 text-[#4ade80]/40">+</span>
-                      <KodeLinje tekst={KODE[i % KODE.length]} />
-                      {sist && !deploy && <span className="bu-blink ml-[2px] inline-block h-[11px] w-[6px] translate-y-[1px] bg-[#cf97fc]/80" />}
-                    </div>
-                  );
-                })}
+              {/* Kodestrøm — filen skrives ovenfra, som i en ekte editor */}
+              <div className="relative flex min-h-0 flex-1 flex-col justify-start overflow-hidden px-5 pb-3 pt-4 font-mono text-[12px] leading-[1.78]">
+                {/* Filen byttes med en myk inn-dissolve når agenten åpner neste modul */}
+                <div key={modulIdx} className="bu-inn flex flex-col" style={{ animationDuration: '0.5s' }}>
+                  {aktivModul.linjer.slice(0, modulSkrevet).map((linje, i) => {
+                    const sist = i === modulSkrevet - 1;
+                    return (
+                      // eslint-disable-next-line react/no-array-index-key
+                      <div key={i} className={`shrink-0 truncate whitespace-pre rounded-[3px] ${sist ? 'bg-white/[0.035]' : ''}`}>
+                        <span className="mr-3.5 inline-block w-8 text-right text-white/[0.14] tabular-nums">{aktivModul.start + i}</span>
+                        <KodeLinje tekst={linje} />
+                        {sist && !deploy && <span className="bu-blink ml-[2px] inline-block h-[11px] w-[6px] translate-y-[1px] bg-[#cf97fc]/80" />}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
               {/* Build vellykket — tilfredsstillende sluttbeat over editoren */}
               {deploy && (
@@ -1402,15 +1499,15 @@ export default function BergenUrbanDeck() {
                       <Check className="h-7 w-7 text-[#4ade80]" strokeWidth={2.5} />
                     </span>
                     <p className="text-[15px] font-semibold tracking-tight text-white/90">Build vellykket</p>
-                    <p className="font-mono text-[11px] text-white/40">34/34 tester · 11 280 linjer · 4,2 s</p>
+                    <p className="font-mono text-[11px] text-white/40">34/34 tester · 6 moduler · 4,2 s</p>
                   </div>
                 </div>
               )}
               {/* Editor-statuslinje */}
               <div className="flex h-9 shrink-0 items-center gap-2.5 border-t border-white/[0.06] bg-[#101013] px-4 font-mono text-[10.5px] text-white/35">
                 <span className="bu-blink inline-block h-[11px] w-[6px] bg-white/60" />
-                {deploy ? 'build ok · deployer digihome' : 'genererer digihome'}
-                <span className="ml-auto tabular-nums text-white/25">{Math.max(1, Math.round(kodeAntall / 16))} moduler · {(kodeAntall * 47).toLocaleString('nb-NO')} linjer</span>
+                {deploy ? 'build ok · deployer digihome' : `skriver ${aktivModul.sti.join('/')}`}
+                <span className="ml-auto tabular-nums text-white/25">{ferdigeModuler}/{KODE_MODULER.length} moduler · {Math.round((kodeAntall / KODE_TOTALT) * 1852).toLocaleString('nb-NO')} linjer</span>
               </div>
                 </div>
               </div>
