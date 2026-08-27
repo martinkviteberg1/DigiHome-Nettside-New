@@ -119,11 +119,24 @@ export default function ForvalterFullskjerm({ vis = true, modul = 'oversikt' }: 
   }, []);
   const { hilsen, dato } = naaTekst;
 
-  const inn = (delay: number): React.CSSProperties => ({
-    opacity: vis ? 1 : 0,
-    transform: vis ? 'translateY(0)' : 'translateY(26px)',
-    transition: `opacity 850ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 850ms cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
-  });
+  // ── ROBUSTHET: «settle» — når kaskaden har fått tid til å spille ferdig,
+  // låses alt innhold til synlig slutttilstand UTEN transitions. Da kan ikke
+  // hovedflaten bli stående hvit selv om nettleseren skulle droppe/glitche
+  // CSS-transitions (sett i felt ved faneskifte/projektor-speiling). ──
+  const [satt, setSatt] = useState(false);
+  useEffect(() => {
+    if (!vis) { setSatt(false); return undefined; }
+    const t = setTimeout(() => setSatt(true), 2400);
+    return () => clearTimeout(t);
+  }, [vis]);
+
+  const inn = (delay: number): React.CSSProperties => (satt
+    ? { opacity: 1, transform: 'translateY(0)' }
+    : {
+        opacity: vis ? 1 : 0,
+        transform: vis ? 'translateY(0)' : 'translateY(26px)',
+        transition: `opacity 850ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 850ms cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
+      });
 
   return (
     <div className={`${jakarta.className} relative flex overflow-hidden`} style={{ width: 1600, height: 1000, backgroundColor: C.bg }}>
@@ -133,7 +146,7 @@ export default function ForvalterFullskjerm({ vis = true, modul = 'oversikt' }: 
         style={{
           width: 220,
           transform: vis ? 'translateX(0)' : 'translateX(-105%)',
-          transition: 'transform 950ms cubic-bezier(0.22,1,0.36,1) 60ms',
+          transition: satt ? 'none' : 'transform 950ms cubic-bezier(0.22,1,0.36,1) 60ms',
         }}
       >
         {/* Logo + kollaps-knapp */}
@@ -548,11 +561,20 @@ const KBAR_STIL: Record<string, React.CSSProperties> = {
 };
 
 function KalenderMulti({ aktiv, nyBooking }: { aktiv: boolean; nyBooking: boolean }) {
-  const inn = (delay: number): React.CSSProperties => ({
-    opacity: aktiv ? 1 : 0,
-    transform: aktiv ? 'translateY(0)' : 'translateY(10px)',
-    transition: `opacity 650ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 650ms cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
-  });
+  // Samme «settle»-robusthet som hovedvisningen: lås til synlig slutttilstand
+  const [satt, setSatt] = useState(false);
+  useEffect(() => {
+    if (!aktiv) { setSatt(false); return undefined; }
+    const t = setTimeout(() => setSatt(true), 1800);
+    return () => clearTimeout(t);
+  }, [aktiv]);
+  const inn = (delay: number): React.CSSProperties => (satt
+    ? { opacity: 1, transform: 'translateY(0)' }
+    : {
+        opacity: aktiv ? 1 : 0,
+        transform: aktiv ? 'translateY(0)' : 'translateY(10px)',
+        transition: `opacity 650ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 650ms cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
+      });
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-white">
@@ -844,11 +866,20 @@ const ENHET_FANER = [
 ];
 
 function EnhetDetalj({ aktiv }: { aktiv: boolean }) {
-  const inn = (delay: number): React.CSSProperties => ({
-    opacity: aktiv ? 1 : 0,
-    transform: aktiv ? 'translateY(0)' : 'translateY(12px)',
-    transition: `opacity 700ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 700ms cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
-  });
+  // Samme «settle»-robusthet: lås til synlig slutttilstand etter kaskaden
+  const [satt, setSatt] = useState(false);
+  useEffect(() => {
+    if (!aktiv) { setSatt(false); return undefined; }
+    const t = setTimeout(() => setSatt(true), 1600);
+    return () => clearTimeout(t);
+  }, [aktiv]);
+  const inn = (delay: number): React.CSSProperties => (satt
+    ? { opacity: 1, transform: 'translateY(0)' }
+    : {
+        opacity: aktiv ? 1 : 0,
+        transform: aktiv ? 'translateY(0)' : 'translateY(12px)',
+        transition: `opacity 700ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 700ms cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
+      });
 
   return (
     <div className="flex h-full w-full overflow-hidden" style={{ backgroundColor: '#fdfcfb' }}>
