@@ -224,6 +224,8 @@ const MEDIA_CONTENT_TYPES = {
   woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf',
   json: 'application/json', txt: 'text/plain', xml: 'application/xml',
   html: 'text/html', css: 'text/css', js: 'application/javascript',
+  pdf: 'application/pdf',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 };
 
 function mediaContentType(rel, fallback) {

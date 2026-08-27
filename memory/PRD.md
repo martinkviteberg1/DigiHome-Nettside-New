@@ -767,3 +767,8 @@ Google Ads-styring via native REST API).
 - .gitignore: .env-blokkering fjernet (deploy-blocker fra deployment-sjekk — .env må følge repoet for Emergent-deploy).
 - QA: 14/14 enhetstester (scripts/qa_signering_status_test.mjs), integrasjonstest av reconcile (ugyldig token fjernes, jobb urørt), backend-testagent 7/7, UI-screenshot OK.
 - PROD-GJENOPPRETTING etter deploy: åpne Dokumenter → Signering → «Sjekk status nå» (ubekreftede kø-hendelser re-leveres av Posten ~hvert 10. min og fanges da opp). Henger en runde fortsatt: signataren klikker signeringslenken i e-posten på nytt → exit-siden gir ferskt token som reparerer jobben umiddelbart.
+
+## DRIFTSREGEL: Nye filer i /public (VIKTIG — gjelder alle agenter)
+- Produksjon kjører Next.js standalone som IKKE inkluderer /public. Statiske filer serveres i prod via fallback-rewrite → /api/media/<sti> → Emergent objektlagring (digihome/public/<sti>).
+- HVER gang en ny fil legges i /app/public MÅ den også lastes opp: `node scripts/upload_public_to_storage.mjs --only <filnavn>` — ellers 404 i prod (skjedde 27.08.2026 med martin-kviteberg.jpg og qr-kontakt.svg; fikset ved opplasting, virket umiddelbart uten redeploy).
+- Rewriten dekker nå også .js/.pdf/.pptx (sw-deck.js + presentasjonsbackup) — DENNE endringen krever redeploy for å virke i prod.

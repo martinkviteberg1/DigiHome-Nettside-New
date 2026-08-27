@@ -108,8 +108,10 @@ const nextConfig = {
     return {
       fallback: [
         {
+          // js: service worker (sw-deck.js) · pdf/pptx: presentasjonsbackup —
+          // alle serveres fra objektlagring i prod der /public ikke finnes.
           source:
-            '/:asset(.+\\.(?:png|jpe?g|webp|gif|svg|avif|ico|mp4|webm|mov|mp3|wav|aac|woff2?|ttf|otf))',
+            '/:asset(.+\\.(?:png|jpe?g|webp|gif|svg|avif|ico|mp4|webm|mov|mp3|wav|aac|woff2?|ttf|otf|js|pdf|pptx))',
           destination: '/api/media/:asset',
         },
       ],
