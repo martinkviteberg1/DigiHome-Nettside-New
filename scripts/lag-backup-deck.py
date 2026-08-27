@@ -34,7 +34,7 @@ SLIDES = [
     ("05-prosessloopen",    [("toc", 5),  ("wait", 7000),  ("shoot",)]),
     ("06-problemet",        [("toc", 6),  ("wait", 12000), ("shoot",)]),
     ("07-losningen",        [("toc", 7),  ("wait", 6000),  ("shoot",)]),
-    ("08-ai-utvikling",     [("toc", 8),  ("wait", 5500),  ("shoot",)]),
+    ("08-ai-tre-mater",     [("toc", 8),  ("wait", 7500),  ("shoot",)]),
     # Prompten: steg 8 er tom — gå ett steg videre så teksten skrives ferdig
     ("09-prompten",         [("toc", 9),  ("wait", 2500), ("key", "ArrowRight"), ("wait", 6000), ("shoot",)]),
     # Agenten bygger: fang midt i kodeskrivingen (før deploy/auto-videre)
@@ -46,10 +46,9 @@ SLIDES = [
     ("14-produktveggen",    [("toc", 12), ("wait", 9000),  ("shoot",)]),
     # Integrasjonene: «alle»-fasen (alt lyser) inntreffer 13.1–19.1s
     ("15-integrasjonene",   [("toc", 13), ("wait", 15500), ("shoot",)]),
-    # (Kostnaden, Påstanden og «6-åringen» er midlertidig skjult i decket)
-    ("20-ai-verktoy",       [("toc", 14), ("wait", 5500),  ("shoot",)]),
-    ("21-ai-agenter",       [("key", "ArrowRight"), ("wait", 6000), ("shoot",)]),
-    ("22-book-mote",        [("toc", 16), ("wait", 7000),  ("shoot",)]),
+    # (Kostnaden, Påstanden, «6-åringen» og AI-måte 2/3 er midlertidig skjult;
+    #  alle tre AI-kapitler vises samlet på steg 7)
+    ("22-book-mote",        [("toc", 14), ("wait", 7000),  ("shoot",)]),
 ]
 
 SKJUL_JS = """

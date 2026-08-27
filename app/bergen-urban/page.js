@@ -259,8 +259,9 @@ const TOTALT = 22;
 
 // Midlertidig skjulte steg — hoppes over i navigasjon og TOC.
 // Slå på igjen ved å fjerne stegene fra settet:
-// 15/16 = Kostnaden · 17 = Påstanden · 18 = «6-åringen».
-const SKJULTE_STEG = new Set([15, 16, 17, 18]);
+// 15/16 = Kostnaden · 17 = Påstanden · 18 = «6-åringen» ·
+// 19/20 = AI-måte 2 og 3 (alle tre kapitler vises nå samlet på steg 7).
+const SKJULTE_STEG = new Set([15, 16, 17, 18, 19, 20]);
 
 // Innholdsfortegnelse — supersubtil meny nede i venstre hjørne for å hoppe
 // direkte til en scene. Auto-beats (8) hoppes over; agent-scenen (10) spiller
@@ -274,7 +275,7 @@ const TOC = [
   { steg: 4, tittel: 'Prosessloopen' },
   { steg: 5, tittel: 'Problemet' },
   { steg: 6, tittel: 'Løsningen' },
-  { steg: 7, tittel: 'AI-måte 1 · Utvikling' },
+  { steg: 7, tittel: 'AI i alle lag' },
   { steg: 8, tittel: 'Prompten' },
   { steg: 11, tittel: 'Agenten bygger' },
   { steg: 12, tittel: 'Portalen' },
@@ -694,7 +695,7 @@ export default function BergenUrbanDeck() {
   const bygg = Math.max(0, steg - 17);
   const sannhetAktiv = steg === 15 || steg === 16;
   const sannhetBeat = Math.max(0, steg - 15); // 0 = tittel alene · 1 = + sammenligningen
-  const rollerAktiv = steg === 7 || steg === 19 || steg === 20; // kap 1 foer prompten · kap 2 og 3 etter paastanden
+  const rollerAktiv = steg === 7; // alle tre AI-kapitler avsløres samlet foer prompten
   const sluttAktiv = steg === 21;
 
   // Agent-scenen: hvilken modul skrives nå, og hvor langt i den er vi
@@ -1374,57 +1375,36 @@ export default function BergenUrbanDeck() {
                   { navn: 'Verktøy', tekst: 'Innebygd intelligens i hver modul — bilder, annonser og dialog.' },
                   { navn: 'Agenter', tekst: 'Selvstendige agenter overvåker, fanger opp og følger opp. Døgnet rundt.' },
                 ].map((r, i) => {
-                  // Kapittel-tilstand: 01 Utvikling avsløres på steg 7 og
-                  // kvitteres ved gjenbesøkene · 02 Verktøy avsløres på steg 19
-                  // og kvitteres på steg 20 · 03 Agenter avsløres på steg 20.
-                  const tilstand = i === 0
-                    ? (steg >= 19 ? 'kvittert' : 'avslort')
-                    : i === 1
-                      ? (steg >= 20 ? 'kvittert' : steg >= 19 ? 'avslort' : 'ghost')
-                      : (steg >= 20 ? 'avslort' : 'ghost');
-                  const avslort = tilstand !== 'ghost';
-                  // Kapitlet som avsløres på akkurat dette steget venter til
-                  // tittelen er ferdig skrevet; kjente kapitler kommer tidligere
-                  const nettopp = (i === 0 && steg === 7) || (i === 1 && steg === 19) || (i === 2 && steg === 20);
-                  // Nytt kapittel venter til tittel + struktur står (2050ms);
-                  // kjente kapitler lander sammen med strukturen (1700ms)
-                  const base = nettopp ? 2050 : 1700;
+                  // Alle tre kapitler avsløres samlet: tittelen eier første
+                  // beat, strukturen (hairlines + numre) tegnes, og kolonnene
+                  // lander deretter én etter én med rolig stagger.
+                  const base = 2050 + i * 280;
                   const t = (ms) => ({ transitionDelay: rollerAktiv ? `${ms}ms` : '0ms' });
                   return (
-                    <div
-                      key={r.navn}
-                      className="transition-opacity duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-                      style={{ opacity: tilstand === 'kvittert' ? 0.45 : 1 }}
-                      data-testid={`bu-rolle-${i + 1}`}
-                    >
-                      {/* Hairline — tegnes etter tittelen, alle tre med lett stagger:
-                          strukturen «tre kapitler» avsløres før innholdet */}
+                    <div key={r.navn} data-testid={`bu-rolle-${i + 1}`}>
+                      {/* Hairline — tegnes etter tittelen, alle tre med lett stagger */}
                       <div
-                        className="h-px w-full origin-left transition-[transform,background-color] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-                        style={{ transform: `scaleX(${rollerAktiv ? 1 : 0})`, backgroundColor: avslort ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.1)', ...t(1600 + i * 170) }}
+                        className="h-px w-full origin-left bg-white/[0.22] transition-transform duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                        style={{ transform: `scaleX(${rollerAktiv ? 1 : 0})`, ...t(1600 + i * 170) }}
                       />
-                      {/* Nummeret — antydes for alle tre kapitler */}
+                      {/* Nummeret */}
                       <p
                         className="mt-7 text-[13px] font-semibold tabular-nums tracking-[0.02em] text-[#B57BFF] transition-[opacity,transform] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-                        style={{ opacity: rollerAktiv ? (avslort ? 1 : 0.3) : 0, transform: rollerAktiv ? 'translateY(0)' : 'translateY(10px)', ...t(1780 + i * 170) }}
+                        style={{ opacity: rollerAktiv ? 1 : 0, transform: rollerAktiv ? 'translateY(0)' : 'translateY(10px)', ...t(1780 + i * 170) }}
                       >
                         0{i + 1}
-                        {tilstand === 'kvittert' && <Check className="mb-[2px] ml-2 inline h-[13px] w-[13px]" strokeWidth={3} />}
                       </p>
-                      {/* Navnet — blur-dissolve når kapitlet får ordet. Krever
-                          rollerAktiv slik at transition + delay faktisk kjører
-                          ved sceneinngang (ellers står kjente kapitler ferdig
-                          synlige mens tittelen fortsatt skrives). */}
+                      {/* Navnet — blur-dissolve når kolonnen får ordet */}
                       <h3
                         className="mt-4 font-heading text-[clamp(22px,2.2vw,32px)] font-bold tracking-[-0.025em] text-white transition-[opacity,transform,filter] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-                        style={{ opacity: rollerAktiv && avslort ? 1 : 0, transform: rollerAktiv && avslort ? 'translateY(0)' : 'translateY(12px)', filter: rollerAktiv && avslort ? 'blur(0)' : 'blur(8px)', ...t(base) }}
+                        style={{ opacity: rollerAktiv ? 1 : 0, transform: rollerAktiv ? 'translateY(0)' : 'translateY(12px)', filter: rollerAktiv ? 'blur(0)' : 'blur(8px)', ...t(base) }}
                       >
                         {r.navn}
                       </h3>
                       {/* Teksten — følger navnet */}
                       <p
                         className="mt-3 max-w-[30ch] text-[clamp(13.5px,1.15vw,16.5px)] leading-relaxed text-white/[0.5] transition-[opacity,transform] duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-                        style={{ opacity: rollerAktiv && avslort ? 1 : 0, transform: rollerAktiv && avslort ? 'translateY(0)' : 'translateY(10px)', ...t(base + 170) }}
+                        style={{ opacity: rollerAktiv ? 1 : 0, transform: rollerAktiv ? 'translateY(0)' : 'translateY(10px)', ...t(base + 170) }}
                       >
                         {r.tekst}
                       </p>
@@ -1435,8 +1415,8 @@ export default function BergenUrbanDeck() {
 
               {/* Payoff — lander stille når alle tre står */}
               <p
-                className={`mt-16 text-center text-[clamp(14px,1.5vw,21px)] leading-snug opacity-0 md:mt-20 ${steg >= 20 ? 'bu-inn' : ''}`}
-                style={{ animationDelay: '1300ms' }}
+                className={`mt-16 text-center text-[clamp(14px,1.5vw,21px)] leading-snug opacity-0 md:mt-20 ${rollerAktiv ? 'bu-inn' : ''}`}
+                style={{ animationDelay: '3600ms' }}
                 data-testid="bu-roller-payoff"
               >
                 <span className="font-semibold text-white/[0.9]">Bygget av AI</span>
