@@ -669,6 +669,25 @@ export default function BergenUrbanDeck() {
   const promptAktiv = steg >= 8 && steg <= 10;
   const kodeAktiv = steg === 11;
   const revealAktiv = steg === 12;
+
+  // ── GPU-HYGIENE (rotårsak for «hvit portal» på svak GPU/projektor):
+  // Permanente blur-filtre på fullskjerms mockup-lag kan få kompositoren til
+  // å miste teksturen — flaten blir hvit til neste layer-endring (kalender-
+  // beatet). Etter at inngangsovergangen har spilt ferdig låser vi derfor
+  // scenen til statisk tilstand HELT uten filter/transition. ──
+  const [revealSatt, setRevealSatt] = useState(false);
+  useEffect(() => {
+    if (!revealAktiv) { setRevealSatt(false); return undefined; }
+    const t = setTimeout(() => setRevealSatt(true), 1700);
+    return () => clearTimeout(t);
+  }, [revealAktiv]);
+  // Samme statisk-lås for agent-arbeidsrommet mens det står i ro på steg 11
+  const [arbSatt, setArbSatt] = useState(false);
+  useEffect(() => {
+    if (!(kodeAktiv && tenning === 'av')) { setArbSatt(false); return undefined; }
+    const t = setTimeout(() => setArbSatt(true), 1300);
+    return () => clearTimeout(t);
+  }, [kodeAktiv, tenning]);
   const omfangAktiv = steg === 13;
   const integrasjonAktiv = steg === 14;
   const hookAktiv = steg === 17 || steg === 18;
@@ -1476,7 +1495,9 @@ export default function BergenUrbanDeck() {
 
         {/* ── AKT 1.5: AI-AGENTEN — mockup av agenten som bygger DigiHome ── */}
         <div
-          className={`absolute inset-0 transition-[opacity,filter,transform] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${kodeAktiv ? (tenning === 'av' ? 'opacity-100 blur-0 scale-100 translate-y-0' : 'opacity-[0.1] blur-[10px] scale-[0.88] translate-y-[1.5vh]') : 'pointer-events-none opacity-0 blur-[10px] scale-[0.97] translate-y-[16px]'}`}
+          className={arbSatt
+            ? 'absolute inset-0'
+            : `absolute inset-0 transition-[opacity,filter,transform] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${kodeAktiv ? (tenning === 'av' ? 'opacity-100 blur-0 scale-100 translate-y-0' : 'opacity-[0.1] blur-[10px] scale-[0.88] translate-y-[1.5vh]') : 'pointer-events-none opacity-0 blur-[10px] scale-[0.97] translate-y-[16px]'}`}
           data-testid="bu-kodestorm"
         >
           {/* Ambient scenelys bak vinduet — løfter det fra den svarte flaten */}
@@ -1668,9 +1689,15 @@ export default function BergenUrbanDeck() {
         {/* (Svaret er nå en egen lys fullskjerm-slide under den svarte scenen) */}
       </section>
 
-      {/* ═══ AKT 2 — SVARET: systemet tar over hele skjermen ═══ */}
+      {/* ═══ AKT 2 — SVARET: systemet tar over hele skjermen ═══
+          Montert KUN rundt sitt øyeblikk (steg 11–13): før = klar bak teppet,
+          under = aktiv, etter = fade-ut — deretter av med DOM-en. Etter
+          inngangen låses seksjonen statisk uten filter (GPU-hygiene). */}
+      {steg >= 11 && steg <= 13 && (
       <section
-        className={`absolute inset-0 z-10 overflow-hidden transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'pointer-events-auto opacity-100 blur-0 scale-100' : 'pointer-events-none opacity-0 blur-[14px] scale-[0.965]'}`}
+        className={revealSatt
+          ? 'pointer-events-auto absolute inset-0 z-10 overflow-hidden'
+          : `absolute inset-0 z-10 overflow-hidden transition-[opacity,transform,filter] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv ? 'pointer-events-auto opacity-100 blur-0 scale-100' : 'pointer-events-none opacity-0 blur-[14px] scale-[0.965]'}`}
         data-testid="bu-reveal"
       >
         {/* Forvalterportalen kant til kant — «dekk»-skalert, materialiserer seg
@@ -1683,12 +1710,15 @@ export default function BergenUrbanDeck() {
             Når portalen selv navigerer til Kalender, glir chatten rolig ut
             slik at kalendermodulen står ren og uforstyrret. */}
         <div
-          className={`absolute bottom-[4vh] right-[2vw] z-10 transition-[opacity,transform,filter] duration-[1300ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv && revealModul === 'oversikt' ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-14 opacity-0 blur-[10px]'}`}
-          style={{ width: 'clamp(300px, 20vw, 380px)', transitionDelay: revealAktiv && revealModul === 'oversikt' ? '1550ms' : '0ms' }}
+          className={revealSatt && revealModul === 'oversikt'
+            ? 'absolute bottom-[4vh] right-[2vw] z-10 translate-y-0 opacity-100'
+            : `absolute bottom-[4vh] right-[2vw] z-10 transition-[opacity,transform,filter] duration-[1300ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${revealAktiv && revealModul === 'oversikt' ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-14 opacity-0 blur-[10px]'}`}
+          style={{ width: 'clamp(300px, 20vw, 380px)', transitionDelay: !revealSatt && revealAktiv && revealModul === 'oversikt' ? '1550ms' : '0ms' }}
         >
           <AssistentChatMockup vis={revealAktiv} />
         </div>
       </section>
+      )}
 
       {/* ── Lys-tenning: arbeidsrommet imploderer, et anamorfisk lysglimt
           skjærer over skjermen og kjernen blomstrer opp — dekker overgangen
