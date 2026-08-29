@@ -18,7 +18,7 @@ import {
   Maximize2, Minimize2, Banknote, Globe, StickyNote, Plus, ChevronDown,
   Columns3, BarChart3,
 } from 'lucide-react';
-import { PipelineTavle, SalgSeksjon, ArsakModal, VunnetModal, RapportModal, SelgerBadge } from './SalgPipeline';
+import { PipelineTavle, SalgSeksjon, ArsakModal, VunnetModal, RapportModal, SelgerBadge, AnnonsorBadge } from './SalgPipeline';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 const tall = (v) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(Math.round(Number(v) || 0)).replace(/\u00A0/g, '\u202F');
@@ -362,6 +362,7 @@ export default function Salgsradar({ apiKey }) {
   const [arsaker, setArsaker] = useState({}); // årsakskatalog for tapt/ikke_relevant
   const [selgere, setSelgere] = useState([]);
   const [eierFilter, setEierFilter] = useState('alle'); // 'alle' | 'mine' | 'pool'
+  const [annonsorFilter, setAnnonsorFilter] = useState('alle'); // 'alle' | 'privat' | 'megler'
   const [arsakDialog, setArsakDialog] = useState(null); // {lead, status}
   const [vunnetDialog, setVunnetDialog] = useState(null); // {lead}
   const [visRapport, setVisRapport] = useState(false);
@@ -455,6 +456,22 @@ export default function Salgsradar({ apiKey }) {
       try { const j = await api('selgere'); setSelgere(j.selgere || []); } catch (e) { /* stille */ }
     })();
   }, [api]);
+
+  // Annonsør-berikelse: leads uten annonsor-felt (eldre/agent-ingest) fylles
+  // i bakgrunnen — én gang per økt, deretter refetch så badges dukker opp
+  const berikStartet = useRef(false);
+  useEffect(() => {
+    if (laster || berikStartet.current) return;
+    // Mangler annonsor ELLER beriket m/ eldre parser (v1 fanget ikke privat-telefon)
+    if (!leads.some((l) => (!l.annonsor || l.annonsor.v == null) && l.annonseAktiv !== false && l.finnkode)) return;
+    berikStartet.current = true;
+    (async () => {
+      try {
+        const j = await api('berik-annonsor', { method: 'POST', body: {} });
+        if (j.oppdatert > 0) await hentLeads();
+      } catch (e) { /* stille — badges kommer ved neste besøk */ }
+    })();
+  }, [laster, leads, api, hentLeads]);
 
   // Diskret «Lagret»-kvittering (gjenbrukes av alle salgsflytt)
   const kvitterLagret = useCallback(() => {
@@ -653,10 +670,14 @@ export default function Salgsradar({ apiKey }) {
     let arr = filter === 'alle' ? leads : leads.filter((l) => l.status === filter);
     if (eierFilter === 'mine' && aktor) arr = arr.filter((l) => l.salg?.tildeltTil?.id === aktor.id);
     if (eierFilter === 'pool') arr = arr.filter((l) => !l.salg?.tildeltTil);
+    // Privat = huseier uten forvalter (inkl. Husleie.no og uavklarte) — målgruppen.
+    // Megler = proff aktør har oppdraget (Utleiemegleren m.fl.) — konkurrent.
+    if (annonsorFilter === 'privat') arr = arr.filter((l) => !l.annonsor || ['privat', 'husleie', 'ukjent'].includes(l.annonsor.type));
+    if (annonsorFilter === 'megler') arr = arr.filter((l) => ['megler', 'utleiemegleren'].includes(l.annonsor?.type));
     const q = sok.trim().toLowerCase();
-    if (q) arr = arr.filter((l) => `${l.adresse || ''} ${l.tittel || ''} ${l.postnr || ''}`.toLowerCase().includes(q));
+    if (q) arr = arr.filter((l) => `${l.adresse || ''} ${l.tittel || ''} ${l.postnr || ''} ${l.annonsor?.orgNavn || ''} ${l.kontaktNavn || ''}`.toLowerCase().includes(q));
     return arr;
-  }, [leads, filter, sok, eierFilter, aktor]);
+  }, [leads, filter, sok, eierFilter, aktor, annonsorFilter]);
   const sortert = useMemo(() => {
     const arr = [...filtrert];
     const v = (l) => {
@@ -1511,8 +1532,16 @@ export default function Salgsradar({ apiKey }) {
         <dl className={toKol ? 'mt-3.5 space-y-3.5' : 'mt-3.5 grid grid-cols-2 gap-x-8 gap-y-3.5 sm:grid-cols-3'}>
           {[
             ['Potensial', valgt.potensial?.score != null ? `${valgt.potensial.forelopig ? '~' : ''}${valgt.potensial.score} av 100` : null],
-            ['Utleier', valgt.kontaktNavn || null],
+            ['Annonsør', valgt.annonsor && valgt.annonsor.type !== 'ukjent'
+              ? (valgt.annonsor.orgNavn
+                ? (valgt.annonsor.hjemmeside
+                  ? <a key="anr" href={valgt.annonsor.hjemmeside} target="_blank" rel="noreferrer" className="hover:underline">{valgt.annonsor.orgNavn}</a>
+                  : valgt.annonsor.orgNavn)
+                : 'Privat utleier')
+              : null],
+            ['Utleier', valgt.kontaktNavn ? `${valgt.kontaktNavn}${valgt.kontaktTittel ? ` — ${valgt.kontaktTittel}` : ''}` : null],
             ['Telefon', valgt.kontaktTlf ? <a key="tlf" href={`tel:${valgt.kontaktTlf}`} className="hover:underline">{fmtTlf(valgt.kontaktTlf)}</a> : null],
+            ['E-post', valgt.kontaktEpost ? <a key="ep" href={`mailto:${valgt.kontaktEpost}`} className="hover:underline">{valgt.kontaktEpost}</a> : null],
             ['Boligtype', valgt.boligtype || null],
             ['Størrelse', valgt.m2 || valgt.soverom ? `${valgt.m2 ? `${valgt.m2} m²` : ''}${valgt.m2 && valgt.soverom ? ' · ' : ''}${valgt.soverom ? `${valgt.soverom} soverom` : ''}` : null],
             ['Dagens leie', `${kr(valgt.pris)}/mnd`],
@@ -1745,6 +1774,7 @@ export default function Salgsradar({ apiKey }) {
                     ) : null}
                   </span>
                 ) : null}
+                <AnnonsorBadge annonsor={valgt.annonsor} />
                 <a href={valgt.kildeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-semibold text-[#6d28d9] hover:underline">FINN <ExternalLink className="h-3 w-3" /></a>
               </p>
             </div>
@@ -1962,6 +1992,16 @@ export default function Salgsradar({ apiKey }) {
                 <span className="mx-1 h-4 w-px shrink-0 bg-black/[0.07]" />
               </>
             )}
+            {/* Annonsørfilter: Privat (målgruppen) vs Megler (konkurrent har oppdraget) */}
+            {[{ k: 'privat', l: 'Privat', c: '#1f7a45' }, { k: 'megler', l: 'Megler', c: '#c2413b' }].map((f) => (
+              <button key={f.k} onClick={() => setAnnonsorFilter((v) => (v === f.k ? 'alle' : f.k))} data-testid={`radar-annonsor-${f.k}`}
+                title={f.k === 'privat' ? 'Huseiere uten forvalter (inkl. Husleie.no) — målgruppen' : 'Megler/Utleiemegleren har oppdraget — konkurrent'}
+                className={`flex h-[26px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[6px] px-2.5 text-[12px] font-medium transition-all ${annonsorFilter === f.k ? 'bg-[#1c1917] text-white shadow-[0_1px_3px_rgba(28,25,23,0.25)]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}>
+                <span className="h-[5px] w-[5px] rounded-full" style={{ background: annonsorFilter === f.k ? '#fff' : f.c }} />
+                {f.l}
+              </button>
+            ))}
+            <span className="mx-1 h-4 w-px shrink-0 bg-black/[0.07]" />
             {[{ k: 'alle', l: 'Alle' }, ...STATUSER].map((s) => (
               <button key={s.k} onClick={() => setFilter(s.k)} data-testid={`radar-filter-${s.k}`}
                 className={`flex h-[26px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[6px] px-2.5 text-[12px] font-medium transition-all ${filter === s.k ? 'bg-[#1c1917] text-white shadow-[0_1px_3px_rgba(28,25,23,0.25)]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}>
@@ -2140,6 +2180,7 @@ export default function Salgsradar({ apiKey }) {
                           })()}
                           {!splitt && l.m2 ? <span>· {l.m2} m²</span> : null}
                           {!splitt && l.soverom ? <span>· {l.soverom} sov</span> : null}
+                          <AnnonsorBadge annonsor={l.annonsor} liten={splitt} />
                         </span>
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">
@@ -2217,16 +2258,16 @@ export default function Salgsradar({ apiKey }) {
                             </span>
                           </td>
                           <td className="px-2 py-2">
-                            {(l.kontaktNavn || l.kontaktTlf) ? (
-                              <span className="block min-w-0" data-testid={`radar-tabell-kontakt-${l.id}`}>
-                                {l.kontaktNavn ? <span className="block max-w-[150px] truncate text-[12px] font-medium text-[#44403c]">{l.kontaktNavn}</span> : null}
-                                {l.kontaktTlf ? (
-                                  <a href={`tel:${l.kontaktTlf}`} onClick={(e) => e.stopPropagation()} className="block text-[11.5px] text-[#78716c] hover:text-[#1c1917] hover:underline">
-                                    {fmtTlf(l.kontaktTlf)}
-                                  </a>
-                                ) : null}
-                              </span>
-                            ) : <span className="text-[12px] text-[#ddd8d0]">–</span>}
+                            <span className="block min-w-0" data-testid={`radar-tabell-kontakt-${l.id}`}>
+                              <AnnonsorBadge annonsor={l.annonsor} liten />
+                              {l.kontaktNavn ? <span className="block max-w-[150px] truncate text-[12px] font-medium text-[#44403c]" title={l.kontaktTittel ? `${l.kontaktNavn} — ${l.kontaktTittel}` : l.kontaktNavn}>{l.kontaktNavn}</span> : null}
+                              {l.kontaktTlf ? (
+                                <a href={`tel:${l.kontaktTlf}`} onClick={(e) => e.stopPropagation()} className="block text-[11.5px] text-[#78716c] hover:text-[#1c1917] hover:underline">
+                                  {fmtTlf(l.kontaktTlf)}
+                                </a>
+                              ) : null}
+                              {!l.annonsor && !l.kontaktNavn && !l.kontaktTlf ? <span className="text-[12px] text-[#ddd8d0]">–</span> : null}
+                            </span>
                           </td>
                           <td className="px-2 py-2">
                             {l.auto && ['analyserer', 'styler'].includes(l.auto.status) ? (

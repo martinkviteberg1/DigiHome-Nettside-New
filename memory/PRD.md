@@ -772,3 +772,11 @@ Google Ads-styring via native REST API).
 - Produksjon kjører Next.js standalone som IKKE inkluderer /public. Statiske filer serveres i prod via fallback-rewrite → /api/media/<sti> → Emergent objektlagring (digihome/public/<sti>).
 - HVER gang en ny fil legges i /app/public MÅ den også lastes opp: `node scripts/upload_public_to_storage.mjs --only <filnavn>` — ellers 404 i prod (skjedde 27.08.2026 med martin-kviteberg.jpg og qr-kontakt.svg; fikset ved opplasting, virket umiddelbart uten redeploy).
 - Rewriten dekker nå også .js/.pdf/.pptx (sw-deck.js + presentasjonsbackup) — DENNE endringen krever redeploy for å virke i prod.
+
+## Salgsradar: Annonsør-deteksjon + kontaktinfo (aug 2026)
+- Hver lead viser nå ANNONSØR: Privat (grønn) / Husleie.no (gul) / Utleiemegleren / Megler (rød) — parses fra FINNs company-profile-JSON (`parseAnnonsor` i lib/salgsradar.js, versjon v:2).
+- Proff-annonser gir full kontaktperson: navn, tittel, telefon, e-post (vises i skuff-hode, Detaljer-rail, tabellens Utleier-kolonne).
+- PRIVATE annonser: FINN viser aldri navn anonymt, men telefonen ligger i serialiserte data («"mobile","..."») når utleier har valgt å oppgi den — parser v2 fanger denne (bekreftet: 2 av 5 private annonser hadde tlf).
+- Filter Privat/Megler i verktøylinjen (Privat = målgruppen inkl. Husleie.no/ukjent; Megler = konkurrent har oppdraget).
+- Backfill: POST /api/admin/salgsradar/berik-annonsor (lazy fra UI når leads mangler annonsor eller har v1); agent-ingest beriker nye leads i bakgrunnen. Feilede oppslag merkes type:'ukjent' (ingen badge).
+- Badges også på kanban-kort (SalgPipeline.js: AnnonsorBadge/ANNONSOR_META).

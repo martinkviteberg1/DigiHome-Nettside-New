@@ -36,6 +36,28 @@ export function SelgerBadge({ selger, størrelse = 22 }) {
   );
 }
 
+/* ── ANNONSØR-BADGE: hvem står bak FINN-annonsen? ──
+   Privat = kjernemålet (huseier uten forvalter). Husleie.no = selvbetjent
+   utleier, også godt mål. Megler/Utleiemegleren = konkurrent har oppdraget. */
+export const ANNONSOR_META = {
+  privat: { l: 'Privat', c: '#1f7a45', bg: '#eef6f0', d: 'Privat utleier — kjernemålet. Kontakt via FINN-melding.' },
+  husleie: { l: 'Husleie.no', c: '#9a6b1c', bg: '#fdf3e0', d: 'Selvbetjent utleier via Husleie.no — godt mål.' },
+  utleiemegleren: { l: 'Utleiemegleren', c: '#c2413b', bg: '#fdf0ef', d: 'Utleiemegleren har oppdraget — konkurrent.' },
+  megler: { l: 'Megler', c: '#c2413b', bg: '#fdf0ef', d: 'Profesjonell aktør har annonsen — konkurrent.' },
+};
+export function AnnonsorBadge({ annonsor, liten = false }) {
+  const meta = ANNONSOR_META[annonsor?.type];
+  if (!meta) return null; // mangler data eller 'ukjent' → ingen badge
+  const tekst = annonsor.type === 'megler' && annonsor.orgNavn ? annonsor.orgNavn : meta.l;
+  return (
+    <span title={annonsor.orgNavn ? `${annonsor.orgNavn} — ${meta.d}` : meta.d} data-testid="annonsor-badge"
+      className={`inline-flex shrink-0 items-center rounded-full font-semibold ${liten ? 'max-w-[110px] px-1.5 py-px text-[9.5px]' : 'max-w-[160px] px-2 py-[2px] text-[10.5px]'}`}
+      style={{ color: meta.c, background: meta.bg }}>
+      <span className="truncate">{tekst}</span>
+    </span>
+  );
+}
+
 /* ── PIPELINE-TAVLE (kanban): én kolonne per steg, dra-og-slipp ── */
 export function PipelineTavle({ leads, statuser, valgtId, onAapne, onsketStatus }) {
   const [drarId, setDrarId] = useState(null);
@@ -81,6 +103,7 @@ export function PipelineTavle({ leads, statuser, valgtId, onAapne, onsketStatus 
                   <p className="truncate text-[12px] font-semibold leading-snug text-[#1c1917]" style={heading}>{l.adresse || l.tittel || 'Uten adresse'}</p>
                   <div className="mt-1.5 flex items-center gap-2">
                     {l.pris ? <span className="text-[11px] font-medium text-[#78716c]">{kr(l.pris)}/mnd</span> : null}
+                    <AnnonsorBadge annonsor={l.annonsor} liten />
                     {l.status === 'vunnet' && l.salg?.vunnet ? (
                       <span className="text-[10.5px] font-semibold text-[#1f7a45]">+{kr(l.salg.vunnet.provisjon)}</span>
                     ) : null}

@@ -64,7 +64,7 @@ import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImage
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
-import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, filtrerLevendeBilder, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER, opprettStylingJobber, kjorStylingJobber, listStylingJobber, reviewStylingJobb, fjernStyletBilde, listSelgere as radarListSelgere, settProvisjonssats as radarSettProvisjonssats, tildelLead as radarTildelLead, settSalgsstatus as radarSettSalgsstatus, settOppfolging as radarSettOppfolging, selgerRapport as radarSelgerRapport, RADAR_ARSAKER } from '@/lib/salgsradar';
+import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, filtrerLevendeBilder, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER, opprettStylingJobber, kjorStylingJobber, listStylingJobber, reviewStylingJobb, fjernStyletBilde, listSelgere as radarListSelgere, settProvisjonssats as radarSettProvisjonssats, tildelLead as radarTildelLead, settSalgsstatus as radarSettSalgsstatus, settOppfolging as radarSettOppfolging, selgerRapport as radarSelgerRapport, RADAR_ARSAKER, berikAnnonsorer as radarBerikAnnonsorer } from '@/lib/salgsradar';
 import { settArkiv, listArkiv, nyVersjon, listVersjoner, hentVersjon, gjenopprettVersjon, opprettDeling, trekkDeling, hentDelt, filDetaljer, filLogg, VERSJON_COLL, konverterDocxTilPdf } from '@/lib/dokumenter';
 import { lagreOppsett as signLagreOppsett, hentOppsett as signHentOppsett, slettOppsett as signSlettOppsett, opprettSigneringsjobb, kansellerSignering, pollSignering, pollSnarest, listSigneringsjobber, hentSignerRedirect, hentSignerVisning, hentSignerDokument, sendBatchSignaturEposter, SIGN_JOBB_COLL } from '@/lib/signering';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
@@ -4667,6 +4667,13 @@ async function handleRoute(request, { params }) {
       const rRp = await radarSelgerRapport(db, { fra: spRp.get('fra') || null, til: spRp.get('til') || null });
       return cors(NextResponse.json(rRp));
     }
+    // Annonsør-berikelse: fyller annonsor + kontaktinfo på leads som mangler
+    // det (eldre leads / agent-ingest). Kalles lazy fra admin-UI ved behov.
+    if (route === '/admin/salgsradar/berik-annonsor' && method === 'POST') {
+      if (!(await modulAuthed(request, db, 'salgsradar'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const rBa = await radarBerikAnnonsorer(db, { maks: 15 });
+      return cors(NextResponse.json(rBa));
+    }
     // Bulk-sletting: {ids: [...]} — multivalg i admin (maks 100)
     if (route === '/admin/salgsradar/slett-mange' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
@@ -4821,6 +4828,9 @@ async function handleRoute(request, { params }) {
           kjorAutoPipeline(db, resIn.lead.id).catch(() => {});
         }
       }
+      // Annonsør-berikelse i bakgrunnen: nye agent-leads mangler annonsørdata
+      // (agenten sender ikke company-profile) — hent og fyll uten å blokkere svaret
+      if (nyeLeads.length) radarBerikAnnonsorer(db, { maks: 10 }).catch(() => {});
       // In-app varsler til owner/admin: nye leads, prisendringer og deaktiveringer
       try {
         const adminsIn = await db.collection('admin_users').find({ role: { $in: ['owner', 'admin'] } }, { projection: { id: 1 } }).toArray();
