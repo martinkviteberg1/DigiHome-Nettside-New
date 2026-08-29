@@ -7145,3 +7145,19 @@ agent_communication:
     -agent: "testing"
     -message: "✅ TILBUDSSIDE V2 TESTING COMPLETE - ALL 6 TESTS PASSED (100% success rate). Comprehensive verification of personlig avsender (tildelt selger) feature. TESTED: (T1) QA seller created, QA lead with tildeltTil inserted via pymongo, GET /api/tilbud returns selger object with navn='QA Selger', tittel='Seniorrådgiver', epost='qa-selger-tilbud@example.com', telefon='', avatar='' - CRITICAL SECURITY VERIFIED: selger does NOT contain internal fields (id, role, provisjonssats) ✓. (T2) tildeltTil removed via pymongo, selger===null ✓. (T3) tildeltTil restored, POST /api/tilbud/kontakt sent, status changed to 'dialog', kontaktLogg has telefon='99887766', 2 notifications sent (1 to QA seller, 1 to owner/admin) with dedupe (no duplicates per user) ✓. (T4) spor=0 doesn't increment aapninger, spor=1 does (0→1) ✓. (T5) Regression: Strandgaten 222 (slug GPp3jfhQ_YE) has selger.epost='martin@kviteberg.no', regnestykke and annonse fields present ✓. (T6) kontaktNavn/kontaktTlf normalization working ('  Alexander   R  '→'Alexander R', '98 00 40-08'→'98004008'), GET /api/admin/salgsradar/selgere returns all required fields (id, navn, epost, provisjonssats, avatar) ✓. CRITICAL SAFETY: Did NOT mutate 3 real leads (skuteviken smalgang 11, Strandgaten 222, Johannes Bruns gate 1 - all verified unchanged), Strandgaten 222 ONLY READ, did NOT call /hent. MANDATORY CLEANUP COMPLETED: Deleted QA lead, tombstone for finnkode 999999903, QA seller, 2 notifications with 'QA Testveien 1', verified 0 QA data remains. Feature working PERFECTLY: selger object with correct public fields, no internal fields (SECURITY), selger===null when tildeltTil is null, notifications to tildelt selger AND owner/admin with dedupe, spor tracking, regression passed, normalization working. Backend test created at /app/backend_test_tilbudsside_v2.py for future regression testing."
 
+
+  - task: "Tilbudsside SSR 2026: server-komponent (page.js) rendrer tilbudet komplett + bot-/preview-filtrert åpningssporing server-side"
+    implemented: true
+    working: "NA"
+    file: "/app/app/tilbud/[slug]/page.js (ny server-komponent m/ generateMetadata, bot-regex, sporing), /app/app/tilbud/[slug]/TilbudClient.js (all UI, mottar tilbud som prop — ingen klient-fetch/spinner)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Arkitekturendring: /tilbud/[slug] er nå server-rendret. page.js henter tilbudet direkte fra MongoDB (hentTilbud) og sender som prop til TilbudClient — ingen spinner/klient-fetch lenger. Åpningssporing (aapninger +1) skjer nå server-side ved siderender, MEN aldri når (a) ?preview=1 er satt, eller (b) User-Agent matcher bot-regex (whatsapp/facebookexternalhit/telegram/slack/twitterbot/linkedinbot/discord/bot/crawl/spider m.fl.) — slik at lenke-forhåndsvisninger i meldingsapper ikke teller som huseier-åpninger. generateMetadata gir og:title/description + robots noindex (private sider). Ukjent slug → rolig 'Fant ikke tilbudet'-side (HTTP 200). GET /api/tilbud og POST /api/tilbud/kontakt er UENDRET (kontakt-skjemaet bruker fortsatt POST-endepunktet). Manuelt verifisert av main: SSR-HTML inneholder adresse, +1 ved vanlig UA, uendret ved preview/bot-UA, feilside ved ukjent slug, 0 hydreringsfeil."
+
+agent_communication:
+    -agent: "main"
+    -message: "Tilbudsside er nå SSR (server-komponent + TilbudClient). Sporing flyttet server-side m/ bot-/preview-filter. Kjør T1–T6 m/ QA-lead via pymongo og FULL opprydding. IKKE muter de 3 ekte leadsene, IKKE kall /hent. Ekte lead kan kun LESES med ?preview=1 (teller ikke)."
