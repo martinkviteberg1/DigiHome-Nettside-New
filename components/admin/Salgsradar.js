@@ -16,10 +16,11 @@ import {
   Home, Wand2, MessageSquare, ChevronLeft, ChevronRight,
   RefreshCw, Square, CheckSquare, Search, List, Table2, ArrowLeft, ArrowUp, ArrowDown,
   Maximize2, Minimize2, Banknote, Globe, StickyNote, Plus, ChevronDown,
-  Columns3, BarChart3,
+  Columns3, BarChart3, SlidersHorizontal,
 } from 'lucide-react';
 import { PipelineTavle, SalgSeksjon, ArsakModal, VunnetModal, RapportModal, SelgerBadge, AnnonsorBadge } from './SalgPipeline';
 import SalgsSkuffEnkel from './SalgsSkuffEnkel';
+import { bydelFraPostnr } from '@/lib/bydeler';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 const tall = (v) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(Math.round(Number(v) || 0)).replace(/\u00A0/g, '\u202F');
@@ -364,6 +365,8 @@ export default function Salgsradar({ apiKey }) {
   const [selgere, setSelgere] = useState([]);
   const [eierFilter, setEierFilter] = useState('alle'); // 'alle' | 'mine' | 'pool'
   const [annonsorFilter, setAnnonsorFilter] = useState('alle'); // 'alle' | 'privat' | 'megler'
+  const [bydelFilter, setBydelFilter] = useState('alle'); // 'alle' | bydelsnavn
+  const [filterMeny, setFilterMeny] = useState(false); // samlet filter-popover
   const [arsakDialog, setArsakDialog] = useState(null); // {lead, status}
   const [vunnetDialog, setVunnetDialog] = useState(null); // {lead}
   const [visRapport, setVisRapport] = useState(false);
@@ -675,10 +678,24 @@ export default function Salgsradar({ apiKey }) {
     // Megler = proff aktør har oppdraget (Utleiemegleren m.fl.) — konkurrent.
     if (annonsorFilter === 'privat') arr = arr.filter((l) => !l.annonsor || ['privat', 'husleie', 'ukjent'].includes(l.annonsor.type));
     if (annonsorFilter === 'megler') arr = arr.filter((l) => ['megler', 'utleiemegleren'].includes(l.annonsor?.type));
+    if (bydelFilter !== 'alle') arr = arr.filter((l) => bydelFraPostnr(l.postnr) === bydelFilter);
     const q = sok.trim().toLowerCase();
-    if (q) arr = arr.filter((l) => `${l.adresse || ''} ${l.tittel || ''} ${l.postnr || ''} ${l.annonsor?.orgNavn || ''} ${l.kontaktNavn || ''}`.toLowerCase().includes(q));
+    if (q) arr = arr.filter((l) => `${l.adresse || ''} ${l.tittel || ''} ${l.postnr || ''} ${bydelFraPostnr(l.postnr)} ${l.annonsor?.orgNavn || ''} ${l.kontaktNavn || ''}`.toLowerCase().includes(q));
     return arr;
-  }, [leads, filter, sok, eierFilter, aktor, annonsorFilter]);
+  }, [leads, filter, sok, eierFilter, aktor, annonsorFilter, bydelFilter]);
+
+  // Naturlige bydeler blant leadsene (fra postnr) — driver bydelsfilteret
+  const bydeler = useMemo(() => {
+    const telling = new Map();
+    for (const l of leads) {
+      const b = bydelFraPostnr(l.postnr);
+      if (b) telling.set(b, (telling.get(b) || 0) + 1);
+    }
+    return [...telling.entries()].sort((a, b) => b[1] - a[1]).map(([navn, antallB]) => ({ navn, antall: antallB }));
+  }, [leads]);
+
+  const aktiveFiltre = (filter !== 'alle' ? 1 : 0) + (eierFilter !== 'alle' ? 1 : 0) + (annonsorFilter !== 'alle' ? 1 : 0) + (bydelFilter !== 'alle' ? 1 : 0);
+  const nullstillFiltre = () => { setFilter('alle'); setEierFilter('alle'); setAnnonsorFilter('alle'); setBydelFilter('alle'); };
   const sortert = useMemo(() => {
     const arr = [...filtrert];
     const v = (l) => {
@@ -779,6 +796,7 @@ export default function Salgsradar({ apiKey }) {
       sendSalgsstatus={sendSalgsstatus}
       onTildel={tildel}
       onOppfolging={settOppfolging}
+      onOppdaterFelt={(patch) => oppdater(valgt.id, patch)}
       onStyle={styGenerer}
       onReview={styReview}
     />
@@ -1994,83 +2012,133 @@ export default function Salgsradar({ apiKey }) {
 
       {/* Verktøylinje / bulk-linje — mobil: søk+kontroller øverst, filtre som scrollerad */}
       {utvalg.size === 0 ? (
-        <div className={`flex flex-wrap items-center gap-1.5 py-1 ${!splitt && visning === 'liste' ? 'mx-auto w-full max-w-[1040px]' : ''}`}>
-          <span className="relative order-1 min-w-0 flex-1 lg:flex-none">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#c2beb8]" />
-            <input value={sok} onChange={(e) => setSok(e.target.value)} placeholder="Søk adresse…" data-testid="radar-sok"
-              className="h-[28px] w-full rounded-[7px] border border-black/[0.07] bg-white pl-8 pr-2.5 text-[12px] outline-none transition-all placeholder:text-[#c2beb8] focus:border-[#1c1917]/25 lg:w-[170px] lg:focus:w-[200px]" />
+        <div className={`flex flex-wrap items-center gap-2 py-1 ${!splitt && visning === 'liste' ? 'mx-auto w-full max-w-[1040px]' : ''}`}>
+          {/* Søk — rolig, avrundet felt */}
+          <span className="relative order-1 min-w-0 flex-1 sm:flex-none">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#c2beb8]" />
+            <input value={sok} onChange={(e) => setSok(e.target.value)} placeholder="Søk adresse eller bydel…" data-testid="radar-sok"
+              className="h-[30px] w-full rounded-full border border-black/[0.07] bg-white pl-9 pr-3 text-[12px] outline-none transition-all placeholder:text-[#c2beb8] focus:border-[#1c1917]/25 sm:w-[190px] sm:focus:w-[230px]" />
           </span>
-          <span className="order-3 mx-1 hidden h-4 w-px bg-black/[0.07] lg:block" />
-          <div className="no-scrollbar order-4 -mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 lg:mx-0 lg:w-auto lg:flex-wrap lg:overflow-visible lg:px-0">
-            {aktor && (
+
+          {/* Samlet filter: status · eier · annonsør · bydel i én popover */}
+          <span className="relative order-2">
+            <button onClick={() => setFilterMeny((v) => !v)} data-testid="radar-filter-btn"
+              className={`flex h-[30px] items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition-all ${aktiveFiltre > 0 ? 'border-transparent bg-[#1c1917] text-white shadow-[0_2px_8px_rgba(28,25,23,0.25)]' : 'border-black/[0.07] bg-white text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] hover:text-[#1c1917]'}`}>
+              <SlidersHorizontal className="h-3.5 w-3.5" /> Filter
+              {aktiveFiltre > 0 && <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-white/25 px-1 text-[10px] font-bold">{aktiveFiltre}</span>}
+            </button>
+            {filterMeny && (
               <>
-                {[{ k: 'alle', l: 'Alle' }, { k: 'mine', l: 'Mine' }, { k: 'pool', l: 'Pool' }].map((f) => (
-                  <button key={f.k} onClick={() => setEierFilter(f.k)} data-testid={`radar-eier-${f.k}`}
-                    className={`flex h-[26px] shrink-0 items-center whitespace-nowrap rounded-[6px] px-2.5 text-[12px] font-semibold transition-all ${eierFilter === f.k ? 'bg-[#e9e6e0] text-[#1c1917]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}>
-                    {f.l}
-                    {f.k === 'pool' && <span className={`ml-1.5 ${eierFilter === f.k ? 'text-[#78716c]' : 'text-[#c2beb8]'}`}>{leads.filter((l) => !l.salg?.tildeltTil).length}</span>}
-                  </button>
-                ))}
-                <span className="mx-1 h-4 w-px shrink-0 bg-black/[0.07]" />
+                <div className="fixed inset-0 z-[140]" onClick={() => setFilterMeny(false)} />
+                <div className="dh-scale-in absolute left-0 z-[141] mt-1.5 max-h-[72vh] w-[min(90vw,360px)] overflow-y-auto rounded-[16px] border border-black/[0.07] bg-white p-4 shadow-[0_22px_64px_rgba(23,20,18,0.18)]" data-testid="radar-filter-meny">
+                  <p className="pb-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#b3aea6]">Status</p>
+                  <div className="flex flex-wrap gap-1">
+                    {[{ k: 'alle', l: 'Alle' }, ...STATUSER].map((s) => (
+                      <button key={s.k} onClick={() => setFilter(s.k)} data-testid={`radar-filter-${s.k}`}
+                        className={`flex h-[26px] items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[12px] font-medium transition-all ${filter === s.k ? 'bg-[#1c1917] text-white' : 'bg-[#f4f2ee] text-[#6f6a61] hover:text-[#1c1917]'}`}>
+                        {s.farge && <span className="h-[5px] w-[5px] rounded-full" style={{ background: filter === s.k ? '#fff' : s.farge }} />}
+                        {s.l} <span className={filter === s.k ? 'text-white/50' : 'text-[#b3aea6]'}>{antall[s.k] || 0}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {aktor && (
+                    <>
+                      <p className="pb-1.5 pt-3.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#b3aea6]">Selger</p>
+                      <div className="flex flex-wrap gap-1">
+                        {[{ k: 'alle', l: 'Alle' }, { k: 'mine', l: 'Mine' }, { k: 'pool', l: 'Pool' }].map((f) => (
+                          <button key={f.k} onClick={() => setEierFilter(f.k)} data-testid={`radar-eier-${f.k}`}
+                            className={`flex h-[26px] items-center gap-1 rounded-full px-2.5 text-[12px] font-medium transition-all ${eierFilter === f.k ? 'bg-[#1c1917] text-white' : 'bg-[#f4f2ee] text-[#6f6a61] hover:text-[#1c1917]'}`}>
+                            {f.l}
+                            {f.k === 'pool' && <span className={eierFilter === f.k ? 'text-white/50' : 'text-[#b3aea6]'}>{leads.filter((l) => !l.salg?.tildeltTil).length}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  <p className="pb-1.5 pt-3.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#b3aea6]">Annonsør</p>
+                  <div className="flex flex-wrap gap-1">
+                    {[{ k: 'alle', l: 'Alle' }, { k: 'privat', l: 'Privat', c: '#1f7a45' }, { k: 'megler', l: 'Megler', c: '#c2413b' }].map((f) => (
+                      <button key={f.k} onClick={() => setAnnonsorFilter(f.k)} data-testid={`radar-annonsor-${f.k}`}
+                        title={f.k === 'privat' ? 'Huseiere uten forvalter (inkl. Husleie.no) — målgruppen' : f.k === 'megler' ? 'Megler/Utleiemegleren har oppdraget — konkurrent' : undefined}
+                        className={`flex h-[26px] items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium transition-all ${annonsorFilter === f.k ? 'bg-[#1c1917] text-white' : 'bg-[#f4f2ee] text-[#6f6a61] hover:text-[#1c1917]'}`}>
+                        {f.c && <span className="h-[5px] w-[5px] rounded-full" style={{ background: annonsorFilter === f.k ? '#fff' : f.c }} />}
+                        {f.l}
+                      </button>
+                    ))}
+                  </div>
+                  {bydeler.length > 0 && (
+                    <>
+                      <p className="pb-1.5 pt-3.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#b3aea6]">Bydel</p>
+                      <div className="flex flex-wrap gap-1">
+                        <button onClick={() => setBydelFilter('alle')} data-testid="radar-bydel-alle"
+                          className={`h-[26px] rounded-full px-2.5 text-[12px] font-medium transition-all ${bydelFilter === 'alle' ? 'bg-[#1c1917] text-white' : 'bg-[#f4f2ee] text-[#6f6a61] hover:text-[#1c1917]'}`}>Alle</button>
+                        {bydeler.map((b) => (
+                          <button key={b.navn} onClick={() => setBydelFilter((v) => (v === b.navn ? 'alle' : b.navn))} data-testid={`radar-bydel-${b.navn}`}
+                            className={`flex h-[26px] items-center gap-1 rounded-full px-2.5 text-[12px] font-medium transition-all ${bydelFilter === b.navn ? 'bg-[#1c1917] text-white' : 'bg-[#f4f2ee] text-[#6f6a61] hover:text-[#1c1917]'}`}>
+                            {b.navn} <span className={bydelFilter === b.navn ? 'text-white/50' : 'text-[#b3aea6]'}>{b.antall}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  <div className="mt-4 flex items-center justify-between border-t border-black/[0.05] pt-3">
+                    <button onClick={nullstillFiltre} disabled={!aktiveFiltre} data-testid="radar-filter-nullstill"
+                      className="text-[12px] font-medium text-[#8a857c] transition-colors hover:text-[#c2413b] disabled:opacity-40">Nullstill</button>
+                    <button onClick={() => setFilterMeny(false)}
+                      className="h-[28px] rounded-full bg-[#1c1917] px-3.5 text-[12px] font-semibold text-white transition-colors hover:bg-black">Ferdig</button>
+                  </div>
+                </div>
               </>
             )}
-            {/* Annonsørfilter: Privat (målgruppen) vs Megler (konkurrent har oppdraget) */}
-            {[{ k: 'privat', l: 'Privat', c: '#1f7a45' }, { k: 'megler', l: 'Megler', c: '#c2413b' }].map((f) => (
-              <button key={f.k} onClick={() => setAnnonsorFilter((v) => (v === f.k ? 'alle' : f.k))} data-testid={`radar-annonsor-${f.k}`}
-                title={f.k === 'privat' ? 'Huseiere uten forvalter (inkl. Husleie.no) — målgruppen' : 'Megler/Utleiemegleren har oppdraget — konkurrent'}
-                className={`flex h-[26px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[6px] px-2.5 text-[12px] font-medium transition-all ${annonsorFilter === f.k ? 'bg-[#1c1917] text-white shadow-[0_1px_3px_rgba(28,25,23,0.25)]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}>
-                <span className="h-[5px] w-[5px] rounded-full" style={{ background: annonsorFilter === f.k ? '#fff' : f.c }} />
-                {f.l}
-              </button>
-            ))}
-            <span className="mx-1 h-4 w-px shrink-0 bg-black/[0.07]" />
-            {[{ k: 'alle', l: 'Alle' }, ...STATUSER].map((s) => (
-              <button key={s.k} onClick={() => setFilter(s.k)} data-testid={`radar-filter-${s.k}`}
-                className={`flex h-[26px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[6px] px-2.5 text-[12px] font-medium transition-all ${filter === s.k ? 'bg-[#1c1917] text-white shadow-[0_1px_3px_rgba(28,25,23,0.25)]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}>
-                {s.farge && <span className="h-[5px] w-[5px] rounded-full" style={{ background: filter === s.k ? '#fff' : s.farge }} />}
-                {s.l} <span className={` ${filter === s.k ? 'text-white/50' : 'text-[#c2beb8]'}`}>{antall[s.k] || 0}</span>
-              </button>
-            ))}
-            <select value={sort.key} onChange={(e) => setSort({ key: e.target.value, dir: 'desc' })} data-testid="radar-sort-mobil" aria-label="Sortering"
-              className="ml-auto h-[26px] shrink-0 rounded-[7px] border border-black/[0.08] bg-white px-1.5 text-[11.5px] font-medium text-[#57534e] outline-none lg:hidden">
-              <option value="potensial">Potensial</option>
-              <option value="kvalitet">Kvalitet</option>
-              <option value="nyeste">Nyeste</option>
-              <option value="aapnet">Åpninger</option>
-              <option value="pris">Leie</option>
-            </select>
-          </div>
-          <span className="order-2 flex shrink-0 items-center gap-1.5 lg:order-5 lg:ml-auto">
+          </span>
+
+          {/* Aktive filtre som fjernbare chips — alltid synlig hva som er på */}
+          {aktiveFiltre > 0 && (
+            <div className="no-scrollbar order-4 flex min-w-0 items-center gap-1 overflow-x-auto sm:order-3">
+              {[
+                filter !== 'alle' && { l: (STATUSER.find((s) => s.k === filter) || {}).l, x: () => setFilter('alle'), tid: 'chip-status' },
+                eierFilter !== 'alle' && { l: eierFilter === 'mine' ? 'Mine' : 'Pool', x: () => setEierFilter('alle'), tid: 'chip-eier' },
+                annonsorFilter !== 'alle' && { l: annonsorFilter === 'privat' ? 'Privat' : 'Megler', x: () => setAnnonsorFilter('alle'), tid: 'chip-annonsor' },
+                bydelFilter !== 'alle' && { l: bydelFilter, x: () => setBydelFilter('alle'), tid: 'chip-bydel' },
+              ].filter(Boolean).map((c) => (
+                <span key={c.tid} data-testid={`radar-${c.tid}`} className="flex h-[26px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#e9e6e0] pl-2.5 pr-1 text-[12px] font-medium text-[#44403c]">
+                  {c.l}
+                  <button onClick={c.x} aria-label={`Fjern filter ${c.l}`} className="rounded-full p-0.5 text-[#8a857c] transition-colors hover:bg-black/[0.07] hover:text-[#1c1917]"><X className="h-3 w-3" /></button>
+                </span>
+              ))}
+            </div>
+          )}
+          <span className="order-2 ml-auto flex shrink-0 items-center gap-1.5 sm:order-5">
             {innsikt.honorarPipeline > 0 && (
               <button onClick={() => setFilter('alle')} data-testid="radar-innsikt-pipeline"
-                title="Samlet månedshonorar hvis alle aktive leads vinnes (analysert + kontaktet + dialog)"
-                className="mr-1 hidden items-baseline gap-1.5 whitespace-nowrap rounded-[7px] px-2 py-1 transition-colors hover:bg-[#f7f6f3] xl:flex">
+                title="Samlet månedshonorar hvis alle aktive leads vinnes (analysert + kontaktet + dialog + tilbud)"
+                className="mr-1 hidden items-baseline gap-1.5 whitespace-nowrap rounded-full px-2 py-1 transition-colors hover:bg-[#f7f6f3] xl:flex">
                 <span className="text-[11.5px] text-[#8a857c]">I spill</span>
                 <span className="text-[12.5px] font-bold text-[#171717]" style={heading}>{kr(innsikt.honorarPipeline)}<span className="font-medium text-[#a8a29a]">/mnd</span></span>
               </button>
             )}
-            <span className="flex overflow-hidden rounded-[7px] border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
+            <span className="flex overflow-hidden rounded-full border border-black/[0.07] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
               <button onClick={() => setVisning('liste')} data-testid="radar-visning-liste" title="Listevisning"
-                className={`flex h-[28px] w-9 items-center justify-center transition-colors ${visning === 'liste' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
+                className={`flex h-[30px] w-9 items-center justify-center transition-colors ${visning === 'liste' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
                 <List className="h-[15px] w-[15px]" />
               </button>
               <button onClick={() => setVisning('tavle')} data-testid="radar-visning-tavle" title="Pipeline-tavle — dra leads mellom stegene"
-                className={`flex h-[28px] w-9 items-center justify-center transition-colors ${visning === 'tavle' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
+                className={`flex h-[30px] w-9 items-center justify-center transition-colors ${visning === 'tavle' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
                 <Columns3 className="h-[15px] w-[15px]" />
               </button>
               <button onClick={() => setVisning('tabell')} data-testid="radar-visning-tabell" title="Tabellvisning — alle AI-delscorer"
-                className={`flex h-[28px] w-9 items-center justify-center transition-colors ${visning === 'tabell' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
+                className={`flex h-[30px] w-9 items-center justify-center transition-colors ${visning === 'tabell' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
                 <Table2 className="h-[15px] w-[15px]" />
               </button>
             </span>
             {aktor && (
               <button onClick={() => setVisRapport(true)} data-testid="radar-rapport-btn" title="Selgerrapport — vunnet, provisjon og win-rate per selger"
-                className="flex h-[28px] items-center gap-1 rounded-[7px] border border-black/[0.08] bg-white px-2 text-[12px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917]">
-                <BarChart3 className="h-[14px] w-[14px]" /> <span className="hidden xl:inline">Rapport</span>
+                className="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-black/[0.07] bg-white text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917]">
+                <BarChart3 className="h-[14px] w-[14px]" />
               </button>
             )}
             <select value={sort.key} onChange={(e) => setSort({ key: e.target.value, dir: 'desc' })} data-testid="radar-sort" aria-label="Sortering"
-              className="hidden h-[28px] rounded-[7px] border border-black/[0.08] bg-white px-2 text-[12px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] outline-none focus:border-[#1c1917]/25 lg:block">
+              className="hidden h-[30px] rounded-full border border-black/[0.07] bg-white px-2.5 text-[12px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] outline-none focus:border-[#1c1917]/25 sm:block">
               <option value="potensial">Høyest potensial</option>
               <option value="kvalitet">Annonsekvalitet</option>
               <option value="nyeste">Nyeste først</option>
@@ -2078,7 +2146,7 @@ export default function Salgsradar({ apiKey }) {
               <option value="pris">Høyest leie</option>
             </select>
             <button onClick={() => setVisNy((v) => !v)} data-testid="radar-ny-btn" title="Legg til ny FINN-annonse"
-              className="flex h-[28px] items-center gap-1 rounded-[8px] bg-[#141414] px-2 text-[12px] font-medium text-white transition-colors hover:bg-black/80 active:scale-[0.98] sm:pr-3">
+              className="flex h-[30px] items-center gap-1 rounded-full bg-[#141414] px-2.5 text-[12px] font-semibold text-white shadow-[0_2px_8px_rgba(20,20,20,0.25)] transition-all hover:bg-black active:scale-[0.98] sm:pr-3.5">
               <Plus className="h-[14px] w-[14px]" /> <span className="hidden sm:inline">Ny annonse</span>
             </button>
           </span>
@@ -2202,6 +2270,7 @@ export default function Salgsradar({ apiKey }) {
                           })()}
                           {!splitt && l.m2 ? <span>· {l.m2} m²</span> : null}
                           {!splitt && l.soverom ? <span>· {l.soverom} sov</span> : null}
+                          {(() => { const byd = bydelFraPostnr(l.postnr); return byd ? <span className="shrink-0 text-[#a8a29a]">· {byd}</span> : null; })()}
                           <AnnonsorBadge annonsor={l.annonsor} liten={splitt} />
                         </span>
                       </span>
@@ -2224,6 +2293,7 @@ export default function Salgsradar({ apiKey }) {
                     <tr>
                       <th className="sticky top-0 z-10 w-10 bg-white/90 px-3.5 py-3 shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" />
                       <th className="sticky top-0 z-10 bg-white/90 px-2 py-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#a8a29a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md">Bolig</th>
+                      <th className="sticky top-0 z-10 bg-white/90 px-2 py-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#a8a29a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md">Bydel</th>
                       <th className="sticky top-0 z-10 bg-white/90 px-2 py-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#a8a29a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md">Utleier</th>
                       <th className="sticky top-0 z-10 bg-white/90 px-2 py-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#a8a29a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md">Status</th>
                       <th className="sticky top-0 z-10 cursor-pointer bg-white/90 px-2 py-3 text-center text-[10px] font-bold uppercase tracking-[0.09em] text-[#57534e] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" onClick={() => sorter('potensial')} data-testid="radar-tabell-sort-potensial">
@@ -2278,6 +2348,17 @@ export default function Salgsradar({ apiKey }) {
                                 </span>
                               </span>
                             </span>
+                          </td>
+                          <td className="px-2 py-2">
+                            {(() => {
+                              const byd = bydelFraPostnr(l.postnr);
+                              return (byd || l.postnr) ? (
+                                <span className="block min-w-0" data-testid={`radar-tabell-bydel-${l.id}`}>
+                                  {byd ? <span className="block whitespace-nowrap text-[12px] font-medium text-[#44403c]">{byd}</span> : null}
+                                  {l.postnr ? <span className="block text-[10.5px] text-[#a8a29a]">{l.postnr}</span> : null}
+                                </span>
+                              ) : <span className="text-[12px] text-[#ddd8d0]">–</span>;
+                            })()}
                           </td>
                           <td className="px-2 py-2">
                             <span className="block min-w-0" data-testid={`radar-tabell-kontakt-${l.id}`}>

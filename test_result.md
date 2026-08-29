@@ -7107,3 +7107,19 @@ agent_communication:
     -message: "Delta-endring etter brukerinnsikt: private annonser kan ha telefon i serialiserte data — parser v2 + engangs re-berikelse. Kjør kort T1–T3 (kun lesing + idempotent berik-POST). Ikke rør de 3 ekte leadsene, ikke kall /hent."
     -agent: "testing"
     -message: "✅ ANNONSØR-PARSER V2 TESTING COMPLETE - ALL 3 TESTS PASSED (100% success rate). Verified parser v2 successfully extracts private phone numbers from FINN's serialized data. Tested: (T1) GET /admin/salgsradar/leads - all 3 leads have annonsor.v=2, Strandgaten 222 (private) has type='privat' with kontaktTlf='92072453' and annonsor.kontakter[0].telefon='92072453' (private phone from serialized data working), Johannes Bruns gate 1 has type='utleiemegleren' with kontaktEpost containing 'utleiemegleren.no' (company profile working), (T2) POST /admin/salgsradar/berik-annonsor - idempotent response {sjekket:0, oppdatert:0, feilet:0} (all already v2, no external FINN calls), (T3) GET /admin/salgsradar/meg - regression passed (aktor.erLeder=true). CRITICAL SAFETY: Only reading + ONE idempotent POST, did NOT modify the 3 real leads, did NOT call /hent (external FINN API). All safety rules followed. No issues found. Backend test created at /app/backend_test_annonsor_v2.py for future regression testing."
+
+  - task: "Salgsradar: manuell kontaktNavn/kontaktTlf via PUT lead + avatar i selgere-API (v2-skuff verdensklasse)"
+    implemented: true
+    working: "NA"
+    file: "/app/lib/salgsradar.js (oppdaterLead m/ kontaktNavn+kontaktTlf, listSelgere m/ avatar), /app/components/admin/SalgsSkuffEnkel.js (redesign), /app/components/admin/Salgsradar.js (énrads verktøylinje + filter-popover + bydel), /app/lib/bydeler.js (ny)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Backend-delta: (1) PUT /api/admin/salgsradar/lead aksepterer nå kontaktNavn (trimmes, maks 60 tegn) og kontaktTlf (kun sifre/+, maks 15) — FINN viser private utleieres navn kun for innloggede, så selger limer inn navnet manuelt i skuffen. (2) GET /api/admin/salgsradar/selgere returnerer nå også avatar-feltet fra admin_users. Frontend: ny minimal skuff (hero, segmentert fremdrift, selgerkort m/ avatar, navnefelt), énrads verktøylinje m/ samlet filter-popover (status/selger/annonsør/bydel), bydelsmapping fra postnr (lib/bydeler.js — ren klientfunksjon). TESTPLAN (ikke-destruktiv — bruk QA-lead innsatt via pymongo som i forrige runde, IKKE de 3 ekte leadsene, IKKE /hent): (T1) Sett inn QA-lead (id qa-navn-<uuid>, finnkode '999999902', annonsor {v:2, type:'privat', kontakter:[]}, status 'analysert', tilbudSlug tilfeldig). PUT /api/admin/salgsradar/lead?key=dh_admin_b3Kx92Qz7Lm4 {id, kontaktNavn:'  Alexander   R  ', kontaktTlf:'98 00 40-08'} → 200; lead.kontaktNavn === 'Alexander R' (whitespace normalisert) og kontaktTlf === '98004008' (kun sifre). (T2) PUT {id, kontaktNavn:''} → 200 og kontaktNavn tømt (eksplisitt tom streng er lov). (T3) GET /api/admin/salgsradar/selgere?key=... → 200, hvert selgerobjekt har feltene id/navn/epost/provisjonssats/avatar (avatar kan være tom streng). (T4) REGRESJON: GET /api/admin/salgsradar/meg → 200 aktor.erLeder true; GET leads → 200 og de 3 ekte leadsene uendret. (T5) Opprydding: DELETE lead + tombstone for 999999902 via pymongo."
+
+agent_communication:
+    -agent: "main"
+    -message: "Delta: PUT lead støtter kontaktNavn/kontaktTlf, selgere-API returnerer avatar. Kjør T1–T5 (QA-lead via pymongo, full opprydding). Ikke rør de 3 ekte leadsene, ikke kall /hent."
