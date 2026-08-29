@@ -29,8 +29,14 @@ const D = { chip: 'rgba(255,255,255,0.07)', chipLine: 'rgba(255,255,255,0.10)', 
 const head = { fontFamily: 'var(--font-heading)' };
 const body = { fontFamily: 'var(--font-body)' };
 
-const LOGO_WHITE = '/digihome-logo-hvit.svg';
+/* Mørk flate: samme ikon som merkevaren (lilla + mørk H) + hvitt ordmerke.
+   Lys flate: ink-ordmerket med identisk ikon. */
+const LOGO_WHITE = '/digihome-logo-natt.svg';
 const LOGO_INK = '/digihome-wordmark-ink.svg';
+/* Kuratert cover — Bergen i skumring. Ett kontrollert verdensklasse-førsteinntrykk
+   for ALLE tilbud, uavhengig av annonsens bildekvalitet. Kundens egne bilder
+   debuterer i «Bildene»-seksjonen der før/etter-løftet er selve poenget. */
+const COVER_URL = '/brand/tilbud-cover-bergen.jpg';
 
 const tall = (v) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(Math.round(Number(v) || 0)).replace(/\u00A0/g, '\u202F');
 const pent = (s) => String(s || '').toLowerCase().replace(/(^|[\s\-\/])([a-zæøå])/g, (m, f, b) => f + b.toUpperCase());
@@ -476,6 +482,7 @@ export default function TilbudSide() {
   const [visBunn, setVisBunn] = useState(false);
   const [scrollet, setScrollet] = useState(false); // forbi coveret → toppbar
   const [aapen, setAapen] = useState(0);           // åpen FAQ-rad
+  const [dodeBilder, setDodeBilder] = useState([]); // galleri-bilder som 404-er (FINN CDN)
   const coverRef = useRef(null);
   const morkRef = useRef(null);                    // scroll-drevet formørkning av coveret
 
@@ -540,6 +547,8 @@ export default function TilbudSide() {
   const stylet = tilbud?.stylet || [];
   const valgtStylet = stylet[aktivStylet] || null;
   const originalBilde = (tilbud?.bilder || [])[0] || null;
+  // Galleri — resten av annonsens bilder (første er brukt i før/etter og annonsekortene)
+  const galleri = (tilbud?.bilder || []).filter(Boolean).slice(1, 6).filter((u) => !dodeBilder.includes(u));
   const harAnnonse = Boolean(tilbud?.annonse);
   const grunnlag = tilbud?.grunnlag || null;
   const vurdertDato = fmtDato(tilbud?.vurdert);
@@ -550,8 +559,8 @@ export default function TilbudSide() {
     : { navn: 'Sarah Sleeman', tittel: 'din kontaktperson i DigiHome', epost: '', telefon: '', avatar: '/brand/sarah-sleeman-360.webp', generisk: true };
   const fornavn = (avsender.navn || '').split(/\s+/)[0] || 'oss';
 
-  const coverBilde = stylet.length ? `/api/tilbud/bilde?id=${stylet[0].id}` : originalBilde;
-  const dhBilde = coverBilde;
+  // «Slik ville vi gjort det»-kortet bruker beste tilgjengelige bilde: stylet → original
+  const dhBilde = stylet.length ? `/api/tilbud/bilde?id=${stylet[0].id}` : originalBilde;
 
   const intervall = useMemo(() => {
     if (!anbefalt) return null;
@@ -644,14 +653,12 @@ export default function TilbudSide() {
       {/* ══ FILMATISK COVER — sticky: dokumentet avdekkes OVER coveret ══ */}
       <section ref={coverRef} className="relative flex w-full flex-col overflow-hidden lg:sticky lg:top-0" style={{ minHeight: '100svh', backgroundColor: C.black }} data-testid="hero-section">
         <style>{`@keyframes dh-kenburns{from{transform:scale(1.06)}to{transform:scale(1.13)}}@keyframes dh-cue{0%{transform:translateY(-14px)}100%{transform:translateY(44px)}}`}</style>
-        {/* Lag 1 — full-bleed bilde med Ken Burns */}
+        {/* Lag 1 — kuratert Bergen-cover med Ken Burns (alltid til stede, alltid kontrollert) */}
         <div className="absolute inset-0 overflow-hidden" aria-hidden>
-          {coverBilde && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={coverBilde} alt="" fetchPriority="high" className="h-full w-full object-cover"
-              style={{ objectPosition: 'center 38%', animation: reduserMotion() ? 'none' : 'dh-kenburns 28s ease-in-out infinite alternate' }} />
-          )}
-          <div className="absolute inset-0" style={{ backgroundColor: 'rgba(10,9,8,0.16)' }} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={COVER_URL} alt="" fetchPriority="high" className="h-full w-full object-cover"
+            style={{ objectPosition: 'center 42%', animation: reduserMotion() ? 'none' : 'dh-kenburns 28s ease-in-out infinite alternate' }} />
+          <div className="absolute inset-0" style={{ backgroundColor: 'rgba(10,9,8,0.22)' }} />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(8,7,6,0.95) 0%, rgba(8,7,6,0.88) 18%, rgba(8,7,6,0.56) 42%, rgba(8,7,6,0.18) 68%, rgba(8,7,6,0.32) 100%)' }} />
           <div className="absolute inset-x-0 top-0" style={{ height: 180, background: 'linear-gradient(to bottom, rgba(8,7,6,0.52), transparent)' }} />
           <div className="absolute inset-0" style={{ backgroundImage: GRAIN_URL, opacity: 0.10, mixBlendMode: 'overlay' }} />
@@ -816,6 +823,35 @@ export default function TilbudSide() {
                 )}
               </div>
             </Reveal>
+          </section>
+        )}
+
+        {/* ══ GALLERI — stille redaksjonelt mellomspill: hele grunnlaget for vurderingen ══ */}
+        {galleri.length >= 2 && (
+          <section className={`${padX} mx-auto pb-16 lg:pb-28`} style={{ maxWidth: maxW }} data-testid="tilbud-galleri">
+            <Reveal className="mb-7 lg:mb-9">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+                <h2 className="font-light tracking-[-0.03em]" style={{ ...head, fontSize: 'clamp(24px, 3vw, 34px)', color: C.ink }}>Boligen.</h2>
+                <p style={{ fontSize: 13, color: C.faint }}>Fra dagens annonse — hele grunnlaget for vurderingen vår</p>
+              </div>
+            </Reveal>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-6 lg:gap-4">
+              {galleri.map((url, i) => {
+                const n = galleri.length;
+                const stor = n === 2 || n === 4 || (n !== 3 && i < 2);
+                const span = n === 3 ? 'sm:col-span-2' : stor ? 'sm:col-span-3' : 'sm:col-span-2';
+                return (
+                  <Reveal key={url} delay={(i % 3) * 0.06} className={`${i === 0 ? 'col-span-2' : 'col-span-1'} ${span}`}>
+                    <div className="overflow-hidden rounded-[18px]" style={{ border: `1px solid ${C.hairline}`, backgroundColor: C.subtle }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`Bilde ${i + 2} fra annonsen`} loading="lazy" draggable={false}
+                        className={`block h-full w-full object-cover saturate-[0.92] ${stor ? 'aspect-[16/10]' : 'aspect-[4/3]'}`}
+                        onError={() => setDodeBilder((d) => (d.includes(url) ? d : [...d, url]))} />
+                    </div>
+                  </Reveal>
+                );
+              })}
+            </div>
           </section>
         )}
 
