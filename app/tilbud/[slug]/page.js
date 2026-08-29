@@ -538,6 +538,9 @@ export default function TilbudSide() {
   const tilKontakt = useCallback(() => {
     if (typeof document !== 'undefined') document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
+  const tilAnker = useCallback((id) => {
+    if (typeof document !== 'undefined') document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   const r = tilbud?.regnestykke || {};
   const anbefalt = Number(r.anbefaltLeie) || 0;
@@ -574,19 +577,22 @@ export default function TilbudSide() {
 
   const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
   const nyTittel = harAnnonse && tilbud?.tittel && norm(tilbud.annonse.tittel) !== norm(tilbud.tittel);
-  const sammenligningsPunkter = useMemo(() => {
+  /* «Det vi ser» — dokumentets tese. Dynamiske funn fra analysen, hvert med
+     ankerlenke ned til beviset. `god`-funn (ting som allerede treffer) vises
+     med grønt verdikt — ærlighet er det sterkeste salgsargumentet vi har. */
+  const funn = useMemo(() => {
     const ut = [];
     if (dagens && anbefalt) {
-      if (anbefalt > dagens) ut.push(['Prisen', `Dagens annonse ligger ${tall(anbefalt - dagens)} kr under det vi mener boligen bærer. Vurderingen bygger på hva sammenlignbare boliger faktisk leies ut for i porteføljen vår — ikke på annonsepriser.`]);
-      else if (anbefalt === dagens) ut.push(['Prisen', 'Dagens pris treffer godt — den beholder vi. Vår jobb blir å hente den raskt, med riktig leietaker fra første visning.']);
-      else ut.push(['Prisen', `Vi anbefaler ${tall(dagens - anbefalt)} kr lavere enn dagens annonse. Riktig pris fra dag én gir kortere ledighet — og mer utbetalt over året totalt.`]);
+      if (anbefalt > dagens) ut.push({ t: 'Prisen', d: `Dagens annonse ligger ${tall(anbefalt - dagens)} kr under det vi mener boligen bærer. Vurderingen bygger på hva sammenlignbare boliger faktisk leies ut for i porteføljen vår — ikke på annonsepriser.`, mal: 'hvorfor' });
+      else if (anbefalt === dagens) ut.push({ t: 'Prisen', d: 'Dagens pris treffer godt — den beholder vi. Vår jobb blir å hente den raskt, med riktig leietaker fra første visning.', mal: 'hvorfor', god: true });
+      else ut.push({ t: 'Prisen', d: `Vi anbefaler ${tall(dagens - anbefalt)} kr lavere enn dagens annonse. Riktig pris fra dag én gir kortere ledighet — og mer utbetalt over året totalt.`, mal: 'hvorfor' });
     }
-    if (nyTittel) ut.push(['Tittelen', 'Vi har skrevet den om, slik at den løfter frem det leietakere i denne målgruppen faktisk ser etter når de skanner annonser.']);
-    if (stylet.length) ut.push(['Bildene', `${stylet.length === 1 ? 'Hovedbildet er' : `${stylet.length} av bildene er`} klargjort med riktig lys og presentasjon — det er det første leietakere sorterer på i søkeresultatet.`]);
-    if (harAnnonse && (tilbud?.annonse?.hoydepunkter || []).length) ut.push(['Målgruppen', 'Annonseteksten er spisset mot leietakerne som betaler best for akkurat denne typen bolig — ikke skrevet for alle.']);
+    if (stylet.length) ut.push({ t: 'Bildene', d: `${stylet.length === 1 ? 'Hovedbildet er' : `${stylet.length} av bildene er`} klargjort med riktig lys og presentasjon — det er det første leietakere sorterer på i søkeresultatet.`, mal: 'bilder' });
+    if (nyTittel) ut.push({ t: 'Tittelen', d: 'Vi har skrevet den om, slik at den løfter frem det leietakere i denne målgruppen faktisk ser etter når de skanner annonser.', mal: 'annonsen' });
+    if (harAnnonse && (tilbud?.annonse?.hoydepunkter || []).length) ut.push({ t: 'Målgruppen', d: 'Annonseteksten er spisset mot leietakerne som betaler best for akkurat denne typen bolig — ikke skrevet for alle.', mal: 'annonsen' });
     return ut.slice(0, 4);
   }, [dagens, anbefalt, nyTittel, stylet.length, harAnnonse, tilbud]);
-  const visSammenligning = dagens > 0 && (harAnnonse || stylet.length > 0) && sammenligningsPunkter.length > 0;
+  const visSammenligning = dagens > 0 && (harAnnonse || stylet.length > 0);
 
   const brev = tilbud?.tekst?.heroIntro
     || 'Vi har sett nærmere på boligen din og laget en konkret vurdering: hva den bør leies ut for, hvordan vi ville presentert den — og hva du sitter igjen med hvis vi gjør hele jobben for deg.';
@@ -787,9 +793,53 @@ export default function TilbudSide() {
           </Reveal>
         </section>
 
+        {/* ══ DET VI SER — dokumentets tese: dynamiske funn fra analysen.
+             Hvert funn lenker ned til beviset sitt; resten av siden er dokumentasjonen. ══ */}
+        {funn.length > 0 && (
+          <section className={`${padX} mx-auto pb-16 lg:pb-28`} style={{ maxWidth: maxW }} data-testid="tilbud-funn">
+            <Reveal className="mb-4 lg:mb-6">
+              <Overline className="mb-5">Det vi ser</Overline>
+              <h2 className="font-light leading-[1.0] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(34px, 5vw, 56px)', color: C.ink }}>
+                {['Ett funn', 'To funn', 'Tre funn', 'Fire funn'][funn.length - 1]} fra gjennomgangen.
+              </h2>
+              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(16.5px, 1.6vw, 18px)', color: C.sub, maxWidth: 640 }}>
+                Vi har gått gjennom annonsen slik en leietaker møter den. Dette er vurderingen vår — og alt under på siden er dokumentasjonen.
+              </p>
+            </Reveal>
+            <div className="mt-8 lg:mt-10">
+              {funn.map((f, i) => (
+                <Reveal key={f.t} delay={i * 0.05}>
+                  <div className="group grid cursor-pointer grid-cols-12 items-baseline gap-x-5 gap-y-3 py-7 transition-colors lg:py-9" style={{ borderTop: `1px solid ${C.line}` }}
+                    onClick={() => tilAnker(f.mal)} role="link" tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter') tilAnker(f.mal); }} data-testid={`tilbud-funn-${i}`}>
+                    <span className="col-span-2 font-light tabular-nums tracking-[-0.03em] sm:col-span-1" style={{ ...head, fontSize: 'clamp(28px, 3.2vw, 40px)', color: C.line }}>{`0${i + 1}`}</span>
+                    <div className="col-span-10 sm:col-span-8">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className="font-medium" style={{ ...head, fontSize: 'clamp(19px, 2vw, 23px)', letterSpacing: '-0.01em', color: C.ink }}>{f.t}</h3>
+                        {f.god && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full font-semibold" style={{ fontSize: 11, letterSpacing: '0.04em', color: C.success, border: `1px solid ${C.success}33`, padding: '3px 10px' }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m4.8 12.4 4.5 4.5 9.9-10" stroke={C.success} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            Treffer
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-2 leading-[1.7]" style={{ fontSize: 14.5, color: C.sub, maxWidth: 560 }}>{f.d}</p>
+                    </div>
+                    <span className="col-span-12 flex items-center gap-1.5 font-semibold sm:col-span-3 sm:justify-end" style={{ fontSize: 13, color: C.faint }}>
+                      <span className="transition-colors group-hover:text-[#111827]">Se hvordan</span>
+                      <svg className="transition-transform group-hover:translate-y-0.5" width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v15m0 0-6-6m6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </span>
+                  </div>
+                </Reveal>
+              ))}
+              <div style={{ borderTop: `1px solid ${C.line}` }} aria-hidden />
+            </div>
+          </section>
+        )}
+
         {/* ══ 01 · BILDENE — før/etter (Salgsradarens signaturelement) ══ */}
         {valgtStylet && (
-          <section className={`${padX} mx-auto pb-16 lg:pb-28`} style={{ maxWidth: maxW }}>
+          <section id="bilder" className={`${padX} mx-auto scroll-mt-20 pb-16 lg:pb-28`} style={{ maxWidth: maxW }}>
             <Reveal className="mb-10 lg:mb-14">
               <Overline index="01" className="mb-5">Bildene</Overline>
               <h2 className="font-light leading-[1.0] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(34px, 5vw, 56px)', color: C.ink }}>Vi har allerede løftet presentasjonen.</h2>
@@ -915,9 +965,10 @@ export default function TilbudSide() {
           </div>
         </section>
 
-        {/* ══ 03 · ANNONSEN — i dag → slik ville vi gjort det ══ */}
+        {/* ══ 03 · ANNONSEN — i dag → slik ville vi gjort det (rendyrket visuell sammenligning;
+             de skriftlige funnene bor i «Det vi ser» øverst) ══ */}
         {visSammenligning && (
-          <section className={`${padX} mx-auto py-16 lg:py-28`} style={{ maxWidth: maxW }}>
+          <section id="annonsen" className={`${padX} mx-auto scroll-mt-20 py-16 lg:py-28`} style={{ maxWidth: maxW }}>
             <Reveal className="mb-10 lg:mb-14">
               <Overline index="03" className="mb-5">Annonsen</Overline>
               <h2 className="font-light leading-[1.0] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(34px, 5vw, 56px)', color: C.ink }}>I dag — og slik ville vi gjort det.</h2>
@@ -938,17 +989,6 @@ export default function TilbudSide() {
                 <MiniAnnonse variant="dh" bilde={dhBilde} aiBilde={stylet.length > 0} tittel={harAnnonse ? tilbud.annonse.tittel : (tilbud.tittel || '')} adresse={pent(tilbud.adresse)} pris={anbefalt} netto={netto} />
               </div>
             </Reveal>
-
-            <div className="mx-auto mt-12 grid grid-cols-1 gap-x-12 gap-y-7 sm:grid-cols-2" style={{ maxWidth: 920 }} data-testid="tilbud-sammenligning-punkter">
-              {sammenligningsPunkter.map(([t, d], i) => (
-                <Reveal key={t} delay={(i % 2) * 0.05}>
-                  <div className="pt-5" style={{ borderTop: `1px solid ${C.line}` }}>
-                    <p className="font-medium" style={{ ...head, fontSize: 16.5, color: C.ink }}>{t}</p>
-                    <p className="mt-1.5 leading-[1.65]" style={{ fontSize: 14, color: C.sub }}>{d}</p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
           </section>
         )}
 
