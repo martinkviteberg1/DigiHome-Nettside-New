@@ -1,103 +1,129 @@
 'use client';
 
 /* ═══════════ OFFENTLIG TILBUDSSIDE — /tilbud/[slug] ═══════════
-   «Et personlig, digitalt utleieprospekt — ikke en landingsside.»
+   Designspråket er overført 1:1 fra DigiHomes forvaltningstilbud
+   (ProposalView/TilbudPage i hovedprosjektet):
+   · Palett C/D (ink #0A0A0A · page #FEFBFA · subtle #F0EFEB · line #E9E7E4,
+     lilla #D298FF KUN som signaturprikk, grønn #2F7D52 kun for økonomi)
+   · PP Right Grotesk (font-light + tight tracking) / ABC Diatype
+   · Filmatisk 100vh-cover m/ Ken Burns, scrim, grain og sticky avsløring
+   · Ordvis maskert tittelreise (dh-rise), Overline m/ lilla prikk + indeks
+   · Dokument-avsløring: -mt, rounded-t-[44px], dyp skygge
+   · Personlig brev «Hei.» + rådgiversignatur (72px foto/monogram)
+   · Mørke kapitler (grain 0.05, spøkelsesnumre), prikkede linjeledere,
+     shine-sweep-knapper, FAQ m/ sirkel-chevron, avsluttende svart CTA
+   Innholdet er Salgsradarens: før/etter-bilder, prislinjal, regnestykke,
+   annonse-preview. Åpninger spores (spor=1). Kontakt → Dialog + varsler. */
 
-   Design-DNA (delt med DigiHomes huseier-tilbud):
-   · Varm ivory #FEFBFA (dokumentet) · ink #141412 (cover + mørke kapitler)
-   · Varme, diskrete gråtoner · hårfine skillelinjer · store radier 22–32px
-   · Dype, myke skygger · redaksjonell typografi (var(--font-heading))
-   Dramaturgi: 1) Mørkt filmatisk bolig-cover 2) Dokumentet avsløres over
-   coveret 3) Konklusjonen (anbefalt leie) 4) Personlig brev + avsenderkort
-   (tildelt selger, DigiHome-fallback) 5) Bildene (før/etter) 6) Beviset
-   (prislinjal + grunnlag) 7) Dagens annonse → vår versjon 8) Økonomien
-   9) Arbeidsfordelingen (mørk) 10) Annonsen er klar (tonal) 11) Spørsmål
-   12) Neste steg 13) Avsluttende mørk CTA: «Ja, dette høres interessant ut»
-   Åpninger spores (spor=1) i Salgsradar. Kontakt flytter leaden til Dialog
-   og varsler tildelt selger. */
-
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 
-const heading = { fontFamily: 'var(--font-heading)' };
-const tall = (v) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(Math.round(Number(v) || 0)).replace(/\u00A0/g, '\u202F');
-// FINN-adresser kommer ofte i små bokstaver — vis dem pent kapitalisert
-const pent = (s) => String(s || '').toLowerCase().replace(/(^|[\s\-\/])([a-zæøå])/g, (m, f, b) => f + b.toUpperCase());
-const fmtDato = (iso) => {
-  try { return new Date(iso || Date.now()).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { return ''; }
+/* ── Palett — identisk med hovedtilbudet ── */
+const C = {
+  ink: '#0A0A0A', inkDeep: '#1F1F1F', black: '#0A0A0A', sub: '#5E5D5A', faint: '#9A968F',
+  bg: '#FFFFFF', page: '#FEFBFA', subtle: '#F0EFEB', warm: '#FAF9F7', line: '#E9E7E4', hairline: '#F0EFEC',
+  purple: '#D298FF', purpleDeep: '#7C3FD6',
+  success: '#2F7D52',
 };
+const D = { chip: 'rgba(255,255,255,0.07)', chipLine: 'rgba(255,255,255,0.10)', icon: 'rgba(255,255,255,0.92)', soft: 'rgba(255,255,255,0.62)', faint: 'rgba(255,255,255,0.42)' };
+const head = { fontFamily: 'var(--font-heading)' };
+const body = { fontFamily: 'var(--font-body)' };
+
+const LOGO_WHITE = '/digihome-logo-hvit.svg';
+const LOGO_INK = '/digihome-wordmark-ink.svg';
+
+const tall = (v) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(Math.round(Number(v) || 0)).replace(/\u00A0/g, '\u202F');
+const pent = (s) => String(s || '').toLowerCase().replace(/(^|[\s\-\/])([a-zæøå])/g, (m, f, b) => f + b.toUpperCase());
+const fmtDato = (iso) => { try { return new Date(iso || Date.now()).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { return ''; } };
 const reduserMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
 const initialer = (navn) => String(navn || '?').trim().split(/\s+/).map((d) => d[0]).slice(0, 2).join('').toUpperCase();
 
-/* Palett — varm ivory + ink, grønn KUN for økonomi */
-const INK = '#141412';
-const GRONN = '#1f7a45';
-const VARM = '#98907f';       // kickers og rolige etiketter
-const IVORY = '#FEFBFA';
-const TONAL = '#f4efe8';      // varm tonal flate
+/* ── Atmosfærisk filmkorn (identisk data-URL) ── */
+const GRAIN_URL = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E\")";
 
-/* Delt rytme og skala — én kilde til sannhet for proporsjonene */
-const SEKSJON = 'mt-[clamp(84px,9vw,124px)]';
-const H2 = 'text-[clamp(27px,3.4vw,36px)] font-semibold leading-[1.08] tracking-[-0.025em] [text-wrap:balance]';
-const BAND_PY = 'py-[clamp(60px,7vw,104px)]';
+/* ── Tynn leseprogresjon øverst ── */
+function ScrollProgress() {
+  const ref = useRef(null);
+  useEffect(() => {
+    let raf = 0;
+    const oppdater = () => {
+      const el = ref.current;
+      if (!el) return;
+      const h = document.documentElement;
+      const total = h.scrollHeight - h.clientHeight;
+      el.style.transform = `scaleX(${total > 0 ? Math.min(1, window.scrollY / total) : 0})`;
+    };
+    const paScroll = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(oppdater); };
+    window.addEventListener('scroll', paScroll, { passive: true });
+    oppdater();
+    return () => { window.removeEventListener('scroll', paScroll); cancelAnimationFrame(raf); };
+  }, []);
+  return <div ref={ref} className="fixed left-0 right-0 top-0 z-[60] origin-left" style={{ height: 2.5, backgroundColor: C.ink, transform: 'scaleX(0)' }} aria-hidden />;
+}
 
-const KNAPP_MORK = 'inline-flex h-12 items-center justify-center rounded-full bg-[#141412] px-7 text-[14.5px] font-semibold text-white transition-all hover:bg-black/80 hover:shadow-[0_12px_30px_rgba(20,18,14,0.24)] active:scale-[0.98] disabled:opacity-40';
-const KNAPP_GHOST = 'inline-flex h-12 items-center justify-center rounded-full border border-black/[0.13] bg-white/40 px-7 text-[14.5px] font-semibold text-[#141412] transition-all hover:border-black/30 active:scale-[0.98]';
+/* ── Ordvis maskert tittelreise (dh-rise) — som i hovedtilbudet ── */
+function SplitHeadline({ lines, className, style, delay = 0.35 }) {
+  let idx = -1;
+  const still = reduserMotion();
+  return (
+    <h1 className={className} style={style}>
+      <style>{`@keyframes dh-rise{from{transform:translateY(115%)}to{transform:translateY(0)}}`}</style>
+      {lines.map((line, li) => {
+        const words = String(line).split(' ');
+        return (
+          <span key={li} className="block" style={{ overflow: 'hidden', paddingBottom: '0.22em' }}>
+            {words.map((w, wi) => {
+              idx += 1;
+              const d = delay + idx * 0.065;
+              return (
+                <span key={wi} className="inline-block" style={{ overflow: 'hidden', verticalAlign: 'bottom', paddingBottom: '0.22em', marginBottom: '-0.22em' }}>
+                  <span className="inline-block" style={still ? undefined : { animation: `dh-rise 0.95s cubic-bezier(0.76,0,0.24,1) ${d}s both` }}>
+                    {w}{wi < words.length - 1 ? '\u00A0' : ''}
+                  </span>
+                </span>
+              );
+            })}
+          </span>
+        );
+      })}
+    </h1>
+  );
+}
 
-/* ── Scroll-reveal (én gang, respekterer reduced motion) ── */
-function useReveal() {
+/* ── Scroll-reveal: opacity+y, samme kurve som hovedtilbudet ── */
+function Reveal({ children, className = '', delay = 0 }) {
   const ref = useRef(null);
   const [vist, setVist] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (typeof IntersectionObserver === 'undefined' || reduserMotion()) { setVist(true); return; }
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVist(true); io.disconnect(); } }, { threshold: 0.08 });
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVist(true); io.disconnect(); } }, { rootMargin: '-70px' });
     io.observe(el);
     return () => io.disconnect();
   }, []);
-  return [ref, vist];
-}
-
-function Avsnitt({ id, className = '', children }) {
-  const [ref, vist] = useReveal();
   return (
-    <section id={id} ref={ref} className={`${className} transition-all duration-700 ease-out ${vist ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
+    <div ref={ref} className={className}
+      style={{ opacity: vist ? 1 : 0, transform: vist ? 'translateY(0)' : 'translateY(22px)', transition: `opacity 0.65s cubic-bezier(0.22,1,0.36,1) ${delay}s, transform 0.65s cubic-bezier(0.22,1,0.36,1) ${delay}s` }}>
       {children}
-    </section>
-  );
-}
-
-/* ── Seksjonshode — samme proporsjoner overalt ── */
-function SeksjonHode({ kicker, tittel, intro, lys = false, midt = false }) {
-  return (
-    <div className={midt ? 'text-center' : ''}>
-      <p className={`text-[11px] font-bold uppercase tracking-[0.18em] ${midt ? 'inline-flex rounded-full px-3.5 py-1.5' : ''} ${lys ? (midt ? 'bg-white/10 text-[#d9cfc0]' : 'text-[#d9cfc0]') : midt ? 'bg-black/[0.05]' : ''}`}
-        style={lys ? undefined : { color: VARM }}>
-        {kicker}
-      </p>
-      <h2 className={`${midt ? 'mx-auto mt-4 max-w-[720px]' : 'mt-3'} ${H2}`} style={heading}>{tittel}</h2>
-      {intro && <p className={`mt-4 max-w-[600px] text-[15.5px] leading-[1.65] [text-wrap:pretty] ${midt ? 'mx-auto' : ''} ${lys ? 'text-white/60' : 'text-[#57534a]'}`}>{intro}</p>}
     </div>
   );
 }
 
-/* ── Avsender-avatar: foto hvis det finnes, ellers initialer på ink ── */
-function AvsenderBilde({ avsender, storrelse = 44, ring = 'ring-2 ring-white' }) {
-  if (avsender.avatar) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={avsender.avatar} alt={avsender.navn} className={`rounded-full object-cover ${ring}`} style={{ width: storrelse, height: storrelse }} />;
-  }
+/* ── Redaksjonell eyebrow — dempet tekst + én behersket lilla signaturprikk ── */
+function Overline({ children, light, className = '', index }) {
   return (
-    <span className={`flex items-center justify-center rounded-full bg-[#141412] font-bold text-white ${ring}`}
-      style={{ width: storrelse, height: storrelse, fontSize: Math.max(11, storrelse * 0.34), ...heading }}>
-      {initialer(avsender.navn)}
-    </span>
+    <p className={`flex items-center gap-2.5 font-semibold uppercase ${className}`} style={{ ...body, fontSize: 11.5, letterSpacing: '0.22em', color: light ? D.soft : C.faint }}>
+      <span className="inline-block shrink-0 rounded-full" style={{ width: 5, height: 5, backgroundColor: C.purple }} aria-hidden />
+      {index && <span className="tabular-nums" style={{ color: light ? D.icon : C.ink }}>{index}</span>}
+      {index && <span aria-hidden style={{ opacity: 0.5 }}>—</span>}
+      {children}
+    </p>
   );
 }
 
 /* ── Teller-animasjon for nøkkeltall ── */
-function TellOpp({ verdi, ms = 1000 }) {
+function TellOpp({ verdi, ms = 1100 }) {
   const m = Number(verdi) || 0;
   const [vis, setVis] = useState(0);
   const ref = useRef(null);
@@ -118,16 +144,39 @@ function TellOpp({ verdi, ms = 1000 }) {
       requestAnimationFrame(steg);
     };
     if (typeof IntersectionObserver === 'undefined' || reduserMotion()) { setVis(m); kjort.current = true; return; }
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { start(); io.disconnect(); } }, { threshold: 0.35 });
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { start(); io.disconnect(); } }, { rootMargin: '-60px' });
     io.observe(el);
     return () => io.disconnect();
   }, [m, ms]);
   return <span ref={ref}>{tall(vis)}</span>;
 }
 
-/* ── Interaktiv før/etter-slider — demonstrerer DigiHome-produktet.
-     Pointer-basert: fungerer med mus, touch-swipe og piltaster. ── */
-function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 illustrasjon', ratio = 'aspect-[16/10]' }) {
+/* ── Prikket linjeleder-rad (label ······ verdi) — som i prisoversikten ── */
+function Rad({ l, v, bold, muted, top, dark }) {
+  return (
+    <div className="flex items-baseline gap-3" style={top ? { paddingTop: 12, borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : C.hairline}`, fontWeight: 600, fontSize: 14 } : undefined}>
+      <span className="shrink-0" style={{ color: muted ? (dark ? 'rgba(255,255,255,0.5)' : C.faint) : (dark ? 'rgba(255,255,255,0.55)' : C.sub) }}>{l}</span>
+      <span aria-hidden className="mb-[3px] flex-1 self-end border-b border-dotted" style={{ borderColor: dark ? 'rgba(255,255,255,0.20)' : 'rgba(10,10,10,0.16)' }} />
+      <span className={`shrink-0 tabular-nums ${bold ? 'font-semibold' : 'font-medium'}`} style={{ color: dark ? '#fff' : C.ink }}>{v}</span>
+    </div>
+  );
+}
+
+/* ── Avsender-avatar: foto hvis det finnes, ellers monogram på subtle ── */
+function AvsenderBilde({ avsender, storrelse = 72, radius = 20 }) {
+  if (avsender.avatar) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={avsender.avatar} alt={avsender.navn} className="shrink-0 object-cover" style={{ width: storrelse, height: storrelse, borderRadius: radius, boxShadow: '0 10px 26px rgba(24,20,16,0.16)' }} data-testid="advisor-photo" />;
+  }
+  return (
+    <div className="flex shrink-0 items-center justify-center font-semibold" style={{ width: storrelse, height: storrelse, borderRadius: radius, ...head, fontSize: storrelse * 0.35, backgroundColor: C.subtle, color: C.ink }} data-testid="advisor-monogram">
+      {initialer(avsender.navn)}
+    </div>
+  );
+}
+
+/* ── Interaktiv før/etter-slider — Salgsradarens signaturelement ── */
+function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'Klargjort av DigiHome' }) {
   const [pos, setPos] = useState(58);
   const boks = useRef(null);
   const drar = useRef(false);
@@ -164,8 +213,8 @@ function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 i
   return (
     <div
       ref={boks}
-      className={`relative ${ratio} cursor-ew-resize select-none overflow-hidden rounded-[22px] bg-[#e9e5de] ring-1 ring-black/[0.05] shadow-[0_36px_84px_-40px_rgba(20,18,14,0.42)]`}
-      style={{ touchAction: 'pan-y' }}
+      className="relative aspect-[16/10] cursor-ew-resize select-none overflow-hidden rounded-[26px]"
+      style={{ backgroundColor: C.subtle, border: `1px solid ${C.line}`, boxShadow: '0 30px 70px rgba(17,24,39,0.14)', touchAction: 'pan-y' }}
       onPointerDown={(e) => { drar.current = { x0: e.clientX, y0: e.clientY, laast: null }; }}
       onPointerMove={(e) => {
         const d = drar.current;
@@ -178,9 +227,7 @@ function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 i
             brukerHarDratt.current = true;
             try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
             flytt(e.clientX);
-          } else if (dy > 10 && dy > dx) {
-            d.laast = 'scroll';
-          }
+          } else if (dy > 10 && dy > dx) d.laast = 'scroll';
           return;
         }
         if (d.laast === 'slider') flytt(e.clientX);
@@ -188,16 +235,10 @@ function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 i
       onPointerUp={(e) => {
         const d = drar.current;
         drar.current = null;
-        if (d && !d.laast && Math.abs(e.clientX - d.x0) < 6 && Math.abs(e.clientY - d.y0) < 6) {
-          brukerHarDratt.current = true;
-          flytt(e.clientX);
-        }
+        if (d && !d.laast && Math.abs(e.clientX - d.x0) < 6 && Math.abs(e.clientY - d.y0) < 6) { brukerHarDratt.current = true; flytt(e.clientX); }
       }}
       onPointerCancel={() => { drar.current = null; }}
-      role="slider"
-      aria-label="Sammenlign original og klargjort bilde"
-      aria-valuenow={Math.round(pos)}
-      tabIndex={0}
+      role="slider" aria-label="Sammenlign original og klargjort bilde" aria-valuenow={Math.round(pos)} tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'ArrowLeft') { brukerHarDratt.current = true; setPos((p) => Math.max(3, p - 4)); }
         if (e.key === 'ArrowRight') { brukerHarDratt.current = true; setPos((p) => Math.min(97, p + 4)); }
@@ -210,98 +251,93 @@ function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 i
         <img src={forUrl} alt="Original fra annonsen" className="absolute inset-0 h-full w-full object-cover object-center" draggable={false} fetchPriority="high" />
       </div>
       <div className="absolute inset-y-0" style={{ left: `${pos}%` }}>
-        <div className="absolute inset-y-0 -ml-px w-[2px] bg-white shadow-[0_0_14px_rgba(0,0,0,0.35)]" />
-        <span className="absolute top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 shadow-[0_4px_16px_rgba(0,0,0,0.28)] ring-1 ring-black/[0.06] backdrop-blur-sm">
+        <div className="absolute inset-y-0 -ml-px w-[2px] bg-white" style={{ boxShadow: '0 0 14px rgba(0,0,0,0.35)' }} />
+        <span className="absolute top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.94)', boxShadow: '0 4px 16px rgba(0,0,0,0.28)' }}>
           <svg width="16" height="11" viewBox="0 0 18 12" fill="none" aria-hidden="true">
-            <path d="M5.5 1 1 6l4.5 5M12.5 1 17 6l-4.5 5" stroke="#141412" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M5.5 1 1 6l4.5 5M12.5 1 17 6l-4.5 5" stroke={C.ink} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
       </div>
-      <span className={`pointer-events-none absolute left-3 top-3 rounded-full bg-black/45 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-sm transition-opacity duration-200 ${pos > 24 ? 'opacity-100' : 'opacity-0'}`}>
+      <span className={`pointer-events-none absolute left-4 top-4 rounded-full px-3 py-1 font-semibold transition-opacity duration-200 ${pos > 24 ? 'opacity-100' : 'opacity-0'}`} style={{ fontSize: 11, color: '#fff', backgroundColor: 'rgba(8,7,6,0.5)', backdropFilter: 'blur(6px)' }}>
         Original
       </span>
-      <span className={`pointer-events-none absolute right-3 top-3 rounded-full bg-black/45 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-sm transition-opacity duration-200 ${pos < 84 ? 'opacity-100' : 'opacity-0'}`} title="AI-generert forslag basert på annonsens eget foto">
+      <span className={`pointer-events-none absolute right-4 top-4 rounded-full px-3 py-1 font-semibold transition-opacity duration-200 ${pos < 84 ? 'opacity-100' : 'opacity-0'}`} style={{ fontSize: 11, color: '#fff', backgroundColor: 'rgba(8,7,6,0.5)', backdropFilter: 'blur(6px)' }} title="AI-generert forslag basert på annonsens eget foto">
         {etterEtikett} {'\u24D8'}
       </span>
     </div>
   );
 }
 
-/* ── Markedsintervall som visuell prislinjal — anbefalingen plassert i
-     intervallet, med dagens annonsepris som referansepunkt når den finnes ── */
+/* ── Markedsintervall som prislinjal ── */
 function IntervallBar({ lo, hi, anbefalt, dagens }) {
   const span = Math.max(1, hi - lo);
   const pos = (v) => Math.min(96, Math.max(4, ((v - lo) / span) * 100));
   const pAnb = pos(anbefalt);
   const pDag = dagens > 0 ? pos(dagens) : null;
   const samme = pDag != null && Math.abs(pDag - pAnb) < 8;
-  const labelJust = (p) => (p < 16 ? 'translate-x-0 text-left' : p > 84 ? '-translate-x-full text-right' : '-translate-x-1/2 text-center');
+  const just = (p) => (p < 16 ? 'translate-x-0 text-left' : p > 84 ? '-translate-x-full text-right' : '-translate-x-1/2 text-center');
   return (
     <div className="mx-auto w-full max-w-[660px]" data-testid="tilbud-intervall">
       <div className={`relative ${pDag != null && !samme ? 'pb-14' : 'pb-1'} pt-[52px]`}>
-        {/* Anbefalingen — over linjen */}
-        <div className={`absolute top-0 ${labelJust(pAnb)}`} style={{ left: `${pAnb}%` }}>
-          <p className="whitespace-nowrap text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ color: VARM }}>
+        <div className={`absolute top-0 ${just(pAnb)}`} style={{ left: `${pAnb}%` }}>
+          <p className="whitespace-nowrap font-semibold uppercase" style={{ ...body, fontSize: 10.5, letterSpacing: '0.14em', color: C.faint }}>
             {samme ? 'Dagens pris · vår anbefaling' : 'Vår anbefaling'}
           </p>
-          <p className="mt-0.5 whitespace-nowrap text-[17px] font-bold tabular-nums tracking-[-0.01em]" style={heading}>{tall(anbefalt)} kr</p>
+          <p className="mt-0.5 whitespace-nowrap font-medium tabular-nums" style={{ ...head, fontSize: 18, letterSpacing: '-0.01em', color: C.ink }}>{tall(anbefalt)} kr</p>
         </div>
-        {/* Linjalen */}
-        <div className="h-[6px] rounded-full bg-gradient-to-r from-[#efe9df] via-[#e2d9c9] to-[#efe9df]" />
-        <span className="absolute h-[15px] w-[15px] rounded-full border-[3px] border-white shadow-[0_1px_6px_rgba(20,18,14,0.4)]" style={{ left: `${pAnb}%`, top: 'calc(52px + 2.5px)', transform: 'translate(-50%, -50%)', background: INK }} />
-        {/* Dagens annonsepris — under linjen, kun når den avviker */}
+        <div className="h-[5px] rounded-full" style={{ background: `linear-gradient(to right, ${C.subtle}, ${C.line}, ${C.subtle})` }} />
+        <span className="absolute h-[15px] w-[15px] rounded-full border-[3px] border-white" style={{ left: `${pAnb}%`, top: 'calc(52px + 2px)', transform: 'translate(-50%, -50%)', background: C.ink, boxShadow: '0 1px 6px rgba(10,10,10,0.4)' }} />
         {pDag != null && !samme && (
           <>
-            <span className="absolute block h-[16px] w-[2px] -translate-x-1/2 rounded bg-[#141412]/40" style={{ left: `${pDag}%`, top: 'calc(52px + 9px)' }} />
-            <div className={`absolute ${labelJust(pDag)}`} style={{ left: `${pDag}%`, top: 'calc(52px + 30px)' }}>
-              <p className="whitespace-nowrap text-[11px] font-semibold text-[#98907f]">Annonsert i dag</p>
-              <p className="whitespace-nowrap text-[14px] font-bold tabular-nums text-[#44403a]" style={heading}>{tall(dagens)} kr</p>
+            <span className="absolute block h-[16px] w-[2px] -translate-x-1/2 rounded" style={{ left: `${pDag}%`, top: 'calc(52px + 8px)', backgroundColor: 'rgba(10,10,10,0.35)' }} />
+            <div className={`absolute ${just(pDag)}`} style={{ left: `${pDag}%`, top: 'calc(52px + 29px)' }}>
+              <p className="whitespace-nowrap font-medium" style={{ fontSize: 11.5, color: C.faint }}>Annonsert i dag</p>
+              <p className="whitespace-nowrap font-medium tabular-nums" style={{ ...head, fontSize: 14.5, color: C.sub }}>{tall(dagens)} kr</p>
             </div>
           </>
         )}
       </div>
-      <div className="mt-2.5 flex items-baseline justify-between gap-3 text-[12px] tabular-nums text-[#aca395]">
+      <div className="mt-2.5 flex items-baseline justify-between gap-3 tabular-nums" style={{ fontSize: 12, color: C.faint }}>
         <span>{tall(lo)} kr</span>
-        <span className="hidden text-[11.5px] font-medium sm:inline">Estimert markedsintervall for boligen</span>
+        <span className="hidden font-medium sm:inline" style={{ fontSize: 11.5 }}>Estimert markedsintervall for boligen</span>
         <span>{tall(hi)} kr</span>
       </div>
-      <p className="mt-1 text-[11.5px] font-medium text-[#aca395] sm:hidden">Estimert markedsintervall for boligen</p>
+      <p className="mt-1 font-medium sm:hidden" style={{ fontSize: 11.5, color: C.faint }}>Estimert markedsintervall for boligen</p>
     </div>
   );
 }
 
-/* ── Mini-annonsekort til «i dag → slik ville vi gjort det» ── */
+/* ── Mini-annonsekort («i dag» → «slik ville vi gjort det») ── */
 function MiniAnnonse({ variant, bilde, aiBilde, tittel, adresse, pris, netto }) {
   const dh = variant === 'dh';
   return (
-    <div className={`flex flex-col overflow-hidden rounded-[20px] bg-white transition-all duration-300 hover:-translate-y-1 ${dh ? 'ring-[1.5px] ring-[#141412]/[0.22] shadow-[0_12px_36px_rgba(20,18,14,0.10)] hover:shadow-[0_20px_48px_rgba(20,18,14,0.14)]' : 'ring-1 ring-black/[0.07] hover:shadow-[0_14px_40px_rgba(20,18,14,0.08)]'}`}>
-      <div className={`flex items-center justify-between px-4 py-2.5 ${dh ? 'bg-[#f4efe8]' : 'border-b border-black/[0.05] bg-[#faf8f4]'}`}>
-        <span className={`text-[10.5px] font-bold uppercase tracking-[0.12em] ${dh ? 'text-[#141412]' : 'text-[#aca395]'}`}>
+    <div className="flex flex-col overflow-hidden rounded-[26px] transition-all duration-300 hover:-translate-y-1"
+      style={{ backgroundColor: C.bg, border: dh ? `1.5px solid ${C.ink}` : `1px solid ${C.line}`, boxShadow: dh ? '0 18px 50px rgba(17,24,39,0.10)' : '0 6px 22px rgba(24,20,16,0.04)' }}>
+      <div className="flex items-center justify-between px-5 py-3" style={{ backgroundColor: dh ? C.ink : C.warm, borderBottom: dh ? 'none' : `1px solid ${C.hairline}` }}>
+        <span className="font-semibold uppercase" style={{ ...head, fontSize: 10.5, letterSpacing: '0.13em', color: dh ? '#fff' : C.faint }}>
           {dh ? 'DigiHome anbefaler' : 'Annonsen din i dag'}
         </span>
-        {dh && aiBilde && <span className="text-[10px] font-semibold text-[#98907f]" title="AI-generert forslag basert på annonsens eget foto">AI-forbedret foto {'\u24D8'}</span>}
+        {dh && aiBilde && <span className="font-semibold" style={{ fontSize: 10, color: D.soft }} title="AI-generert forslag basert på annonsens eget foto">AI-forbedret foto {'\u24D8'}</span>}
       </div>
       {bilde ? (
-        <div className="relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={bilde} alt={dh ? 'Klargjort hovedbilde' : 'Dagens hovedbilde'} className={`block aspect-[16/9] w-full object-cover ${dh ? '' : 'saturate-[0.88]'}`} loading="lazy" draggable={false} />
-        </div>
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={bilde} alt={dh ? 'Klargjort hovedbilde' : 'Dagens hovedbilde'} className={`block aspect-[16/9] w-full object-cover ${dh ? '' : 'saturate-[0.88]'}`} loading="lazy" draggable={false} />
       ) : (
-        <div className="flex aspect-[16/9] items-center justify-center bg-[#f1ede6] text-[12px] text-[#aca395]">Uten klargjort bilde</div>
+        <div className="flex aspect-[16/9] items-center justify-center" style={{ backgroundColor: C.subtle, fontSize: 12, color: C.faint }}>Uten klargjort bilde</div>
       )}
-      <div className="flex flex-1 flex-col px-4 pb-4 pt-3 sm:px-5">
-        <p className={`text-[14.5px] font-bold leading-snug ${dh ? 'text-[#141412]' : 'text-[#57534a]'}`} style={heading}>{tittel}</p>
-        <p className="mt-0.5 text-[12px] text-[#aca395]">{adresse}</p>
-        <div className="mt-auto pt-3">
-          <p className={`text-[18px] font-bold tabular-nums tracking-[-0.01em] ${dh ? '' : 'text-[#57534a]'}`} style={heading}>{tall(pris)} kr <span className="text-[12px] font-semibold text-[#aca395]">/mnd</span></p>
-          {dh && netto > 0 && <p className="mt-0.5 text-[12px] font-semibold tabular-nums" style={{ color: GRONN }}>≈ {tall(netto)} kr til deg etter honorar</p>}
+      <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
+        <p className="font-medium leading-snug" style={{ ...head, fontSize: 16.5, color: dh ? C.ink : C.sub }}>{tittel}</p>
+        <p className="mt-0.5" style={{ fontSize: 12.5, color: C.faint }}>{adresse}</p>
+        <div className="mt-auto pt-4">
+          <p className="font-medium tabular-nums" style={{ ...head, fontSize: 21, letterSpacing: '-0.01em', color: dh ? C.ink : C.sub }}>{tall(pris)} kr <span style={{ fontSize: 12.5, color: C.faint, fontWeight: 400 }}>/mnd</span></p>
+          {dh && netto > 0 && <p className="mt-0.5 font-semibold tabular-nums" style={{ fontSize: 12.5, color: C.success }}>≈ {tall(netto)} kr til deg etter honorar</p>}
         </div>
       </div>
     </div>
   );
 }
 
-/* ── Full annonse-preview (åpnes fra det kompakte kortet) ── */
+/* ── Full annonse-preview ── */
 function AnnonsePreview({ tilbud, r }) {
   const a = tilbud.annonse;
   const [idx, setIdx] = useState(0);
@@ -326,34 +362,31 @@ function AnnonsePreview({ tilbud, r }) {
 
   return (
     <div data-testid="tilbud-annonse-preview">
-      <div
-        className="overflow-hidden rounded-[20px] bg-white ring-1 ring-black/[0.07]"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'ArrowLeft') bytt(-1); if (e.key === 'ArrowRight') bytt(1); }}
-      >
-        <div className="flex items-center justify-between border-b border-black/[0.06] bg-[#faf8f4] px-4 py-2.5 sm:px-6">
-          <span className="rounded-full bg-[#141412] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white">Til leie</span>
-          <span className="text-[11px] font-medium text-[#8a8378]">Forhåndsvisning av annonsen din</span>
+      <div className="overflow-hidden rounded-[26px]" style={{ backgroundColor: C.bg, border: `1px solid ${C.line}` }} tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'ArrowLeft') bytt(-1); if (e.key === 'ArrowRight') bytt(1); }}>
+        <div className="flex items-center justify-between px-5 py-3 sm:px-7" style={{ backgroundColor: C.warm, borderBottom: `1px solid ${C.hairline}` }}>
+          <span className="rounded-full px-2.5 py-0.5 font-semibold uppercase" style={{ fontSize: 10, letterSpacing: '0.08em', color: '#fff', backgroundColor: C.ink }}>Til leie</span>
+          <span className="font-medium" style={{ fontSize: 11.5, color: C.faint }}>Forhåndsvisning av annonsen din</span>
         </div>
 
         {akt && (
-          <div className="group relative bg-[#141412]">
+          <div className="group relative" style={{ backgroundColor: C.ink }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={akt.url} alt="Bilde fra annonsen" className="block aspect-[2/1] w-full object-cover" draggable={false} loading="lazy"
-              data-testid="tilbud-annonse-bilde"
-              onError={() => setDode((d) => (d.includes(akt.url) ? d : [...d, akt.url]))} />
+              data-testid="tilbud-annonse-bilde" onError={() => setDode((d) => (d.includes(akt.url) ? d : [...d, akt.url]))} />
             {akt.ai && (
-              <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/45 px-2.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm" title="AI-generert forslag basert på annonsens eget foto">AI-forbedret foto {'\u24D8'}</span>
+              <span className="pointer-events-none absolute left-3 top-3 rounded-full px-2.5 py-0.5 font-semibold" style={{ fontSize: 10, color: '#fff', backgroundColor: 'rgba(8,7,6,0.5)', backdropFilter: 'blur(6px)' }} title="AI-generert forslag basert på annonsens eget foto">AI-forbedret foto {'\u24D8'}</span>
             )}
             {bilder.length > 1 && (
               <>
-                {[['\u2039', -1, 'left-2', 'Forrige bilde'], ['\u203A', 1, 'right-2', 'Neste bilde']].map(([tegn, retn, pos, label]) => (
+                {[['\u2039', -1, 'left-2', 'Forrige bilde'], ['\u203A', 1, 'right-2', 'Neste bilde']].map(([tegn, retn, posKl, label]) => (
                   <button key={label} type="button" aria-label={label} onClick={() => bytt(retn)}
-                    className={`absolute ${pos} top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-[18px] leading-none text-white backdrop-blur-sm transition-all hover:bg-black/55 sm:opacity-0 sm:group-hover:opacity-100`}>
+                    className={`absolute ${posKl} top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-[18px] leading-none text-white transition-all sm:opacity-0 sm:group-hover:opacity-100`}
+                    style={{ backgroundColor: 'rgba(8,7,6,0.4)', backdropFilter: 'blur(6px)' }}>
                     {tegn}
                   </button>
                 ))}
-                <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-black/45 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-white">
+                <span className="pointer-events-none absolute bottom-3 right-3 rounded-full px-2.5 py-0.5 font-semibold tabular-nums" style={{ fontSize: 11, color: '#fff', backgroundColor: 'rgba(8,7,6,0.5)' }}>
                   {Math.min(idx, bilder.length - 1) + 1} / {bilder.length}
                 </span>
               </>
@@ -361,36 +394,37 @@ function AnnonsePreview({ tilbud, r }) {
           </div>
         )}
 
-        <div className="px-4 pb-2 pt-5 sm:px-6">
-          <h3 className="text-[19px] font-bold leading-snug tracking-[-0.01em] sm:text-[22px]" style={heading} data-testid="tilbud-annonse-tittel">{a.tittel}</h3>
-          <p className="mt-1 text-[13.5px] text-[#8a8378]">{pent(tilbud.adresse)}{tilbud.postnr ? `, ${tilbud.postnr} Bergen` : ', Bergen'}</p>
+        <div className="px-5 pb-2 pt-6 sm:px-7">
+          <h3 className="font-medium leading-snug" style={{ ...head, fontSize: 22, letterSpacing: '-0.01em', color: C.ink }} data-testid="tilbud-annonse-tittel">{a.tittel}</h3>
+          <p className="mt-1" style={{ fontSize: 13.5, color: C.faint }}>{pent(tilbud.adresse)}{tilbud.postnr ? `, ${tilbud.postnr} Bergen` : ', Bergen'}</p>
           {leie > 0 && (
             <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              <span className="text-[24px] font-bold tabular-nums tracking-[-0.01em]" style={heading}>{tall(leie)} kr <span className="text-[14px] font-semibold text-[#8a8378]">/mnd</span></span>
-              <span className="text-[12.5px] tabular-nums text-[#aca395]">Depositum: {tall(leie * 3)} kr</span>
+              <span className="font-medium tabular-nums" style={{ ...head, fontSize: 25, letterSpacing: '-0.01em', color: C.ink }}>{tall(leie)} kr <span style={{ fontSize: 14, color: C.faint, fontWeight: 400 }}>/mnd</span></span>
+              <span className="tabular-nums" style={{ fontSize: 12.5, color: C.faint }}>Depositum: {tall(leie * 3)} kr</span>
             </div>
           )}
         </div>
 
         {fakta.length > 0 && (
-          <div className={`mx-4 mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-[14px] border border-black/[0.06] bg-black/[0.06] sm:mx-6 ${fakta.length >= 5 ? 'sm:grid-cols-5' : fakta.length === 4 ? 'sm:grid-cols-4' : fakta.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+          <div className={`mx-5 mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-[16px] sm:mx-7 ${fakta.length >= 5 ? 'sm:grid-cols-5' : fakta.length === 4 ? 'sm:grid-cols-4' : fakta.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}
+            style={{ border: `1px solid ${C.hairline}`, backgroundColor: C.hairline }}>
             {fakta.map(([l, v]) => (
-              <div key={l} className="bg-[#faf8f4] px-3.5 py-2.5">
-                <p className="text-[10.5px] font-medium text-[#aca395]">{l}</p>
-                <p className="mt-0.5 text-[13.5px] font-bold" style={heading}>{v}</p>
+              <div key={l} className="px-3.5 py-2.5" style={{ backgroundColor: C.warm }}>
+                <p className="font-medium" style={{ fontSize: 10.5, color: C.faint }}>{l}</p>
+                <p className="mt-0.5 font-medium" style={{ ...head, fontSize: 14, color: C.ink }}>{v}</p>
               </div>
             ))}
-            {fakta.length % 2 === 1 && <div className="bg-[#faf8f4] sm:hidden" />}
+            {fakta.length % 2 === 1 && <div className="sm:hidden" style={{ backgroundColor: C.warm }} />}
           </div>
         )}
 
-        <div className="px-4 pt-4 sm:px-6">
+        <div className="px-5 pt-4 sm:px-7">
           {(a.hoydepunkter || []).length > 0 && (
             <ul className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
               {a.hoydepunkter.map((h) => (
-                <li key={h} className="flex items-start gap-2 text-[13.5px] font-medium text-[#44403a]">
+                <li key={h} className="flex items-start gap-2 font-medium" style={{ fontSize: 13.5, color: '#3a342c' }}>
                   <svg width="14" height="14" viewBox="0 0 18 18" fill="none" className="mt-[3px] shrink-0" aria-hidden="true">
-                    <path d="m3.6 9.4 3.4 3.4 7.4-7.6" stroke="#1f7a45" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="m3.6 9.4 3.4 3.4 7.4-7.6" stroke={C.success} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   {h}
                 </li>
@@ -400,28 +434,28 @@ function AnnonsePreview({ tilbud, r }) {
           {(a.fasiliteter || []).length > 0 && (
             <div className="mt-4 flex flex-wrap gap-1.5" data-testid="tilbud-annonse-fasiliteter">
               {a.fasiliteter.map((f) => (
-                <span key={f} className="rounded-full border border-black/[0.08] bg-[#faf8f4] px-3 py-1 text-[12px] font-medium text-[#57534a]">{f}</span>
+                <span key={f} className="rounded-full px-3 py-1 font-medium" style={{ fontSize: 12.5, color: C.sub, backgroundColor: C.subtle, border: `1px solid ${C.line}` }}>{f}</span>
               ))}
             </div>
           )}
         </div>
 
-        <div className="px-4 pb-5 pt-4 sm:px-6">
-          <p className="text-[12px] font-semibold text-[#aca395]">Om boligen</p>
-          <div className="mt-2 max-w-[640px] space-y-3">
+        <div className="px-5 pb-6 pt-4 sm:px-7">
+          <p className="font-semibold uppercase" style={{ ...head, fontSize: 11, letterSpacing: '0.13em', color: C.faint }}>Om boligen</p>
+          <div className="mt-2.5 max-w-[640px] space-y-3">
             {String(a.beskrivelse).split(/\n{2,}/).map((avsn, i) => (
-              <p key={i} className="text-[14px] leading-relaxed text-[#44403a]">{avsn}</p>
+              <p key={i} style={{ fontSize: 14.5, lineHeight: 1.7, color: '#3a342c' }}>{avsn}</p>
             ))}
           </div>
         </div>
 
-        <div className="flex items-center gap-3 border-t border-black/[0.06] bg-[#faf8f4] px-4 py-3.5 sm:px-6">
+        <div className="flex items-center gap-3 px-5 py-4 sm:px-7" style={{ backgroundColor: C.warm, borderTop: `1px solid ${C.hairline}` }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[15px] w-auto" />
-          <span className="text-[12px] text-[#8a8378]">Utleiemegler · håndterer visninger, kontrakt og oppfølging</span>
+          <img src={LOGO_INK} alt="DigiHome" style={{ height: 15, width: 'auto' }} />
+          <span style={{ fontSize: 12, color: C.faint }}>Utleiemegler · håndterer visninger, kontrakt og oppfølging</span>
         </div>
       </div>
-      <p className="mt-3 text-[12px] leading-relaxed text-[#aca395]">
+      <p className="mt-3" style={{ fontSize: 12, lineHeight: 1.6, color: C.faint }}>
         Forhåndsvisning — endelig annonse tilpasses sammen med deg før publisering. AI-forbedrede bilder er basert på annonsens egne foto.
       </p>
     </div>
@@ -440,14 +474,10 @@ export default function TilbudSide() {
   const [aktivStylet, setAktivStylet] = useState(0);
   const [visAnnonse, setVisAnnonse] = useState(false);
   const [visBunn, setVisBunn] = useState(false);
-  const [scrollet, setScrollet] = useState(false);   // forbi coveret → flytende kapselnavbar
-  const [klar, setKlar] = useState(false);           // staggered cover-entrance
-  const [aapen, setAapen] = useState(-1);            // åpen rad i spørsmål-seksjonen
-
-  useEffect(() => {
-    const t = setTimeout(() => setKlar(true), 40);
-    return () => clearTimeout(t);
-  }, []);
+  const [scrollet, setScrollet] = useState(false); // forbi coveret → toppbar
+  const [aapen, setAapen] = useState(0);           // åpen FAQ-rad
+  const coverRef = useRef(null);
+  const morkRef = useRef(null);                    // scroll-drevet formørkning av coveret
 
   useEffect(() => {
     if (!slug) return;
@@ -464,18 +494,22 @@ export default function TilbudSide() {
     })();
   }, [slug]);
 
-  // Kapselnavbar forbi coveret + sticky bunn-CTA på mobil
+  // Toppbar forbi coveret + sticky bunn-CTA (mobil) + cover-formørkning
   useEffect(() => {
+    let raf = 0;
     const sjekk = () => {
       const vh = window.innerHeight || 800;
       const kontakt = document.getElementById('kontakt');
-      const kontaktSynlig = kontakt ? kontakt.getBoundingClientRect().top < window.innerHeight - 80 : false;
-      setVisBunn(window.scrollY > vh * 0.85 && !kontaktSynlig);
-      setScrollet(window.scrollY > vh * 0.6);
+      const kontaktSynlig = kontakt ? kontakt.getBoundingClientRect().top < vh - 80 : false;
+      setVisBunn(window.scrollY > vh * 0.9 && !kontaktSynlig);
+      setScrollet(window.scrollY > vh * 0.72);
+      // Coveret trekker seg inn i blekk etter hvert som dokumentet avdekkes over det
+      if (morkRef.current) morkRef.current.style.opacity = String(Math.min(0.62, (window.scrollY / vh) * 0.62));
     };
-    window.addEventListener('scroll', sjekk, { passive: true });
+    const paScroll = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(sjekk); };
+    window.addEventListener('scroll', paScroll, { passive: true });
     sjekk();
-    return () => window.removeEventListener('scroll', sjekk);
+    return () => { window.removeEventListener('scroll', paScroll); cancelAnimationFrame(raf); };
   }, []);
 
   const send = async () => {
@@ -494,12 +528,9 @@ export default function TilbudSide() {
     setSender(false);
   };
 
-  const tilKontakt = () => {
+  const tilKontakt = useCallback(() => {
     if (typeof document !== 'undefined') document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-  const tilDokument = () => {
-    if (typeof document !== 'undefined') document.getElementById('dokument')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  }, []);
 
   const r = tilbud?.regnestykke || {};
   const anbefalt = Number(r.anbefaltLeie) || 0;
@@ -519,10 +550,9 @@ export default function TilbudSide() {
     : { navn: 'Sarah Sleeman', tittel: 'din kontaktperson i DigiHome', epost: '', telefon: '', avatar: '/brand/sarah-sleeman-360.webp', generisk: true };
   const fornavn = (avsender.navn || '').split(/\s+/)[0] || 'oss';
 
-  // Coverbildet — klargjort hovedbilde hvis det finnes, ellers originalen
   const coverBilde = stylet.length ? `/api/tilbud/bilde?id=${stylet[0].id}` : originalBilde;
+  const dhBilde = coverBilde;
 
-  // Markedsintervall rundt anbefalt leie (±3 %, rundet til nærmeste 100)
   const intervall = useMemo(() => {
     if (!anbefalt) return null;
     const rund = (x) => Math.round(x / 100) * 100;
@@ -533,7 +563,6 @@ export default function TilbudSide() {
     tilbud?.m2 ? `${tilbud.m2} m²` : null, tilbud?.soverom ? `${tilbud.soverom} soverom` : null, tilbud?.boligtype ? pent(tilbud.boligtype) : null,
   ].filter(Boolean), [tilbud]);
 
-  // «Dagens annonse → slik ville vi gjort det» — kun faglige, etterprøvbare punkter
   const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
   const nyTittel = harAnnonse && tilbud?.tittel && norm(tilbud.annonse.tittel) !== norm(tilbud.tittel);
   const sammenligningsPunkter = useMemo(() => {
@@ -550,194 +579,228 @@ export default function TilbudSide() {
   }, [dagens, anbefalt, nyTittel, stylet.length, harAnnonse, tilbud]);
   const visSammenligning = dagens > 0 && (harAnnonse || stylet.length > 0) && sammenligningsPunkter.length > 0;
 
-  // Forsidebilde til det kompakte annonse-kortet + sammenligningskortene
-  const dhBilde = stylet.length ? `/api/tilbud/bilde?id=${stylet[0].id}` : originalBilde;
+  const brev = tilbud?.tekst?.heroIntro
+    || 'Vi har sett nærmere på boligen din og laget en konkret vurdering: hva den bør leies ut for, hvordan vi ville presentert den — og hva du sitter igjen med hvis vi gjør hele jobben for deg.';
+  const potensialTekst = tilbud?.tekst?.potensialTekst || '';
 
-  // Staggered entrance for cover-blokkene — rolig, ett åndedrag
-  const innKl = (delay) => `transition-all duration-700 ease-out motion-reduce:transition-none motion-reduce:translate-y-0 motion-reduce:opacity-100 ${klar ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'} ${delay}`;
+  const maxW = 1120;
+  const padX = 'px-5 sm:px-6 lg:px-10';
+  const idag = new Date().toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' });
 
   if (laster) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#FEFBFA]">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4" style={{ backgroundColor: C.page }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-6 w-auto opacity-90" />
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/15 border-t-black/60" />
+        <img src={LOGO_INK} alt="DigiHome" className="h-6 w-auto opacity-90" />
+        <div className="h-5 w-5 animate-spin rounded-full border-2" style={{ borderColor: 'rgba(10,10,10,0.15)', borderTopColor: 'rgba(10,10,10,0.6)' }} />
       </div>
     );
   }
   if (!tilbud) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-[#FEFBFA] px-6">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-5 px-6" style={{ backgroundColor: C.page }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-6 w-auto opacity-90" />
-        <p className="text-center text-[14px] text-[#8a8378]">{feil || 'Fant ikke tilbudet.'}</p>
+        <img src={LOGO_INK} alt="DigiHome" className="h-6 w-auto opacity-90" />
+        <p className="text-center" style={{ fontSize: 14, color: C.faint }}>{feil || 'Fant ikke tilbudet.'}</p>
       </div>
     );
   }
 
-  const brev = tilbud.tekst?.heroIntro
-    || 'Vi har sett nærmere på boligen din og laget en konkret vurdering: hva den bør leies ut for, hvordan vi ville presentert den — og hva du sitter igjen med hvis vi gjør hele jobben for deg.';
+  /* Shine-sweep CTA — identisk knappspråk som hovedtilbudet */
+  const ShineKnapp = ({ children, onClick, disabled, testid, lys = false, className = '' }) => (
+    <button onClick={onClick} disabled={disabled} data-testid={testid}
+      className={`group relative inline-flex h-[54px] items-center justify-center gap-2.5 overflow-hidden rounded-full px-8 font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-60 ${className}`}
+      style={{ ...body, fontSize: 15.5, ...(lys ? { backgroundColor: '#FFFFFF', color: C.ink, boxShadow: '0 16px 44px rgba(0,0,0,0.34)' } : { backgroundColor: C.ink, color: '#fff', boxShadow: '0 14px 36px rgba(17,24,39,0.22)' }) }}>
+      <span className="pointer-events-none absolute bottom-0 left-0 top-0 w-1/3 -translate-x-[220%] -skew-x-[20deg] transition-transform duration-[850ms] ease-out group-hover:translate-x-[420%]" aria-hidden
+        style={{ background: `linear-gradient(90deg, transparent, ${lys ? 'rgba(17,24,39,0.06)' : 'rgba(255,255,255,0.26)'}, transparent)` }} />
+      <span className="relative z-[1] inline-flex items-center gap-2.5">{children}</span>
+    </button>
+  );
 
   return (
-    <div className="relative min-h-screen overflow-x-clip bg-[#FEFBFA] text-[#141412] selection:bg-[#efe6d8]" data-testid="tilbud-side">
+    <div style={{ ...body, backgroundColor: C.black, color: C.ink }} className="min-h-screen" data-testid="tilbud-side">
+      <ScrollProgress />
+      {/* Filmkorn over hele siden */}
+      <div className="pointer-events-none fixed inset-0 z-[58]" aria-hidden style={{ backgroundImage: GRAIN_URL, opacity: 0.035, mixBlendMode: 'multiply' }} />
 
-      {/* ── Flytende kapselnavbar — vises først når coveret er forbi ── */}
-      <div className={`fixed inset-x-0 top-0 z-40 px-4 transition-all duration-500 ease-out ${scrollet ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-3 opacity-0'}`}>
-        <div className="mx-auto mt-3 flex h-[54px] max-w-[860px] items-center justify-between gap-4 rounded-full bg-[#FEFBFA]/88 pl-5 pr-2 shadow-[0_12px_40px_rgba(20,18,14,0.14)] ring-1 ring-black/[0.06] backdrop-blur-xl">
-          <span className="flex min-w-0 items-baseline gap-3" data-testid="tilbud-header-kontekst">
-            <span className="truncate text-[13.5px] font-bold tracking-[-0.01em]" style={heading}>{pent(tilbud.adresse)}</span>
-            {anbefalt > 0 && <span className="shrink-0 text-[12.5px] font-semibold tabular-nums text-[#8a8378]">{tall(anbefalt)} kr/mnd</span>}
-            {netto > 0 && <span className="hidden shrink-0 text-[12.5px] font-semibold tabular-nums sm:inline" style={{ color: GRONN }}>{tall(netto)} kr til deg</span>}
+      {/* ── Toppbar — glir inn når coveret er forbi ── */}
+      <div className={`fixed inset-x-0 top-0 z-40 transition-all duration-500 ${scrollet ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-4 opacity-0'}`}
+        style={{ backgroundColor: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(22px)', borderBottom: `1px solid ${C.hairline}` }}>
+        <div className={`${padX} mx-auto flex h-[64px] items-center justify-between gap-4`} style={{ maxWidth: maxW }}>
+          <span className="flex min-w-0 items-center gap-4" data-testid="tilbud-header-kontekst">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={LOGO_INK} alt="DigiHome" className="h-[18px] w-auto shrink-0" />
+            <span className="hidden truncate font-medium sm:inline" style={{ ...head, fontSize: 14, color: C.ink }}>{pent(tilbud.adresse)}</span>
+            {netto > 0 && <span className="hidden shrink-0 font-semibold tabular-nums md:inline" style={{ fontSize: 13, color: C.success }}>{tall(netto)} kr til deg/mnd</span>}
           </span>
           <button onClick={tilKontakt} data-testid="tilbud-topp-cta"
-            className="h-10 shrink-0 rounded-full bg-[#141412] px-5 text-[13px] font-semibold text-white transition-all hover:bg-black/80 active:scale-[0.98]">
+            className="h-10 shrink-0 rounded-full px-5 font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
+            style={{ ...body, fontSize: 13.5, backgroundColor: C.ink, color: '#fff' }}>
             Snakk med {fornavn}
           </button>
         </div>
       </div>
 
-      {/* ══ 1 · COVERET — mørkt, filmatisk boligbilde med adressen som tittel ══ */}
-      <section className="relative flex min-h-[88svh] min-h-[560px] flex-col overflow-hidden bg-[#141412] text-white">
-        {coverBilde && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={coverBilde} alt="" aria-hidden="true" fetchPriority="high"
-            className={`absolute inset-0 h-full w-full object-cover transition-all duration-[1600ms] ease-out ${klar ? 'scale-100 opacity-[0.58]' : 'scale-[1.04] opacity-0'}`} />
-        )}
-        {/* Filmatiske gradienter — lesbarhet topp og bunn */}
-        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/10 to-transparent" style={{ height: '38%' }} />
-        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[68%] bg-gradient-to-t from-[#141412] via-[#141412]/55 to-transparent" />
+      {/* ══ FILMATISK COVER — sticky: dokumentet avdekkes OVER coveret ══ */}
+      <section ref={coverRef} className="relative flex w-full flex-col overflow-hidden lg:sticky lg:top-0" style={{ minHeight: '100svh', backgroundColor: C.black }} data-testid="hero-section">
+        <style>{`@keyframes dh-kenburns{from{transform:scale(1.06)}to{transform:scale(1.13)}}@keyframes dh-cue{0%{transform:translateY(-14px)}100%{transform:translateY(44px)}}`}</style>
+        {/* Lag 1 — full-bleed bilde med Ken Burns */}
+        <div className="absolute inset-0 overflow-hidden" aria-hidden>
+          {coverBilde && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={coverBilde} alt="" fetchPriority="high" className="h-full w-full object-cover"
+              style={{ objectPosition: 'center 38%', animation: reduserMotion() ? 'none' : 'dh-kenburns 28s ease-in-out infinite alternate' }} />
+          )}
+          <div className="absolute inset-0" style={{ backgroundColor: 'rgba(10,9,8,0.16)' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(8,7,6,0.95) 0%, rgba(8,7,6,0.88) 18%, rgba(8,7,6,0.56) 42%, rgba(8,7,6,0.18) 68%, rgba(8,7,6,0.32) 100%)' }} />
+          <div className="absolute inset-x-0 top-0" style={{ height: 180, background: 'linear-gradient(to bottom, rgba(8,7,6,0.52), transparent)' }} />
+          <div className="absolute inset-0" style={{ backgroundImage: GRAIN_URL, opacity: 0.10, mixBlendMode: 'overlay' }} />
+        </div>
+        {/* Scroll-drevet formørkning — coveret trekker seg inn i blekk */}
+        <div ref={morkRef} className="pointer-events-none absolute inset-0" aria-hidden style={{ backgroundColor: C.black, opacity: 0 }} />
 
-        {/* Cover-header: hvit logo + rolig CTA */}
-        <div className="relative z-10 mx-auto flex h-20 w-full max-w-[1200px] items-center justify-between px-5 sm:px-8">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/digihome-logo-hvit.svg" alt="DigiHome" className="h-[22px] w-auto" />
-          <button onClick={tilKontakt}
-            className="h-10 rounded-full border border-white/25 bg-white/[0.08] px-5 text-[13px] font-semibold text-white backdrop-blur-sm transition-all hover:border-white/50 active:scale-[0.98]">
-            Snakk med {fornavn}
-          </button>
+        {/* Lag 2 — UI */}
+        <div className="relative z-10 flex flex-1 flex-col">
+          <div className={`${padX} mx-auto flex w-full items-center justify-between pt-8 lg:pt-10`} style={{ maxWidth: maxW }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={LOGO_WHITE} alt="DigiHome" className="h-[26px] w-auto lg:h-[30px]" />
+            <div className="flex items-center gap-3">
+              {vurdertDato ? (
+                <span className="rounded-full font-medium" style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.22)', padding: '4px 12px' }}>Vurdert {vurdertDato}</span>
+              ) : (
+                <span className="hidden sm:inline" style={{ ...body, fontSize: 12, color: D.soft }}>{idag}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1" />
+
+          <div className={`${padX} mx-auto w-full pb-[12vh] lg:pb-[14vh]`} style={{ maxWidth: maxW }}>
+            <p className="mb-4 flex items-center gap-2.5 font-medium uppercase" style={{ ...body, fontSize: 'clamp(11px, 1.1vw, 12.5px)', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.92)', textShadow: '0 1px 18px rgba(0,0,0,0.55)' }}>
+              <span className="inline-block rounded-full" style={{ width: 5, height: 5, backgroundColor: C.purple }} />
+              Personlig utleievurdering
+            </p>
+
+            <SplitHeadline lines={[pent(tilbud.adresse)]} className="font-light tracking-[-0.05em] text-white" data-testid="tilbud-hero-adresse"
+              style={{ ...head, fontSize: 'clamp(38px, 8.2vw, 108px)', lineHeight: 0.92, textShadow: '0 2px 44px rgba(0,0,0,0.5)' }} />
+            <span className="sr-only" data-testid="tilbud-hero-adresse-tekst">{pent(tilbud.adresse)}</span>
+
+            <p className="mt-6" style={{ ...body, fontSize: 'clamp(14.5px, 1.6vw, 16.5px)', color: 'rgba(255,255,255,0.82)', textShadow: '0 1px 16px rgba(0,0,0,0.5)', maxWidth: 480 }}>
+              Vi har laget en konkret vurdering av utleiepotensialet — {[...fakta].slice(0, 2).join(' · ') || 'boligen din'}{tilbud.postnr ? ` · ${tilbud.postnr} Bergen` : ' · Bergen'}.
+            </p>
+
+            {/* Hero-meta: nøkkeltall skilt med hårlinjer */}
+            <div className="mt-9 flex flex-wrap items-start gap-x-10 gap-y-5">
+              {[
+                anbefalt > 0 ? ['Anbefalt leie', `${tall(anbefalt)} kr/mnd`] : null,
+                netto > 0 ? ['Til deg etter honorar', `${tall(netto)} kr/mnd`] : null,
+                grunnlag ? ['Vurdert mot', `${grunnlag.antallILeide} leieforhold`] : null,
+              ].filter(Boolean).map(([l, v], i) => (
+                <div key={l} className={i > 0 ? 'pl-10' : ''} style={i > 0 ? { borderLeft: '1px solid rgba(255,255,255,0.18)' } : undefined}>
+                  <p className="mb-1.5 font-medium uppercase" style={{ ...body, fontSize: 10.5, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.74)', textShadow: '0 1px 14px rgba(0,0,0,0.55)' }}>{l}</p>
+                  <p className="font-light tabular-nums tracking-[-0.02em]" style={{ ...head, fontSize: 'clamp(22px, 2.4vw, 27px)', color: '#fff', textShadow: '0 2px 22px rgba(0,0,0,0.5)' }}>{v}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 flex flex-wrap items-center gap-x-5 gap-y-2" style={{ fontSize: 12.5, color: D.soft }}>
+              {['Uforpliktende', 'Ingen bindingstid', 'Du godkjenner alt'].map((t) => (
+                <span key={t} className="flex items-center gap-1.5">
+                  <svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="m3.6 9.4 3.4 3.4 7.4-7.6" stroke={D.icon} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Cover-innhold — nederst, redaksjonelt */}
-        <div className="relative z-10 mx-auto mt-auto w-full max-w-[1200px] px-5 pb-[112px] sm:px-8 sm:pb-[128px]">
-          <p className={innKl('delay-100') + ' text-[11px] font-bold uppercase tracking-[0.22em] text-white/60'}>
-            Personlig utleievurdering{vurdertDato ? ` · ${vurdertDato}` : ''}
-          </p>
-          <h1 className={innKl('delay-200') + ' mt-4 max-w-[900px] font-bold leading-[1.0] tracking-[-0.03em] [text-wrap:balance]'}
-            style={{ ...heading, fontSize: 'clamp(40px, 6.4vw, 76px)' }} data-testid="tilbud-hero-adresse">
-            {pent(tilbud.adresse)}
-          </h1>
-          <p className={innKl('delay-300') + ' mt-4 text-[14.5px] font-medium text-white/65 sm:text-[15.5px]'}>
-            {[...fakta, tilbud.postnr ? `${tilbud.postnr} Bergen` : 'Bergen'].join(' · ')}
-          </p>
-          <button onClick={tilDokument} className={innKl('delay-500') + ' group mt-9 flex items-center gap-2.5 text-[13.5px] font-semibold text-white/80 transition-colors hover:text-white'} data-testid="tilbud-cover-les">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30 transition-all group-hover:border-white/70">
-              <svg width="12" height="13" viewBox="0 0 12 14" fill="none" aria-hidden="true" className="translate-y-[1px] animate-bounce" style={{ animationDuration: '2.2s' }}>
-                <path d="M6 1v11M1.5 8 6 12.5 10.5 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-            Les vurderingen
-          </button>
+        {/* Scroll-cue */}
+        <div className="absolute z-10 hidden flex-col items-center gap-3 sm:flex" style={{ bottom: '4.5vh', left: '50%', transform: 'translateX(-50%)' }} data-testid="scroll-cue-indicator">
+          <span className="uppercase" style={{ ...body, fontSize: 9.5, letterSpacing: '0.32em', color: 'rgba(255,255,255,0.5)' }}>Bla ned</span>
+          <div className="relative overflow-hidden rounded-full" style={{ width: 1.5, height: 44, backgroundColor: 'rgba(255,255,255,0.22)' }}>
+            <div className="absolute left-0 right-0 rounded-full" style={{ height: 14, backgroundColor: '#fff', animation: reduserMotion() ? 'none' : 'dh-cue 1.7s ease-in-out infinite' }} />
+          </div>
         </div>
       </section>
 
-      {/* ══ 2 · DOKUMENTET — avsløres over coveret ══ */}
-      <main id="dokument" className="relative z-10 -mt-[64px] scroll-mt-4 rounded-t-[28px] bg-[#FEFBFA] shadow-[0_-28px_70px_rgba(10,8,6,0.35)] sm:-mt-[76px] sm:rounded-t-[36px]">
-        <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
+      {/* ══ DOKUMENT-AVSLØRING — varmt innhold glir opp over coveret ══ */}
+      <div id="dokument" className="relative z-20 -mt-[7vh] overflow-hidden rounded-t-[28px] md:-mt-[12vh] md:rounded-t-[44px]" style={{ backgroundColor: C.page, boxShadow: '0 -34px 80px rgba(8,7,6,0.42)' }} data-testid="document-reveal">
 
-          {/* 2a · Konklusjonen — anbefalt leie som dokumentets overskrift */}
-          <section className="pt-[clamp(56px,7vw,88px)] text-center">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: VARM }}>Vår vurdering</p>
-            {anbefalt > 0 ? (
-              <>
-                <h2 className="mt-4 font-bold leading-[0.98] tracking-[-0.035em]" style={{ ...heading, fontSize: 'clamp(52px, 8vw, 92px)' }}>
-                  <TellOpp verdi={anbefalt} ms={900} />{'\u2009'}kr<span className="text-[0.32em] font-semibold tracking-[-0.01em] text-[#aca395]"> /mnd</span>
-                </h2>
-                <p className="mt-3 text-[15px] font-medium text-[#8a8378] sm:text-[16px]">anbefalt månedsleie for boligen din</p>
-                {netto > 0 && (
-                  <p className="mx-auto mt-6 inline-flex max-w-full flex-wrap items-baseline justify-center gap-x-1.5 rounded-[16px] bg-[#eaf3ec] px-5 py-3 text-[14.5px] leading-snug text-[#2d4a36]" data-testid="tilbud-hero-netto">
-                    <span className="font-bold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: GRONN, fontSize: '17px' }}>≈ {tall(netto)} kr til deg</span>
-                    <span>hver måned etter DigiHome-honorar ({r.honorarPct} % eks. mva)</span>
-                  </p>
-                )}
-                {grunnlag && (
-                  <p className="mx-auto mt-5 flex max-w-[520px] items-start justify-center gap-2 text-[13.5px] leading-relaxed text-[#8a8378]">
-                    <svg width="14" height="14" viewBox="0 0 18 18" fill="none" className="mt-[3px] shrink-0" aria-hidden="true">
-                      <path d="m3.6 9.4 3.4 3.4 7.4-7.6" stroke={GRONN} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <span>Vurdert mot <b className="font-semibold text-[#44403a]">{grunnlag.antallILeide} faktiske leieforhold</b> i DigiHome-porteføljen{grunnlag.antallISone > 0 ? `, ${grunnlag.antallISone} i samme postsone` : ''}.</span>
-                  </p>
-                )}
-              </>
-            ) : (
-              <h2 className="mt-4 font-bold leading-[1.04] tracking-[-0.025em]" style={{ ...heading, fontSize: 'clamp(34px, 5.4vw, 52px)' }}>
-                Vår vurdering av {pent(tilbud.adresse)}
-              </h2>
-            )}
-          </section>
+        {/* ── PERSONLIG BREV ── */}
+        <section className={`${padX} mx-auto pb-16 pt-16 lg:pb-24 lg:pt-28`} style={{ maxWidth: maxW }} data-testid="cover-letter">
+          <Reveal className="mb-9 lg:mb-12">
+            <Overline className="mb-6">Et personlig tilbud</Overline>
+            <h2 className="font-light leading-[0.98] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(44px, 6.8vw, 76px)', color: C.ink }}>Hei.</h2>
+          </Reveal>
 
-          {/* 2b · Det personlige brevet + avsenderkortet */}
-          <Avsnitt className="mt-[clamp(64px,7vw,96px)]">
-            <div className="mx-auto max-w-[640px]">
-              <div className="border-t border-black/[0.08] pt-8">
-                <p className="text-[17px] leading-[1.75] text-[#33302a] sm:text-[17.5px]" data-testid="tilbud-hero-intro">
-                  Hei,
-                </p>
-                <p className="mt-4 text-[17px] leading-[1.75] [text-wrap:pretty] text-[#33302a] sm:text-[17.5px]">
-                  {brev}
-                </p>
-                <p className="mt-4 text-[17px] leading-[1.75] text-[#33302a] sm:text-[17.5px]">
-                  Alt på denne siden er laget spesifikt for boligen din — ta det i ditt eget tempo, og ring meg gjerne når som helst.
-                </p>
-                <p className="mt-7 text-[15px] font-semibold tracking-[-0.01em]" style={heading}>— {avsender.navn}</p>
-              </div>
+          <Reveal>
+            <div className="flex flex-col gap-6" style={{ maxWidth: 640 }}>
+              <p style={{ fontSize: 'clamp(17px, 1.75vw, 19.5px)', lineHeight: 1.78, color: C.sub }} data-testid="tilbud-hero-intro">{brev}</p>
+              <p style={{ fontSize: 'clamp(17px, 1.75vw, 19.5px)', lineHeight: 1.78, color: C.sub }}>
+                Alt på denne siden er laget spesifikt for boligen din. <span style={{ color: C.ink, fontWeight: 500 }}>Ta det i ditt eget tempo</span> — og ring meg gjerne når som helst.
+              </p>
+            </div>
+          </Reveal>
 
-              {/* Avsenderkortet — hvem tilbudet kommer fra */}
-              <div className="mt-8 flex flex-wrap items-center gap-4 rounded-[24px] bg-white p-5 shadow-[0_16px_48px_-24px_rgba(20,18,14,0.28)] ring-1 ring-black/[0.06] sm:p-6" data-testid="tilbud-avsender">
-                <AvsenderBilde avsender={avsender} storrelse={56} ring="ring-2 ring-[#f4efe8]" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[15.5px] font-bold tracking-[-0.01em]" style={heading}>{avsender.navn}</p>
-                  <p className="mt-0.5 text-[13px] text-[#8a8378]">{avsender.tittel}{avsender.generisk ? '' : ' · DigiHome'}</p>
+          {potensialTekst && potensialTekst.length <= 220 && (
+            <Reveal>
+              <figure className="mt-12 lg:mt-16" style={{ maxWidth: 820 }} data-testid="cover-personal-message">
+                <div className="pl-6 lg:pl-9" style={{ borderLeft: `2px solid ${C.purple}` }}>
+                  <blockquote className="font-light tracking-[-0.02em]" style={{ ...head, fontSize: 'clamp(24px, 3.4vw, 38px)', lineHeight: 1.3, color: C.ink }}>{`\u201C${potensialTekst}\u201D`}</blockquote>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+              </figure>
+            </Reveal>
+          )}
+
+          {/* Signatur — avsenderen foldet elegant inn i brevet */}
+          <Reveal>
+            <div className="mt-14 flex items-center gap-5 pt-9 lg:mt-20" style={{ borderTop: `1px solid ${C.line}`, maxWidth: 640 }} data-testid="tilbud-avsender">
+              <AvsenderBilde avsender={avsender} />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium" style={{ ...head, fontSize: 21, color: C.ink, letterSpacing: '-0.01em' }}>{avsender.navn}</p>
+                <p style={{ fontSize: 13.5, color: C.sub }}>{avsender.tittel}{avsender.generisk ? '' : ' · DigiHome'}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5">
+                  {avsender.epost && (
+                    <a href={`mailto:${avsender.epost}`} className="flex items-center gap-2 transition-colors hover:text-[#111827]" style={{ fontSize: 13.5, color: C.sub }} data-testid="advisor-email">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.5" stroke={C.faint} strokeWidth="1.8" /><path d="m3.5 7 8.5 6 8.5-6" stroke={C.faint} strokeWidth="1.8" strokeLinecap="round" /></svg>
+                      {avsender.epost}
+                    </a>
+                  )}
                   {avsender.telefon ? (
-                    <a href={`tel:${avsender.telefon}`} className="inline-flex h-10 items-center rounded-full bg-[#141412] px-4 text-[13px] font-semibold text-white transition-all hover:bg-black/80 active:scale-[0.98]">
-                      Ring {fornavn}
+                    <a href={`tel:${avsender.telefon.replace(/\s/g, '')}`} className="flex items-center gap-2 transition-colors hover:text-[#111827]" style={{ fontSize: 13.5, color: C.sub }} data-testid="advisor-phone">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.6 3.5h3l1.5 4-2 1.5a12 12 0 0 0 5.9 5.9l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2A17.5 17.5 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2Z" stroke={C.faint} strokeWidth="1.8" strokeLinejoin="round" /></svg>
+                      {avsender.telefon}
                     </a>
                   ) : (
-                    <button onClick={tilKontakt} className="inline-flex h-10 items-center rounded-full bg-[#141412] px-4 text-[13px] font-semibold text-white transition-all hover:bg-black/80 active:scale-[0.98]">
-                      Bli oppringt
-                    </button>
-                  )}
-                  {avsender.epost && (
-                    <a href={`mailto:${avsender.epost}`} className="inline-flex h-10 items-center rounded-full border border-black/[0.12] px-4 text-[13px] font-semibold text-[#141412] transition-all hover:border-black/30 active:scale-[0.98]">
-                      Send e-post
-                    </a>
+                    <button onClick={tilKontakt} className="font-semibold transition-colors hover:text-[#111827]" style={{ fontSize: 13.5, color: C.sub }}>Be om å bli oppringt →</button>
                   )}
                 </div>
               </div>
             </div>
-          </Avsnitt>
+          </Reveal>
+        </section>
 
-          {/* ══ 3 · BILDENE — interaktiv før/etter (unik for Salgsradar-tilbudet) ══ */}
-          {valgtStylet && (
-            <Avsnitt className={SEKSJON}>
-              <SeksjonHode
-                midt
-                kicker="Bildene"
-                tittel="Vi har allerede løftet presentasjonen."
-                intro="Dra i linjen — annonsens originalbilde til venstre, vår klargjorte versjon til høyre. Det er detaljene leietakere sorterer på."
-              />
-              <div className="mx-auto mt-10 max-w-[880px]">
+        {/* ══ 01 · BILDENE — før/etter (Salgsradarens signaturelement) ══ */}
+        {valgtStylet && (
+          <section className={`${padX} mx-auto pb-16 lg:pb-28`} style={{ maxWidth: maxW }}>
+            <Reveal className="mb-10 lg:mb-14">
+              <Overline index="01" className="mb-5">Bildene</Overline>
+              <h2 className="font-light leading-[1.0] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(34px, 5vw, 56px)', color: C.ink }}>Vi har allerede løftet presentasjonen.</h2>
+              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(16.5px, 1.6vw, 18px)', color: C.sub, maxWidth: 640 }}>
+                Dra i linjen — annonsens originalbilde til venstre, vår klargjorte versjon til høyre. Det er detaljene leietakere sorterer på.
+              </p>
+            </Reveal>
+            <Reveal>
+              <div className="mx-auto" style={{ maxWidth: 880 }}>
                 <ForEtter
                   forUrl={valgtStylet.kildeUrl || originalBilde}
                   etterUrl={`/api/tilbud/bilde?id=${valgtStylet.id}`}
                   nokkel={valgtStylet.id}
-                  ratio="aspect-[16/10]"
                   etterEtikett={['optimal', 'lysloft'].includes(valgtStylet.stil) ? 'Klargjort av DigiHome' : 'AI-møblert · illustrasjon'}
                 />
                 <div className="mt-3 flex items-center justify-between gap-3">
-                  <p className="text-[12.5px] text-[#aca395]">Dra i linjen — original til venstre, klargjort av oss til høyre.</p>
-                  {stylet.length > 1 && <p className="shrink-0 text-[12px] tabular-nums text-[#c9c2b6]">{aktivStylet + 1} av {stylet.length}</p>}
+                  <p style={{ fontSize: 12.5, color: C.faint }}>Dra i linjen — original til venstre, klargjort av oss til høyre.</p>
+                  {stylet.length > 1 && <p className="shrink-0 tabular-nums" style={{ fontSize: 12, color: C.faint }}>{aktivStylet + 1} av {stylet.length}</p>}
                 </div>
                 {stylet.length > 1 && (
                   <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1">
@@ -745,372 +808,398 @@ export default function TilbudSide() {
                       <button key={s.id} type="button" onClick={() => setAktivStylet(i)} className="relative shrink-0">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={`/api/tilbud/bilde?id=${s.id}`} alt={s.stil ? `Stil: ${s.stil}` : ''} loading="lazy"
-                          className={`h-14 w-[84px] rounded-[10px] object-cover transition-all ${i === aktivStylet ? 'ring-2 ring-[#141412] ring-offset-2 ring-offset-[#FEFBFA]' : 'opacity-55 hover:opacity-100'}`} />
+                          className="h-14 w-[84px] rounded-[12px] object-cover transition-all"
+                          style={i === aktivStylet ? { boxShadow: `0 0 0 2px ${C.page}, 0 0 0 4px ${C.ink}` } : { opacity: 0.55 }} />
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-            </Avsnitt>
-          )}
+            </Reveal>
+          </section>
+        )}
 
-          {/* ══ 4 · BEVISET — prislinjal og faktisk grunnlag ══ */}
-          <Avsnitt id="hvorfor" className={`${SEKSJON} scroll-mt-24`}>
-            <SeksjonHode
-              midt
-              kicker="Beviset"
-              tittel={anbefalt > 0 ? `Hvorfor ${tall(anbefalt)} kr er riktig pris.` : 'Vår vurdering.'}
-              intro={tilbud.tekst?.potensialTekst || 'Vurderingen bygger på hva sammenlignbare boliger faktisk leies ut for i DigiHomes egen portefølje i Bergen — ikke på annonsepriser eller synsing.'}
-            />
+        {/* ══ 02 · VURDERINGEN — sentrert kjempe-tall + prislinjal (subtle-flate) ══ */}
+        <section id="hvorfor" className="scroll-mt-20 py-16 lg:py-28" style={{ backgroundColor: C.subtle }} data-testid="income-estimate">
+          <div className={`${padX} mx-auto`} style={{ maxWidth: maxW }}>
+            <Reveal className="mb-12 text-center lg:mb-16">
+              <div className="mb-5 flex justify-center"><Overline index="02">Vurderingen</Overline></div>
+              {anbefalt > 0 ? (
+                <>
+                  <p className="font-light leading-[0.9] tabular-nums tracking-[-0.055em]" style={{ ...head, fontSize: 'clamp(64px, 9.5vw, 104px)', color: C.ink }}><TellOpp verdi={anbefalt} /></p>
+                  <p className="mt-3 font-semibold uppercase" style={{ ...head, fontSize: 12.5, letterSpacing: '0.16em', color: C.faint }}>kr anbefalt månedsleie</p>
+                  {netto > 0 && (
+                    <p className="mt-5" style={{ fontSize: 15, color: C.sub }} data-testid="tilbud-hero-netto">
+                      ≈ <span className="font-semibold tabular-nums" style={{ color: C.success }}>{tall(netto)} kr til deg</span> hver måned etter DigiHome-honorar ({r.honorarPct} % eks. mva)
+                    </p>
+                  )}
+                </>
+              ) : (
+                <h2 className="font-light tracking-[-0.03em]" style={{ ...head, fontSize: 'clamp(30px, 4vw, 44px)', color: C.ink }}>Vår vurdering av {pent(tilbud.adresse)}</h2>
+              )}
+              {potensialTekst && potensialTekst.length > 220 && (
+                <p className="mx-auto mt-5 leading-[1.7]" style={{ fontSize: 15.5, color: C.sub, maxWidth: 580 }}>{potensialTekst}</p>
+              )}
+            </Reveal>
 
-            {/* Prislinjal + faktisk grunnlag — samlet i ett kort */}
             {(intervall || grunnlag) && (
-              <div className="mx-auto mt-11 max-w-[880px] overflow-hidden rounded-[26px] bg-white shadow-[0_24px_64px_-32px_rgba(20,18,14,0.30)] ring-1 ring-black/[0.06]">
-                {intervall && (
-                  <div className="px-6 pb-6 pt-7 sm:px-10 sm:pb-7 sm:pt-8">
-                    <IntervallBar lo={intervall[0]} hi={intervall[1]} anbefalt={anbefalt} dagens={dagens} />
-                  </div>
-                )}
-                {grunnlag && (
-                  <div className={`flex flex-wrap items-baseline justify-center gap-x-12 gap-y-4 px-6 py-5 text-center sm:px-10 ${intervall ? 'border-t border-black/[0.06] bg-[#faf8f4]' : ''}`} data-testid="tilbud-grunnlag">
-                    <div>
-                      <p className="text-[20px] font-bold tabular-nums tracking-[-0.015em]" style={heading}>{grunnlag.antallILeide}</p>
-                      <p className="mt-0.5 text-[12.5px] text-[#8a8378]">faktiske leieforhold i grunnlaget</p>
+              <Reveal>
+                <div className="mx-auto overflow-hidden rounded-[26px]" style={{ maxWidth: 880, backgroundColor: C.bg, border: `1px solid ${C.line}` }}>
+                  {intervall && (
+                    <div className="px-6 pb-6 pt-7 sm:px-10 sm:pb-7 sm:pt-8">
+                      <IntervallBar lo={intervall[0]} hi={intervall[1]} anbefalt={anbefalt} dagens={dagens} />
                     </div>
-                    {grunnlag.antallISone > 0 && (
+                  )}
+                  {grunnlag && (
+                    <div className="flex flex-wrap items-baseline justify-center gap-x-12 gap-y-4 px-6 py-5 text-center sm:px-10" style={intervall ? { borderTop: `1px solid ${C.hairline}`, backgroundColor: C.warm } : undefined} data-testid="tilbud-grunnlag">
                       <div>
-                        <p className="text-[20px] font-bold tabular-nums tracking-[-0.015em]" style={heading}>{grunnlag.antallISone}</p>
-                        <p className="mt-0.5 text-[12.5px] text-[#8a8378]">utleid i samme postsone{grunnlag.sone ? ` (${grunnlag.sone})` : ''}</p>
+                        <p className="font-medium tabular-nums tracking-[-0.015em]" style={{ ...head, fontSize: 21, color: C.ink }}>{grunnlag.antallILeide}</p>
+                        <p className="mt-0.5" style={{ fontSize: 12.5, color: C.faint }}>faktiske leieforhold i grunnlaget</p>
                       </div>
-                    )}
-                    {grunnlag.snittSone > 0 && (
-                      <div>
-                        <p className="text-[20px] font-bold tabular-nums tracking-[-0.015em]" style={heading}>{tall(grunnlag.snittSone)} kr</p>
-                        <p className="mt-0.5 text-[12.5px] text-[#8a8378]">snitt oppnådd leie i sonen</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            {vurdertDato && (
-              <p className="mt-4 text-center text-[12.5px] text-[#aca395]">Vurdert {vurdertDato} · oppdateres ved endringer i markedet.</p>
-            )}
-
-            {/* Dagens annonse → slik ville vi gjort det */}
-            {visSammenligning && (
-              <div className="mt-[clamp(56px,6vw,84px)]">
-                <div className="text-center">
-                  <h3 className="text-[clamp(19px,2vw,22px)] font-semibold tracking-[-0.015em]" style={heading}>Annonsen din i dag — og slik ville vi gjort det.</h3>
-                  <p className="mx-auto mt-2.5 max-w-[600px] text-[14.5px] leading-[1.65] text-[#8a8378]">
-                    Dette handler ikke om at dagens annonse er dårlig — men om detaljene som avgjør hvem som tar kontakt, og til hvilken pris.
-                  </p>
-                </div>
-
-                <div className="mx-auto mt-9 grid max-w-[1040px] grid-cols-1 items-stretch gap-4 sm:grid-cols-[1fr_auto_1fr] sm:gap-5" data-testid="tilbud-sammenligning">
-                  <MiniAnnonse
-                    variant="idag"
-                    bilde={originalBilde}
-                    tittel={tilbud.tittel || 'Dagens annonse'}
-                    adresse={pent(tilbud.adresse)}
-                    pris={dagens}
-                  />
-                  <div className="flex items-center justify-center" aria-hidden="true">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f4efe8] text-[15px] font-semibold text-[#141412]">
-                      <span className="hidden sm:inline">→</span>
-                      <span className="sm:hidden">↓</span>
-                    </span>
-                  </div>
-                  <MiniAnnonse
-                    variant="dh"
-                    bilde={dhBilde}
-                    aiBilde={stylet.length > 0}
-                    tittel={harAnnonse ? tilbud.annonse.tittel : (tilbud.tittel || '')}
-                    adresse={pent(tilbud.adresse)}
-                    pris={anbefalt}
-                    netto={netto}
-                  />
-                </div>
-
-                <div className="mx-auto mt-10 grid max-w-[920px] grid-cols-1 gap-x-12 gap-y-7 sm:grid-cols-2" data-testid="tilbud-sammenligning-punkter">
-                  {sammenligningsPunkter.map(([t, d]) => (
-                    <div key={t} className="border-t border-black/[0.09] pt-4">
-                      <p className="text-[15px] font-bold tracking-[-0.01em]" style={heading}>{t}</p>
-                      <p className="mt-1.5 text-[14px] leading-[1.65] text-[#8a8378]">{d}</p>
+                      {grunnlag.antallISone > 0 && (
+                        <div>
+                          <p className="font-medium tabular-nums tracking-[-0.015em]" style={{ ...head, fontSize: 21, color: C.ink }}>{grunnlag.antallISone}</p>
+                          <p className="mt-0.5" style={{ fontSize: 12.5, color: C.faint }}>utleid i samme postsone{grunnlag.sone ? ` (${grunnlag.sone})` : ''}</p>
+                        </div>
+                      )}
+                      {grunnlag.snittSone > 0 && (
+                        <div>
+                          <p className="font-medium tabular-nums tracking-[-0.015em]" style={{ ...head, fontSize: 21, color: C.ink }}>{tall(grunnlag.snittSone)} kr</p>
+                          <p className="mt-0.5" style={{ fontSize: 12.5, color: C.faint }}>snitt oppnådd leie i sonen</p>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <p className="mx-auto mt-12 max-w-[560px] text-center text-[12.5px] leading-relaxed text-[#aca395]">
-              Vurderingen er gjort mot faktiske leieinntekter i DigiHomes egen portefølje i Bergen. Endelig leie settes alltid sammen med deg.
-            </p>
-          </Avsnitt>
-
-          {/* ══ 5 · ØKONOMIEN — én presis blokk, ikke pyntet ══ */}
-          <Avsnitt id="regnestykke" className={`${SEKSJON} scroll-mt-24`}>
-            <SeksjonHode midt kicker="Økonomien" tittel="Regnestykket." intro="Ett tall inn, to tall ut — hva boligen gir, hva vi tar, og hva som er igjen til deg." />
-
-            <div className="mx-auto mt-10 max-w-[1000px] overflow-hidden rounded-[26px] bg-white shadow-[0_24px_64px_-32px_rgba(20,18,14,0.30)] ring-1 ring-black/[0.06]">
-              <div className="grid grid-cols-1 divide-y divide-black/[0.06] sm:grid-cols-3 sm:divide-x sm:divide-y-0" data-testid="tilbud-kpi">
-                <div className="px-6 py-6 sm:px-8 sm:py-8">
-                  <p className="text-[12.5px] font-medium text-[#8a8378]">Anbefalt leie</p>
-                  <p className="mt-2 text-[clamp(26px,2.6vw,32px)] font-bold tabular-nums tracking-[-0.02em]" style={heading}><TellOpp verdi={anbefalt} />{'\u2009'}kr</p>
-                  <p className="mt-1 text-[12.5px] text-[#aca395]">per måned</p>
-                </div>
-                <div className="px-6 py-6 sm:px-8 sm:py-8">
-                  <p className="text-[12.5px] font-medium text-[#8a8378]">− DigiHome-honorar</p>
-                  <p className="mt-2 text-[clamp(26px,2.6vw,32px)] font-bold tabular-nums tracking-[-0.02em] text-[#8a8378]" style={heading}><TellOpp verdi={r.honorarMnd} />{'\u2009'}kr</p>
-                  <p className="mt-1 text-[12.5px] text-[#aca395]">{r.honorarPct} % eks. mva — alt arbeid inkludert</p>
-                </div>
-                <div className="bg-[#f2f8f3] px-6 py-6 sm:px-8 sm:py-8">
-                  <p className="text-[12.5px] font-semibold" style={{ color: GRONN }}>= Til deg hver måned</p>
-                  <p className="mt-2 text-[clamp(28px,2.9vw,36px)] font-bold tabular-nums tracking-[-0.02em]" style={{ ...heading, color: GRONN }}><TellOpp verdi={netto} />{'\u2009'}kr</p>
-                  <p className="mt-1 text-[12.5px] text-[#5b7a63]">estimert, før eierkostnader og skatt</p>
-                </div>
-              </div>
-              {netto > 0 && (
-                <div className="flex flex-wrap items-baseline justify-center gap-x-10 gap-y-2 border-t border-black/[0.06] bg-[#faf8f4] px-6 py-4 sm:px-8" data-testid="tilbud-regnestykke">
-                  <p className="text-[13px] text-[#8a8378]">Over 12 måneder: <span className="font-bold tabular-nums text-[#141412]" style={heading}>{tall(netto * 12)} kr</span> til deg</p>
-                  <p className="text-[13px] text-[#8a8378]">Årlig honorar: <span className="font-bold tabular-nums text-[#141412]" style={heading}>{tall((r.honorarMnd || 0) * 12)} kr</span></p>
-                  {gevinst != null && gevinst > 0 && (
-                    <p className="text-[13px] font-medium" style={{ color: GRONN }}>+ {tall(gevinst)} kr/mnd mer enn annonsert pris i dag</p>
                   )}
                 </div>
-              )}
-            </div>
-
-            <p className="mx-auto mt-4 max-w-[620px] text-center text-[12.5px] leading-relaxed text-[#aca395]">
-              Honoraret er oppgitt eks. mva. Estimatet er før eierkostnader, eventuell ledighet og skatt — det gir deg sammenligningsgrunnlaget, ikke et regnskap.
+              </Reveal>
+            )}
+            <p className="mt-8 text-center" style={{ fontSize: 12, color: C.faint }}>
+              Vurderingen er gjort mot faktiske leieinntekter i DigiHomes egen portefølje i Bergen. Endelig leie settes alltid sammen med deg.
             </p>
-          </Avsnitt>
-
-          {/* ══ 6 · ARBEIDSFORDELINGEN — mørkt kapittel: du gjør to ting, vi tar resten ══ */}
-          <div className={`relative left-1/2 ${SEKSJON} w-[min(100vw-16px,1360px)] -translate-x-1/2 overflow-hidden rounded-[28px] bg-[#141412] text-white sm:rounded-[36px]`}>
-            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[300px] bg-[radial-gradient(760px_260px_at_28%_-60px,rgba(233,221,199,0.09),transparent_70%)]" />
-            <Avsnitt className={`mx-auto max-w-[1200px] px-5 sm:px-8 ${BAND_PY}`}>
-              <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,400px)_1fr] lg:gap-24" data-testid="tilbud-manifest">
-                <div>
-                  <SeksjonHode
-                    lys
-                    kicker="Arbeidsfordelingen"
-                    tittel={<>Du gjør to ting.<br />Vi tar resten.</>}
-                    intro="Vi er eiendomsmeglere med utleie som spesialfelt. Å leie ut trenger ikke bli en ny jobb for deg."
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:pt-1">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">Du gjør</p>
-                    <ul className="mt-4">
-                      {['Gir oss nøklene', 'Godkjenner leietaker'].map((t, i) => (
-                        <li key={t} className="flex items-baseline gap-3.5 border-t border-white/10 py-4">
-                          <span className="text-[13px] font-bold tabular-nums text-[#d9cfc0]" style={heading}>0{i + 1}</span>
-                          <span className="text-[16.5px] font-semibold tracking-[-0.01em]" style={heading}>{t}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">DigiHome gjør</p>
-                    <ul className="mt-4">
-                      {['Annonse og bilder', 'Markedsføring', 'Visninger', 'Screening og referansesjekk', 'Kontrakt og depositum', 'Innflytting og protokoll', 'Oppfølging gjennom leieforholdet'].map((t) => (
-                        <li key={t} className="flex items-center gap-2.5 border-t border-white/10 py-3 text-[14px] text-white/75">
-                          <svg width="13" height="13" viewBox="0 0 18 18" fill="none" className="shrink-0" aria-hidden="true">
-                            <path d="m3.6 9.4 3.4 3.4 7.4-7.6" stroke="#7ed9a7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                          {t}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Trust-strip — kun verifiserbare fakta */}
-              <div className="mt-14 flex flex-wrap items-baseline gap-x-12 gap-y-3 border-t border-white/10 pt-7" data-testid="tilbud-trust">
-                <p className="text-[13.5px] text-white/55"><span className="font-bold text-white" style={heading}>Eiendomsmeglere</span> med utleie som spesialfelt</p>
-                {grunnlag && <p className="text-[13.5px] tabular-nums text-white/55"><span className="font-bold text-white" style={heading}>{grunnlag.antallILeide}</span> aktive leieforhold i Bergen</p>}
-                {grunnlag?.antallISone > 0 && <p className="text-[13.5px] tabular-nums text-white/55"><span className="font-bold text-white" style={heading}>{grunnlag.antallISone}</span> utleid i samme postsone</p>}
-              </div>
-            </Avsnitt>
           </div>
+        </section>
 
-          {/* ══ 7 · ANNONSEN ER KLAR — varm tonal seksjon med ekte preview ══ */}
-          {harAnnonse && (
-            <div className={`relative left-1/2 ${SEKSJON} w-[min(100vw-16px,1360px)] -translate-x-1/2 overflow-hidden rounded-[28px] sm:rounded-[36px]`} style={{ background: TONAL }}>
-              <Avsnitt className={`mx-auto max-w-[1200px] px-5 sm:px-8 ${BAND_PY}`}>
-                <SeksjonHode
-                  midt
-                  kicker="Jobben er allerede gjort"
-                  tittel="Annonsen er klar."
-                  intro="Bildene er valgt. Teksten er skrevet. Prisen er satt. Sier du ja, kan den være live innen 24 timer."
-                />
+        {/* ══ 03 · ANNONSEN — i dag → slik ville vi gjort det ══ */}
+        {visSammenligning && (
+          <section className={`${padX} mx-auto py-16 lg:py-28`} style={{ maxWidth: maxW }}>
+            <Reveal className="mb-10 lg:mb-14">
+              <Overline index="03" className="mb-5">Annonsen</Overline>
+              <h2 className="font-light leading-[1.0] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(34px, 5vw, 56px)', color: C.ink }}>I dag — og slik ville vi gjort det.</h2>
+              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(16.5px, 1.6vw, 18px)', color: C.sub, maxWidth: 660 }}>
+                Dette handler ikke om at dagens annonse er dårlig — men om detaljene som avgjør hvem som tar kontakt, og til hvilken pris.
+              </p>
+            </Reveal>
 
-                {/* Kompakt preview — jobben er synlig, ikke bare påstått */}
-                {!visAnnonse && (
-                  <button onClick={() => setVisAnnonse(true)} data-testid="tilbud-vis-annonse"
-                    className="group mx-auto mt-10 block w-full max-w-[720px] overflow-hidden rounded-[20px] bg-white text-left ring-1 ring-black/[0.07] transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_44px_rgba(20,18,14,0.10)]">
-                    {dhBilde && (
-                      <span className="relative block">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={dhBilde} alt="Hovedbilde i annonsen" className="block aspect-[2/1] w-full object-cover" loading="lazy" data-testid="tilbud-annonse-kort-bilde" />
-                        {stylet.length > 0 && (
-                          <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/45 px-2.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm" title="AI-generert forslag basert på annonsens eget foto">AI-forbedret foto {'\u24D8'}</span>
-                        )}
-                      </span>
-                    )}
-                    <span className="block px-5 py-4 sm:px-6">
-                      <span className="block text-[16.5px] font-bold leading-snug tracking-[-0.01em]" style={heading}>{tilbud.annonse.tittel}</span>
-                      <span className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                        <span className="text-[13.5px] text-[#8a8378]">{pent(tilbud.adresse)}</span>
-                        <span className="text-[15px] font-bold tabular-nums" style={heading}>{tall(anbefalt)} kr / mnd</span>
-                      </span>
-                      <span className="mt-3.5 flex items-center gap-1.5 text-[13.5px] font-semibold text-[#141412]">
-                        Se hele annonsen <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span>
-                      </span>
-                    </span>
-                  </button>
-                )}
+            <Reveal>
+              <div className="mx-auto grid grid-cols-1 items-stretch gap-5 sm:grid-cols-[1fr_auto_1fr]" style={{ maxWidth: 1040 }} data-testid="tilbud-sammenligning">
+                <MiniAnnonse variant="idag" bilde={originalBilde} tittel={tilbud.tittel || 'Dagens annonse'} adresse={pent(tilbud.adresse)} pris={dagens} />
+                <div className="flex items-center justify-center" aria-hidden="true">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full font-medium" style={{ backgroundColor: C.subtle, color: C.ink, fontSize: 16 }}>
+                    <span className="hidden sm:inline">→</span>
+                    <span className="sm:hidden">↓</span>
+                  </span>
+                </div>
+                <MiniAnnonse variant="dh" bilde={dhBilde} aiBilde={stylet.length > 0} tittel={harAnnonse ? tilbud.annonse.tittel : (tilbud.tittel || '')} adresse={pent(tilbud.adresse)} pris={anbefalt} netto={netto} />
+              </div>
+            </Reveal>
 
-                {visAnnonse && (
-                  <div className="mx-auto mt-10 max-w-[860px]">
-                    <AnnonsePreview tilbud={tilbud} r={r} />
-                    <button onClick={() => setVisAnnonse(false)} data-testid="tilbud-skjul-annonse"
-                      className="mt-4 text-[13.5px] font-semibold text-[#8a8378] transition-colors hover:text-[#141412]">
-                      Skjul annonseutkastet ↑
-                    </button>
+            <div className="mx-auto mt-12 grid grid-cols-1 gap-x-12 gap-y-7 sm:grid-cols-2" style={{ maxWidth: 920 }} data-testid="tilbud-sammenligning-punkter">
+              {sammenligningsPunkter.map(([t, d], i) => (
+                <Reveal key={t} delay={(i % 2) * 0.05}>
+                  <div className="pt-5" style={{ borderTop: `1px solid ${C.line}` }}>
+                    <p className="font-medium" style={{ ...head, fontSize: 16.5, color: C.ink }}>{t}</p>
+                    <p className="mt-1.5 leading-[1.65]" style={{ fontSize: 14, color: C.sub }}>{d}</p>
                   </div>
-                )}
-              </Avsnitt>
+                </Reveal>
+              ))}
             </div>
-          )}
+          </section>
+        )}
 
-          {/* ══ 8 · TRYGGHETEN — innvendinger, ikke repetisjon ══ */}
-          <Avsnitt className={SEKSJON}>
-            <SeksjonHode midt kicker="Tryggheten" tittel="Spørsmål?" />
-            <div className="mx-auto mt-8 max-w-[760px] border-b border-black/[0.07]">
+        {/* ══ 04 · ØKONOMIEN — prisoversikt-mønsteret: ink-hode + prikkede ledere ══ */}
+        <section id="regnestykke" className="scroll-mt-20 py-16 lg:py-28" style={{ backgroundColor: C.page }}>
+          <div className={`${padX} mx-auto`} style={{ maxWidth: maxW }} data-testid="tilbud-kpi">
+            <Reveal className="mb-10 lg:mb-14">
+              <Overline index="04" className="mb-5">Økonomien</Overline>
+              <h2 className="font-light leading-[1.0] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(34px, 5vw, 56px)', color: C.ink }}>Regnestykket.</h2>
+              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(16.5px, 1.6vw, 18px)', color: C.sub, maxWidth: 660 }}>
+                Ett tall inn, to tall ut — hva boligen gir, hva vi tar, og hva som er igjen til deg. Ingen etableringsgebyr, ingen skjulte kostnader.
+              </p>
+            </Reveal>
+
+            <Reveal>
+              <div className="mx-auto overflow-hidden rounded-[28px]" style={{ maxWidth: 880, backgroundColor: C.bg, border: `1px solid ${C.line}`, boxShadow: '0 16px 46px rgba(24,20,16,0.06)' }} data-testid="price-table">
+                {/* Ink-hodet — det store tallet */}
+                <div className="flex flex-col gap-8 p-8 sm:flex-row sm:items-end sm:justify-between lg:p-12" style={{ backgroundColor: C.ink, color: '#fff' }}>
+                  <div>
+                    <p className="mb-4 font-semibold uppercase" style={{ ...head, fontSize: 11, letterSpacing: '0.2em', color: D.faint }}>Til deg hver måned</p>
+                    <p className="flex items-start font-light leading-none tracking-[-0.05em] tabular-nums" style={{ ...head, fontSize: 'clamp(56px, 8vw, 92px)' }}>
+                      <TellOpp verdi={netto} /><span style={{ fontSize: 'clamp(22px, 3vw, 34px)', marginTop: 'clamp(6px, 1vw, 12px)', marginLeft: 8 }}>kr</span>
+                    </p>
+                    <p className="mt-4" style={{ fontSize: 15, color: D.soft, maxWidth: 340 }}>estimert utbetalt, etter DigiHome-honorar — før eierkostnader og skatt</p>
+                  </div>
+                  <div className="flex gap-10 sm:flex-col sm:gap-5 sm:text-right">
+                    <div><p className="font-medium tabular-nums" style={{ ...head, fontSize: 'clamp(22px, 2.4vw, 26px)' }}>{r.honorarPct} %</p><p style={{ fontSize: 12.5, color: D.soft }}>honorar, eks. mva</p></div>
+                    <div><p className="font-medium" style={{ ...head, fontSize: 'clamp(22px, 2.4vw, 26px)' }}>Ingen</p><p style={{ fontSize: 12.5, color: D.soft }}>bindingstid</p></div>
+                  </div>
+                </div>
+                {/* Radene — prikkede linjeledere */}
+                <div className="space-y-4 px-8 py-8 lg:px-12 lg:py-10" style={{ fontSize: 14.5 }} data-testid="tilbud-regnestykke">
+                  <Rad l="Anbefalt månedsleie" v={`${tall(anbefalt)} kr`} />
+                  <Rad l={`DigiHome-honorar (${r.honorarPct} % eks. mva)`} v={`−${tall(r.honorarMnd)} kr`} />
+                  <Rad l="Til deg hver måned" v={`${tall(netto)} kr`} bold top />
+                  <Rad l="Over 12 måneder" v={`${tall(netto * 12)} kr`} muted />
+                  {gevinst != null && gevinst > 0 && <Rad l="Mer enn annonsert pris i dag" v={`+${tall(gevinst)} kr/mnd`} muted />}
+                </div>
+              </div>
+            </Reveal>
+            <p className="mt-6 text-center" style={{ fontSize: 12, color: C.faint }}>
+              Alt arbeid er inkludert i honoraret: annonse, visninger, screening, kontrakt, depositum og oppfølging. Estimat — ikke et regnskap.
+            </p>
+          </div>
+        </section>
+
+        {/* ══ 05 · ARBEIDSFORDELINGEN — mørkt kapittel med spøkelsesnumre ══ */}
+        <section className="relative overflow-hidden py-24 lg:py-44" style={{ backgroundColor: C.ink }} data-testid="tilbud-manifest">
+          <div className="pointer-events-none absolute inset-0" aria-hidden style={{ backgroundImage: GRAIN_URL, opacity: 0.05, mixBlendMode: 'overlay' }} />
+          <div className={`relative ${padX} mx-auto`} style={{ maxWidth: maxW }}>
+            <Reveal className="mb-14 lg:mb-20">
+              <Overline light index="05" className="mb-6">Arbeidsfordelingen</Overline>
+              <h2 className="font-light leading-[0.98] tracking-[-0.045em] text-white" style={{ ...head, fontSize: 'clamp(38px, 6vw, 68px)', maxWidth: '16ch' }}>Du gjør to ting. Vi tar resten.</h2>
+              <p className="mt-7 leading-[1.75]" style={{ fontSize: 'clamp(16.5px, 1.7vw, 18.5px)', color: D.soft, maxWidth: 660 }}>
+                Vi er eiendomsmeglere med utleie som spesialfelt. Å leie ut trenger ikke bli en ny jobb for deg.
+              </p>
+            </Reveal>
+            <div className="grid grid-cols-1 gap-x-10 gap-y-12 lg:grid-cols-3">
+              {[
+                ['Gir oss nøklene', 'Vi tar befaring, produserer annonsen ferdig og gjør boligen klar for markedet.'],
+                ['Godkjenner leietaker', 'Vi screener, sjekker referanser og kredittverdighet — du tar den endelige beslutningen.'],
+                ['Vi gjør alt annet', 'Annonsering, visninger, kontrakt, depositum, innflytting og oppfølging gjennom hele leieforholdet.'],
+              ].map(([t, d], i) => (
+                <Reveal key={t} delay={i * 0.08} className="h-full">
+                  <div className="h-full pt-7" style={{ borderTop: `1px solid ${D.chipLine}` }}>
+                    <div className="mb-7 flex items-baseline justify-between">
+                      <span className="font-light tabular-nums tracking-[-0.03em]" style={{ ...head, fontSize: 42, color: 'rgba(255,255,255,0.20)' }}>{`0${i + 1}`}</span>
+                      {i === 2 && (
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m4.8 12.4 4.5 4.5 9.9-10" stroke={D.icon} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      )}
+                    </div>
+                    <h3 className="mb-3 font-medium text-white" style={{ ...head, fontSize: 22, letterSpacing: '-0.01em' }}>{t}</h3>
+                    <p className="leading-[1.7]" style={{ fontSize: 14.5, color: D.soft }}>{d}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+            {/* Trust-strip — kun verifiserbare fakta */}
+            <Reveal>
+              <div className="mt-16 flex flex-wrap items-baseline gap-x-12 gap-y-3 pt-7" style={{ borderTop: `1px solid ${D.chipLine}` }} data-testid="tilbud-trust">
+                <p style={{ fontSize: 13.5, color: D.soft }}><span className="font-medium text-white" style={head}>Eiendomsmeglere</span> med utleie som spesialfelt</p>
+                {grunnlag && <p className="tabular-nums" style={{ fontSize: 13.5, color: D.soft }}><span className="font-medium text-white" style={head}>{grunnlag.antallILeide}</span> aktive leieforhold i Bergen</p>}
+                {grunnlag?.antallISone > 0 && <p className="tabular-nums" style={{ fontSize: 13.5, color: D.soft }}><span className="font-medium text-white" style={head}>{grunnlag.antallISone}</span> utleid i samme postsone</p>}
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ══ 06 · ANNONSEN ER KLAR — ekspanderbart preview-kort ══ */}
+        {harAnnonse && (
+          <section className={`${padX} mx-auto py-16 lg:py-28`} style={{ maxWidth: maxW }}>
+            <Reveal className="mb-10 lg:mb-12">
+              <Overline index="06" className="mb-5">Jobben er allerede gjort</Overline>
+              <h2 className="font-light leading-[1.0] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(34px, 5vw, 56px)', color: C.ink }}>Annonsen er klar.</h2>
+              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(16.5px, 1.6vw, 18px)', color: C.sub, maxWidth: 640 }}>
+                Bildene er valgt. Teksten er skrevet. Prisen er satt. Sier du ja, kan den være live innen 24 timer.
+              </p>
+            </Reveal>
+
+            {!visAnnonse ? (
+              <Reveal>
+                <button onClick={() => setVisAnnonse(true)} data-testid="tilbud-vis-annonse"
+                  className="group mx-auto block w-full overflow-hidden rounded-[26px] text-left transition-all duration-300 hover:-translate-y-1"
+                  style={{ maxWidth: 760, backgroundColor: C.bg, border: `1px solid ${C.line}`, boxShadow: '0 6px 22px rgba(24,20,16,0.04)' }}>
+                  {dhBilde && (
+                    <span className="relative block">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={dhBilde} alt="Hovedbilde i annonsen" className="block aspect-[2/1] w-full object-cover" loading="lazy" data-testid="tilbud-annonse-kort-bilde" />
+                      {stylet.length > 0 && (
+                        <span className="pointer-events-none absolute left-4 top-4 rounded-full px-2.5 py-0.5 font-semibold" style={{ fontSize: 10, color: '#fff', backgroundColor: 'rgba(8,7,6,0.5)', backdropFilter: 'blur(6px)' }} title="AI-generert forslag basert på annonsens eget foto">AI-forbedret foto {'\u24D8'}</span>
+                      )}
+                    </span>
+                  )}
+                  <span className="block px-6 py-5 sm:px-7">
+                    <span className="block font-medium leading-snug" style={{ ...head, fontSize: 18.5, letterSpacing: '-0.01em', color: C.ink }}>{tilbud.annonse.tittel}</span>
+                    <span className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                      <span style={{ fontSize: 13.5, color: C.sub }}>{pent(tilbud.adresse)}</span>
+                      <span className="font-medium tabular-nums" style={{ ...head, fontSize: 16, color: C.ink }}>{tall(anbefalt)} kr / mnd</span>
+                    </span>
+                    <span className="mt-4 flex items-center gap-1.5 font-semibold" style={{ fontSize: 13.5, color: C.ink }}>
+                      Se hele annonsen <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">→</span>
+                    </span>
+                  </span>
+                </button>
+              </Reveal>
+            ) : (
+              <div className="mx-auto" style={{ maxWidth: 860 }}>
+                <AnnonsePreview tilbud={tilbud} r={r} />
+                <button onClick={() => setVisAnnonse(false)} data-testid="tilbud-skjul-annonse"
+                  className="mt-4 font-semibold transition-colors hover:text-[#111827]" style={{ fontSize: 13.5, color: C.sub }}>
+                  Skjul annonseutkastet ↑
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ══ FIRE STEG ══ */}
+        <section className={`${padX} mx-auto py-16 lg:py-28`} style={{ maxWidth: maxW }} data-testid="four-steps">
+          <Reveal className="mb-14">
+            <div className="mb-3 flex justify-center"><Overline>Neste steg</Overline></div>
+            <h2 className="text-center font-light tracking-[-0.03em]" style={{ ...head, fontSize: 'clamp(30px, 4vw, 40px)', color: C.ink }}>Slik kommer vi i gang.</h2>
+          </Reveal>
+          <div className="relative mx-auto" style={{ maxWidth: 960 }}>
+            <div aria-hidden className="absolute hidden sm:block" style={{ top: 20, left: '11%', right: '11%', height: 1, backgroundColor: C.line }} />
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-4">
+              {[
+                ['Vi tar en prat', 'I dag — uforpliktende. Vi går gjennom tallene sammen.'],
+                ['Vi ser boligen', 'Dag 1–2: befaring, og du leverer nøklene.'],
+                ['Annonsen går live', 'Innen 24 timer — den er allerede produsert.'],
+                ['Vi finner leietaker', 'Visninger, kontrakt og forvaltning — vi håndterer resten.'],
+              ].map(([t, d], i) => (
+                <Reveal key={t} delay={i * 0.08}>
+                  <div className="flex items-start gap-5 sm:relative sm:block">
+                    <div className="relative z-10 flex shrink-0 items-center justify-center rounded-full" style={{ width: 40, height: 40, backgroundColor: C.ink, color: '#fff', ...head, fontSize: 15.5, fontWeight: 600 }}>{i + 1}</div>
+                    <div className="pt-1 sm:mt-6 sm:pt-0">
+                      <h3 className="mb-2 font-semibold" style={{ ...head, fontSize: 15.5, color: C.ink }}>{t}</h3>
+                      <p className="leading-[1.6]" style={{ fontSize: 13, color: C.sub }}>{d}</p>
+                    </div>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══ FAQ ══ */}
+        <section className="py-16 lg:py-28" style={{ backgroundColor: C.page }} data-testid="faq-section">
+          <div className={`${padX} mx-auto`} style={{ maxWidth: 760 }}>
+            <Reveal className="mb-10">
+              <div className="mb-3 flex justify-center"><Overline>Tryggheten</Overline></div>
+              <h2 className="text-center font-light tracking-[-0.03em]" style={{ ...head, fontSize: 'clamp(30px, 4vw, 40px)', color: C.ink }}>Spørsmål?</h2>
+            </Reveal>
+            <div className="flex flex-col" data-testid="faq-accordion">
               {[
                 ['Er leien garantert?', `Nei — ${tall(anbefalt)} kr er vår faglige anbefaling basert på faktiske leieinntekter i porteføljen vår. Endelig leie settes sammen med deg, og markedet gir fasiten. Vi anbefaler aldri en pris vi ikke tror vi oppnår.`],
                 ['Hvem bestemmer hvilken leietaker jeg får?', 'Du. Vi screener interessenter, sjekker referanser og kredittverdighet, og legger frem de beste kandidatene — men du godkjenner alltid leietakeren selv.'],
-                ['Hva inngår faktisk i honoraret?', `Alt i «DigiHome gjør»-listen over: annonse, markedsføring, visninger, screening, kontrakt, depositum, innflytting og løpende oppfølging. ${r.honorarPct} % av månedsleien, eks. mva — ingen etableringsgebyr, ingen skjulte kostnader.`],
+                ['Hva inngår faktisk i honoraret?', `Alt: annonse, markedsføring, visninger, screening, kontrakt, depositum, innflytting og løpende oppfølging. ${r.honorarPct} % av månedsleien, eks. mva — ingen etableringsgebyr, ingen skjulte kostnader.`],
                 ['Hva skjer hvis det oppstår problemer i leieforholdet?', 'Da er det oss leietakeren kontakter — ikke deg. Vi håndterer oppfølging, purringer og praktiske spørsmål, og involverer deg kun når en beslutning faktisk er din.'],
                 ['Hva om jeg vil avslutte samarbeidet?', 'Ingen bindingstid på forvaltningen. Fungerer det ikke, avslutter vi ryddig — leiekontrakten med leietaker består uansett på dine vilkår.'],
-              ].map(([q, a], i) => (
-                <div key={q} className="border-t border-black/[0.07]">
-                  <button type="button" onClick={() => setAapen(aapen === i ? -1 : i)} aria-expanded={aapen === i}
-                    className="flex w-full items-center justify-between gap-5 py-5 text-left">
-                    <span className="text-[15.5px] font-semibold tracking-[-0.01em]" style={heading}>{q}</span>
-                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[15px] font-medium leading-none transition-all duration-300 ${aapen === i ? 'rotate-45 border-transparent bg-[#141412] text-white' : 'border-black/[0.12] text-[#8a8378]'}`} aria-hidden="true">+</span>
-                  </button>
-                  <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${aapen === i ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-                    <div className="overflow-hidden">
-                      <p className="max-w-[660px] pb-6 text-[14.5px] leading-[1.7] [text-wrap:pretty] text-[#8a8378]">{a}</p>
+              ].map(([q, a], i) => {
+                const open = aapen === i;
+                return (
+                  <div key={q} style={{ borderTop: i === 0 ? `1px solid ${C.line}` : undefined, borderBottom: `1px solid ${C.line}` }} data-testid={`faq-${i}`}>
+                    <button type="button" onClick={() => setAapen(open ? -1 : i)} aria-expanded={open} className="flex w-full items-center justify-between gap-5 py-5 text-left lg:py-6">
+                      <span className="font-medium transition-colors duration-200" style={{ ...head, fontSize: 'clamp(16px, 1.6vw, 18px)', color: open ? C.ink : '#2A2926' }}>{q}</span>
+                      <span className="flex shrink-0 items-center justify-center rounded-full transition-all duration-300" style={{ width: 30, height: 30, border: `1px solid ${open ? C.ink : C.line}`, backgroundColor: open ? C.ink : 'transparent' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-transform duration-300" style={{ transform: open ? 'rotate(180deg)' : 'none' }} aria-hidden="true">
+                          <path d="m6 9 6 6 6-6" stroke={open ? '#fff' : C.ink} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    </button>
+                    <div className={`grid transition-[grid-template-rows] duration-[400ms] ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`} style={{ transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)' }}>
+                      <div className="overflow-hidden">
+                        <p className="pb-6 leading-[1.75]" style={{ fontSize: 15, color: C.sub, maxWidth: 640 }}>{a}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          </Avsnitt>
+          </div>
+        </section>
 
-          {/* ══ 9 · NESTE STEG — tidspunktet er hovedinformasjonen ══ */}
-          <Avsnitt className={SEKSJON}>
-            <SeksjonHode midt kicker="Neste steg" tittel="Slik kommer vi i gang." />
-            <div className="mx-auto mt-10 grid max-w-[1060px] grid-cols-1 gap-7 sm:grid-cols-4 sm:gap-8">
-              {[
-                ['I dag', 'Vi tar en prat', 'Uforpliktende — vi går gjennom tallene sammen.', false],
-                ['Dag 1–2', 'Vi ser boligen', 'Befaring, og du leverer nøklene.', false],
-                ['Innen 24 timer', 'Annonsen går live', 'Den er allerede produsert — vi trykker publiser.', true],
-                ['Deretter', 'Vi finner leietaker', 'Visninger, kontrakt og forvaltning — vi håndterer resten.', false],
-              ].map(([tid, t, d, uthev]) => (
-                <div key={tid} className={`relative border-t-2 pt-5 ${uthev ? 'border-[#141412]' : 'border-black/[0.08]'}`}>
-                  <span aria-hidden="true" className={`absolute -top-[5px] left-0 h-2 w-2 rounded-full ${uthev ? 'bg-[#141412]' : 'bg-[#d9d2c6]'}`} />
-                  <span className={`inline-flex rounded-full px-2.5 py-1 text-[11.5px] font-bold ${uthev ? 'bg-[#141412] text-white' : 'bg-black/[0.05] text-[#57534a]'}`}>{tid}</span>
-                  <p className="mt-3 text-[16px] font-semibold tracking-[-0.01em]" style={heading}>{t}</p>
-                  <p className="mt-1.5 text-[13.5px] leading-[1.65] text-[#8a8378]">{d}</p>
+        {/* ══ AVSLUTTENDE SVART CTA — «Ja, dette høres interessant ut» ══ */}
+        <section id="kontakt" className="scroll-mt-10 overflow-hidden" style={{ backgroundColor: C.black }} data-testid="final-cta">
+          <div className={`${padX} relative mx-auto py-24 text-center lg:py-44`} style={{ maxWidth: maxW }}>
+            <div className="pointer-events-none absolute" aria-hidden style={{ top: '-26%', left: '50%', transform: 'translateX(-50%)', width: 760, height: 520, borderRadius: '9999px', background: 'radial-gradient(circle, rgba(255,248,240,0.07) 0%, transparent 62%)' }} />
+            <Reveal className="relative">
+              {sendt ? (
+                <div data-testid="tilbud-kontakt">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={LOGO_WHITE} alt="DigiHome" className="mx-auto mb-10" style={{ height: 30, opacity: 0.96 }} />
+                  <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full" style={{ backgroundColor: D.chip, border: `1px solid ${D.chipLine}` }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5.5 12.5 4 4 9-9.5" stroke="#7ed9a7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </div>
+                  <h2 className="mb-4 font-light tracking-[-0.03em] text-white" style={{ ...head, fontSize: 'clamp(28px, 4vw, 44px)' }}>Takk! {fornavn} ringer deg i dag eller i morgen.</h2>
+                  <p className="mx-auto leading-relaxed" style={{ fontSize: 15.5, color: D.soft, maxWidth: 460 }}>Helt uforpliktende — en kort prat om boligen og hva vi kan få til.</p>
                 </div>
-              ))}
-            </div>
-          </Avsnitt>
-        </div>
-
-        {/* ══ 10 · AVSLUTTENDE MØRK CTA — «Ja, dette høres interessant ut» ══ */}
-        <div id="kontakt" className={`relative ${SEKSJON} mx-auto w-[min(100vw-16px,1360px)] scroll-mt-16 overflow-hidden rounded-[28px] bg-[#141412] text-white sm:rounded-[36px]`}>
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-[radial-gradient(820px_280px_at_50%_-80px,rgba(233,221,199,0.11),transparent_70%)]" />
-          <Avsnitt className={`mx-auto max-w-[1200px] px-5 sm:px-8 ${BAND_PY}`}>
-            {sendt ? (
-              <div className="py-4 text-center" data-testid="tilbud-kontakt">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
-                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-                    <path d="m6 11.5 3.2 3.2L16.5 7.5" stroke="#7ed9a7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <p className="mt-4 text-[22px] font-bold tracking-[-0.01em]" style={heading}>Takk! {fornavn} ringer deg i dag eller i morgen.</p>
-                <p className="mt-2 text-[14px] text-white/55">Helt uforpliktende — en kort prat om boligen og hva vi kan få til.</p>
-              </div>
-            ) : (
-              <div className="mx-auto max-w-[640px] text-center" data-testid="tilbud-kontakt">
-                <div className="mx-auto flex w-fit items-center gap-3">
-                  <AvsenderBilde avsender={avsender} storrelse={44} ring="ring-2 ring-white/15" />
-                  <p className="text-left text-[13px] leading-snug text-white/60">
-                    <span className="block font-semibold text-white">{avsender.navn}</span>
-                    {avsender.tittel}
+              ) : (
+                <div data-testid="tilbud-kontakt">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={LOGO_WHITE} alt="DigiHome" className="mx-auto mb-10" style={{ height: 30, opacity: 0.96 }} />
+                  <h2 className="mb-4 font-light tracking-[-0.03em] text-white" style={{ ...head, fontSize: 'clamp(32px, 4.5vw, 48px)' }}>Høres dette interessant ut?</h2>
+                  <p className="mx-auto mb-9 leading-relaxed" style={{ fontSize: 15.5, color: D.soft, maxWidth: 460 }}>
+                    Legg igjen nummeret ditt, så ringer {fornavn} deg for en uforpliktende prat. Ingenting signeres her.
                   </p>
+                  <div className="mx-auto mb-8 inline-flex items-center gap-2.5 rounded-full px-4 py-2" style={{ backgroundColor: D.chip, border: `1px solid ${D.chipLine}` }}>
+                    <AvsenderBilde avsender={avsender} storrelse={26} radius={99} />
+                    <span style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.88)' }}>{avsender.navn} · {avsender.tittel}</span>
+                  </div>
+                  <div className="mx-auto flex max-w-[600px] flex-col gap-2.5 sm:flex-row">
+                    <input value={skjema.telefon} onChange={(e) => setSkjema((s) => ({ ...s, telefon: e.target.value }))}
+                      placeholder="Telefonnummeret ditt" inputMode="tel" autoComplete="tel" aria-label="Telefonnummeret ditt" data-testid="tilbud-telefon"
+                      className="h-[54px] flex-1 rounded-full px-6 text-white outline-none transition-colors"
+                      style={{ ...body, fontSize: 15, backgroundColor: D.chip, border: `1px solid ${D.chipLine}` }}
+                      onFocus={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.45)'; }}
+                      onBlur={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.10)'; }} />
+                    <ShineKnapp onClick={send} disabled={sender || !skjema.telefon.trim()} testid="tilbud-send" lys className="shrink-0">
+                      {sender ? 'Sender…' : 'Ja, dette høres interessant ut'}
+                    </ShineKnapp>
+                  </div>
+                  <textarea value={skjema.melding} onChange={(e) => setSkjema((s) => ({ ...s, melding: e.target.value }))}
+                    placeholder="Noe vi bør vite før vi ringer? (valgfritt)" rows={2} aria-label="Melding (valgfritt)"
+                    className="mx-auto mt-3 block w-full max-w-[600px] resize-none rounded-[20px] px-6 py-3.5 text-white outline-none transition-colors"
+                    style={{ ...body, fontSize: 15, backgroundColor: D.chip, border: `1px solid ${D.chipLine}` }} />
+                  {feil && <p className="mt-3" style={{ fontSize: 13, color: '#fda4af' }}>{feil}</p>}
+                  <p className="mt-6" style={{ fontSize: 12, color: D.faint }}>Uforpliktende · Vi bruker kun nummeret til å kontakte deg om dette tilbudet</p>
+                  {netto > 0 && (
+                    <p className="mx-auto mt-9 max-w-[440px] pt-5" style={{ borderTop: `1px solid ${D.chipLine}`, fontSize: 13.5, color: 'rgba(255,255,255,0.5)' }}>
+                      Estimert etter DigiHome-honorar: <span className="font-semibold tabular-nums" style={{ color: '#7ed9a7' }}>{tall(netto)} kr / mnd</span>
+                    </p>
+                  )}
                 </div>
-                <h2 className="mt-6 text-[clamp(28px,3.6vw,40px)] font-bold leading-[1.08] tracking-[-0.025em]" style={heading}>Høres dette interessant ut?</h2>
-                <p className="mx-auto mt-4 max-w-[460px] text-[15px] leading-[1.65] text-white/60">
-                  Legg igjen nummeret ditt, så ringer {fornavn} deg for en uforpliktende prat. Ingenting signeres her.
-                </p>
-                <div className="mx-auto mt-9 flex max-w-[560px] flex-col gap-2.5 sm:flex-row">
-                  <input value={skjema.telefon} onChange={(e) => setSkjema((s) => ({ ...s, telefon: e.target.value }))}
-                    placeholder="Telefonnummeret ditt" inputMode="tel" autoComplete="tel" aria-label="Telefonnummeret ditt" data-testid="tilbud-telefon"
-                    className="h-[52px] flex-1 rounded-full border border-white/15 bg-white/[0.07] px-6 text-[15px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/45" />
-                  <button onClick={send} disabled={sender || !skjema.telefon.trim()} data-testid="tilbud-send"
-                    className="h-[52px] shrink-0 rounded-full bg-white px-7 text-[15px] font-semibold text-[#141412] transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-40">
-                    {sender ? 'Sender…' : 'Ja, dette høres interessant ut'}
-                  </button>
-                </div>
-                <textarea value={skjema.melding} onChange={(e) => setSkjema((s) => ({ ...s, melding: e.target.value }))}
-                  placeholder="Noe vi bør vite før vi ringer? (valgfritt)" rows={2} aria-label="Melding (valgfritt)"
-                  className="mx-auto mt-3 block w-full max-w-[560px] resize-none rounded-[18px] border border-white/15 bg-white/[0.07] px-6 py-3.5 text-[15px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/45" />
-                {feil && <p className="mt-2 text-[13px] text-rose-300">{feil}</p>}
-                <p className="mt-4 text-[12px] text-white/35">Vi bruker kun nummeret til å kontakte deg om dette tilbudet.</p>
-                {netto > 0 && (
-                  <p className="mx-auto mt-9 max-w-[440px] border-t border-white/10 pt-5 text-[13.5px] text-white/50">
-                    Estimert etter DigiHome-honorar: <span className="font-bold tabular-nums text-[#7ed9a7]">{tall(netto)} kr / mnd</span>
-                  </p>
-                )}
-              </div>
-            )}
-          </Avsnitt>
-        </div>
+              )}
+            </Reveal>
+          </div>
+        </section>
 
         {/* ── Kolofon ── */}
-        <footer className="mx-auto max-w-[1200px] px-5 pb-28 pt-12 sm:px-8 sm:pb-16">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <footer style={{ backgroundColor: C.page }}>
+          <div className={`${padX} mx-auto flex flex-col gap-5 pb-28 pt-12 sm:flex-row sm:items-start sm:justify-between sm:pb-16`} style={{ maxWidth: maxW }}>
             <div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[20px] w-auto opacity-90" />
-              <p className="mt-2.5 text-[12px] text-[#aca395]">Personlig utleievurdering for {pent(tilbud.adresse)} · Bergen</p>
+              <img src={LOGO_INK} alt="DigiHome" className="h-[20px] w-auto opacity-90" />
+              <p className="mt-2.5" style={{ fontSize: 12, color: C.faint }}>Personlig utleievurdering for {pent(tilbud.adresse)} · Bergen</p>
             </div>
-            <p className="max-w-[460px] text-[11.5px] leading-relaxed text-[#aca395] sm:text-right">
+            <p className="max-w-[460px] leading-relaxed sm:text-right" style={{ fontSize: 11.5, color: C.faint }}>
               Forbedrede og møblerte bilder er AI-genererte, basert på annonsens egne foto — møblering og dekor er veiledende.
               Honorar oppgis eks. mva. DigiHome AS · digihome.no
             </p>
           </div>
         </footer>
-      </main>
+      </div>
 
       {/* ── Flytende bunn-CTA (kun mobil) ── */}
       {!sendt && (
-        <div className={`fixed inset-x-0 bottom-0 z-40 px-3 pb-3 transition-transform duration-300 sm:hidden ${visBunn ? 'translate-y-0' : 'translate-y-[120%]'}`}>
-          <div className="flex items-center justify-between gap-3 rounded-[20px] bg-[#FEFBFA]/95 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.14)] ring-1 ring-black/[0.06] backdrop-blur-md">
+        <div className={`fixed inset-x-0 bottom-0 z-40 transition-transform duration-300 sm:hidden ${visBunn ? 'translate-y-0' : 'translate-y-[110%]'}`}
+          style={{ backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(14px)', borderTop: `1px solid ${C.hairline}` }}>
+          <div className="flex items-center justify-between gap-3 px-5 py-3">
             <div className="min-w-0">
-              <p className="truncate text-[11px] font-medium text-[#aca395]">Anbefalt leie {tall(anbefalt)} kr/mnd</p>
-              <p className="text-[16px] font-bold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: GRONN }}>{tall(netto)} kr til deg</p>
+              <p className="truncate font-medium" style={{ fontSize: 11, color: C.faint }}>Anbefalt leie {tall(anbefalt)} kr/mnd</p>
+              <p className="font-medium tabular-nums tracking-[-0.01em]" style={{ ...head, fontSize: 17, color: C.success }}>{tall(netto)} kr til deg</p>
             </div>
             <button onClick={tilKontakt} data-testid="tilbud-bunn-cta"
-              className="h-11 shrink-0 rounded-full bg-[#141412] px-5 text-[13.5px] font-semibold text-white transition-transform active:scale-[0.97]">
+              className="h-[46px] shrink-0 rounded-full px-6 font-semibold transition-transform active:scale-[0.97]"
+              style={{ ...body, fontSize: 14, backgroundColor: C.ink, color: '#fff' }}>
               Snakk med {fornavn}
             </button>
           </div>
