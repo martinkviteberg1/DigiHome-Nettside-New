@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { motion } from '@/lib/motion-lite';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, ArrowUpRight, X, Phone, Mail } from 'lucide-react';
@@ -31,7 +31,6 @@ const NAV_NO = [
 ];
 
 export default function Header() {
-  const router = useRouter();
   const pathname = usePathname();
   const locale = 'no';
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -126,15 +125,17 @@ export default function Header() {
             >
               {loginText}
             </Link>
-            <button
-              onClick={() => { try { track('cta_click', { cta: 'header' }); } catch (e) {} router.push('/bli-utleier/start'); }}
+            <Link
+              href="/bli-utleier/start"
+              prefetch
+              onClick={() => { try { track('cta_click', { cta: 'header' }); } catch (e) {} }}
               data-testid="header-cta-start-onboarding-button"
               className={`group inline-flex items-center gap-2 px-5 rounded-[8px] text-[13.5px] font-semibold tracking-[-0.008em] transition-all duration-300 active:scale-[0.98] bg-[#0a0a0a] text-white hover:bg-[#232323] ${scrolled ? 'h-[40px]' : 'h-[42px]'}`}
               style={{ transitionTimingFunction: ease }}
             >
               <span>{ctaText}</span>
               <ArrowUpRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={2.4} />
-            </button>
+            </Link>
           </div>
 
           {/* ─── MOBILE ─── */}
@@ -198,16 +199,17 @@ export default function Header() {
                   >
                     {loginText}
                   </Link>
-                  <button
+                  <Link
+                    href="/bli-utleier/start"
+                    prefetch
                     onClick={() => {
                       try { track('cta_click', { cta: 'header_mobile_menu' }); } catch (e) {}
                       setMobileOpen(false);
-                      router.push('/bli-utleier/start');
                     }}
-                    className="w-full rounded-full bg-[#0a0a0a] text-white h-12 text-[14px] font-semibold hover:bg-[#2a2a2a] transition-colors"
+                    className="w-full rounded-full bg-[#0a0a0a] text-white h-12 text-[14px] font-semibold hover:bg-[#2a2a2a] transition-colors flex items-center justify-center"
                   >
                     {ctaText}
-                  </button>
+                  </Link>
                 </div>
               </div>
             </SheetContent>

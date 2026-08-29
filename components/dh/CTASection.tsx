@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from '@/lib/motion-lite';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Check } from 'lucide-react';
@@ -10,7 +10,6 @@ import { track } from '@/lib/analytics';
 const assurances = ['Gratis vurdering', 'Svar innen 24 timer', 'Ingen binding'];
 
 export default function CTASection() {
-  const router = useRouter();
   return (
     <section className="bg-[#0a0a0a] relative overflow-hidden">
       {/* Lavender glow */}
@@ -39,13 +38,15 @@ export default function CTASection() {
               Få en gratis vurdering og se nøyaktig hva eiendommen din kan tjene. Ingen forpliktelser.
             </p>
             <div className="flex flex-wrap items-center gap-4 lg:justify-end">
-              <Button onClick={() => { try { track('cta_click', { cta: 'cta_section' }); } catch (e) {} router.push('/bli-utleier'); }}
+              <Button asChild
                 className="rounded-full bg-white text-[#0a0a0a] hover:bg-[#f2f0eb] h-[52px] px-8 text-[14px] font-semibold transition-all duration-300 hover:shadow-[0_8px_32px_rgba(210,152,255,0.35)] active:scale-[0.97] gap-2">
-                Få gratis vurdering <ArrowRight className="w-4 h-4" />
+                <Link href="/bli-utleier" prefetch onClick={() => { try { track('cta_click', { cta: 'cta_section' }); } catch (e) {} }}>
+                  Få gratis vurdering <ArrowRight className="w-4 h-4" />
+                </Link>
               </Button>
-              <Button onClick={() => router.push('/priskalkulator')} variant="ghost"
+              <Button asChild variant="ghost"
                 className="rounded-full text-white/60 hover:text-white hover:bg-white/5 h-[52px] px-8 text-[14px]">
-                Se hva det koster
+                <Link href="/priskalkulator" prefetch>Se hva det koster</Link>
               </Button>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-8 lg:justify-end">

@@ -3,13 +3,12 @@
 // Sticky mobil-CTA — vises etter at brukeren har scrollet forbi hero,
 // skjules nær bunnen (unngår å ligge over footer/CTA-seksjonen).
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { track } from '@/lib/analytics';
 import { trackLeadStart } from '@/lib/gtag';
 
 export default function MobileCTA() {
-  const router = useRouter();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -22,10 +21,9 @@ export default function MobileCTA() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const go = () => {
+  const spor = () => {
     try { track('cta_click', { cta: 'mobile_sticky' }); } catch (e) {}
     try { trackLeadStart('mobile_sticky'); } catch (e) {}
-    router.push('/bli-utleier');
   };
 
   return (
@@ -35,13 +33,15 @@ export default function MobileCTA() {
       }`}
       style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
     >
-      <button
-        onClick={go}
+      <Link
+        href="/bli-utleier"
+        prefetch
+        onClick={spor}
         data-testid="mobile-sticky-cta"
         className="w-full h-[54px] rounded-[10px] bg-[#0a0a0a]/95 backdrop-blur-xl text-white text-[15px] font-semibold flex items-center justify-center gap-2 shadow-[0_16px_44px_-10px_rgba(10,10,10,0.55)] border border-white/[0.08] active:scale-[0.98] transition-transform"
       >
         Få gratis verdivurdering <ArrowRight className="w-4 h-4 text-[#d298ff]" />
-      </button>
+      </Link>
     </div>
   );
 }
