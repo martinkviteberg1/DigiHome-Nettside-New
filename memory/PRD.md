@@ -805,3 +805,8 @@ Google Ads-styring via native REST API).
 - /app/app/tilbud/[slug]/page.js totalredesignet: mørkt filmatisk cover (boligfoto, hvit logo /digihome-logo-hvit.svg — NY fil, lastet opp til objektlagring) → dokument avsløres (ivory #FEFBFA, radier 26–36px) → konklusjon (anbefalt leie) → personlig brev + AVSENDERKORT → før/etter → prislinjal/grunnlag → sammenligning → økonomi → mørk arbeidsfordeling → tonal annonse-preview → FAQ → neste steg → mørk CTA «Ja, dette høres interessant ut».
 - Backend: GET /api/tilbud returnerer nå `selger` (offentlig trygt: navn/tittel/epost/telefon/avatar fra tildelt selger; null → generisk Sarah-fallback). POST /api/tilbud/kontakt flytter til Dialog og varsler owner/admin + TILDELT SELGER (dedupe). Backend-testagent: 6/6 bestått.
 - MERK: digihome-logo-white.svg har MØRKE bokstaver — bruk digihome-logo-hvit.svg på mørke flater.
+
+## Salgsradar: Listevisningen fjernet (aug 2026)
+- Kun to visninger igjen: TABELL (standard — `visning` default 'tabell') og TAVLE (pipeline). Toggle har 2 ikoner (Table2 først, Columns3).
+- `splitt`-modus er død (const splitt = false) — valgt lead åpner ALLTID som høyre-ark (SalgsSkuffEnkel), utvid lar arket vokse til arbeidsrom.
+- Fjernet: liste-JSX, radar-visning-liste-toggle, radar-leadliste, splitt-inline-skuff, mx-auto-maksbredde-betingelser i toppområdet.
