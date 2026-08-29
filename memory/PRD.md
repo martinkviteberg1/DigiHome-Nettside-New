@@ -780,3 +780,13 @@ Google Ads-styring via native REST API).
 - Filter Privat/Megler i verktøylinjen (Privat = målgruppen inkl. Husleie.no/ukjent; Megler = konkurrent har oppdraget).
 - Backfill: POST /api/admin/salgsradar/berik-annonsor (lazy fra UI når leads mangler annonsor eller har v1); agent-ingest beriker nye leads i bakgrunnen. Feilede oppslag merkes type:'ukjent' (ingen badge).
 - Badges også på kanban-kort (SalgPipeline.js: AnnonsorBadge/ANNONSOR_META).
+
+## Salgsradar: Minimalistisk salgs-skuff (aug 2026)
+- Ny komponent /app/components/admin/SalgsSkuffEnkel.js erstatter det gamle detaljpanelet i splitt- og høyre-ark-visning. Fullvisningen (⤢ / «Se alt om boligen») beholder hele den gamle arbeidsflaten med faner (panel-IIFE i Salgsradar.js).
+- Tre soner: (1) NESTE STEG — statusdrevet motor med ÉN stor knapp (Ring/Kopier FINN-melding/Send tilbud/Ta lead/Kjør AI-analyse); handlingene setter status, aldri omvendt. (2) VÅRE ARGUMENTER — sjekkliste fra AI-delscorer: Bilder (tilstandsmaskin: style → styler → godkjenn forslag → klare), Pris (anbefalt vs dagens >3 %), Tekst (annonseUtkast), Annonsedata. Bevis bak pil: overlays for før/etter m/ godkjenn/forkast, prisargument m/ replikk, annonseutkast, manglende felter. (3) UTFALL — Vunnet/Tapt/Ikke relevant fast bunnlinje + «Se alt om boligen».
+- Megler-leads: NESTE STEG = «Megler kjører annonsen» + «Ikke relevant — feil segment» (sender årsak direkte uten modal).
+- Pool-leads (selger med egen konto): NESTE STEG = «Ta lead». Leder har stille tildel-select.
+- Vaktbikkje: «Send tilbud»/«Kopier FINN-melding» stoppes mildt hvis AI-bildeforslag venter på godkjenning eller ingen bilder er stylet (Style nå / Godkjenn nå / Send likevel).
+- «Se over tilbudet»: iframe-forhåndsvisning m/ ?preview=1 (teller ikke åpning) + «Rediger tilbudet» → fullvisning på Tilbud-fanen.
+- Utsett-meny (I morgen/Fredag/Neste uke) bruker salg.oppfolging.
+- Bildestyling er fortsatt MANUELT valg (koster AI-kreditter) — ett-trykks «Style de 5 beste» bruker leadens stilforslag.

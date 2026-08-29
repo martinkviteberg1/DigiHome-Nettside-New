@@ -19,6 +19,7 @@ import {
   Columns3, BarChart3,
 } from 'lucide-react';
 import { PipelineTavle, SalgSeksjon, ArsakModal, VunnetModal, RapportModal, SelgerBadge, AnnonsorBadge } from './SalgPipeline';
+import SalgsSkuffEnkel from './SalgsSkuffEnkel';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 const tall = (v) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(Math.round(Number(v) || 0)).replace(/\u00A0/g, '\u202F');
@@ -761,6 +762,27 @@ export default function Salgsradar({ apiKey }) {
   })), [media]);
 
   const splitt = Boolean(valgt) && bred && visning === 'liste' && !utvidet;
+
+  // Den minimalistiske salgs-skuffen (splitt + høyre-ark). Fullvisningen (⤢)
+  // beholder hele arbeidsflaten med faner, bildestyling og tilbudsredigering.
+  const skuffEnkel = valgt && (
+    <SalgsSkuffEnkel
+      lead={valgt} aktor={aktor} selgere={selgere} statuser={STATUSER} media={media}
+      analyserer={analyserer} styStarter={styStarter} styBusy={styBusy} kopiert={kopiert} meldingKopiert={meldingKopiert}
+      onLukk={() => { setValgtId(null); setSletteBekreft(false); }}
+      onUtvid={() => setUtvidet(true)}
+      onUtvidTilbud={() => { setFane('tilbud'); setUtvidet(true); }}
+      onAnalyser={() => analyser(valgt.id)}
+      onKopierMelding={() => kopierMelding(valgt)}
+      onKopierLenke={() => kopierLenke(valgt)}
+      onsketStatus={onsketStatus}
+      sendSalgsstatus={sendSalgsstatus}
+      onTildel={tildel}
+      onOppfolging={settOppfolging}
+      onStyle={styGenerer}
+      onReview={styReview}
+    />
+  );
   const sorter = (key) => setSort((p) => (p.key === key ? { key, dir: p.dir === 'desc' ? 'asc' : 'desc' } : { key, dir: 'desc' }));
   const SortPil = ({ k }) => (sort.key !== k ? null : sort.dir === 'desc' ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />);
 
@@ -2317,10 +2339,10 @@ export default function Salgsradar({ apiKey }) {
             )}
           </div>
 
-          {/* Høyre: detaljpanel i splittvisning */}
+          {/* Høyre: minimal salgs-skuff i splittvisning */}
           {splitt && (
-            <div className="sticky top-3 min-w-0 flex-1 overflow-hidden rounded-[10px] border border-black/[0.07] bg-white" style={{ height: 'calc(100vh - 104px)', minHeight: 520 }}>
-              {panel}
+            <div className="sticky top-3 min-w-0 flex-1 overflow-hidden rounded-[10px] border border-black/[0.07] bg-white" style={{ height: 'calc(100vh - 148px)', minHeight: 520 }}>
+              {skuffEnkel}
             </div>
           )}
         </div>
@@ -2336,12 +2358,12 @@ export default function Salgsradar({ apiKey }) {
         </div>
       )}
 
-      {/* Ikke-utvidet: høyre-ark (tabellmodus desktop) / fullskjerm (mobil) */}
+      {/* Ikke-utvidet: minimal salgs-skuff som høyre-ark / fullskjerm (mobil) */}
       {valgt && !splitt && !utvidet && (
         <div className="fixed inset-0 z-[125] flex justify-end">
           <div className="absolute inset-0 bg-[#0a0a0a]/40" onClick={() => setValgtId(null)} />
-          <div className="dh-pop relative h-full w-full overflow-hidden bg-white shadow-2xl lg:w-[660px]">
-            {panel}
+          <div className="dh-pop relative h-full w-full overflow-hidden bg-white shadow-2xl lg:w-[560px]">
+            {skuffEnkel}
           </div>
         </div>
       )}
