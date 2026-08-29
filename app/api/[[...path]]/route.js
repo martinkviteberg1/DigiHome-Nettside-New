@@ -64,7 +64,7 @@ import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImage
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
-import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, filtrerLevendeBilder, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER, opprettStylingJobber, kjorStylingJobber, listStylingJobber, reviewStylingJobb, fjernStyletBilde } from '@/lib/salgsradar';
+import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, filtrerLevendeBilder, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER, opprettStylingJobber, kjorStylingJobber, listStylingJobber, reviewStylingJobb, fjernStyletBilde, listSelgere as radarListSelgere, settProvisjonssats as radarSettProvisjonssats, tildelLead as radarTildelLead, settSalgsstatus as radarSettSalgsstatus, settOppfolging as radarSettOppfolging, selgerRapport as radarSelgerRapport, RADAR_ARSAKER } from '@/lib/salgsradar';
 import { settArkiv, listArkiv, nyVersjon, listVersjoner, hentVersjon, gjenopprettVersjon, opprettDeling, trekkDeling, hentDelt, filDetaljer, filLogg, VERSJON_COLL, konverterDocxTilPdf } from '@/lib/dokumenter';
 import { lagreOppsett as signLagreOppsett, hentOppsett as signHentOppsett, slettOppsett as signSlettOppsett, opprettSigneringsjobb, kansellerSignering, pollSignering, pollSnarest, listSigneringsjobber, hentSignerRedirect, hentSignerVisning, hentSignerDokument, sendBatchSignaturEposter, SIGN_JOBB_COLL } from '@/lib/signering';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
@@ -1434,6 +1434,23 @@ async function modulAuthed(request, db, modul) {
     // alt eksplisitt slik at tilgangsstyringen aldri lyver.)
     return !!(Array.isArray(u.moduler) && u.moduler.includes(modul));
   } catch (e) { return false; }
+}
+
+// SALGSPIPELINE-AKTØR: hvem handler? Master-adminnøkkelen er «leder» (kan
+// omfordele, overstyre satser og gjenåpne terminale leads); innloggede
+// brukere identifiseres via sesjon og handler som selgere.
+async function radarAktor(request, db) {
+  if (adminAuthed(request)) return { id: 'admin', navn: 'Leder', erLeder: true };
+  const payload = sessionFra(request);
+  if (!payload || !payload.sub) return null;
+  try {
+    const u = await db.collection('admin_users').findOne({ id: payload.sub }, { projection: { id: 1, name: 1, email: 1, role: 1, provisjonssats: 1 } });
+    if (!u) return null;
+    // Rollen avgjør lederrettigheter: owner/admin kan omfordele, overstyre
+    // satser og gjenåpne — alle andre (bruker/partner) handler som selgere.
+    const erLeder = ['owner', 'admin'].includes(String(u.role || ''));
+    return { id: u.id, navn: u.name || u.email || 'Ukjent', erLeder, provisjonssats: Number(u.provisjonssats) || 0 };
+  } catch (e) { return null; }
 }
 
 // BOLIGINTERESSE UT TIL PLATTFORMEN: kø (sikkerhetsnett) + webhook (sanntid).
@@ -4574,7 +4591,14 @@ async function handleRoute(request, { params }) {
     }
     if (route === '/admin/salgsradar/leads' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'salgsradar'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      return cors(NextResponse.json({ ok: true, leads: await radarListLeads(db) }));
+      const aktorLs = await radarAktor(request, db);
+      let leadsLs = await radarListLeads(db);
+      // Selgere ser egne leads + poolen — aldri kollegaers tildelte leads.
+      // Leder/admin ser hele radaren og kan omfordele fritt.
+      if (aktorLs && !aktorLs.erLeder) {
+        leadsLs = leadsLs.filter((l) => !l.salg?.tildeltTil || l.salg.tildeltTil.id === aktorLs.id);
+      }
+      return cors(NextResponse.json({ ok: true, leads: leadsLs }));
     }
     if (route === '/admin/salgsradar/lead' && method === 'PUT') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
@@ -4589,6 +4613,59 @@ async function handleRoute(request, { params }) {
       const rSrD = await radarSlettLead(db, idSrD);
       if (!rSrD.ok) return cors(NextResponse.json({ ok: false, error: rSrD.error }, { status: rSrD.status || 404 }));
       return cors(NextResponse.json({ ok: true }));
+    }
+
+    // ── SALGSPIPELINE: tildeling, statusflytt med årsak, provisjon, rapport ──
+    if (route === '/admin/salgsradar/meg' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'salgsradar'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const aktorMeg = await radarAktor(request, db);
+      if (!aktorMeg) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      return cors(NextResponse.json({ ok: true, aktor: aktorMeg, arsaker: RADAR_ARSAKER }));
+    }
+    if (route === '/admin/salgsradar/selgere' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'salgsradar'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      return cors(NextResponse.json({ ok: true, selgere: await radarListSelgere(db) }));
+    }
+    if (route === '/admin/salgsradar/tildel' && method === 'POST') {
+      if (!(await modulAuthed(request, db, 'salgsradar'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const aktorTd = await radarAktor(request, db);
+      if (!aktorTd) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bTd = {}; try { bTd = await request.json(); } catch (e) {}
+      const rTd = await radarTildelLead(db, { id: bTd.id, brukerId: bTd.brukerId || null, aktor: aktorTd });
+      if (!rTd.ok) return cors(NextResponse.json({ ok: false, error: rTd.error }, { status: rTd.status || 400 }));
+      return cors(NextResponse.json(rTd));
+    }
+    if (route === '/admin/salgsradar/salgsstatus' && method === 'POST') {
+      if (!(await modulAuthed(request, db, 'salgsradar'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const aktorSs = await radarAktor(request, db);
+      if (!aktorSs) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bSs = {}; try { bSs = await request.json(); } catch (e) {}
+      const rSs = await radarSettSalgsstatus(db, { id: bSs.id, status: String(bSs.status || ''), arsak: bSs.arsak, vunnet: bSs.vunnet, aktor: aktorSs });
+      if (!rSs.ok) return cors(NextResponse.json({ ok: false, error: rSs.error }, { status: rSs.status || 400 }));
+      return cors(NextResponse.json(rSs));
+    }
+    if (route === '/admin/salgsradar/oppfolging' && method === 'POST') {
+      if (!(await modulAuthed(request, db, 'salgsradar'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const aktorOf = await radarAktor(request, db);
+      if (!aktorOf) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bOf = {}; try { bOf = await request.json(); } catch (e) {}
+      const rOf = await radarSettOppfolging(db, { id: bOf.id, dato: bOf.dato || null, aktor: aktorOf });
+      if (!rOf.ok) return cors(NextResponse.json({ ok: false, error: rOf.error }, { status: rOf.status || 400 }));
+      return cors(NextResponse.json(rOf));
+    }
+    if (route === '/admin/salgsradar/provisjonssats' && method === 'PUT') {
+      const aktorPs = await radarAktor(request, db);
+      if (!aktorPs || !aktorPs.erLeder) return cors(NextResponse.json({ error: 'Kun leder kan endre provisjonssatser' }, { status: aktorPs ? 403 : 401 }));
+      let bPs = {}; try { bPs = await request.json(); } catch (e) {}
+      const rPs = await radarSettProvisjonssats(db, { brukerId: bPs.brukerId, sats: bPs.sats });
+      if (!rPs.ok) return cors(NextResponse.json({ ok: false, error: rPs.error }, { status: rPs.status || 400 }));
+      return cors(NextResponse.json({ ok: true, selgere: await radarListSelgere(db) }));
+    }
+    if (route === '/admin/salgsradar/rapport' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'salgsradar'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const spRp = (() => { try { return new URL(request.url).searchParams; } catch (e) { return new URLSearchParams(); } })();
+      const rRp = await radarSelgerRapport(db, { fra: spRp.get('fra') || null, til: spRp.get('til') || null });
+      return cors(NextResponse.json(rRp));
     }
     // Bulk-sletting: {ids: [...]} — multivalg i admin (maks 100)
     if (route === '/admin/salgsradar/slett-mange' && method === 'POST') {

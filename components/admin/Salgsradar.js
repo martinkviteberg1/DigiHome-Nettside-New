@@ -16,7 +16,9 @@ import {
   Home, Wand2, MessageSquare, ChevronLeft, ChevronRight,
   RefreshCw, Square, CheckSquare, Search, List, Table2, ArrowLeft, ArrowUp, ArrowDown,
   Maximize2, Minimize2, Banknote, Globe, StickyNote, Plus, ChevronDown,
+  Columns3, BarChart3,
 } from 'lucide-react';
+import { PipelineTavle, SalgSeksjon, ArsakModal, VunnetModal, RapportModal, SelgerBadge } from './SalgPipeline';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 const tall = (v) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(Math.round(Number(v) || 0)).replace(/\u00A0/g, '\u202F');
@@ -37,8 +39,10 @@ const STATUSER = [
   { k: 'analysert', l: 'Analysert', farge: '#737373', bg: '#f0efec' },
   { k: 'kontaktet', l: 'Kontaktet', farge: '#525252', bg: '#eceae6' },
   { k: 'dialog', l: 'Dialog', farge: '#171717', bg: '#e7e5e0' },
+  { k: 'tilbud', l: 'Tilbud sendt', farge: '#6d28d9', bg: '#f3eefc' },
   { k: 'vunnet', l: 'Vunnet', farge: '#1f7a45', bg: '#eef6f0' },
   { k: 'tapt', l: 'Tapt', farge: '#c2413b', bg: '#fdf0ef' },
+  { k: 'ikke_relevant', l: 'Ikke relevant', farge: '#8a8578', bg: '#f2f0eb' },
 ];
 const STIL_VALG = [
   { k: 'optimal', l: 'FINN-optimalisering' },
@@ -353,6 +357,14 @@ export default function Salgsradar({ apiKey }) {
   const [bulkSletter, setBulkSletter] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const [visNy, setVisNy] = useState(false);
+  // ── Salgspipeline: aktør (meg), selgere, eierfilter og dialoger ──
+  const [aktor, setAktor] = useState(null); // {id, navn, erLeder}
+  const [arsaker, setArsaker] = useState({}); // årsakskatalog for tapt/ikke_relevant
+  const [selgere, setSelgere] = useState([]);
+  const [eierFilter, setEierFilter] = useState('alle'); // 'alle' | 'mine' | 'pool'
+  const [arsakDialog, setArsakDialog] = useState(null); // {lead, status}
+  const [vunnetDialog, setVunnetDialog] = useState(null); // {lead}
+  const [visRapport, setVisRapport] = useState(false);
   const [retryStarter, setRetryStarter] = useState(false);
   const [statusMeny, setStatusMeny] = useState(false); // kompakt statuscontrol i panelhodet
   const [loggType, setLoggType] = useState('notat'); // composer i Aktivitet-fanen
@@ -435,6 +447,54 @@ export default function Salgsradar({ apiKey }) {
     setLaster(false);
   }, [api]);
   useEffect(() => { hentLeads(); }, [hentLeads]);
+
+  // Salgspipeline-kontekst: hvem er jeg (leder/selger) + selgerlisten
+  useEffect(() => {
+    (async () => {
+      try { const j = await api('meg'); setAktor(j.aktor || null); setArsaker(j.arsaker || {}); } catch (e) { /* stille — pipeline-UI skjules */ }
+      try { const j = await api('selgere'); setSelgere(j.selgere || []); } catch (e) { /* stille */ }
+    })();
+  }, [api]);
+
+  // Diskret «Lagret»-kvittering (gjenbrukes av alle salgsflytt)
+  const kvitterLagret = useCallback(() => {
+    setLagret(true);
+    clearTimeout(lagretTimer.current);
+    lagretTimer.current = setTimeout(() => setLagret(false), 1400);
+  }, []);
+
+  // Server-svaret er alltid hele leaden — bytt den lokalt uten refetch
+  const byttLead = useCallback((j) => {
+    if (j?.lead) setLeads((prev) => prev.map((l) => (l.id === j.lead.id ? j.lead : l)));
+  }, []);
+
+  const tildel = async (id, brukerId) => {
+    setFeil('');
+    try { byttLead(await api('tildel', { method: 'POST', body: { id, brukerId } })); kvitterLagret(); } catch (e) { setFeil(e.message); }
+  };
+
+  const sendSalgsstatus = async (id, status, ekstra = {}) => {
+    setFeil('');
+    try {
+      byttLead(await api('salgsstatus', { method: 'POST', body: { id, status, ...ekstra } }));
+      kvitterLagret();
+    } catch (e) { setFeil(e.message); }
+    setArsakDialog(null); setVunnetDialog(null); setStatusMeny(false);
+  };
+
+  // Sentral statusgate: terminale utfall krever dialog (årsak / verdigrunnlag),
+  // alle andre flytt går rett gjennom med salgslogg på kjøpet.
+  const onsketStatus = (lead, status) => {
+    if (!lead || lead.status === status) return;
+    if (status === 'vunnet') { setVunnetDialog({ lead }); setStatusMeny(false); return; }
+    if (status === 'tapt' || status === 'ikke_relevant') { setArsakDialog({ lead, status }); setStatusMeny(false); return; }
+    sendSalgsstatus(lead.id, status);
+  };
+
+  const settOppfolging = async (id, dato) => {
+    setFeil('');
+    try { byttLead(await api('oppfolging', { method: 'POST', body: { id, dato } })); kvitterLagret(); } catch (e) { setFeil(e.message); }
+  };
 
   // ── Live-polling mens automatikken kjører (analyse + bildeforbedring) ──
   // Lokale redigeringer på åpen lead bevares (notat, FINN-melding, tekster).
@@ -591,10 +651,12 @@ export default function Salgsradar({ apiKey }) {
   const valgt = useMemo(() => leads.find((l) => l.id === valgtId) || null, [leads, valgtId]);
   const filtrert = useMemo(() => {
     let arr = filter === 'alle' ? leads : leads.filter((l) => l.status === filter);
+    if (eierFilter === 'mine' && aktor) arr = arr.filter((l) => l.salg?.tildeltTil?.id === aktor.id);
+    if (eierFilter === 'pool') arr = arr.filter((l) => !l.salg?.tildeltTil);
     const q = sok.trim().toLowerCase();
     if (q) arr = arr.filter((l) => `${l.adresse || ''} ${l.tittel || ''} ${l.postnr || ''}`.toLowerCase().includes(q));
     return arr;
-  }, [leads, filter, sok]);
+  }, [leads, filter, sok, eierFilter, aktor]);
   const sortert = useMemo(() => {
     const arr = [...filtrert];
     const v = (l) => {
@@ -624,10 +686,10 @@ export default function Salgsradar({ apiKey }) {
 
   // Innsiktslinje — gjør modulen målrettet: hva er i spill, hvem venter på deg
   const innsikt = useMemo(() => {
-    const pipeline = leads.filter((l) => ['analysert', 'kontaktet', 'dialog'].includes(l.status));
+    const pipeline = leads.filter((l) => ['analysert', 'kontaktet', 'dialog', 'tilbud'].includes(l.status));
     const honorarPipeline = pipeline.reduce((s, l) => s + (regnestykke(l).honorar || 0), 0);
     const aKontakte = leads.filter((l) => l.status === 'analysert').length;
-    const harApnet = leads.filter((l) => (l.aapninger || 0) > 0 && !['vunnet', 'tapt'].includes(l.status)).length;
+    const harApnet = leads.filter((l) => (l.aapninger || 0) > 0 && !['vunnet', 'tapt', 'ikke_relevant'].includes(l.status)).length;
     const vunnetLeads = leads.filter((l) => l.status === 'vunnet');
     const honorarVunnet = vunnetLeads.reduce((s, l) => s + (regnestykke(l).honorar || 0), 0);
     return { honorarPipeline, pipeline: pipeline.length, aKontakte, harApnet, vunnet: vunnetLeads.length, honorarVunnet };
@@ -695,7 +757,7 @@ export default function Salgsradar({ apiKey }) {
 
     // Én primær handling i panelhodet — statusstyrt (én tydelig CTA, ikke mange)
     const primaer = (() => {
-      if (autoAktiv || ['vunnet', 'tapt'].includes(valgt.status)) return null;
+      if (autoAktiv || ['vunnet', 'tapt', 'ikke_relevant'].includes(valgt.status)) return null;
       if (valgt.status === 'ny') return { l: 'Kjør AI-analyse', ikon: Sparkles, gjor: () => analyser(valgt.id), spinner: analyserer };
       if (valgt.status === 'analysert') {
         return valgt.kontaktTlf
@@ -703,7 +765,7 @@ export default function Salgsradar({ apiKey }) {
           : { l: meldingKopiert ? 'Kopiert!' : 'Kopier FINN-melding', ikon: meldingKopiert ? Check : Copy, gjor: () => kopierMelding(valgt) };
       }
       if (valgt.status === 'kontaktet') return { l: kopiert ? 'Lenke kopiert!' : 'Send tilbud', ikon: kopiert ? Check : Copy, gjor: () => kopierLenke(valgt) };
-      if (valgt.status === 'dialog') return { l: 'Marker som vunnet', ikon: Check, gjor: () => oppdater(valgt.id, { status: 'vunnet' }) };
+      if (valgt.status === 'dialog') return { l: 'Marker som vunnet', ikon: Check, gjor: () => onsketStatus(valgt, 'vunnet') };
       return null;
     })();
 
@@ -1481,17 +1543,17 @@ export default function Salgsradar({ apiKey }) {
       <div data-testid="radar-oversikt" className={toKol ? 'mx-auto grid w-full max-w-[1160px] grid-cols-[minmax(0,1fr)_300px] items-start gap-10' : 'mx-auto max-w-[860px]'}>
         <div className="min-w-0">
           {/* Pipeline — hvor i løpet leaden er; klikk på et steg for å flytte den */}
-          {valgt.status === 'tapt' ? (
+          {['tapt', 'ikke_relevant'].includes(valgt.status) ? (
             <div className="mb-5 flex items-center gap-3" data-testid="radar-pipeline">
-              <span className="text-[13px] font-semibold text-[#b3261e]">Markert som tapt</span>
-              <button onClick={() => oppdater(valgt.id, { status: 'ny' })} disabled={autoAktiv} data-testid="radar-pipeline-gjenaapne" className="text-[12.5px] font-semibold text-[#6d28d9] hover:underline disabled:opacity-40">Gjenåpne</button>
+              <span className="text-[13px] font-semibold text-[#b3261e]">{valgt.status === 'tapt' ? 'Markert som tapt' : 'Markert som ikke relevant'}</span>
+              {valgt.salg?.arsak?.valg && <span className="text-[12.5px] text-[#8f8a82]">{valgt.salg.arsak.valg}</span>}
             </div>
           ) : (
             <div className="mb-5 flex gap-1.5" data-testid="radar-pipeline">
-              {STATUSER.filter((s) => s.k !== 'tapt').map((s, i, arr) => {
+              {STATUSER.filter((s) => !['tapt', 'ikke_relevant'].includes(s.k)).map((s, i, arr) => {
                 const aktIdx = arr.findIndex((x) => x.k === valgt.status);
                 return (
-                  <button key={s.k} onClick={() => oppdater(valgt.id, { status: s.k })} disabled={autoAktiv} title={`Sett status: ${s.l}`} data-testid={`radar-pipeline-${s.k}`}
+                  <button key={s.k} onClick={() => onsketStatus(valgt, s.k)} disabled={autoAktiv} title={`Sett status: ${s.l}`} data-testid={`radar-pipeline-${s.k}`}
                     className="group/st min-w-0 flex-1 disabled:cursor-not-allowed">
                     <span className={`block h-[4px] rounded-full transition-colors ${i <= aktIdx ? (valgt.status === 'vunnet' ? 'bg-[#1f7a45]' : 'bg-[#1c1917]') : 'bg-black/[0.07] group-hover/st:bg-black/[0.18]'}`} />
                     <span className={`mt-2 block truncate text-left text-[12.5px] transition-colors ${i === aktIdx ? 'font-semibold text-[#1c1917]' : 'text-[#a6a19a] group-hover/st:text-[#57534e]'}`}>{s.l}</span>
@@ -1502,6 +1564,11 @@ export default function Salgsradar({ apiKey }) {
           )}
 
           <div className="space-y-3">
+            {/* Salg — tildeling, pipeline-handlinger, oppfølging og salgslogg */}
+            {aktor && (
+              <SalgSeksjon lead={valgt} aktor={aktor} selgere={selgere} statuser={STATUSER}
+                onTildel={tildel} onsketStatus={onsketStatus} onOppfolging={settOppfolging} />
+            )}
             {/* Neste handling — kompakt handlingsblokk, ikke editorial */}
             {steg ? (
               <section className={FLATE} data-testid="radar-neste-steg">
@@ -1532,20 +1599,20 @@ export default function Salgsradar({ apiKey }) {
                             {meldingKopiert ? <Check className="h-3.5 w-3.5 text-[#7ee2a8]" /> : <Copy className="h-3.5 w-3.5" />} {meldingKopiert ? 'Kopiert!' : 'Kopier FINN-melding'}
                           </button>
                         )}
-                        <button onClick={() => oppdater(valgt.id, { status: 'kontaktet' })} data-testid="radar-steg-kontaktet" className={`${KNAPP_GHOST} bg-white`}>
+                        <button onClick={() => onsketStatus(valgt, 'kontaktet')} data-testid="radar-steg-kontaktet" className={`${KNAPP_GHOST} bg-white`}>
                           Merk som kontaktet
                         </button>
                       </>
                     )}
                     {valgt.status === 'kontaktet' && (
                       <>
-                        <button onClick={() => { kopierLenke(valgt); oppdater(valgt.id, { status: 'dialog' }); }} data-testid="radar-steg-send-tilbud" className={KNAPP_PRIMAER}>
+                        <button onClick={() => { kopierLenke(valgt); onsketStatus(valgt, 'dialog'); }} data-testid="radar-steg-send-tilbud" className={KNAPP_PRIMAER}>
                           {kopiert ? <Check className="h-3.5 w-3.5 text-[#7ee2a8]" /> : <Copy className="h-3.5 w-3.5" />} Send tilbud
                         </button>
-                        <button onClick={() => oppdater(valgt.id, { status: 'dialog' })} data-testid="radar-steg-dialog" className={`${KNAPP_GHOST} bg-white`}>
+                        <button onClick={() => onsketStatus(valgt, 'dialog')} data-testid="radar-steg-dialog" className={`${KNAPP_GHOST} bg-white`}>
                           Huseier svarte
                         </button>
-                        <button onClick={() => oppdater(valgt.id, { status: 'tapt' })} data-testid="radar-steg-ikke-aktuelt"
+                        <button onClick={() => onsketStatus(valgt, 'tapt')} data-testid="radar-steg-ikke-aktuelt"
                           className="flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[12.5px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef]">
                           Ikke aktuelt
                         </button>
@@ -1553,11 +1620,11 @@ export default function Salgsradar({ apiKey }) {
                     )}
                     {valgt.status === 'dialog' && (
                       <>
-                        <button onClick={() => oppdater(valgt.id, { status: 'vunnet' })} data-testid="radar-steg-vunnet"
+                        <button onClick={() => onsketStatus(valgt, 'vunnet')} data-testid="radar-steg-vunnet"
                           className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[#1f7a45] px-3.5 text-[12.5px] font-medium text-white transition-all hover:bg-[#196a3b] active:scale-[0.98]">
                           <Check className="h-3.5 w-3.5" /> Marker som vunnet
                         </button>
-                        <button onClick={() => oppdater(valgt.id, { status: 'tapt' })} data-testid="radar-steg-ikke-aktuelt-dialog"
+                        <button onClick={() => onsketStatus(valgt, 'tapt')} data-testid="radar-steg-ikke-aktuelt-dialog"
                           className="flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[12.5px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef]">
                           Ikke aktuelt
                         </button>
@@ -1695,7 +1762,7 @@ export default function Salgsradar({ apiKey }) {
                     <div className="fixed inset-0 z-[140]" onClick={() => setStatusMeny(false)} />
                     <div className="absolute right-0 z-[141] mt-1 w-[168px] rounded-[10px] border border-black/[0.08] bg-white py-1 shadow-[0_10px_32px_rgba(0,0,0,0.10)]" data-testid="radar-status-meny">
                       {STATUSER.map((s) => (
-                        <button key={s.k} onClick={() => { oppdater(valgt.id, { status: s.k }); setStatusMeny(false); }} data-testid={`radar-status-${s.k}`}
+                        <button key={s.k} onClick={() => onsketStatus(valgt, s.k)} data-testid={`radar-status-${s.k}`}
                           className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] transition-colors ${valgt.status === s.k ? 'font-semibold text-[#141414]' : 'text-[#57534e] hover:bg-[#f7f6f3]'}`}>
                           <span className="h-[6px] w-[6px] rounded-full" style={{ background: s.farge }} />
                           {s.l}
@@ -1739,8 +1806,8 @@ export default function Salgsradar({ apiKey }) {
             <p className="text-[12px] font-medium text-[#57534e]">
               Annonsen er tatt av FINN{valgt.deaktivertAt ? ` ${naarSist(valgt.deaktivertAt)}` : ''} — trolig utleid eller trukket.
             </p>
-            {!['vunnet', 'tapt'].includes(valgt.status) && (
-              <button onClick={() => oppdater(valgt.id, { status: 'tapt' })} data-testid="radar-deaktivert-tapt" className={`${KNAPP_GHOST} ml-auto h-7 px-2.5 text-[11.5px]`}>
+            {!['vunnet', 'tapt', 'ikke_relevant'].includes(valgt.status) && (
+              <button onClick={() => onsketStatus(valgt, 'tapt')} data-testid="radar-deaktivert-tapt" className={`${KNAPP_GHOST} ml-auto h-7 px-2.5 text-[11.5px]`}>
                 Merk som tapt
               </button>
             )}
@@ -1749,7 +1816,11 @@ export default function Salgsradar({ apiKey }) {
         {valgt.status === 'vunnet' && !autoAktiv && (
           <div className="flex flex-wrap items-center gap-2 border-b border-black/[0.05] bg-[#eef6f0] px-4 py-2.5 sm:px-7" data-testid="radar-vunnet-linje">
             <Check className="h-4 w-4 shrink-0 text-[#1f7a45]" />
-            <p className="text-[12px] font-medium text-[#1f7a45]">Vunnet — ca. {kr(rs.honorar)}/mnd i honorar. Neste: opprett forvaltningsavtale i DigiHome-plattformen.</p>
+            <p className="text-[12px] font-medium text-[#1f7a45]">
+              {valgt.salg?.vunnet
+                ? `Vunnet av ${valgt.salg.vunnet.selger?.navn || 'selger'} — provisjon ${kr(valgt.salg.vunnet.provisjon)}. Neste: opprett forvaltningsavtale i DigiHome-plattformen.`
+                : `Vunnet — ca. ${kr(rs.honorar)}/mnd i honorar. Neste: opprett forvaltningsavtale i DigiHome-plattformen.`}
+            </p>
           </div>
         )}
 
@@ -1879,6 +1950,18 @@ export default function Salgsradar({ apiKey }) {
           </span>
           <span className="order-3 mx-1 hidden h-4 w-px bg-black/[0.07] lg:block" />
           <div className="no-scrollbar order-4 -mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 lg:mx-0 lg:w-auto lg:flex-wrap lg:overflow-visible lg:px-0">
+            {aktor && (
+              <>
+                {[{ k: 'alle', l: 'Alle' }, { k: 'mine', l: 'Mine' }, { k: 'pool', l: 'Pool' }].map((f) => (
+                  <button key={f.k} onClick={() => setEierFilter(f.k)} data-testid={`radar-eier-${f.k}`}
+                    className={`flex h-[26px] shrink-0 items-center whitespace-nowrap rounded-[6px] px-2.5 text-[12px] font-semibold transition-all ${eierFilter === f.k ? 'bg-[#e9e6e0] text-[#1c1917]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}>
+                    {f.l}
+                    {f.k === 'pool' && <span className={`ml-1.5 ${eierFilter === f.k ? 'text-[#78716c]' : 'text-[#c2beb8]'}`}>{leads.filter((l) => !l.salg?.tildeltTil).length}</span>}
+                  </button>
+                ))}
+                <span className="mx-1 h-4 w-px shrink-0 bg-black/[0.07]" />
+              </>
+            )}
             {[{ k: 'alle', l: 'Alle' }, ...STATUSER].map((s) => (
               <button key={s.k} onClick={() => setFilter(s.k)} data-testid={`radar-filter-${s.k}`}
                 className={`flex h-[26px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[6px] px-2.5 text-[12px] font-medium transition-all ${filter === s.k ? 'bg-[#1c1917] text-white shadow-[0_1px_3px_rgba(28,25,23,0.25)]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}>
@@ -1909,11 +1992,21 @@ export default function Salgsradar({ apiKey }) {
                 className={`flex h-[28px] w-9 items-center justify-center transition-colors ${visning === 'liste' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
                 <List className="h-[15px] w-[15px]" />
               </button>
+              <button onClick={() => setVisning('tavle')} data-testid="radar-visning-tavle" title="Pipeline-tavle — dra leads mellom stegene"
+                className={`flex h-[28px] w-9 items-center justify-center transition-colors ${visning === 'tavle' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
+                <Columns3 className="h-[15px] w-[15px]" />
+              </button>
               <button onClick={() => setVisning('tabell')} data-testid="radar-visning-tabell" title="Tabellvisning — alle AI-delscorer"
                 className={`flex h-[28px] w-9 items-center justify-center transition-colors ${visning === 'tabell' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
                 <Table2 className="h-[15px] w-[15px]" />
               </button>
             </span>
+            {aktor && (
+              <button onClick={() => setVisRapport(true)} data-testid="radar-rapport-btn" title="Selgerrapport — vunnet, provisjon og win-rate per selger"
+                className="flex h-[28px] items-center gap-1 rounded-[7px] border border-black/[0.08] bg-white px-2 text-[12px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917]">
+                <BarChart3 className="h-[14px] w-[14px]" /> <span className="hidden xl:inline">Rapport</span>
+              </button>
+            )}
             <select value={sort.key} onChange={(e) => setSort({ key: e.target.value, dir: 'desc' })} data-testid="radar-sort" aria-label="Sortering"
               className="hidden h-[28px] rounded-[7px] border border-black/[0.08] bg-white px-2 text-[12px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] outline-none focus:border-[#1c1917]/25 lg:block">
               <option value="potensial">Høyest potensial</option>
@@ -1983,6 +2076,12 @@ export default function Salgsradar({ apiKey }) {
             <p className="text-[13px] text-[#a8a29a]">Ingen leads matcher søket/filteret.</p>
           )}
         </div>
+      ) : visning === 'tavle' ? (
+        /* Pipeline-tavle: én kolonne per steg, dra-og-slipp mellom stegene */
+        <div className="mt-3" data-testid="radar-tavle-visning">
+          <PipelineTavle leads={sortert} statuser={STATUSER} valgtId={valgtId}
+            onAapne={(id) => { setValgtId(id); setSletteBekreft(false); }} onsketStatus={onsketStatus} />
+        </div>
       ) : (
         <div className="mt-3 flex items-start gap-4">
           {/* Venstre: liste eller tabell — i full visning sentreres arbeidskøen
@@ -2044,6 +2143,7 @@ export default function Salgsradar({ apiKey }) {
                         </span>
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">
+                        {l.salg?.tildeltTil && <SelgerBadge selger={l.salg.tildeltTil} størrelse={18} />}
                         {(l.aapninger || 0) > 0 ? (
                           <span className={`flex items-center gap-1 font-semibold text-[#0e7490] ${splitt ? 'text-[11.5px]' : 'text-[13px]'}`} title={`Tilbudssiden åpnet ${l.aapninger} ganger`}><Eye className={splitt ? 'h-3.5 w-3.5' : 'h-4 w-4'} />{l.aapninger}</span>
                         ) : l.potensial?.score != null ? (
@@ -2137,7 +2237,10 @@ export default function Salgsradar({ apiKey }) {
                             ) : l.annonseAktiv === false ? (
                               <span className="text-[10.5px] font-bold uppercase tracking-wide text-[#a8a29a]">Tatt av FINN</span>
                             ) : (
-                              <StatusPrikk s={st} />
+                              <span className="flex items-center gap-1.5">
+                                <StatusPrikk s={st} />
+                                {l.salg?.tildeltTil && <SelgerBadge selger={l.salg.tildeltTil} størrelse={18} />}
+                              </span>
                             )}
                           </td>
                           <td className="px-2 py-2 text-center"><span className="inline-flex justify-center"><PotensialBadge p={l.potensial} id={l.id} /></span></td>
@@ -2216,6 +2319,19 @@ export default function Salgsradar({ apiKey }) {
       {valgt && smlPar && (
         <SammenlignModal par={[smlPar]} idx={0} setIdx={() => {}} onClose={() => setSmlPar(null)} />
       )}
+
+      {/* Salgspipeline-dialoger: årsak (tapt/ikke relevant), vunnet og rapport */}
+      {arsakDialog && (
+        <ArsakModal lead={arsakDialog.lead} status={arsakDialog.status} arsaker={arsaker}
+          onBekreft={(arsak) => sendSalgsstatus(arsakDialog.lead.id, arsakDialog.status, { arsak })}
+          onLukk={() => setArsakDialog(null)} />
+      )}
+      {vunnetDialog && aktor && (
+        <VunnetModal lead={vunnetDialog.lead} aktor={aktor} selgere={selgere}
+          onBekreft={(vunnet) => sendSalgsstatus(vunnetDialog.lead.id, 'vunnet', { vunnet })}
+          onLukk={() => setVunnetDialog(null)} />
+      )}
+      {visRapport && aktor && <RapportModal api={api} aktor={aktor} onLukk={() => setVisRapport(false)} />}
 
       {/* Diskret lagret-kvittering */}
       {lagret && (
