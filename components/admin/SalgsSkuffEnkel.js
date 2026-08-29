@@ -109,6 +109,7 @@ export default function SalgsSkuffEnkel({
   onKopierMelding, onKopierLenke,
   onsketStatus, sendSalgsstatus, onTildel, onOppfolging, onOppdaterFelt,
   onStyle, onReview,
+  onAapneFane = null, // satt i arbeidsrommet: ruter «bevis»-klikk til lerret-faner i stedet for overlays
 }) {
   const [overlay, setOverlay] = useState(null); // 'bilder' | 'pris' | 'tekst' | 'data' | 'tilbud'
   const [utsettMeny, setUtsettMeny] = useState(false);
@@ -120,6 +121,11 @@ export default function SalgsSkuffEnkel({
   useEffect(() => { setOverlay(null); setUtsettMeny(false); setSelgerMeny(false); setVakt(null); setRedigerNavn(false); }, [lead?.id]);
   useEffect(() => { if (redigerNavn) navnRef.current?.focus(); }, [redigerNavn]);
   if (!lead) return null;
+
+  // I arbeidsrommet (venstre rail) åpnes bilder/tilbud på lerretet — ikke som overlay
+  const iRom = Boolean(onAapneFane);
+  const aapneBilder = () => (iRom ? onAapneFane('bilder') : setOverlay('bilder'));
+  const aapneTilbud = () => (iRom ? onAapneFane('tilbud') : setOverlay('tilbud'));
 
   const st = statuser.find((s) => s.k === lead.status) || statuser[0];
   const salg = lead.salg || {};
@@ -256,10 +262,10 @@ export default function SalgsSkuffEnkel({
   const oppfolging = salg.oppfolging ? new Date(salg.oppfolging) : null;
 
   const bildeRad = (() => {
-    if (kjorer.length) return { tekst: `Bedre bilder · styler ${Math.min(klare + kandidater.length + 1, klare + kandidater.length + kjorer.length)} av ${klare + kandidater.length + kjorer.length}…`, spinner: true, aktiv: true, onClick: () => setOverlay('bilder') };
-    if (kandidater.length) return { tekst: 'Bedre bilder', sub: 'Godkjenn før/etter — kun godkjente brukes i tilbudet', aktiv: true, onClick: () => setOverlay('bilder'), hoyre: <span className="shrink-0 rounded-full bg-[#6d28d9] px-2 py-[2px] text-[10.5px] font-bold text-white">{kandidater.length} venter</span> };
-    if (klare) return { tekst: `Bedre bilder · ${klare === 1 ? '1 klart' : `${klare} klare`}`, sub: 'Se før/etter — vis dem til huseier', aktiv: true, onClick: () => setOverlay('bilder') };
-    if (argBilder && ustylet.length) return { tekst: 'Bedre bilder · ikke stylet ennå', sub: 'Ett trykk styler de 5 beste med AI', aktiv: true, onClick: () => setOverlay('bilder') };
+    if (kjorer.length) return { tekst: `Bedre bilder · styler ${Math.min(klare + kandidater.length + 1, klare + kandidater.length + kjorer.length)} av ${klare + kandidater.length + kjorer.length}…`, spinner: true, aktiv: true, onClick: aapneBilder };
+    if (kandidater.length) return { tekst: 'Bedre bilder', sub: 'Godkjenn før/etter — kun godkjente brukes i tilbudet', aktiv: true, onClick: aapneBilder, hoyre: <span className="shrink-0 rounded-full bg-[#6d28d9] px-2 py-[2px] text-[10.5px] font-bold text-white">{kandidater.length} venter</span> };
+    if (klare) return { tekst: `Bedre bilder · ${klare === 1 ? '1 klart' : `${klare} klare`}`, sub: 'Se før/etter — vis dem til huseier', aktiv: true, onClick: aapneBilder };
+    if (argBilder && ustylet.length) return { tekst: 'Bedre bilder · ikke stylet ennå', sub: 'Ett trykk styler de 5 beste med AI', aktiv: true, onClick: aapneBilder };
     return { tekst: 'Bildene står sterkt', aktiv: false };
   })();
 
@@ -268,7 +274,7 @@ export default function SalgsSkuffEnkel({
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#faf9f7]" data-testid="salgs-skuff-enkel">
       {/* ══ Hode: boligens «visittkort» ══ */}
-      <div className="bg-white px-5 pb-0 pt-4 shadow-[0_1px_0_rgba(28,25,23,0.06)] sm:px-6">
+      <div className="bg-white px-5 pb-3.5 pt-4 shadow-[0_1px_0_rgba(28,25,23,0.06)] sm:px-6">
         <div className="mx-auto w-full max-w-[600px]">
           <div className="flex items-start gap-3.5">
             {hero ? (
@@ -286,6 +292,9 @@ export default function SalgsSkuffEnkel({
                 {(() => { const byd = bydelFraPostnr(lead.postnr); return byd ? <span className="rounded-full bg-[#f4f2ee] px-2 py-[2px] text-[11px] font-semibold text-[#57534e]" data-testid="skuff-bydel">{byd}</span> : null; })()}
                 <AnnonsorBadge annonsor={lead.annonsor} liten />
                 <a href={lead.kildeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-0.5 font-semibold text-[#6d28d9] hover:underline">FINN <ExternalLink className="h-3 w-3" /></a>
+                <span className="flex items-center gap-1 text-[11.5px] font-semibold" style={{ color: st.farge }} data-testid="skuff-status">
+                  <span className="h-[5px] w-[5px] rounded-full" style={{ background: st.farge }} />{st.l}
+                </span>
               </p>
               {/* Utleier-linje: navn (eller legg til) + telefon */}
               <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12.5px]">
@@ -314,31 +323,22 @@ export default function SalgsSkuffEnkel({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
-              <button onClick={onUtvid} data-testid="skuff-utvid" title="Se alt om boligen"
-                className="rounded-lg p-2 text-[#a8a29a] transition-colors hover:bg-[#f4f0fb] hover:text-[#6d28d9]">
-                <Maximize2 className="h-4 w-4" />
-              </button>
-              <button onClick={onLukk} data-testid="skuff-lukk" aria-label="Lukk"
-                className="rounded-lg p-2 text-[#a8a29a] transition-colors hover:bg-[#f4f2ee] hover:text-[#1c1917]">
-                <X className="h-[18px] w-[18px]" />
-              </button>
+              {!iRom && (
+                <button onClick={onUtvid} data-testid="skuff-utvid" title="Se alt om boligen"
+                  className="rounded-lg p-2 text-[#a8a29a] transition-colors hover:bg-[#f4f0fb] hover:text-[#6d28d9]">
+                  <Maximize2 className="h-4 w-4" />
+                </button>
+              )}
+              {!iRom && (
+                <button onClick={onLukk} data-testid="skuff-lukk" aria-label="Lukk"
+                  className="rounded-lg p-2 text-[#a8a29a] transition-colors hover:bg-[#f4f2ee] hover:text-[#1c1917]">
+                  <X className="h-[18px] w-[18px]" />
+                </button>
+              )}
             </div>
           </div>
-          {/* Segmentert fremdrift */}
-          <div className="flex items-center gap-2.5 pb-3.5 pt-3.5">
-            <div className="flex flex-1 gap-1">
-              {LOP.map((k, i) => (
-                <span key={k} className="h-[3px] flex-1 rounded-full transition-colors" style={{
-                  background: lead.status === 'vunnet' ? '#1f7a45'
-                    : TERMINALE.includes(lead.status) ? '#e0dcd5'
-                    : i <= lopIdx ? '#1c1917' : '#e7e4de',
-                }} />
-              ))}
-            </div>
-            <span className="flex shrink-0 items-center gap-1.5 text-[11.5px] font-semibold" style={{ color: st.farge }}>
-              <span className="h-[5px] w-[5px] rounded-full" style={{ background: st.farge }} />{st.l}
-            </span>
-          </div>
+          {/* Segmentert fremdrift fjernet — status vises som chip i hodet,
+              og «Neste steg» forteller uansett hvor du er i løpet. */}
         </div>
       </div>
 
@@ -437,29 +437,21 @@ export default function SalgsSkuffEnkel({
             </div>
           ) : null}
 
-          {/* ══ SELGER — nydelig kort med avatar ══ */}
-          <div className="relative mt-3">
+          {/* ══ SELGER — én rolig linje; leder kan trykke for å tildele ══ */}
+          <div className="relative mt-3 px-1">
             <button
               onClick={() => aktor?.erLeder && setSelgerMeny((v) => !v)}
               disabled={!aktor?.erLeder}
               data-testid="skuff-selger"
-              className={`flex w-full items-center gap-3 rounded-[14px] border border-black/[0.05] bg-white px-3.5 py-2.5 text-left shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all ${aktor?.erLeder ? 'hover:border-black/[0.12] hover:shadow-[0_2px_8px_rgba(28,25,23,0.07)]' : 'cursor-default'}`}>
-              <SelgerAvatar selger={eierMedAvatar} storrelse={34} />
-              <span className="min-w-0 flex-1">
-                <span className={`block truncate text-[13.5px] font-semibold ${eier ? 'text-[#1c1917]' : 'text-[#a8a29a]'}`}>
-                  {eier ? eier.navn : 'I poolen — ingen selger'}
-                </span>
-                <span className="block text-[11px] text-[#a8a29a]">
-                  {eier ? 'Ansvarlig selger' : 'Ledig for første selger som tar den'}
-                  {salg.tildeltAt && eier ? ` · siden ${new Date(salg.tildeltAt).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}` : ''}
-                </span>
-              </span>
-              {aktor?.erLeder && <ChevronDown className={`h-4 w-4 shrink-0 text-[#b3aea6] transition-transform ${selgerMeny ? 'rotate-180' : ''}`} />}
+              className={`flex max-w-full items-center gap-2 rounded-full py-1 pl-1 pr-2.5 text-[12px] font-medium transition-colors ${aktor?.erLeder ? 'hover:bg-[#f4f2ee]' : 'cursor-default'} ${eier ? 'text-[#57534e]' : 'text-[#a8a29a]'}`}>
+              <SelgerAvatar selger={eierMedAvatar} storrelse={20} />
+              <span className="truncate">{eier ? eier.navn : 'I poolen — ingen selger'}</span>
+              {aktor?.erLeder && <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#c9c4bd] transition-transform ${selgerMeny ? 'rotate-180' : ''}`} />}
             </button>
             {selgerMeny && (
               <>
                 <div className="fixed inset-0 z-[150]" onClick={() => setSelgerMeny(false)} />
-                <div className="dh-scale-in absolute left-0 right-0 z-[151] mt-1.5 overflow-hidden rounded-[14px] border border-black/[0.07] bg-white py-1.5 shadow-[0_18px_50px_rgba(23,20,18,0.16)]" data-testid="skuff-selger-meny">
+                <div className="dh-scale-in absolute left-0 z-[151] mt-1.5 w-[280px] overflow-hidden rounded-[14px] border border-black/[0.07] bg-white py-1.5 shadow-[0_18px_50px_rgba(23,20,18,0.16)]" data-testid="skuff-selger-meny">
                   <p className="px-3.5 pb-1 pt-1 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#b3aea6]">Tildel selger</p>
                   {selgere.map((s) => (
                     <button key={s.id} onClick={() => { onTildel(lead.id, s.id); setSelgerMeny(false); }}
@@ -484,34 +476,49 @@ export default function SalgsSkuffEnkel({
             )}
           </div>
 
-          {/* ══ VÅRE ARGUMENTER — gruppert kort ══ */}
-          <div className="mt-5" data-testid="skuff-argumenter">
-            <p className="px-1 pb-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#a8a29a]">Våre argumenter</p>
-            {!lead.ai ? (
-              <div className="rounded-[14px] border border-dashed border-[#ddd8d0] px-4 py-4 text-center">
-                <p className="text-[12.5px] text-[#a8a29a]">Kjør AI-analysen for å få argumentene for denne boligen.</p>
+          {/* ══ VÅRE ARGUMENTER — kun det som faktisk krever handling ══ */}
+          {(() => {
+            const rader = [];
+            if (bildeRad.aktiv) rader.push(
+              <ArgRad key="bilder" aktiv Ikon={ImageIcon} tone={{ bg: '#f3eefc', c: '#6d28d9' }}
+                tekst={bildeRad.tekst} sub={bildeRad.sub} spinner={bildeRad.spinner} onClick={bildeRad.onClick} hoyre={bildeRad.hoyre || null} testid="arg-bilder" />
+            );
+            if (argPris) rader.push(
+              <ArgRad key="pris" aktiv Ikon={Banknote} tone={{ bg: '#eef6f0', c: '#1f7a45' }}
+                tekst={`Riktigere pris · ${kr(anbefalt)}/mnd`}
+                sub={prisDiff > 0 ? `${kr(prisDiff)} mer enn i dag — huseier taper penger nå` : `${kr(Math.abs(prisDiff))} under dagens — derfor står den tom`}
+                onClick={anbefalt ? () => setOverlay('pris') : undefined} testid="arg-pris" />
+            );
+            if (argTekst) rader.push(
+              <ArgRad key="tekst" aktiv Ikon={FileText} tone={{ bg: '#fdf3e0', c: '#9a6b1c' }}
+                tekst="Ny annonsetekst" sub="Profesjonelt utkast ligger klart — vis huseier"
+                onClick={lead.ai?.annonseUtkast?.beskrivelse ? () => setOverlay('tekst') : undefined} testid="arg-tekst" />
+            );
+            if (argData) rader.push(
+              <ArgRad key="data" aktiv Ikon={ClipboardList} tone={{ bg: '#eef4f6', c: '#0e7490' }}
+                tekst={`Annonsedata mangler${manglerData.length ? ` · ${manglerData.slice(0, 2).join(', ')}${manglerData.length > 2 ? ' m.m.' : ''}` : ''}`}
+                onClick={manglerData.length ? () => setOverlay('data') : undefined} testid="arg-data" />
+            );
+            return (
+              <div className="mt-5" data-testid="skuff-argumenter">
+                <p className="px-1 pb-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#a8a29a]">Våre argumenter</p>
+                {!lead.ai ? (
+                  <div className="rounded-[14px] border border-dashed border-[#ddd8d0] px-4 py-4 text-center">
+                    <p className="text-[12.5px] text-[#a8a29a]">Kjør AI-analysen for å få argumentene for denne boligen.</p>
+                  </div>
+                ) : rader.length ? (
+                  <div className="divide-y divide-black/[0.04] overflow-hidden rounded-[14px] border border-black/[0.05] bg-white shadow-[0_1px_3px_rgba(28,25,23,0.04)]">{rader}</div>
+                ) : (
+                  <p className="flex items-center gap-2 rounded-[14px] border border-black/[0.05] bg-white px-4 py-3.5 text-[12.5px] text-[#8a857c] shadow-[0_1px_3px_rgba(28,25,23,0.04)]" data-testid="skuff-arg-alt-ok">
+                    <Check className="h-3.5 w-3.5 shrink-0 text-[#1f7a45]" /> Annonsen står sterkt — bilder, pris, tekst og data ser riktige ut.
+                  </p>
+                )}
               </div>
-            ) : (
-              <div className="divide-y divide-black/[0.04] overflow-hidden rounded-[14px] border border-black/[0.05] bg-white shadow-[0_1px_3px_rgba(28,25,23,0.04)]">
-                <ArgRad aktiv={bildeRad.aktiv} Ikon={ImageIcon} tone={{ bg: '#f3eefc', c: '#6d28d9' }}
-                  tekst={bildeRad.tekst} sub={bildeRad.sub} spinner={bildeRad.spinner} onClick={bildeRad.onClick} hoyre={bildeRad.hoyre || null} testid="arg-bilder" />
-                <ArgRad aktiv={argPris} Ikon={Banknote} tone={{ bg: '#eef6f0', c: '#1f7a45' }}
-                  tekst={argPris ? `Riktigere pris · ${kr(anbefalt)}/mnd` : 'Prisen ligger riktig'}
-                  sub={argPris ? (prisDiff > 0 ? `${kr(prisDiff)} mer enn i dag — huseier taper penger nå` : `${kr(Math.abs(prisDiff))} under dagens — derfor står den tom`) : undefined}
-                  onClick={anbefalt ? () => setOverlay('pris') : undefined} testid="arg-pris" />
-                <ArgRad aktiv={argTekst} Ikon={FileText} tone={{ bg: '#fdf3e0', c: '#9a6b1c' }}
-                  tekst={argTekst ? 'Ny annonsetekst' : 'Teksten fungerer'}
-                  sub={argTekst ? 'Profesjonelt utkast ligger klart — vis huseier' : undefined}
-                  onClick={lead.ai?.annonseUtkast?.beskrivelse ? () => setOverlay('tekst') : undefined} testid="arg-tekst" />
-                <ArgRad aktiv={argData} Ikon={ClipboardList} tone={{ bg: '#eef4f6', c: '#0e7490' }}
-                  tekst={argData ? `Annonsedata mangler${manglerData.length ? ` · ${manglerData.slice(0, 2).join(', ')}${manglerData.length > 2 ? ' m.m.' : ''}` : ''}` : 'Annonsedata er komplett'}
-                  onClick={argData && manglerData.length ? () => setOverlay('data') : undefined} testid="arg-data" />
-              </div>
-            )}
-          </div>
+            );
+          })()}
 
           {/* Se over tilbudet */}
-          <button onClick={() => setOverlay('tilbud')} data-testid="skuff-se-tilbud"
+          <button onClick={aapneTilbud} data-testid="skuff-se-tilbud"
             className="mt-3 flex w-full items-center gap-3 rounded-[14px] border border-black/[0.05] bg-white px-3.5 py-3 text-left shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all hover:border-black/[0.12] hover:shadow-[0_2px_8px_rgba(28,25,23,0.07)]">
             <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#141414] text-white"><FileText className="h-4 w-4" /></span>
             <span className="min-w-0 flex-1">
@@ -541,9 +548,11 @@ export default function SalgsSkuffEnkel({
                 className="h-[32px] rounded-full px-2.5 text-[12.5px] font-medium text-[#8a857c] transition-colors hover:bg-[#f4f2ee]">Ikke relevant</button>
             </>
           )}
-          <button onClick={onUtvid} data-testid="skuff-se-alt" className="ml-auto flex items-center gap-1 text-[12.5px] font-medium text-[#8a857c] transition-colors hover:text-[#1c1917]">
-            Se alt om boligen <ChevronRight className="h-3.5 w-3.5" />
-          </button>
+          {!iRom && (
+            <button onClick={onUtvid} data-testid="skuff-se-alt" className="ml-auto flex items-center gap-1 text-[12.5px] font-medium text-[#8a857c] transition-colors hover:text-[#1c1917]">
+              Se alt om boligen <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -562,7 +571,7 @@ export default function SalgsSkuffEnkel({
                   {styStarter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />} Style nå
                 </button>
               ) : (
-                <button onClick={() => { setVakt(null); setOverlay('bilder'); }} data-testid="vakt-godkjenn"
+                <button onClick={() => { setVakt(null); aapneBilder(); }} data-testid="vakt-godkjenn"
                   className="flex h-[32px] items-center gap-1.5 rounded-[9px] bg-[#141414] px-3.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-black">
                   <Check className="h-3.5 w-3.5" /> Godkjenn nå
                 </button>
@@ -657,7 +666,7 @@ export default function SalgsSkuffEnkel({
               ))}
             </ul>
           )}
-          <p className="mt-4 text-[11px] text-[#a8a29a]">Rediger utkastet i <button onClick={() => { setOverlay(null); onUtvid(); }} className="font-semibold text-[#6d28d9] hover:underline">full visning</button>.</p>
+          <p className="mt-4 text-[11px] text-[#a8a29a]">Rediger utkastet i <button onClick={() => { setOverlay(null); if (iRom) onAapneFane('tilbud'); else onUtvid(); }} className="font-semibold text-[#6d28d9] hover:underline">full visning</button>.</p>
         </Overlay>
       )}
 

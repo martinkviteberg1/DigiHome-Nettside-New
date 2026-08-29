@@ -347,7 +347,6 @@ export default function Salgsradar({ apiKey }) {
   const [visning, setVisning] = useState('liste');
   const [valgtId, setValgtId] = useState(null);
   const [utvidet, setUtvidet] = useState(false);
-  const [fane, setFane] = useState('oversikt'); // record-faner: oversikt · bilder · ai · tilbud · aktivitet
   const [bred, setBred] = useState(true);
   const [ultra, setUltra] = useState(false);
   const [kopiert, setKopiert] = useState(false);
@@ -410,7 +409,7 @@ export default function Salgsradar({ apiKey }) {
   useEffect(() => () => clearTimeout(lagretTimer.current), []);
   // Tilbuds-previewen laster på nytt når en endring lagres — «live» uten å telle åpninger
   useEffect(() => { if (lagret) setPreviewNokkel((k) => k + 1); }, [lagret]);
-  useEffect(() => { setHeroIdx(0); setSmlPar(null); setFane('oversikt'); setStatusMeny(false); setLoggTekst(''); }, [valgtId]);
+  useEffect(() => { setHeroIdx(0); setSmlPar(null); setStatusMeny(false); setLoggTekst(''); }, [valgtId]);
   // Bildestyling-jobber hentes per lead (definert før effektene som bruker den)
   const hentStyJobber = useCallback(async (leadId) => {
     if (!leadId) return;
@@ -782,15 +781,22 @@ export default function Salgsradar({ apiKey }) {
 
   const splitt = Boolean(valgt) && bred && visning === 'liste' && !utvidet;
 
-  // Den minimalistiske salgs-skuffen (splitt + høyre-ark). Fullvisningen (⤢)
-  // beholder hele arbeidsflaten med faner, bildestyling og tilbudsredigering.
+  // Arbeidsrommet har ingen faner — lerretet er én rolig scroll med tre
+  // seksjoner (Bilder → Tilbudet → Historikk). Skuffens knapper ruller dit.
+  const gaaTil = useCallback((seksjon) => {
+    document.getElementById(`rom-${seksjon}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+  const utvidTil = (seksjon) => { setUtvidet(true); setTimeout(() => gaaTil(seksjon), 120); };
+
+  // Den minimalistiske salgs-skuffen (splitt + høyre-ark). Utvid (⤢) lar
+  // skuffen vokse til et arbeidsrom — samme skuff blir venstre rail.
   const skuffEnkel = valgt && (
     <SalgsSkuffEnkel
       lead={valgt} aktor={aktor} selgere={selgere} statuser={STATUSER} media={media}
       analyserer={analyserer} styStarter={styStarter} styBusy={styBusy} kopiert={kopiert} meldingKopiert={meldingKopiert}
       onLukk={() => { setValgtId(null); setSletteBekreft(false); }}
       onUtvid={() => setUtvidet(true)}
-      onUtvidTilbud={() => { setFane('tilbud'); setUtvidet(true); }}
+      onUtvidTilbud={() => utvidTil('tilbud')}
       onAnalyser={() => analyser(valgt.id)}
       onKopierMelding={() => kopierMelding(valgt)}
       onKopierLenke={() => kopierLenke(valgt)}
@@ -801,6 +807,29 @@ export default function Salgsradar({ apiKey }) {
       onOppdaterFelt={(patch) => oppdater(valgt.id, patch)}
       onStyle={styGenerer}
       onReview={styReview}
+    />
+  );
+
+  // Samme skuff som venstre rail i arbeidsrommet (utvidet visning):
+  // «bevis»-klikk ruller til riktig seksjon på lerretet i stedet for overlays.
+  const skuffRail = valgt && (
+    <SalgsSkuffEnkel
+      lead={valgt} aktor={aktor} selgere={selgere} statuser={STATUSER} media={media}
+      analyserer={analyserer} styStarter={styStarter} styBusy={styBusy} kopiert={kopiert} meldingKopiert={meldingKopiert}
+      onLukk={() => { setValgtId(null); setUtvidet(false); setSletteBekreft(false); }}
+      onUtvid={() => {}}
+      onUtvidTilbud={() => gaaTil('tilbud')}
+      onAnalyser={() => analyser(valgt.id)}
+      onKopierMelding={() => kopierMelding(valgt)}
+      onKopierLenke={() => kopierLenke(valgt)}
+      onsketStatus={onsketStatus}
+      sendSalgsstatus={sendSalgsstatus}
+      onTildel={tildel}
+      onOppfolging={settOppfolging}
+      onOppdaterFelt={(patch) => oppdater(valgt.id, patch)}
+      onStyle={styGenerer}
+      onReview={styReview}
+      onAapneFane={gaaTil}
     />
   );
   const sorter = (key) => setSort((p) => (p.key === key ? { key, dir: p.dir === 'desc' ? 'asc' : 'desc' } : { key, dir: 'desc' }));
@@ -816,21 +845,6 @@ export default function Salgsradar({ apiKey }) {
     const toKol = utvidet || (splitt && ultra);
     const nB = media.length;
     const autoAktiv = Boolean(valgt.auto && ['analyserer', 'styler'].includes(valgt.auto.status));
-    const steg = autoAktiv ? null : nesteSteg(valgt);
-
-    // Én primær handling i panelhodet — statusstyrt (én tydelig CTA, ikke mange)
-    const primaer = (() => {
-      if (autoAktiv || ['vunnet', 'tapt', 'ikke_relevant'].includes(valgt.status)) return null;
-      if (valgt.status === 'ny') return { l: 'Kjør AI-analyse', ikon: Sparkles, gjor: () => analyser(valgt.id), spinner: analyserer };
-      if (valgt.status === 'analysert') {
-        return valgt.kontaktTlf
-          ? { l: 'Kontakt huseier', ikon: Phone, href: `tel:${valgt.kontaktTlf}` }
-          : { l: meldingKopiert ? 'Kopiert!' : 'Kopier FINN-melding', ikon: meldingKopiert ? Check : Copy, gjor: () => kopierMelding(valgt) };
-      }
-      if (valgt.status === 'kontaktet') return { l: kopiert ? 'Lenke kopiert!' : 'Send tilbud', ikon: kopiert ? Check : Copy, gjor: () => kopierLenke(valgt) };
-      if (valgt.status === 'dialog') return { l: 'Marker som vunnet', ikon: Check, gjor: () => onsketStatus(valgt, 'vunnet') };
-      return null;
-    })();
 
     // Ekte hendelser til tidslinjen — kun det som faktisk finnes i data.
     // Tilbudsåpninger grupperes til én oppsummert hendelse (ikke 20 rader).
@@ -872,43 +886,50 @@ export default function Salgsradar({ apiKey }) {
     const mVurd = mAkt ? (ai?.bildeVurdering || []).find((x) => x.url === mAkt.kilde) : null;
     const bulkValg = [...styValgte].filter((k) => media.some((m) => m.kilde === k && m.kildeOk));
 
-    /* Stylingkontroller — gjenbrukes for ett bilde og for flervalg */
+    /* Stylingkontroller — én tydelig knapp; stilvalg og instruks bak «Juster stil» */
     const stylingKontroller = (kjorLabel, kilder) => (
       <div className="mt-3 space-y-2.5" data-testid="radar-styling-kontroller">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {[['optimal', 'FINN-klar'], ['lysloft', 'Lysløft'], ['mobler', 'Møblering']].map(([k, l]) => (
-            <button key={k} onClick={() => setStyModus(k)} data-testid={`radar-modus-${k}`}
-              className={`h-8 rounded-[8px] px-2.5 text-[12.5px] font-medium transition-all ${styModus === k ? 'bg-[#1c1917] text-white' : 'bg-white text-[#78716c] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.07)] hover:text-[#1c1917]'}`}>
-              {l}
-            </button>
-          ))}
-        </div>
-        {styModus === 'mobler' && (
-          <select value={styVariant} onChange={(e) => setStyVariant(e.target.value)} data-testid="radar-staging-variant"
-            className="h-9 w-full rounded-[8px] border border-black/[0.08] bg-white px-2 text-[13px] outline-none focus:border-[#1c1917]/25">
-            <option value="nordisk">Nordisk stil</option>
-            <option value="moderne">Moderne stil</option>
-            <option value="varm">Varm stil</option>
-          </select>
-        )}
-        {(MODUS_INFO[styModus === 'mobler' ? styVariant : styModus] || {}).d && (
-          <p className="text-[12px] leading-relaxed text-[#8f8a82]">{MODUS_INFO[styModus === 'mobler' ? styVariant : styModus].d}</p>
-        )}
-        <div className="flex items-center gap-1.5">
-          {[['varsom', 'Varsom'], ['full', 'Full effekt']].map(([k, l]) => (
-            <button key={k} onClick={() => setStyIntensitet(k)} data-testid={`radar-intensitet-${k}`}
-              className={`h-7 rounded-[7px] px-2 text-[12px] font-medium transition-colors ${styIntensitet === k ? 'bg-[#ece9e4] text-[#1c1917]' : 'text-[#a6a19a] hover:text-[#57534e]'}`}>
-              {l}
-            </button>
-          ))}
-        </div>
-        <input value={styInstruks} onChange={(e) => setStyInstruks(e.target.value)} maxLength={500} data-testid="radar-styling-instruks"
-          placeholder="Egen instruks (valgfritt)…"
-          className="h-9 w-full rounded-[8px] border border-black/[0.08] bg-white px-3 text-[13px] outline-none transition-colors placeholder:text-[#c2beb8] focus:border-[#1c1917]/25" />
         <button onClick={() => styGenerer(valgt.id, kilder)} disabled={styStarter || !kilder.length} data-testid="radar-styling-generer" className={`${KNAPP_PRIMAER} w-full justify-center`}>
           {styStarter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />} {kjorLabel}
         </button>
         <p className="text-[11.5px] leading-relaxed text-[#a6a19a]">~30–60 sek per bilde. Ingenting brukes før du har godkjent resultatet.</p>
+        <details className="group/stil">
+          <summary className="flex cursor-pointer list-none items-center gap-1 text-[12px] font-semibold text-[#8f8a82] transition-colors hover:text-[#1c1917] [&::-webkit-details-marker]:hidden">
+            <ChevronRight className="h-3 w-3 transition-transform group-open/stil:rotate-90" /> Juster stil
+          </summary>
+          <div className="mt-2.5 space-y-2.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[['optimal', 'FINN-klar'], ['lysloft', 'Lysløft'], ['mobler', 'Møblering']].map(([k, l]) => (
+                <button key={k} onClick={() => setStyModus(k)} data-testid={`radar-modus-${k}`}
+                  className={`h-8 rounded-[8px] px-2.5 text-[12.5px] font-medium transition-all ${styModus === k ? 'bg-[#1c1917] text-white' : 'bg-white text-[#78716c] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.07)] hover:text-[#1c1917]'}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            {styModus === 'mobler' && (
+              <select value={styVariant} onChange={(e) => setStyVariant(e.target.value)} data-testid="radar-staging-variant"
+                className="h-9 w-full rounded-[8px] border border-black/[0.08] bg-white px-2 text-[13px] outline-none focus:border-[#1c1917]/25">
+                <option value="nordisk">Nordisk stil</option>
+                <option value="moderne">Moderne stil</option>
+                <option value="varm">Varm stil</option>
+              </select>
+            )}
+            {(MODUS_INFO[styModus === 'mobler' ? styVariant : styModus] || {}).d && (
+              <p className="text-[12px] leading-relaxed text-[#8f8a82]">{MODUS_INFO[styModus === 'mobler' ? styVariant : styModus].d}</p>
+            )}
+            <div className="flex items-center gap-1.5">
+              {[['varsom', 'Varsom'], ['full', 'Full effekt']].map(([k, l]) => (
+                <button key={k} onClick={() => setStyIntensitet(k)} data-testid={`radar-intensitet-${k}`}
+                  className={`h-7 rounded-[7px] px-2 text-[12px] font-medium transition-colors ${styIntensitet === k ? 'bg-[#ece9e4] text-[#1c1917]' : 'text-[#a6a19a] hover:text-[#57534e]'}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            <input value={styInstruks} onChange={(e) => setStyInstruks(e.target.value)} maxLength={500} data-testid="radar-styling-instruks"
+              placeholder="Egen instruks (valgfritt)…"
+              className="h-9 w-full rounded-[8px] border border-black/[0.08] bg-white px-3 text-[13px] outline-none transition-colors placeholder:text-[#c2beb8] focus:border-[#1c1917]/25" />
+          </div>
+        </details>
       </div>
     );
 
@@ -987,7 +1008,7 @@ export default function Salgsradar({ apiKey }) {
        inspector. Styling og godkjenning skjer PÅ det valgte bildet, ikke i en
        egen seksjon. ── */
     const sekBilder = nB > 0 ? (
-      <div data-testid="radar-bilder-flate" className={toKol ? 'mx-auto grid w-full max-w-[1160px] grid-cols-[minmax(0,1fr)_300px] items-start gap-8' : 'mx-auto max-w-[860px]'}>
+      <div data-testid="radar-bilder-flate" className="mx-auto grid w-full max-w-[1160px] items-start gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0">
           {kandidatAntall > 0 && !mAkt?.kandidat && (
             <button onClick={() => setHeroIdx(Math.max(0, media.findIndex((m) => m.kandidat)))} data-testid="radar-kandidat-varsel"
@@ -1151,10 +1172,10 @@ export default function Salgsradar({ apiKey }) {
         ut.push({ t: `Utleier kuttet prisen −${kuttA.pct} % nylig — motivert utleier, ta kontakt nå`, k: valgt.kontaktTlf ? 'Ring huseier' : 'Kopier melding', href: valgt.kontaktTlf ? `tel:${valgt.kontaktTlf}` : null, gjor: valgt.kontaktTlf ? null : () => kopierMelding(valgt) });
       }
       if ((ai.stylingPotensial === 'høy' || ai.stylingPotensial === 'middels' || (ai.annonseScore || 0) < 60) && antStylet === 0 && (valgt.bilder || []).length > 0) {
-        ut.push({ t: `Bildene har ${ai.stylingPotensial === 'høy' ? 'høyt' : 'reelt'} forbedringspotensial — kjør AI-styling før tilbudet sendes`, k: 'Åpne Bilder', gjor: () => setFane('bilder') });
+        ut.push({ t: `Bildene har ${ai.stylingPotensial === 'høy' ? 'høyt' : 'reelt'} forbedringspotensial — kjør AI-styling før tilbudet sendes`, k: 'Åpne Bilder', gjor: () => gaaTil('bilder') });
       }
       if (valgt.pris && rs.anbefalt > valgt.pris) {
-        ut.push({ t: `Vi anbefaler ${kr(rs.anbefalt)}/mnd — ${kr(rs.anbefalt - valgt.pris)} over dagens leie. Bruk gevinsten som hovedargument`, k: 'Åpne Tilbud', gjor: () => setFane('tilbud') });
+        ut.push({ t: `Vi anbefaler ${kr(rs.anbefalt)}/mnd — ${kr(rs.anbefalt - valgt.pris)} over dagens leie. Bruk gevinsten som hovedargument`, k: 'Åpne Tilbud', gjor: () => gaaTil('tilbud') });
       }
       if (valgt.status === 'analysert' && ai.finnMelding) {
         ut.push({ t: 'Leaden er analysert og klar — send FINN-meldingen til huseier', k: 'Kopier melding', gjor: () => kopierMelding(valgt) });
@@ -1388,7 +1409,11 @@ export default function Salgsradar({ apiKey }) {
           </a>
         </div>
         {ai && (
-          <div className="mt-4 space-y-3">
+          <details className="group/tekst mt-4">
+            <summary className="flex cursor-pointer list-none items-center gap-1 text-[12px] font-semibold text-[#8f8a82] transition-colors hover:text-[#1c1917] [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="h-3 w-3 transition-transform group-open/tekst:rotate-90" /> Rediger tekstene i tilbudet
+            </summary>
+            <div className="mt-3 space-y-3">
             <label className="block">
               <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">Personlig intro — vises øverst på tilbudet</span>
               <textarea value={ai.tilbudTekst?.heroIntro || ''} rows={2} data-testid="radar-hero-intro"
@@ -1441,7 +1466,8 @@ export default function Salgsradar({ apiKey }) {
             ) : (
               <p className="border-t border-black/[0.05] pt-3 text-[11px] text-[#a8a29a]">Annonseutkast mangler — kjør AI-analysen på nytt for å generere annonse-previewen.</p>
             )}
-          </div>
+            </div>
+          </details>
         )}
         <p className="mt-2 text-[11px] text-[#a8a29a]">Send lenken via FINN-meldingen på annonsen{valgt.kontaktTlf ? ` — eller ring ${valgt.kontaktTlf}` : ''}. Ikke uanmodet e-post/SMS (mfl. §15).</p>
         {(valgt.kontaktLogg || []).length > 0 && (
@@ -1540,40 +1566,14 @@ export default function Salgsradar({ apiKey }) {
       </div>
     );
 
-    /* ── Oversikt-fanen: moderne 2026 — rolige, myke flater (ingen borders eller
-       skygger), normal-case etiketter, jevn typoskala 12.5–14.5px og tall i
-       UI-fonten. Hovedkolonne: pipeline → neste handling → regnestykke →
-       aktivitet. Rail: foto + fakta + tilbudshandlinger. ── */
-    const stegKontekst = !steg ? null
-      : steg.varm && (valgt.aapninger || 0) > 0 && valgt.sistAapnet ? `Sist åpnet ${naarSist(valgt.sistAapnet)}. Huseiere som nettopp har lest tilbudet er mest mottakelige.`
-      : valgt.status === 'ny' ? 'Analysen gir score, funn, ferdig FINN-melding og personlig tilbudstekst — på under ett minutt.'
-      : valgt.status === 'analysert' ? 'Meldingen og tilbudslenken ligger klare — ett klikk å kopiere.'
-      : valgt.status === 'kontaktet' ? 'Tilbudssiden er personlig og klar til å sendes når huseier svarer.'
-      : valgt.status === 'dialog' ? 'Alt materiale ligger klart i Tilbud-fanen om huseier trenger en ny gjennomgang.'
-      : null;
-    const StegIkon = !steg ? null
-      : valgt.status === 'ny' ? Sparkles
-      : valgt.status === 'analysert' ? (valgt.kontaktTlf ? Phone : MessageSquare)
-      : valgt.status === 'kontaktet' ? Copy
-      : Check;
 
-    const forsteBilde = (valgt.bilder || []).find((b) => !dodeBilder.has(b));
 
-    const railDetaljer = (
-      <aside className={toKol ? 'min-w-0' : `mt-3 ${FLATE}`} data-testid="radar-oversikt-detaljer">
-        {toKol && (
-          forsteBilde ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={forsteBilde} alt="" role="button" tabIndex={0} onClick={() => setFane('bilder')} onError={() => merkDodBilde(forsteBilde)}
-              className="mb-5 h-[150px] w-full cursor-pointer rounded-[12px] object-cover transition-opacity hover:opacity-95" title="Åpne Bilder" />
-          ) : (
-            <span className="mb-5 flex h-[150px] w-full items-center justify-center rounded-[12px] bg-[#f4f2ee]"><Home className="h-5 w-5 text-[#c9c4bd]" /></span>
-          )
-        )}
+    /* ── Historikk-seksjonen: fakta, lenker, statusoverstyring og faresone ── */
+    const sekDetaljer = (
+      <div data-testid="radar-detaljer">
         <p className={ETIKETT}>Detaljer</p>
-        <dl className={toKol ? 'mt-3.5 space-y-3.5' : 'mt-3.5 grid grid-cols-2 gap-x-8 gap-y-3.5 sm:grid-cols-3'}>
+        <dl className="mt-3.5 grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3">
           {[
-            ['Potensial', valgt.potensial?.score != null ? `${valgt.potensial.forelopig ? '~' : ''}${valgt.potensial.score} av 100` : null],
             ['Annonsør', valgt.annonsor && valgt.annonsor.type !== 'ukjent'
               ? (valgt.annonsor.orgNavn
                 ? (valgt.annonsor.hjemmeside
@@ -1584,13 +1584,10 @@ export default function Salgsradar({ apiKey }) {
             ['Utleier', valgt.kontaktNavn ? `${valgt.kontaktNavn}${valgt.kontaktTittel ? ` — ${valgt.kontaktTittel}` : ''}` : null],
             ['Telefon', valgt.kontaktTlf ? <a key="tlf" href={`tel:${valgt.kontaktTlf}`} className="hover:underline">{fmtTlf(valgt.kontaktTlf)}</a> : null],
             ['E-post', valgt.kontaktEpost ? <a key="ep" href={`mailto:${valgt.kontaktEpost}`} className="hover:underline">{valgt.kontaktEpost}</a> : null],
-            ['Boligtype', valgt.boligtype || null],
-            ['Størrelse', valgt.m2 || valgt.soverom ? `${valgt.m2 ? `${valgt.m2} m²` : ''}${valgt.m2 && valgt.soverom ? ' · ' : ''}${valgt.soverom ? `${valgt.soverom} soverom` : ''}` : null],
-            ['Dagens leie', `${kr(valgt.pris)}/mnd`],
             ['Kilde', <a key="kilde" href={valgt.kildeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-medium text-[#6d28d9] hover:underline">FINN-annonse <ExternalLink className="h-3 w-3" /></a>],
             ['Hentet', `${naarSist(valgt.createdAt)}${valgt.kilde === 'agent' ? ' · av agenten' : ''}`],
             ['Tilbudet', (valgt.aapninger || 0) > 0
-              ? <button key="tb" type="button" onClick={() => setFane('aktivitet')} className="text-left decoration-black/20 underline-offset-2 hover:underline" title="Se hele tidslinjen i Aktivitet">{`Åpnet ${valgt.aapninger}×${valgt.sistAapnet ? ` · sist ${naarSist(valgt.sistAapnet)}` : ''}`}</button>
+              ? <button key="tb" type="button" onClick={() => gaaTil('historikk')} className="text-left decoration-black/20 underline-offset-2 hover:underline" title="Se hele tidslinjen">{`Åpnet ${valgt.aapninger}×${valgt.sistAapnet ? ` · sist ${naarSist(valgt.sistAapnet)}` : ''}`}</button>
               : 'Ikke åpnet ennå'],
           ].filter(([, v]) => v != null && v !== '').map(([l, v]) => (
             <div key={l} className="min-w-0">
@@ -1599,171 +1596,43 @@ export default function Salgsradar({ apiKey }) {
             </div>
           ))}
         </dl>
-        <div className={`flex gap-2 ${toKol ? 'mt-6 flex-col' : 'mt-5 flex-wrap'}`}>
-          <button onClick={() => kopierLenke(valgt)} data-testid="radar-detaljer-kopier-lenke" className={`${KNAPP_GHOST} justify-center bg-white`}>
+        <div className="mt-6 flex flex-wrap gap-2">
+          <button onClick={() => kopierLenke(valgt)} data-testid="radar-detaljer-kopier-lenke" className={KNAPP_GHOST}>
             {kopiert ? <Check className="h-3.5 w-3.5 text-[#1f7a45]" /> : <Copy className="h-3.5 w-3.5" />} {kopiert ? 'Kopiert!' : 'Kopier tilbudslenke'}
           </button>
-          <a href={`/tilbud/${valgt.tilbudSlug}`} target="_blank" rel="noreferrer" data-testid="radar-detaljer-aapne-tilbud" className={`${KNAPP_GHOST} justify-center bg-white`}>
+          <a href={`/tilbud/${valgt.tilbudSlug}`} target="_blank" rel="noreferrer" data-testid="radar-detaljer-aapne-tilbud" className={KNAPP_GHOST}>
             Se tilbudssiden <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
-      </aside>
-    );
-
-    const sekOversikt = (
-      <div data-testid="radar-oversikt" className={toKol ? 'mx-auto grid w-full max-w-[1160px] grid-cols-[minmax(0,1fr)_300px] items-start gap-10' : 'mx-auto max-w-[860px]'}>
-        <div className="min-w-0">
-          {/* Pipeline — hvor i løpet leaden er; klikk på et steg for å flytte den */}
-          {['tapt', 'ikke_relevant'].includes(valgt.status) ? (
-            <div className="mb-5 flex items-center gap-3" data-testid="radar-pipeline">
-              <span className="text-[13px] font-semibold text-[#b3261e]">{valgt.status === 'tapt' ? 'Markert som tapt' : 'Markert som ikke relevant'}</span>
-              {valgt.salg?.arsak?.valg && <span className="text-[12.5px] text-[#8f8a82]">{valgt.salg.arsak.valg}</span>}
-            </div>
-          ) : (
-            <div className="mb-5 flex gap-1.5" data-testid="radar-pipeline">
-              {STATUSER.filter((s) => !['tapt', 'ikke_relevant'].includes(s.k)).map((s, i, arr) => {
-                const aktIdx = arr.findIndex((x) => x.k === valgt.status);
-                return (
-                  <button key={s.k} onClick={() => onsketStatus(valgt, s.k)} disabled={autoAktiv} title={`Sett status: ${s.l}`} data-testid={`radar-pipeline-${s.k}`}
-                    className="group/st min-w-0 flex-1 disabled:cursor-not-allowed">
-                    <span className={`block h-[4px] rounded-full transition-colors ${i <= aktIdx ? (valgt.status === 'vunnet' ? 'bg-[#1f7a45]' : 'bg-[#1c1917]') : 'bg-black/[0.07] group-hover/st:bg-black/[0.18]'}`} />
-                    <span className={`mt-2 block truncate text-left text-[12.5px] transition-colors ${i === aktIdx ? 'font-semibold text-[#1c1917]' : 'text-[#a6a19a] group-hover/st:text-[#57534e]'}`}>{s.l}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="space-y-3">
-            {/* Salg — tildeling, pipeline-handlinger, oppfølging og salgslogg */}
-            {aktor && (
-              <SalgSeksjon lead={valgt} aktor={aktor} selgere={selgere} statuser={STATUSER}
-                onTildel={tildel} onsketStatus={onsketStatus} onOppfolging={settOppfolging} />
-            )}
-            {/* Neste handling — kompakt handlingsblokk, ikke editorial */}
-            {steg ? (
-              <section className={FLATE} data-testid="radar-neste-steg">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-                  {StegIkon && (
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#1c1917] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                      <StegIkon className="h-[18px] w-[18px]" />
-                    </span>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[16px] font-semibold leading-snug text-[#1c1917]">{steg.t}</p>
-                    {stegKontekst && <p className="mt-1 max-w-[520px] text-[13px] leading-relaxed text-[#8f8a82]">{stegKontekst}</p>}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {valgt.status === 'ny' && (
-                      <button onClick={() => analyser(valgt.id)} disabled={analyserer} data-testid="radar-steg-analyser" className={KNAPP_PRIMAER}>
-                        {analyserer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Kjør AI-analyse
-                      </button>
-                    )}
-                    {valgt.status === 'analysert' && (
-                      <>
-                        {valgt.kontaktTlf ? (
-                          <a href={`tel:${valgt.kontaktTlf}`} data-testid="radar-steg-ring" className={KNAPP_PRIMAER}>
-                            <Phone className="h-3.5 w-3.5" /> Kontakt huseier
-                          </a>
-                        ) : (
-                          <button onClick={() => kopierMelding(valgt)} data-testid="radar-steg-kopier" className={KNAPP_PRIMAER}>
-                            {meldingKopiert ? <Check className="h-3.5 w-3.5 text-[#7ee2a8]" /> : <Copy className="h-3.5 w-3.5" />} {meldingKopiert ? 'Kopiert!' : 'Kopier FINN-melding'}
-                          </button>
-                        )}
-                        <button onClick={() => onsketStatus(valgt, 'kontaktet')} data-testid="radar-steg-kontaktet" className={`${KNAPP_GHOST} bg-white`}>
-                          Merk som kontaktet
-                        </button>
-                      </>
-                    )}
-                    {valgt.status === 'kontaktet' && (
-                      <>
-                        <button onClick={() => { kopierLenke(valgt); onsketStatus(valgt, 'dialog'); }} data-testid="radar-steg-send-tilbud" className={KNAPP_PRIMAER}>
-                          {kopiert ? <Check className="h-3.5 w-3.5 text-[#7ee2a8]" /> : <Copy className="h-3.5 w-3.5" />} Send tilbud
-                        </button>
-                        <button onClick={() => onsketStatus(valgt, 'dialog')} data-testid="radar-steg-dialog" className={`${KNAPP_GHOST} bg-white`}>
-                          Huseier svarte
-                        </button>
-                        <button onClick={() => onsketStatus(valgt, 'tapt')} data-testid="radar-steg-ikke-aktuelt"
-                          className="flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[12.5px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef]">
-                          Ikke aktuelt
-                        </button>
-                      </>
-                    )}
-                    {valgt.status === 'dialog' && (
-                      <>
-                        <button onClick={() => onsketStatus(valgt, 'vunnet')} data-testid="radar-steg-vunnet"
-                          className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[#1f7a45] px-3.5 text-[12.5px] font-medium text-white transition-all hover:bg-[#196a3b] active:scale-[0.98]">
-                          <Check className="h-3.5 w-3.5" /> Marker som vunnet
-                        </button>
-                        <button onClick={() => onsketStatus(valgt, 'tapt')} data-testid="radar-steg-ikke-aktuelt-dialog"
-                          className="flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[12.5px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef]">
-                          Ikke aktuelt
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </section>
-            ) : null}
-
-            {/* Regnestykket — svaret først, stort; breakdown under */}
-            <section className={FLATE} data-testid="radar-oversikt-regnestykke">
-              <div className="flex items-baseline justify-between">
-                <p className={ETIKETT}>Regnestykket for huseier</p>
-                <button onClick={() => setFane('tilbud')} data-testid="radar-juster-tilbud" className="text-[13px] font-medium text-[#6d28d9] hover:underline">Juster i Tilbud</button>
-              </div>
-              <p className="mt-3 text-[27px] font-bold leading-none tracking-[-0.01em] text-[#1c1917]" style={heading}>
-                {kr(rs.netto)}<span className="ml-1.5 text-[14px] font-medium tracking-normal text-[#a6a19a]" style={{ fontFamily: 'var(--font-body)' }}>/mnd til huseier</span>
-              </p>
-              <dl className="mt-4 max-w-[480px] space-y-2 border-t border-black/[0.06] pt-3.5">
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-[13.5px] text-[#6f6a63]">Anbefalt leie</dt>
-                  <dd className="text-[13.5px] font-semibold text-[#1c1917]">{kr(rs.anbefalt)}<span className="font-normal text-[#a6a19a]">/mnd</span></dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-[13.5px] text-[#6f6a63]">DigiHome-honorar ({rs.pct} % eks. mva)</dt>
-                  <dd className="text-[13.5px] text-[#6f6a63]">−{kr(rs.honorar)}</dd>
-                </div>
-                {rs.gevinst != null && (
-                  <div className="flex items-baseline justify-between gap-4">
-                    <dt className="text-[13px] text-[#a6a19a]">vs. dagens annonse ({kr(valgt.pris)})</dt>
-                    <dd className={`text-[13px] font-semibold ${rs.gevinst >= 0 ? 'text-[#1f7a45]' : 'text-[#c2413b]'}`}>{rs.gevinst >= 0 ? '+' : '−'}{kr(Math.abs(rs.gevinst))}</dd>
-                  </div>
-                )}
-              </dl>
-            </section>
-
-            {/* Siste aktivitet — ekte hendelser, gruppert */}
-            <section className={FLATE} data-testid="radar-oversikt-aktivitet">
-              <div className="flex items-baseline justify-between">
-                <p className={ETIKETT}>Siste aktivitet</p>
-                <button onClick={() => setFane('aktivitet')} data-testid="radar-se-aktivitet" className="text-[13px] font-medium text-[#6d28d9] hover:underline">Se alt</button>
-              </div>
-              <div className="mt-3.5 space-y-3">
-                {hendelser.slice(0, 4).map((h, i) => {
-                  const Ik = HENDELSE_IKON[h.type] || StickyNote;
-                  return (
-                    <p key={h.id || `${h.type}-${i}`} className="flex items-start gap-2.5 text-[14px] text-[#3f3b35]">
-                      <Ik className="mt-[3px] h-3.5 w-3.5 shrink-0 text-[#aca79f]" />
-                      <span className="min-w-0 flex-1 truncate">{h.tekst}</span>
-                      <span className="shrink-0 text-[12px] text-[#aca79f]">{naarSist(h.at)}</span>
-                    </p>
-                  );
-                })}
-                {hendelser.length === 0 && <p className="text-[14px] text-[#aca79f]">Ingen aktivitet ennå.</p>}
-                {valgt.notat ? (
-                  <p className="flex items-start gap-2.5 text-[14px] text-[#3f3b35]" title="Festet notat"><StickyNote className="mt-[3px] h-3.5 w-3.5 shrink-0 text-[#aca79f]" /><span className="line-clamp-2">{valgt.notat}</span></p>
-                ) : null}
-              </div>
-            </section>
+        {/* Statusoverstyring — skuffen dekker normalflyten, dette er for avvik */}
+        <div className="mt-8 border-t border-black/[0.07] pt-5">
+          <p className={ETIKETT}>Status</p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {STATUSER.map((s) => (
+              <button key={s.k} onClick={() => onsketStatus(valgt, s.k)} disabled={autoAktiv || valgt.status === s.k} data-testid={`radar-status-${s.k}`}
+                className={`flex h-[30px] items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium transition-all ${valgt.status === s.k ? 'border-transparent bg-[#1c1917] text-white' : 'border-black/[0.08] bg-white text-[#57534e] hover:border-black/25'} disabled:cursor-default`}>
+                <span className="h-[6px] w-[6px] rounded-full" style={{ background: valgt.status === s.k ? '#fff' : s.farge }} />
+                {s.l}
+              </button>
+            ))}
           </div>
-
-          {!toKol && railDetaljer}
         </div>
-
-        {toKol && railDetaljer}
+        {/* Faresone */}
+        <div className="mt-8 border-t border-black/[0.07] pb-2 pt-5">
+          {!sletteBekreft ? (
+            <button onClick={() => setSletteBekreft(true)} data-testid="radar-slett" className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12.5px] font-medium text-[#a8a29a] transition-colors hover:bg-[#fdf0ef] hover:text-[#c2413b]">
+              <Trash2 className="h-3.5 w-3.5" /> Slett lead
+            </button>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <button onClick={() => slett(valgt.id)} data-testid="radar-slett-bekreft" className="rounded-[8px] bg-[#fdf0ef] px-3 py-1.5 text-[12.5px] font-bold text-[#c2413b]">Ja, slett</button>
+              <button onClick={() => setSletteBekreft(false)} className="rounded-[8px] px-2.5 py-1.5 text-[12.5px] font-medium text-[#a8a29a]">Avbryt</button>
+            </span>
+          )}
+        </div>
       </div>
     );
+
 
     /* ── Live forhåndsvisning av tilbudssiden — sticky, teller ikke som åpning ── */
     const sekPreview = (
@@ -1786,115 +1655,25 @@ export default function Salgsradar({ apiKey }) {
     );
 
     return (
-      <div className="flex h-full min-h-0 flex-col bg-white" data-testid="radar-skuff">
-        {/* Panelhode — komprimert: tittel + meta, én statuscontrol og én primær handling */}
-        <div className="border-b border-black/[0.06] px-4 pt-3 sm:px-7">
-          <div className="flex items-start gap-2.5">
-            <button onClick={() => { setValgtId(null); setUtvidet(false); }} data-testid="radar-skuff-lukk" aria-label="Lukk"
-              className="mt-0.5 shrink-0 rounded-lg p-1.5 text-[#a8a29a] transition-colors hover:bg-[#f3f2f0] hover:text-[#333]">
-              {splitt || utvidet ? <X className="h-[18px] w-[18px]" /> : <ArrowLeft className="h-[18px] w-[18px]" />}
-            </button>
-            <div className="min-w-0 flex-1">
-              <h2 className="truncate text-[20px] font-bold leading-tight tracking-[-0.015em] sm:text-[23px]" style={heading}>{pent(valgt.adresse || valgt.tittel)}</h2>
-              <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-[#8a857c]">
-                <span className="flex items-center gap-1.5">
-                  <span className="font-semibold text-[#1c1917]">{kr(valgt.pris)}/mnd</span>
-                  {(() => {
-                    const kutt = sisteKutt(valgt);
-                    return kutt ? (
-                      <span className="font-semibold text-[#0e7490]" title={`${tall(kutt.fra)} → ${tall(kutt.til)} · ${naarSist(kutt.at)}`} data-testid="radar-panel-kutt">↓ −{kutt.pct} %</span>
-                    ) : null;
-                  })()}
-                </span>
-                {valgt.m2 ? <span>{valgt.m2} m²</span> : null}
-                {valgt.soverom ? <span>{valgt.soverom} sov</span> : null}
-                {(valgt.kontaktNavn || valgt.kontaktTlf) ? (
-                  <span className="flex items-center gap-1" data-testid="radar-panel-kontakt">
-                    {valgt.kontaktNavn ? <span className="text-[#57534e]">{valgt.kontaktNavn}</span> : null}
-                    {valgt.kontaktTlf ? (
-                      <a href={`tel:${valgt.kontaktTlf}`} className="text-[#57534e] hover:text-[#1c1917] hover:underline" onClick={(e) => e.stopPropagation()}>{fmtTlf(valgt.kontaktTlf)}</a>
-                    ) : null}
-                  </span>
-                ) : null}
-                <AnnonsorBadge annonsor={valgt.annonsor} />
-                <a href={valgt.kildeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-semibold text-[#6d28d9] hover:underline">FINN <ExternalLink className="h-3 w-3" /></a>
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-1.5">
-              {/* Én kompakt statuscontrol — erstatter raden med status-piller */}
-              <div className="relative">
-                <button onClick={() => setStatusMeny((v) => !v)} disabled={autoAktiv} data-testid="radar-status-knapp"
-                  className="flex h-8 items-center gap-1.5 rounded-[8px] border border-black/[0.08] bg-white px-2.5 text-[12px] font-medium text-[#404040] transition-colors hover:bg-[#f7f6f3] disabled:opacity-45">
-                  <span className="h-[6px] w-[6px] rounded-full" style={{ background: statusStil(valgt.status).farge }} />
-                  <span className="hidden sm:inline">{statusStil(valgt.status).l}</span>
-                  <ChevronDown className="h-3 w-3 text-[#a8a29a]" />
-                </button>
-                {statusMeny && (
-                  <>
-                    <div className="fixed inset-0 z-[140]" onClick={() => setStatusMeny(false)} />
-                    <div className="absolute right-0 z-[141] mt-1 w-[168px] rounded-[10px] border border-black/[0.08] bg-white py-1 shadow-[0_10px_32px_rgba(0,0,0,0.10)]" data-testid="radar-status-meny">
-                      {STATUSER.map((s) => (
-                        <button key={s.k} onClick={() => onsketStatus(valgt, s.k)} data-testid={`radar-status-${s.k}`}
-                          className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] transition-colors ${valgt.status === s.k ? 'font-semibold text-[#141414]' : 'text-[#57534e] hover:bg-[#f7f6f3]'}`}>
-                          <span className="h-[6px] w-[6px] rounded-full" style={{ background: s.farge }} />
-                          {s.l}
-                          {valgt.status === s.k && <Check className="ml-auto h-3.5 w-3.5" />}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-              {/* Én primær handling — statusstyrt */}
-              {primaer && (primaer.href ? (
-                <a href={primaer.href} data-testid="radar-hode-primaer" className={`${KNAPP_PRIMAER} hidden sm:flex`}>
-                  <primaer.ikon className="h-3.5 w-3.5" /> {primaer.l}
-                </a>
-              ) : (
-                <button onClick={primaer.gjor} disabled={primaer.spinner} data-testid="radar-hode-primaer" className={`${KNAPP_PRIMAER} hidden sm:flex`}>
-                  {primaer.spinner ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <primaer.ikon className="h-3.5 w-3.5" />} {primaer.l}
-                </button>
-              ))}
-              <button onClick={() => setUtvidet((u) => !u)} data-testid="radar-utvid" title={utvidet ? 'Minimer visningen' : 'Utvid til stor visning'}
-                className="hidden rounded-lg p-2 text-[#a8a29a] transition-colors hover:bg-[#f4f0fb] hover:text-[#6d28d9] lg:block">
-                {utvidet ? <Minimize2 className="h-[16px] w-[16px]" /> : <Maximize2 className="h-[16px] w-[16px]" />}
-              </button>
-            </div>
-          </div>
-          {/* Record-faner — listen er navigasjon, recorden er arbeidsflaten */}
-          <div className="mt-2.5 flex items-center gap-4 overflow-x-auto" data-testid="radar-faner">
-            {[['oversikt', 'Oversikt'], ['bilder', `Bilder${nB ? ` ${nB}` : ''}`], ['ai', 'AI'], ['tilbud', 'Tilbud'], ['aktivitet', 'Aktivitet']].map(([k, l]) => (
-              <button key={k} onClick={() => setFane(k)} data-testid={`radar-fane-${k}`}
-                className={`shrink-0 whitespace-nowrap border-b-2 pb-2 text-[13.5px] font-semibold transition-colors ${fane === k ? 'border-[#141414] text-[#141414]' : 'border-transparent text-[#8a857c] hover:text-[#404040]'}`}>
-                {l}
-              </button>
-            ))}
-          </div>
+      <div className="flex h-full min-h-0 bg-white" data-testid="radar-arbeidsrom">
+        {/* Venstre rail — samme minimalistiske salgs-skuff; knappene ruller lerretet */}
+        <div className="hidden w-[440px] shrink-0 border-r border-black/[0.06] lg:block xl:w-[560px]">
+          {skuffRail}
         </div>
 
-        {/* Annonsen fjernet fra FINN — agenten meldte deaktivering */}
-        {valgt.annonseAktiv === false && !autoAktiv && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-black/[0.05] bg-[#f4f2ee] px-4 py-2.5 sm:px-7" data-testid="radar-deaktivert">
-            <p className="text-[12px] font-medium text-[#57534e]">
-              Annonsen er tatt av FINN{valgt.deaktivertAt ? ` ${naarSist(valgt.deaktivertAt)}` : ''} — trolig utleid eller trukket.
-            </p>
-            {!['vunnet', 'tapt', 'ikke_relevant'].includes(valgt.status) && (
-              <button onClick={() => onsketStatus(valgt, 'tapt')} data-testid="radar-deaktivert-tapt" className={`${KNAPP_GHOST} ml-auto h-7 px-2.5 text-[11.5px]`}>
-                Merk som tapt
-              </button>
-            )}
+        {/* Høyre arbeidslerret — én rolig scroll, ingen faner */}
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-[#fcfbf9]">
+          {/* Vinduskontroller — flyter diskret øverst til høyre */}
+          <div className="absolute right-3 top-3 z-30 flex items-center gap-0.5 rounded-full bg-white/85 p-1 shadow-[0_4px_16px_rgba(28,25,23,0.10)] ring-1 ring-black/[0.05] backdrop-blur-md">
+            <button onClick={() => setUtvidet(false)} data-testid="radar-utvid" title="Minimer til skuff"
+              className="rounded-full p-2 text-[#a8a29a] transition-colors hover:bg-black/[0.05] hover:text-[#1c1917]">
+              <Minimize2 className="h-4 w-4" />
+            </button>
+            <button onClick={() => { setValgtId(null); setUtvidet(false); setSletteBekreft(false); }} data-testid="radar-skuff-lukk" aria-label="Lukk"
+              className="rounded-full p-2 text-[#a8a29a] transition-colors hover:bg-black/[0.05] hover:text-[#1c1917]">
+              <X className="h-[18px] w-[18px]" />
+            </button>
           </div>
-        )}
-        {valgt.status === 'vunnet' && !autoAktiv && (
-          <div className="flex flex-wrap items-center gap-2 border-b border-black/[0.05] bg-[#eef6f0] px-4 py-2.5 sm:px-7" data-testid="radar-vunnet-linje">
-            <Check className="h-4 w-4 shrink-0 text-[#1f7a45]" />
-            <p className="text-[12px] font-medium text-[#1f7a45]">
-              {valgt.salg?.vunnet
-                ? `Vunnet av ${valgt.salg.vunnet.selger?.navn || 'selger'} — provisjon ${kr(valgt.salg.vunnet.provisjon)}. Neste: opprett forvaltningsavtale i DigiHome-plattformen.`
-                : `Vunnet — ca. ${kr(rs.honorar)}/mnd i honorar. Neste: opprett forvaltningsavtale i DigiHome-plattformen.`}
-            </p>
-          </div>
-        )}
 
         {/* Automatikk-progresjonen vises i låse-overlayet under — her kun avvik */}
         {valgt.auto?.status === 'feilet' && (
@@ -1919,38 +1698,35 @@ export default function Salgsradar({ apiKey }) {
           </div>
         )}
 
-        {/* Panelinnhold — fanestyrt: Bilder er én integrert media-arbeidsflate */}
-        <div className="relative flex min-h-0 flex-1 flex-col">
-          <div className={`min-h-0 flex-1 overflow-y-auto bg-white ${autoAktiv ? 'pointer-events-none select-none' : ''}`}>
-            <div className="px-4 py-5 sm:px-7">
-              {fane === 'oversikt' && sekOversikt}
-              {fane === 'bilder' && sekBilder}
-              {fane === 'ai' && sekAnalyse}
-              {fane === 'tilbud' && (toKol ? (
-                <div className="grid grid-cols-[minmax(0,1fr)_minmax(340px,420px)] items-start gap-8">
+          {/* Lerretet — én rolig scroll: Bilder → Tilbudet → Historikk */}
+          <div className={`min-h-0 flex-1 overflow-y-auto ${autoAktiv ? 'pointer-events-none select-none' : ''}`}>
+            <div className="mx-auto w-full max-w-[1160px] px-4 pb-10 pt-7 sm:px-8">
+
+              <section id="rom-bilder" className="scroll-mt-6">
+                <p className={ETIKETT}>Bilder{nB ? ` · ${nB}` : ''}</p>
+                <div className="mt-5">{sekBilder}</div>
+              </section>
+
+              <section id="rom-tilbud" className="mt-14 scroll-mt-6 border-t border-black/[0.07] pt-10">
+                <p className={ETIKETT}>Tilbudet</p>
+                <div className="mt-5 grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
                   <div className="min-w-0 space-y-7">{sekOkonomi}{sekMelding}{sekTilbud}{sekBeskrivelse}</div>
                   {sekPreview}
                 </div>
-              ) : (
-                <div className="mx-auto max-w-[860px] space-y-7">{sekOkonomi}{sekMelding}{sekTilbud}{sekBeskrivelse}</div>
-              ))}
-              {fane === 'aktivitet' && sekAktivitet}
-            </div>
-          </div>
+              </section>
 
-          {/* Panelfot */}
-          <div className="flex items-center gap-2 border-t border-black/[0.05] bg-white px-4 py-2.5 sm:px-7">
-            {!sletteBekreft ? (
-              <button onClick={() => setSletteBekreft(true)} data-testid="radar-slett" className="flex items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-[12px] font-medium text-[#c2beb8] transition-colors hover:bg-[#fdf0ef] hover:text-[#c2413b]">
-                <Trash2 className="h-3.5 w-3.5" /> Slett lead
-              </button>
-            ) : (
-              <span className="flex items-center gap-1.5">
-                <button onClick={() => slett(valgt.id)} data-testid="radar-slett-bekreft" className="rounded-[7px] bg-[#fdf0ef] px-3 py-1.5 text-[12px] font-bold text-[#c2413b]">Ja, slett</button>
-                <button onClick={() => setSletteBekreft(false)} className="rounded-[7px] px-2.5 py-1.5 text-[12px] font-medium text-[#a8a29a]">Avbryt</button>
-              </span>
-            )}
-            <p className="ml-auto text-[11px] text-[#b8b2a9]">Hentet {naarSist(valgt.createdAt)}</p>
+              <section id="rom-historikk" className="mt-14 scroll-mt-6 border-t border-black/[0.07] pt-10">
+                <p className={ETIKETT}>Historikk</p>
+                <div className="mt-5">{sekAktivitet}</div>
+                <details className="group mt-10">
+                  <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12.5px] font-semibold text-[#8a857c] transition-colors hover:text-[#1c1917] [&::-webkit-details-marker]:hidden">
+                    <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" /> AI-vurderingen i detalj
+                  </summary>
+                  <div className="mt-5">{sekAnalyse}</div>
+                </details>
+                <div className="mt-10 border-t border-black/[0.07] pt-8">{sekDetaljer}</div>
+              </section>
+            </div>
           </div>
 
           {/* Låst mens automatikken jobber — elegant overlay med live fremdrift */}
@@ -2170,7 +1946,6 @@ export default function Salgsradar({ apiKey }) {
             <select value={sort.key} onChange={(e) => setSort({ key: e.target.value, dir: 'desc' })} data-testid="radar-sort" aria-label="Sortering"
               className="hidden h-[30px] rounded-full border border-black/[0.07] bg-white px-2.5 text-[12px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] outline-none focus:border-[#1c1917]/25 sm:block">
               <option value="potensial">Høyest potensial</option>
-              <option value="kvalitet">Annonsekvalitet</option>
               <option value="nyeste">Nyeste først</option>
               <option value="aapnet">Flest åpninger</option>
               <option value="pris">Høyest leie</option>
@@ -2329,15 +2104,6 @@ export default function Salgsradar({ apiKey }) {
                       <th className="sticky top-0 z-10 cursor-pointer bg-white/90 px-2 py-3 text-center text-[10px] font-bold uppercase tracking-[0.09em] text-[#57534e] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" onClick={() => sorter('potensial')} data-testid="radar-tabell-sort-potensial">
                         <span className="flex items-center justify-center gap-0.5">Potensial <SortPil k="potensial" /></span>
                       </th>
-                      <th className="sticky top-0 z-10 cursor-pointer bg-white/90 px-2 py-3 text-center text-[10px] font-bold uppercase tracking-[0.09em] text-[#57534e] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" onClick={() => sorter('salgskraft')} data-testid="radar-tabell-sort-salgskraft" title="Hvor selgende annonsen er, sett med leietakers øyne">
-                        <span className="flex items-center justify-center gap-0.5">Salgskraft <SortPil k="salgskraft" /></span>
-                      </th>
-                      <th className="sticky top-0 z-10 cursor-pointer bg-white/90 px-2 py-3 text-center text-[10px] font-bold uppercase tracking-[0.09em] text-[#57534e] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" onClick={() => sorter('kvalitet')}>
-                        <span className="flex items-center justify-center gap-0.5">Kvalitet <SortPil k="kvalitet" /></span>
-                      </th>
-                      {DEL_ETIKETTER.map(([k, lang, kort]) => (
-                        <th key={k} className="sticky top-0 z-10 bg-white/90 px-1.5 py-3 text-center text-[10px] font-bold uppercase tracking-[0.09em] text-[#a8a29a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" title={lang}>{kort}</th>
-                      ))}
                       <th className="sticky top-0 z-10 cursor-pointer bg-white/90 px-2 py-3 text-right text-[10px] font-bold uppercase tracking-[0.09em] text-[#57534e] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" onClick={() => sorter('pris')}>
                         <span className="flex items-center justify-end gap-0.5">Leie <SortPil k="pris" /></span>
                       </th>
@@ -2351,7 +2117,6 @@ export default function Salgsradar({ apiKey }) {
                     {sortert.map((l) => {
                       const erValgt = utvalg.has(l.id);
                       const st = statusStil(l.status);
-                      const d = l.ai?.deler || null;
                       return (
                         <tr key={l.id} onClick={() => { setValgtId(l.id); setSletteBekreft(false); }} data-testid={`radar-lead-${l.id}`}
                           className={`cursor-pointer border-b border-black/[0.04] transition-colors last:border-0 ${erValgt ? 'bg-[#faf9f7]' : 'hover:bg-[#fbfaf9]'}`}>
@@ -2418,26 +2183,6 @@ export default function Salgsradar({ apiKey }) {
                             )}
                           </td>
                           <td className="px-2 py-2 text-center"><span className="inline-flex justify-center"><PotensialBadge p={l.potensial} id={l.id} /></span></td>
-                          <td className="px-2 py-2 text-center">
-                            {l.ai?.salgskraft?.score != null ? (
-                              <ScoreRing verdi={l.ai.salgskraft.score} storrelse={40} strek={3.5}
-                                tittel={`Salgskraft ${l.ai.salgskraft.score}/100 — hvor selgende annonsen er`} />
-                            ) : <span className="text-[12px] text-[#c9c4bd]">–</span>}
-                          </td>
-                          <td className="px-2 py-2 text-center">
-                            {l.potensial?.annonseScore != null ? (
-                              <ScoreRing verdi={l.potensial.annonseScore} forelopig={l.potensial.forelopig} storrelse={40} strek={3.5}
-                                tittel={`Annonsekvalitet ${l.potensial.annonseScore}/100`} />
-                            ) : <span className="text-[12px] text-[#c9c4bd]">–</span>}
-                          </td>
-                          {DEL_ETIKETTER.map(([k, lang]) => (
-                            <td key={k} className="px-1.5 py-2 text-center">
-                              {d?.[k] != null ? (
-                                <ScoreRing verdi={Math.round(d[k] * 10)} storrelse={32} strek={3} farge={delFarge(d[k])}
-                                  tittel={`${lang}: ${d[k]}/10`} />
-                              ) : <span className="text-[12px] text-[#ddd8d0]">–</span>}
-                            </td>
-                          ))}
                           <td className="px-2 py-2 text-right text-[12.5px] font-semibold text-[#44403c]" style={heading}>{tall(l.pris)}</td>
                           <td className="px-2 py-2 text-right text-[12.5px] text-[#78716c]" style={heading}>{l.analyse?.anbefaltLeie ? tall(l.analyse.anbefaltLeie) : '–'}</td>
                           <td className="px-3.5 py-2 text-right text-[12.5px] text-[#0e7490]">{l.aapninger || 0}</td>
@@ -2459,22 +2204,12 @@ export default function Salgsradar({ apiKey }) {
         </div>
       )}
 
-      {/* Utvidet: stor sentrert visning (fra alle moduser) */}
-      {valgt && utvidet && (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-2 sm:p-5">
-          <div className="absolute inset-0 bg-[#0a0a0a]/50" onClick={() => { setUtvidet(false); }} />
-          <div className="dh-scale-in relative h-full w-full max-w-[1320px] overflow-hidden rounded-[12px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-            {panel}
-          </div>
-        </div>
-      )}
-
-      {/* Ikke-utvidet: minimal salgs-skuff som høyre-ark / fullskjerm (mobil) */}
-      {valgt && !splitt && !utvidet && (
+      {/* Skuff som høyre-ark — utvid (⤢) lar samme ark vokse til arbeidsrom */}
+      {valgt && (utvidet || !splitt) && (
         <div className="fixed inset-0 z-[125] flex justify-end">
-          <div className="absolute inset-0 bg-[#0a0a0a]/40" onClick={() => setValgtId(null)} />
-          <div className="dh-pop relative h-full w-full overflow-hidden bg-white shadow-2xl lg:w-[560px]">
-            {skuffEnkel}
+          <div className="absolute inset-0 bg-[#0a0a0a]/40" onClick={() => (utvidet ? setUtvidet(false) : setValgtId(null))} />
+          <div className={`dh-pop relative h-full w-full overflow-hidden bg-white shadow-2xl transition-[width] duration-500 ease-[cubic-bezier(0.32,0.72,0.24,1)] ${utvidet ? 'lg:w-[calc(100vw-48px)] 2xl:w-[min(100vw-64px,1840px)]' : 'lg:w-[560px]'}`}>
+            {utvidet ? panel : skuffEnkel}
           </div>
         </div>
       )}

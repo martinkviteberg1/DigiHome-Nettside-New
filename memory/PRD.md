@@ -790,3 +790,18 @@ Google Ads-styring via native REST API).
 - «Se over tilbudet»: iframe-forhåndsvisning m/ ?preview=1 (teller ikke åpning) + «Rediger tilbudet» → fullvisning på Tilbud-fanen.
 - Utsett-meny (I morgen/Fredag/Neste uke) bruker salg.oppfolging.
 - Bildestyling er fortsatt MANUELT valg (koster AI-kreditter) — ett-trykks «Style de 5 beste» bruker leadens stilforslag.
+
+## Salgsradar: Arbeidsrom uten faner + voksende høyre-ark (aug 2026)
+- Fullvisningen er ombygd: utvid (⤢) lar høyre-arket VOKSE i bredden (560px → nesten fullbredde, animert transition-[width]) — ingen modal. Samme SalgsSkuffEnkel blir venstre rail (prop onAapneFane → gaaTil(seksjon)).
+- Lerretet har INGEN faner: én rolig scroll med tre seksjoner — #rom-bilder → #rom-tilbud → #rom-historikk. Skuffens knapper («Bedre bilder», «Se over tilbudet») ruller til seksjonen. Historikk = tidslinje/notat + AI-vurdering bak <details> + trimmet Detaljer-grid + statusoverstyring + slett.
+- Gamle Oversikt-fane, panelhode, statusdropdown, primær-CTA og panelfot er FJERNET (skuffen dekker alt).
+
+## Salgsradar: Verdensklasse-forenkling (aug 2026 — «hva trenger selgeren egentlig?»)
+- LISTE/TABELL: Salgskraft-, Kvalitet- og delscore-kolonnene fjernet — kun Potensial igjen (+ sortvalg «Annonsekvalitet» fjernet). Tabell: Bolig/Bydel/Utleier/Status/Potensial/Leie/Anbefalt/Åpnet.
+- SKUFF: segmentert fremdriftslinje fjernet (statuschip i hodet i stedet); selgerkort → én rolig linje (leder klikker for tildelingsmeny, 280px popover); VÅRE ARGUMENTER viser KUN aktive rader — grå «alt ok»-rader borte; når ingenting krever handling vises én linje «Annonsen står sterkt …» (testid skuff-arg-alt-ok).
+- ARBEIDSROM: stylingvalg (FINN-klar/Lysløft/Møblering, Varsom/Full, fritekst) bak <details> «Juster stil» — primærknapp «Forbedre dette bildet» først; tilbudstekstene (personlig intro, potensialtekst, annonseutkast) bak <details> «Rediger tekstene i tilbudet».
+
+## Tilbudsside v2 (aug 2026) — ivory/ink design-DNA fra DigiHomes huseier-tilbud
+- /app/app/tilbud/[slug]/page.js totalredesignet: mørkt filmatisk cover (boligfoto, hvit logo /digihome-logo-hvit.svg — NY fil, lastet opp til objektlagring) → dokument avsløres (ivory #FEFBFA, radier 26–36px) → konklusjon (anbefalt leie) → personlig brev + AVSENDERKORT → før/etter → prislinjal/grunnlag → sammenligning → økonomi → mørk arbeidsfordeling → tonal annonse-preview → FAQ → neste steg → mørk CTA «Ja, dette høres interessant ut».
+- Backend: GET /api/tilbud returnerer nå `selger` (offentlig trygt: navn/tittel/epost/telefon/avatar fra tildelt selger; null → generisk Sarah-fallback). POST /api/tilbud/kontakt flytter til Dialog og varsler owner/admin + TILDELT SELGER (dedupe). Backend-testagent: 6/6 bestått.
+- MERK: digihome-logo-white.svg har MØRKE bokstaver — bruk digihome-logo-hvit.svg på mørke flater.

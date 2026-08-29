@@ -4867,11 +4867,13 @@ async function handleRoute(request, { params }) {
       let bTk = {}; try { bTk = await request.json(); } catch (e) {}
       const rTk = await registrerTilbudKontakt(db, bTk.slug, bTk);
       if (!rTk.ok) return cors(NextResponse.json({ ok: false, error: rTk.error }, { status: rTk.status || 400 }));
-      // In-app varsel til alle owner/admin: huseier har svart på tilbudet
+      // In-app varsel til alle owner/admin + den tildelte selgeren: huseier har svart
       try {
         const adminsTk = await db.collection('admin_users').find({ role: { $in: ['owner', 'admin'] } }, { projection: { id: 1 } }).toArray();
-        for (const aTk of adminsTk) {
-          await varsle(db, aTk.id, null, { type: 'salgsradar', text: `Salgsradar: huseier svarte på tilbudet for ${rTk.adresse}` });
+        const mottakereTk = new Set(adminsTk.map((aTk) => aTk.id));
+        if (rTk.tildeltTilId) mottakereTk.add(rTk.tildeltTilId);
+        for (const idTk of mottakereTk) {
+          await varsle(db, idTk, null, { type: 'salgsradar', text: `Salgsradar: huseier svarte på tilbudet for ${rTk.adresse}` });
         }
       } catch (e) { /* varsling er best effort */ }
       return cors(NextResponse.json({ ok: true }));
