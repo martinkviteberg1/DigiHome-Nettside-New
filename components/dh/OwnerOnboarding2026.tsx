@@ -699,14 +699,38 @@ export default function OwnerOnboarding2026() {
     const self = SERVICES[0];
     const full = SERVICES[1];
     const fullUnavailable = !!form.postalCode && !isBergenArea(form.postalCode, form.city);
+    /* Personalisert overskrift — gatenavnet viderefører kartøyeblikket fra steg 1.
+       Kun ren gateadresse (uten postnr/sted), og bare når den er kort nok til å pryde en H1. */
+    const gateNavn = (() => {
+      let g = String(form.address || '').trim();
+      for (const suffiks of [`, ${form.postalCode} ${form.city}`, `, ${form.city}`]) {
+        if (form.city && g.toLowerCase().endsWith(suffiks.toLowerCase())) { g = g.slice(0, -suffiks.length); break; }
+      }
+      return g.length >= 3 && g.length <= 30 ? g : '';
+    })();
 
     return (
-      <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#f7f6f3]" data-testid="owner-onboarding-2026">
+      <div className="relative min-h-[100dvh] overflow-x-hidden" style={{ background: 'radial-gradient(100% 55% at 50% 0%, #f4eee5 0%, #f7f5f1 55%, #f6f4f0 100%)' }} data-testid="owner-onboarding-2026">
         <TopBar phase="service" onTilSteg={(p) => setPhase(p)} />
 
         <main className="relative mx-auto w-full max-w-[1140px] px-5 pb-16 pt-10 sm:px-8 sm:pb-20 lg:px-10 lg:pt-14" data-testid="onboarding-service-step">
-          <div className="mx-auto max-w-[760px] text-center">
-            <h1 className="text-[34px] font-bold leading-[1.02] tracking-[-0.045em] text-[#151310] sm:text-[48px] lg:text-[54px]" style={{ fontFamily: 'var(--font-heading)' }}>Velg hvordan du vil leie ut</h1>
+          {/* Koreografi: hode → ark → venstre → høyre → graf → reiselinje. Én rolig sekvens. */}
+          <style>{`
+            @keyframes dhArkInn { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes dhFadeOpp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes dhGraf { to { stroke-dashoffset: 0; } }
+            @keyframes dhReise { to { transform: scaleX(1); } }
+            .dh-hode { animation: dhFadeOpp 0.7s cubic-bezier(0.22,1,0.36,1) both; }
+            .dh-ark { animation: dhArkInn 0.85s cubic-bezier(0.22,1,0.36,1) 0.08s both; }
+            .dh-halvinn { animation: dhFadeOpp 0.7s cubic-bezier(0.22,1,0.36,1) both; }
+            .dh-graf { stroke-dasharray: 320; stroke-dashoffset: 320; animation: dhGraf 1.4s cubic-bezier(0.4,0,0.2,1) 0.9s forwards; }
+            .dh-reise { transform: scaleX(0); transform-origin: left; animation: dhReise 1.1s cubic-bezier(0.4,0,0.2,1) 1.1s forwards; }
+          `}</style>
+
+          <div className="dh-hode mx-auto max-w-[820px] text-center">
+            <h1 className="text-[32px] font-bold leading-[1.05] tracking-[-0.045em] text-[#151310] sm:text-[44px] lg:text-[50px]" style={{ fontFamily: 'var(--font-heading)' }}>
+              {gateNavn ? <>Hvordan vil du leie ut<br className="hidden sm:block" /> {gateNavn}?</> : 'Velg hvordan du vil leie ut'}
+            </h1>
             <p className="mx-auto mt-3.5 max-w-[46ch] text-[14.5px] leading-relaxed text-[#77716a] sm:text-[15.5px]">Uforpliktende — og du kan endre mening senere.</p>
           </div>
 
@@ -714,101 +738,96 @@ export default function OwnerOnboarding2026() {
             <p className="mx-auto mt-4 flex max-w-[700px] items-start justify-center gap-2 text-center text-[11.5px] leading-relaxed text-[#625d57]" data-testid="finn-lookup-note"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#7e22ce]" /> {finnLookupNote}</p>
           ) : null}
 
-          {/* ── To fremtider: systemet (lys) vs relasjonen (mørk). Statement-overskrifter,
-               ett strukturert inset-panel per kort — ingen svevende objekter, ingen dødluft. ── */}
-          <style>{`
-            @keyframes dhGraf { to { stroke-dashoffset: 0; } }
-            @keyframes dhReise { to { transform: scaleX(1); } }
-            .dh-graf { stroke-dasharray: 320; stroke-dashoffset: 320; animation: dhGraf 1.5s cubic-bezier(0.4,0,0.2,1) 0.4s forwards; }
-            .dh-reise { transform: scaleX(0); transform-origin: left; animation: dhReise 1.2s cubic-bezier(0.4,0,0.2,1) 0.6s forwards; }
-          `}</style>
-          <div className="mx-auto mt-10 grid max-w-[1060px] gap-5 lg:grid-cols-2 lg:gap-6">
+          {/* ── VALGARKET: én flate, to dører. Lys halvdel = systemet, mørk = relasjonen.
+               Alle rader deler nøyaktig samme høyder på tvers av sømmen. ── */}
+          <div className="dh-ark mx-auto mt-10 grid max-w-[1080px] overflow-hidden rounded-[32px] shadow-[0_60px_140px_-70px_rgba(23,21,19,0.75)] ring-1 ring-[#e7e2db] lg:mt-12 lg:grid-cols-2">
 
             {/* SELVFORVALTNING — systemet */}
             <button type="button" onClick={() => selectService(self.id)} data-testid="service-selvforvaltning"
-              className="group relative flex min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#e9e4dd] bg-white p-7 text-left shadow-[0_34px_90px_-52px_rgba(23,21,19,0.55)] transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_48px_100px_-48px_rgba(23,21,19,0.6)] sm:p-9">
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-[10.5px] font-extrabold uppercase tracking-[0.16em] text-[#9a938b]">Selvforvaltning</p>
-                <span className="rounded-full border border-[#e9e4dd] px-3 py-1 text-[9.5px] font-bold uppercase tracking-[0.1em] text-[#9a938b]">Hele Norge</span>
-              </div>
-              <h2 className="mt-5 text-[26px] font-bold leading-[1.08] tracking-[-0.03em] text-[#171513] sm:text-[30px]" style={{ fontFamily: 'var(--font-heading)' }}>Alle verktøyene.<br />Full kontroll.</h2>
-              <p className="mt-3 max-w-[38ch] text-[13.5px] leading-relaxed text-[#77716a]">Annonsering, kontrakt og husleie i ett rolig system — du styrer.</p>
+              className="group relative flex min-w-0 flex-col bg-white p-7 text-left transition-colors duration-300 hover:bg-[#fbfaf7] sm:p-9 lg:p-10">
+              <div className="dh-halvinn flex min-w-0 flex-1 flex-col" style={{ animationDelay: '0.25s' }}>
+                <div className="flex h-[26px] items-center justify-between gap-4">
+                  <p className="text-[10.5px] font-extrabold uppercase tracking-[0.16em] text-[#9a938b]">Selvforvaltning</p>
+                  <span className="rounded-full border border-[#e9e4dd] px-3 py-1 text-[9.5px] font-bold uppercase tracking-[0.1em] text-[#9a938b]">Hele Norge</span>
+                </div>
+                <h2 className="mt-6 text-[25px] font-bold leading-[1.08] tracking-[-0.03em] text-[#171513] sm:text-[29px]" style={{ fontFamily: 'var(--font-heading)' }}>Alle verktøyene.<br />Full kontroll.</h2>
+                <p className="mt-3 min-h-[44px] max-w-[38ch] text-[13.5px] leading-relaxed text-[#77716a]">Annonsering, kontrakt og husleie i ett rolig system — du styrer.</p>
 
-              {/* Produktpanelet — stram app-følelse, akse-justert */}
-              <div className="mt-7 flex-1 rounded-[20px] border border-[#ece8e1] bg-[#f6f4f0] p-4 sm:p-5" aria-hidden="true">
-                <div className="rounded-[14px] border border-[#e9e4dd] bg-white p-4 shadow-[0_10px_28px_-20px_rgba(23,21,19,0.45)]">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#9a938b]">Husleie · februar</p>
-                    <span className="rounded-full bg-[#e8f3ea] px-2.5 py-[3px] text-[10px] font-bold text-[#2f7d3f]">Betalt</span>
+                {/* Produktøyeblikket — appkort rett på flaten, ingen dobbel-nesting */}
+                <div className="mt-8 flex-1" aria-hidden="true">
+                  <div className="rounded-[16px] border border-[#e9e4dd] bg-white p-4 shadow-[0_18px_44px_-26px_rgba(23,21,19,0.5)]">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#9a938b]">Husleie · februar</p>
+                      <span className="rounded-full bg-[#e8f3ea] px-2.5 py-[3px] text-[10px] font-bold text-[#2f7d3f]">Betalt</span>
+                    </div>
+                    <div className="mt-1.5 flex items-end justify-between gap-4">
+                      <p className="text-[24px] font-bold tracking-[-0.03em] text-[#171513]">17 500 kr</p>
+                      <svg viewBox="0 0 150 40" className="mb-1 h-9 w-[45%]">
+                        <path d="M2 35 C22 33 34 29 50 26 S82 20 98 15 S128 8 148 4" fill="none" stroke="#57a468" strokeWidth="2.5" strokeLinecap="round" className="dh-graf" />
+                      </svg>
+                    </div>
                   </div>
-                  <div className="mt-1.5 flex items-end justify-between gap-4">
-                    <p className="text-[24px] font-bold tracking-[-0.03em] text-[#171513]">17 500 kr</p>
-                    <svg viewBox="0 0 150 40" className="mb-1 h-9 w-[45%]">
-                      <path d="M2 35 C22 33 34 29 50 26 S82 20 98 15 S128 8 148 4" fill="none" stroke="#57a468" strokeWidth="2.5" strokeLinecap="round" className="dh-graf" />
-                    </svg>
+                  <div className="mt-3 flex items-center gap-3 rounded-[16px] border border-[#e9e4dd] bg-white p-3.5 shadow-[0_14px_36px_-26px_rgba(23,21,19,0.45)]">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f2e5fb]"><Check className="h-3.5 w-3.5 text-[#7e22ce]" strokeWidth={3} /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px] font-bold leading-tight text-[#171513]">Kontrakt signert</p>
+                      <p className="text-[10.5px] leading-tight text-[#9a938b]">Leietaker · BankID</p>
+                    </div>
+                    <span className="text-[10.5px] font-medium text-[#b3ada5]">nå</span>
                   </div>
                 </div>
-                <div className="mt-3 flex items-center gap-3 rounded-[14px] border border-[#e9e4dd] bg-white p-3.5 shadow-[0_10px_28px_-22px_rgba(23,21,19,0.4)]">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f2e5fb]"><Check className="h-3.5 w-3.5 text-[#7e22ce]" strokeWidth={3} /></span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-bold leading-tight text-[#171513]">Kontrakt signert</p>
-                    <p className="text-[10.5px] leading-tight text-[#9a938b]">Leietaker · BankID</p>
-                  </div>
-                  <span className="text-[10.5px] font-medium text-[#b3ada5]">nå</span>
-                </div>
-              </div>
 
-              <div className="mt-6 flex items-center justify-between gap-4">
-                <p className="text-[12.5px] font-semibold text-[#77716a]">5 % av husleien<span className="text-[#b3ada5]"> · ingen bindingstid</span></p>
+                <p className="mt-8 border-t border-[#eee9e3] pt-4 text-[12.5px] font-semibold text-[#77716a]">5 % av husleien<span className="text-[#b3ada5]"> · ingen bindingstid</span></p>
+                <span className="mt-3.5 inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[#171513] px-5 text-[14px] font-bold text-white transition group-hover:bg-[#2b2824]">Velg selvforvaltning <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
               </div>
-              <span className="mt-3.5 inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[#171513] px-5 text-[14px] font-bold text-white transition group-hover:bg-[#2b2824]">Velg selvforvaltning <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
             </button>
 
             {/* FULL FORVALTNING — relasjonen. Utenfor Bergen: verdig venteliste */}
             <button type="button" onClick={() => selectService(full.id)} data-testid="service-full_forvaltning"
-              className="group relative flex min-w-0 flex-col overflow-hidden rounded-[28px] border border-white/[0.06] p-7 text-left shadow-[0_34px_90px_-46px_rgba(23,21,19,0.85)] transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_48px_100px_-42px_rgba(23,21,19,0.9)] sm:p-9"
+              className="group relative flex min-w-0 flex-col p-7 text-left sm:p-9 lg:p-10"
               style={{ background: 'radial-gradient(120% 90% at 88% -8%, rgba(210,152,255,0.13), transparent 52%), #161410' }}>
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-[10.5px] font-extrabold uppercase tracking-[0.16em] text-white/40">Full forvaltning</p>
-                {fullUnavailable ? (
-                  <span className="rounded-full border border-[#d298ff]/25 bg-[#d298ff]/10 px-3 py-1 text-[9.5px] font-bold uppercase tracking-[0.1em] text-[#dca9ff]" data-testid="forvaltning-kommer-snart">Kommer snart{form.city ? ` til ${form.city}` : ''}</span>
-                ) : (
-                  <span className="rounded-full border border-white/12 px-3 py-1 text-[9.5px] font-bold uppercase tracking-[0.1em] text-white/55">Mest komplett</span>
-                )}
-              </div>
-              <h2 className="mt-5 text-[26px] font-bold leading-[1.08] tracking-[-0.03em] text-white sm:text-[30px]" style={{ fontFamily: 'var(--font-heading)' }}>Lever nøkkelen.<br /><span className="text-[#dca9ff]">Vi tar oss av resten.</span></h2>
-              <p className="mt-3 max-w-[40ch] text-[13.5px] leading-relaxed text-white/55">Annonsering, visninger, kontrakt og oppfølging — du får bare rapportene.</p>
-
-              {/* Relasjonspanelet — forvalter + reisen, samlet i ett rolig panel */}
-              <div className={`mt-7 flex flex-1 flex-col justify-between rounded-[20px] border border-white/[0.08] bg-white/[0.04] p-4 sm:p-5 ${fullUnavailable ? 'opacity-85' : ''}`}>
-                <div className="flex items-center gap-3.5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/brand/sarah-sleeman-360.webp" alt="Sarah Sleeman, forvalter i DigiHome" className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-white/15" />
-                  <div className="min-w-0">
-                    <p className="text-[14px] font-bold leading-tight text-white">Sarah Sleeman</p>
-                    <p className="mt-0.5 text-[11.5px] leading-snug text-white/50">Din faste forvalter — gjennom hele leieforholdet</p>
-                  </div>
+              <span className="pointer-events-none absolute inset-0 bg-white/[0.03] opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden="true" />
+              <div className="dh-halvinn relative flex min-w-0 flex-1 flex-col" style={{ animationDelay: '0.38s' }}>
+                <div className="flex h-[26px] items-center justify-between gap-4">
+                  <p className="text-[10.5px] font-extrabold uppercase tracking-[0.16em] text-white/40">Full forvaltning</p>
+                  {fullUnavailable ? (
+                    <span className="rounded-full border border-[#d298ff]/25 bg-[#d298ff]/10 px-3 py-1 text-[9.5px] font-bold uppercase tracking-[0.1em] text-[#dca9ff]" data-testid="forvaltning-kommer-snart">Kommer snart{form.city ? ` til ${form.city}` : ''}</span>
+                  ) : (
+                    <span className="rounded-full border border-white/12 px-3 py-1 text-[9.5px] font-bold uppercase tracking-[0.1em] text-white/55">Mest komplett</span>
+                  )}
                 </div>
-                <div className="mt-5 border-t border-white/[0.08] pt-5" aria-hidden="true">
-                  <div className="relative">
-                    <div className="absolute left-[5px] right-[5px] top-[4.5px] h-px bg-white/12" />
-                    <div className="dh-reise absolute left-[5px] right-[5px] top-[4.5px] h-px bg-[#d298ff]/70" />
-                    <div className="relative flex justify-between gap-3">
-                      {['Annonsering', 'Innflytting', 'Oppfølging'].map((steg, i) => (
-                        <div key={steg} className={`flex flex-col gap-2 ${i === 1 ? 'items-center' : i === 2 ? 'items-end' : ''}`}>
-                          <span className="h-[10px] w-[10px] rounded-full border-2 border-[#dca9ff] bg-[#161410]" />
-                          <p className="text-[11px] font-semibold text-white/55">{steg}</p>
-                        </div>
-                      ))}
+                <h2 className="mt-6 text-[25px] font-bold leading-[1.08] tracking-[-0.03em] text-white sm:text-[29px]" style={{ fontFamily: 'var(--font-heading)' }}>Lever nøkkelen.<br /><span className="text-[#dca9ff]">Vi tar oss av resten.</span></h2>
+                <p className="mt-3 min-h-[44px] max-w-[40ch] text-[13.5px] leading-relaxed text-white/55">Annonsering, visninger, kontrakt og oppfølging — du får bare rapportene.</p>
+
+                {/* Menneskeøyeblikket — rett på flaten; reisen sentreres i restrommet */}
+                <div className={`mt-8 flex flex-1 flex-col ${fullUnavailable ? 'opacity-85' : ''}`}>
+                  <div className="flex items-center gap-3.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/brand/sarah-sleeman-360.webp" alt="Sarah Sleeman, forvalter i DigiHome" className="h-[52px] w-[52px] shrink-0 rounded-full object-cover ring-2 ring-white/15" />
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-bold leading-tight text-white">Sarah Sleeman</p>
+                      <p className="mt-0.5 text-[11.5px] leading-snug text-white/50">Din faste forvalter — gjennom hele leieforholdet</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-1 flex-col justify-center border-t border-white/[0.08]" style={{ marginTop: 24 }} aria-hidden="true">
+                    <div className="relative">
+                      <div className="absolute left-[5px] right-[5px] top-[4.5px] h-px bg-white/12" />
+                      <div className="dh-reise absolute left-[5px] right-[5px] top-[4.5px] h-px bg-[#d298ff]/70" />
+                      <div className="relative flex justify-between gap-3">
+                        {['Annonsering', 'Innflytting', 'Oppfølging'].map((steg, i) => (
+                          <div key={steg} className={`flex flex-col gap-2 ${i === 1 ? 'items-center' : i === 2 ? 'items-end' : ''}`}>
+                            <span className="h-[10px] w-[10px] rounded-full border-2 border-[#dca9ff] bg-[#161410]" />
+                            <p className="text-[11px] font-semibold text-white/55">{steg}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-6 flex items-center justify-between gap-4">
-                <p className="text-[12.5px] font-semibold text-white/55">{fullUnavailable ? 'Vi lanserer i flere byer fortløpende' : <>Personlig tilbud<span className="text-white/30"> · svar innen 24 timer</span></>}</p>
+                <p className="mt-8 border-t border-white/10 pt-4 text-[12.5px] font-semibold text-white/55">{fullUnavailable ? 'Vi lanserer i flere byer fortløpende' : <>Personlig tilbud<span className="text-white/30"> · svar innen 24 timer</span></>}</p>
+                <span className="mt-3.5 inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[#d298ff] px-5 text-[14px] font-bold text-[#171513] transition group-hover:bg-[#dfb3ff]">{fullUnavailable ? 'Få beskjed når vi lanserer' : 'Få personlig forvaltning'} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
               </div>
-              <span className="mt-3.5 inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[#d298ff] px-5 text-[14px] font-bold text-[#171513] transition group-hover:bg-[#dfb3ff]">{fullUnavailable ? 'Få beskjed når vi lanserer' : 'Få personlig forvaltning'} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
             </button>
           </div>
         </main>
