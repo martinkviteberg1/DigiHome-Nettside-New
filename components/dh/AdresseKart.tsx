@@ -1,14 +1,16 @@
 'use client';
 
 /* ═══════════ ADRESSEKART — onboarding-panelet ═══════════
-   Fullt interaktivt Google-kart (som korttid-flyten): dra, zoom, gestikk.
-   · Lastes LAZY — ingen Maps JS-nedlasting før første gyldige posisjon,
-     så steg 1 forblir lynrask på førstelasting.
-   · Filmatisk fly-inn: kamera starter over byen og glir ned på nålen
-     (rAF-interpolert moveCamera — vektorkart gir myk fraksjonell zoom).
-   · Egen DigiHome-nål (AdvancedMarkerElement m/ HTML-innhold).
-   · onKlar() varsler forelderen når kartet faktisk er tegnet, slik at
-     foto→kart-kryssfaden aldri viser et halvlastet kart. */
+   Portet 1:1 fra korttid-flytens AddressMap (referanseprosjektet), i DigiHome
+   ink-utgave:
+   · Dempet, varm kartflate (samme styles-palett som korttid): ivory flater,
+     hvite veier, mykt vann — og ALLE POI-er/ikoner/kollektiv skjult.
+     (Legacy styles krever raster-kart uten mapId — derfor OverlayView-nål.)
+   · Nålen er stjernen: ink-sirkel m/ hvitt hus, doble pulsringer (forskjøvet),
+     «stett» + skygge, og «Din bolig»-chip — som korttid, i vår merkevare.
+   · Myk fly-inn beholdt: rAF-interpolert senter+zoom (fractional zoom aktivert).
+   · Lastes LAZY — ingen Maps JS før første gyldige posisjon.
+   · onKlar() når flisene er tegnet → forelderen kryssfader foto→kart. */
 
 import React, { useEffect, useRef } from 'react';
 import { setOptions, importLibrary } from '@googlemaps/js-api-loader';
@@ -16,6 +18,23 @@ import { setOptions, importLibrary } from '@googlemaps/js-api-loader';
 type Pos = { lat: number; lng: number };
 
 let loaderKonfigurert = false;
+
+/* Korttid-flytens dempete palett — verbatim fra referanseprosjektet */
+const KART_STIL = [
+  { elementType: 'geometry', stylers: [{ color: '#f8f7f5' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { featureType: 'water', elementType: 'geometry.fill', stylers: [{ color: '#d4e6f1' }] },
+  { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#ffffff' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#e8e5e0' }] },
+  { featureType: 'landscape.man_made', elementType: 'geometry.fill', stylers: [{ color: '#f0eeeb' }] },
+  { featureType: 'road.local', elementType: 'geometry.stroke', stylers: [{ color: '#f0f0f0' }] },
+  { featureType: 'landscape.natural', elementType: 'geometry.fill', stylers: [{ color: '#eef2e8' }] },
+  { featureType: 'administrative', elementType: 'labels.text.fill', stylers: [{ color: '#bbbbbb' }] },
+];
 
 function gyldig(p: any): Pos | null {
   const lat = Number(p?.lat);
@@ -25,48 +44,40 @@ function gyldig(p: any): Pos | null {
     : null;
 }
 
-/* Interpolerer senter + zoom i én bevegelse — den «filmatiske flyturen». */
-function flyTil(map: any, mål: Pos, målZoom = 16.5, varighet = 1600) {
-  const fraSenter = map.getCenter()?.toJSON() || mål;
-  const fraZoom = Number(map.getZoom() ?? 11);
-  const start = performance.now();
-  const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-  function steg(nå: number) {
-    const t = Math.min(1, (nå - start) / varighet);
-    const e = ease(t);
-    map.moveCamera({
-      center: { lat: fraSenter.lat + (mål.lat - fraSenter.lat) * e, lng: fraSenter.lng + (mål.lng - fraSenter.lng) * e },
-      zoom: fraZoom + (målZoom - fraZoom) * e,
-    });
-    if (t < 1) requestAnimationFrame(steg);
-  }
-  requestAnimationFrame(steg);
+/* Raster-trygg «flytur»: panTo animeres mykt av kartet selv, og zoom tas i
+   HELE trinn (fraksjonell zoom gir manglende fliser på styled raster-kart).
+   Hvert setZoom-trinn animeres av Google (~300 ms) → trappet, filmatisk innflyging. */
+function flyTil(map: any, mål: Pos, målZoom = 16) {
+  try { map.panTo(mål); } catch { map.setCenter(mål); }
+  const fraZoom = Math.round(Number(map.getZoom() ?? 13));
+  const trinn: number[] = [];
+  for (let z = fraZoom + 1; z <= målZoom; z += 1) trinn.push(z);
+  if (!trinn.length && fraZoom !== målZoom) trinn.push(målZoom);
+  trinn.forEach((z, i) => setTimeout(() => { try { map.setZoom(z); } catch {} }, 420 + i * 450));
 }
 
-function lagNål(tittel: string): HTMLElement {
-  const el = document.createElement('div');
-  el.setAttribute('aria-label', tittel || 'Valgt adresse');
-  el.innerHTML = `
-    <style>
-      @keyframes dhNålInn { 0% { opacity: 0; transform: translateY(-14px) scale(0.6); } 60% { transform: translateY(2px) scale(1.05); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
-      @keyframes dhPuls { 0% { transform: scale(0.6); opacity: 0.45; } 100% { transform: scale(1.9); opacity: 0; } }
-    </style>
-    <div style="position:relative;width:52px;height:52px;animation:dhNålInn .6s cubic-bezier(0.22,1,0.36,1) both">
-      <div style="position:absolute;inset:0;border-radius:9999px;background:#0a0a0a;animation:dhPuls 2.4s ease-out infinite"></div>
-      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:9999px;background:#0a0a0a;border:3px solid #fff;box-shadow:0 10px 26px -8px rgba(10,10,10,.55)">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M3 11.2 12 4l9 7.2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M5.5 9.8V19a1 1 0 0 0 1 1H10v-5.4h4V20h3.5a1 1 0 0 0 1-1V9.8" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+/* Korttid-nålen i DigiHome ink: sirkel m/ hus, doble pulsringer, stett og chip */
+function nålHtml(): string {
+  return `<div style="position:relative;display:flex;flex-direction:column;align-items:center;animation:dhNålInn .55s cubic-bezier(0.22,1,0.36,1) both">
+    <div style="position:relative">
+      <div style="position:absolute;inset:-12px;border-radius:50%;background:rgba(10,10,10,0.10);animation:dhNålRing 2.5s ease-out infinite"></div>
+      <div style="position:absolute;inset:-6px;border-radius:50%;background:rgba(10,10,10,0.06);animation:dhNålRing 2.5s ease-out 0.8s infinite"></div>
+      <div style="width:52px;height:52px;border-radius:50%;background:#0a0a0a;border:4px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(10,10,10,0.28),0 2px 8px rgba(0,0,0,0.08)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       </div>
-    </div>`;
-  return el;
+    </div>
+    <div style="width:2px;height:10px;background:rgba(10,10,10,0.20);border-radius:1px"></div>
+    <div style="width:8px;height:4px;border-radius:50%;background:rgba(10,10,10,0.10)"></div>
+    <div style="margin-top:4px;background:#fff;padding:3px 10px;border-radius:20px;box-shadow:0 2px 12px rgba(0,0,0,0.10);white-space:nowrap">
+      <span style="font-size:11px;font-weight:600;color:#1a1a1a;font-family:var(--font-body),-apple-system,sans-serif">Din bolig</span>
+    </div>
+  </div>`;
 }
 
 export default function AdresseKart({ pos, adresse, onKlar }: { pos: Pos | null; adresse?: string; onKlar?: () => void }) {
   const nodeRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
+  const overlayRef = useRef<any>(null);
   const klarMeldt = useRef(false);
   const p = gyldig(pos);
 
@@ -82,28 +93,44 @@ export default function AdresseKart({ pos, adresse, onKlar }: { pos: Pos | null;
           setOptions({ key, v: 'weekly' });
           loaderKonfigurert = true;
         }
-        const [{ Map }, { AdvancedMarkerElement }] = await Promise.all([
-          importLibrary('maps') as Promise<any>,
-          importLibrary('marker') as Promise<any>,
-        ]);
+        const { Map, OverlayView } = (await importLibrary('maps')) as any;
         if (avbrutt || !nodeRef.current) return;
 
         const map = new Map(nodeRef.current, {
           center: p,
-          zoom: 11, // starter over byen → flyr inn
-          mapId: process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID',
-          gestureHandling: 'greedy',
-          zoomControl: true,
+          zoom: 13, // starter over byen → trappes inn til 16
+          styles: KART_STIL,          // legacy raster-styling (korttid-paletten)
+          disableDefaultUI: true,
+          zoomControl: false,
           fullscreenControl: false,
           streetViewControl: false,
           mapTypeControl: false,
           clickableIcons: false,
           keyboardShortcuts: false,
+          gestureHandling: 'greedy',
         });
-        markerRef.current = new AdvancedMarkerElement({ map, position: p, title: adresse || 'Valgt adresse', content: lagNål(adresse || '') });
+
+        /* Nål via OverlayView (samme teknikk som korttid) — full HTML-frihet */
+        class NålOverlay extends OverlayView {
+          posisjon: any; div: HTMLDivElement | null = null;
+          constructor(posisjon: any) { super(); this.posisjon = posisjon; this.setMap(map); }
+          onAdd() {
+            this.div = document.createElement('div');
+            this.div.style.cssText = 'position:absolute;transform:translate(-50%,-100%);pointer-events:none';
+            this.div.innerHTML = nålHtml();
+            (this as any).getPanes().overlayMouseTarget.appendChild(this.div);
+          }
+          draw() {
+            const pt = (this as any).getProjection()?.fromLatLngToDivPixel(this.posisjon);
+            if (pt && this.div) { this.div.style.left = pt.x + 'px'; this.div.style.top = pt.y + 'px'; }
+          }
+          onRemove() { this.div?.parentNode?.removeChild(this.div); this.div = null; }
+          flytt(ny: any) { this.posisjon = ny; this.draw(); }
+        }
+        overlayRef.current = new NålOverlay(p);
         mapRef.current = map;
 
-        // Meld «klar» når flisene faktisk er tegnet → forelderen kryssfader foto→kart
+        // Meld «klar» når flisene er tegnet → forelderen kryssfader foto→kart
         map.addListener('tilesloaded', () => {
           if (!klarMeldt.current) {
             klarMeldt.current = true;
@@ -112,8 +139,7 @@ export default function AdresseKart({ pos, adresse, onKlar }: { pos: Pos | null;
           }
         });
       } catch (e) {
-        // Stille feil: panelet beholder foto — kartet er forsterkning, ikke krav
-        console.error('AdresseKart:', e);
+        console.error('AdresseKart:', e); // stille — panelet beholder foto
       }
     })();
     return () => { avbrutt = true; };
@@ -122,12 +148,19 @@ export default function AdresseKart({ pos, adresse, onKlar }: { pos: Pos | null;
 
   // Posisjonsendring (bruker valgte ny adresse) → flytt nål + fly dit
   useEffect(() => {
-    if (!p || !mapRef.current || !markerRef.current || !klarMeldt.current) return;
-    markerRef.current.position = p;
-    if (adresse) markerRef.current.title = adresse;
-    flyTil(mapRef.current, p, 16.5, 1100);
+    if (!p || !mapRef.current || !overlayRef.current || !klarMeldt.current) return;
+    overlayRef.current.flytt(p);
+    flyTil(mapRef.current, p, 16);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p?.lat, p?.lng]);
 
-  return <div ref={nodeRef} className="absolute inset-0 h-full w-full" data-testid="onboarding-kart" />;
+  return (
+    <div className="absolute inset-0 h-full w-full" data-testid="onboarding-kart">
+      <style>{`
+        @keyframes dhNålRing { 0% { transform: scale(1); opacity: 0.4; } 100% { transform: scale(2.5); opacity: 0; } }
+        @keyframes dhNålInn { 0% { opacity: 0; transform: translateY(-14px) scale(0.7); } 60% { transform: translateY(2px) scale(1.04); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+      `}</style>
+      <div ref={nodeRef} className="h-full w-full" />
+    </div>
+  );
 }

@@ -861,8 +861,15 @@ export default function OwnerOnboarding2026() {
     );
   }
 
+  /* Pustende layout: kartet får mer plass på adressesteget (der det bærer
+     opplevelsen), og glir tilbake når steg 2/3 trenger bredden til innhold.
+     grid-template-columns er animerbar i moderne nettlesere; ellers snapper den. */
+  const kartBredt = phase === 'address' && Boolean(kartPos);
   return (
-    <div className="grid min-h-[100dvh] overflow-x-hidden bg-[#faf9f7] lg:grid-cols-[minmax(0,1.18fr)_minmax(380px,0.82fr)]" data-testid="owner-onboarding-2026">
+    <div
+      className={`grid min-h-[100dvh] overflow-x-hidden bg-[#faf9f7] transition-[grid-template-columns] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${kartBredt ? 'lg:grid-cols-[minmax(0,0.9fr)_minmax(380px,1.1fr)]' : 'lg:grid-cols-[minmax(0,1.18fr)_minmax(380px,0.82fr)]'}`}
+      data-testid="owner-onboarding-2026"
+    >
       <main className="flex min-w-0 flex-col">
         <TopBar phase={phase} />
         <div className="flex flex-1 justify-center px-5 pb-10 pt-7 sm:px-8 sm:pb-14 sm:pt-10 lg:items-center lg:px-12 lg:py-10 xl:px-16">
