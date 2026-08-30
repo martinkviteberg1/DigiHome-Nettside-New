@@ -930,16 +930,20 @@ export default function OwnerOnboarding2026() {
                         const address = String(data?.address || '').replace(/,\s*(Norway|Norge)$/i, '');
                         const postalCode = String(data?.postalCode || '').trim();
                         const city = String(data?.city || '').trim();
-                        // Kartet: bruk koordinatene fra Place Details direkte; ellers geokod teksten
+                        const pending = Boolean(data?.pending); // optimistisk valg — berikelse underveis
+                        // Kartet: bruk koordinatene fra Place Details direkte; ellers geokod teksten.
+                        // Ved pending kommer koordinatene i berikelsen — ikke fyr ekstra geokoding.
                         if (typeof data?.lat === 'number' && typeof data?.lng === 'number') {
                           setKartPos({ lat: data.lat, lng: data.lng });
-                        } else {
+                        } else if (!pending) {
                           geokodTilKart([address, postalCode, city].filter(Boolean).join(' '));
                         }
                         const complete = isCompleteAddress(address, postalCode, city);
                         setForm((current) => ({ ...current, address, postalCode, city }));
-                        setAddressVerified(complete);
-                        setErrors(complete ? {} : { address: 'Adresseforslaget mangler husnummer, postnummer eller poststed.' });
+                        // Kortet vises umiddelbart ved valg fra listen; postnr fylles på et
+                        // øyeblikk senere. Feilmelding kun for endelige (ikke-pending) svar.
+                        setAddressVerified(pending ? true : complete);
+                        setErrors(pending || complete ? {} : { address: 'Adresseforslaget mangler husnummer, postnummer eller poststed.' });
                       }}
                       placeholder="Skriv gateadresse, FINN-lenke eller FINN-kode"
                       showIcon={false}

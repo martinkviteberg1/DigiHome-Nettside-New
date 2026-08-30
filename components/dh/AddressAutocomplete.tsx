@@ -100,19 +100,22 @@ export function AddressAutocomplete({
     try { track('address_search', { selected: true }); } catch (e) {}
     setVerifiedBoth(true);
     if (!onSelect) return;
-    // Google-forslag mangler postnummer → hent fra Place Details (server-proxy).
     if (s.place_id) {
+      /* OPTIMISTISK UI: kortet skal vises i samme øyeblikk som klikket — aldri vente
+         på nettverk. Forslaget inneholder allerede gate + (for Geonorge) postnr/sted.
+         Place Details beriker med postnummer og koordinater et øyeblikk senere. */
+      const subPostal = ((s.sub || '').match(/\b(\d{4})\b/) || [])[1] || '';
+      const subCity = (s.sub || '').replace(/\b\d{4}\b/, '').replace(/,\s*(Norge|Norway)\s*$/i, '').trim();
+      skipRef.current = true;
+      onSelect({ address: s.text, postalCode: subPostal, city: subCity, pending: true, raw: s });
       try {
         const r = await fetch(`/api/address?place_id=${encodeURIComponent(s.place_id)}`);
         const d = await r.json();
         if (d && d.ok && (d.postalCode || d.address)) {
           skipRef.current = true; // parent setter full label → ikke trigg nytt søk
-          onSelect({ address: d.label || d.address || s.label || s.text, postalCode: d.postalCode || '', city: d.city || '', lat: typeof d.lat === 'number' ? d.lat : null, lng: typeof d.lng === 'number' ? d.lng : null, raw: s });
-          return;
+          onSelect({ address: d.label || d.address || s.label || s.text, postalCode: d.postalCode || subPostal, city: d.city || subCity, lat: typeof d.lat === 'number' ? d.lat : null, lng: typeof d.lng === 'number' ? d.lng : null, raw: s });
         }
-      } catch (e) { /* faller tilbake til forslags-teksten under */ }
-      skipRef.current = true;
-      onSelect({ address: s.label || s.text, postalCode: '', city: '', raw: s });
+      } catch (e) { /* det optimistiske valget står seg */ }
       return;
     }
     // Geonorge-format: postnummer ligger i sub («5005 BERGEN»).
