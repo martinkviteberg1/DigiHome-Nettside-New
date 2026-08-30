@@ -158,16 +158,11 @@ function TopBar({ phase, onTilSteg }: { phase: Phase; onTilSteg?: (p: Phase) => 
   );
 }
 
-function DesktopProof({ pos, adresse, kartKlar, onKartKlar }: { pos: { lat: number; lng: number } | null; adresse?: string; kartKlar: boolean; onKartKlar: () => void }) {
-  const visKart = Boolean(pos && kartKlar);
+function DesktopProof({ pos, adresse }: { pos: { lat: number; lng: number } | null; adresse?: string }) {
   return (
-    <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#ddd6cf] lg:block" aria-label={visKart ? 'Kart over boligens beliggenhet' : 'DigiHome boliginteriør'}>
-      {/* Kartet monteres først når vi har koordinater — null Maps-vekt før det */}
-      {pos ? <AdresseKart pos={pos} adresse={adresse} onKlar={onKartKlar} /> : null}
-      {/* Foto ligger øverst og kryssfader bort når kartet er ferdig tegnet */}
-      <img src="/api/media/owner-onboarding-living-room.webp" alt="Lys og moderne stue i Bergen"
-        className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-[900ms] ease-out ${visKart ? 'pointer-events-none opacity-0' : 'opacity-100'}`} />
-      <div className={`absolute inset-0 bg-[#7a6a5f]/5 transition-opacity duration-[900ms] ${visKart ? 'pointer-events-none opacity-0' : 'opacity-100'}`} />
+    <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#f5f3f0] lg:block" aria-label="Kart over boligens beliggenhet">
+      {/* Kart-først, nøyaktig som korttid: uskarpt Bergen-kart til adressen velges */}
+      <AdresseKart pos={pos} adresse={adresse} />
     </aside>
   );
 }
@@ -329,9 +324,8 @@ export default function OwnerOnboarding2026() {
   const [companyStatusAck, setCompanyStatusAck] = useState(false);
   const [phoneCountryIso, setPhoneCountryIso] = useState('NO');
   const [addressVerified, setAddressVerified] = useState(false);
-  // Kartet i høyrepanelet: posisjon + om det er ferdig tegnet (styrer foto→kart-fade)
+  // Kartposisjon i høyrepanelet (kart-først, som korttid)
   const [kartPos, setKartPos] = useState<{ lat: number; lng: number } | null>(null);
-  const [kartKlar, setKartKlar] = useState(false);
   /* Geokoder en tekstadresse via vår egen /api/address-proxy (Google-nøkkelen
      forblir server-side for søket). Brukes for FINN-/prefill-adresser som
      ikke kommer med koordinater. Stille feil — kartet er forsterkning, ikke krav. */
@@ -1020,13 +1014,20 @@ export default function OwnerOnboarding2026() {
                   {finnLookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   {finnLookupLoading ? 'Henter FINN-annonsen' : 'Fortsett'} {!finnLookupLoading ? <ArrowRight className="h-4 w-4" /> : null}
                 </button>
+
+                {/* Mobil: kartet under innholdet når adressen er valgt (som korttid) */}
+                {kartPos ? (
+                  <div className="mt-7 h-[220px] overflow-hidden rounded-2xl border border-[#e5e0d9] lg:hidden" style={{ animation: 'dhCardIn 0.5s cubic-bezier(0.22,1,0.36,1) both' }} data-testid="mobil-kart">
+                    <AdresseKart pos={kartPos} adresse={form.address} />
+                  </div>
+                ) : null}
               </section>
             ) : null}
 
           </div>
         </div>
       </main>
-      <DesktopProof pos={kartPos} adresse={form.address} kartKlar={kartKlar} onKartKlar={() => setKartKlar(true)} />
+      <DesktopProof pos={kartPos} adresse={form.address} />
     </div>
   );
 }
