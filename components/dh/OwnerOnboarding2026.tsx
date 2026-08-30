@@ -726,47 +726,98 @@ export default function OwnerOnboarding2026() {
             <p className="mx-auto mt-4 flex max-w-[700px] items-start justify-center gap-2 text-center text-[11.5px] leading-relaxed text-[#625d57]" data-testid="finn-lookup-note"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#7e22ce]" /> {finnLookupNote}</p>
           ) : null}
 
-          <div className="mx-auto mt-9 grid max-w-[1120px] gap-0 overflow-hidden border-y border-[#dcd7d0] lg:grid-cols-2">
-            <button type="button" onClick={() => selectService(self.id)} data-testid="service-selvforvaltning" className="group relative flex min-h-[460px] min-w-0 flex-col border-b border-[#dcd7d0] bg-white/45 p-6 text-left transition-colors hover:bg-white/80 lg:border-b-0 lg:border-r sm:p-8 lg:p-9">
-              <div className="flex items-start justify-between gap-4">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#ece9e4] text-[#403c37]"><KeyRound className="h-5 w-5" /></span>
-                <span className="rounded-full bg-[#f5f2ee] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#77716a]">Hele Norge</span>
-              </div>
-              <p className="mt-7 text-[10.5px] font-extrabold uppercase tracking-[0.13em] text-[#77716a]">For deg som vil gjøre det selv</p>
-              <h2 className="mt-2 text-[29px] font-bold tracking-[-0.035em] text-[#171513] sm:text-[34px]" style={{ fontFamily: 'var(--font-heading)' }}>{self.title}</h2>
-              <p className="mt-3 max-w-[42ch] text-[13.5px] leading-relaxed text-[#6d6760]">{self.description}</p>
+          {/* ── To fremtider, ett heltelement hver: produktøyeblikk (lys) vs menneskeøyeblikk (mørk) ── */}
+          <style>{`
+            @keyframes dhGraf { to { stroke-dashoffset: 0; } }
+            @keyframes dhReise { to { transform: scaleX(1); } }
+            .dh-graf { stroke-dasharray: 320; stroke-dashoffset: 320; animation: dhGraf 1.5s cubic-bezier(0.4,0,0.2,1) 0.4s forwards; }
+            .dh-reise { transform: scaleX(0); transform-origin: left; animation: dhReise 1.2s cubic-bezier(0.4,0,0.2,1) 0.6s forwards; }
+          `}</style>
+          <div className="mx-auto mt-9 grid max-w-[1120px] gap-4 lg:grid-cols-2 lg:gap-5">
 
-              <div className="mt-6 flex items-end gap-2 border-y border-[#eee9e3] py-5">
-                <span className="text-[45px] font-bold leading-none tracking-[-0.05em] text-[#171513]">5 %</span>
-                <span className="pb-1 text-[12px] font-semibold leading-snug text-[#77716a]">av husleien<br />ingen bindingstid</span>
+            {/* SELVFORVALTNING — ett svevende produktkort som fremkaller følelsen av kontroll */}
+            <button type="button" onClick={() => selectService(self.id)} data-testid="service-selvforvaltning"
+              className="group relative flex min-h-[540px] min-w-0 flex-col overflow-hidden rounded-[26px] border border-[#e6e1da] bg-white p-6 text-left shadow-[0_24px_60px_-38px_rgba(23,21,19,0.4)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_70px_-36px_rgba(23,21,19,0.5)] sm:p-8 lg:p-9">
+              <div className="flex items-start justify-between gap-4">
+                <p className="pt-1 text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-[#77716a]">For deg som vil gjøre det selv</p>
+                <span className="shrink-0 rounded-full bg-[#f5f2ee] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#77716a]">Hele Norge</span>
               </div>
-              <div className="mt-5 space-y-3">
-                {self.points.map((point) => <p key={point} className="flex items-start gap-2.5 text-[13px] leading-snug text-[#403c37]"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ece9e4]"><Check className="h-3 w-3 text-[#4e4944]" strokeWidth={3} /></span>{point}</p>)}
+              <h2 className="mt-2.5 text-[30px] font-bold tracking-[-0.035em] text-[#171513] sm:text-[34px]" style={{ fontFamily: 'var(--font-heading)' }}>{self.title}</h2>
+              <p className="mt-2 max-w-[40ch] text-[14px] leading-relaxed text-[#6d6760]">Full kontroll i ett rolig system — vi gir deg verktøyene, du styrer.</p>
+
+              {/* Produktøyeblikket */}
+              <div className="relative mt-7 min-h-[210px] flex-1" aria-hidden="true">
+                <div className="absolute right-0 top-0 flex rotate-[2deg] items-center gap-2.5 rounded-2xl border border-[#ece7e0] bg-[#faf9f7] py-2.5 pl-3 pr-4 shadow-sm transition-transform duration-500 group-hover:rotate-[0.5deg]">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f2e5fb]"><Check className="h-3.5 w-3.5 text-[#7e22ce]" strokeWidth={3} /></span>
+                  <div>
+                    <p className="text-[11.5px] font-bold leading-tight text-[#171513]">Kontrakt signert</p>
+                    <p className="text-[10.5px] leading-tight text-[#8b857e]">Martin J. · nå nettopp</p>
+                  </div>
+                </div>
+                <div className="absolute left-0 top-11 w-[min(310px,90%)] -rotate-[1.4deg] rounded-[20px] border border-[#e8e3dc] bg-white p-5 shadow-[0_26px_52px_-26px_rgba(23,21,19,0.4)] transition-transform duration-500 group-hover:rotate-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8b857e]">Husleie · februar</p>
+                    <span className="rounded-full bg-[#e7f3e9] px-2.5 py-1 text-[10px] font-bold text-[#2f7d3f]">Betalt</span>
+                  </div>
+                  <p className="mt-1.5 text-[27px] font-bold tracking-[-0.03em] text-[#171513]">17 500 kr</p>
+                  <svg viewBox="0 0 240 52" className="mt-3 w-full">
+                    <path d="M2 46 C28 44 46 40 68 37 S106 32 128 27 S178 18 204 12 S230 7 238 5" fill="none" stroke="#57a468" strokeWidth="2.5" strokeLinecap="round" className="dh-graf" />
+                  </svg>
+                  <p className="mt-1.5 text-[10.5px] text-[#8b857e]">Innbetalt i tide hver måned siden juni</p>
+                </div>
               </div>
-              <span className="mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#171513] px-5 text-[13.5px] font-bold text-white transition group-hover:bg-[#2b2824]">Velg selvforvaltning <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
+
+              <p className="mt-6 border-t border-[#eee9e3] pt-4 text-[12.5px] font-semibold text-[#5f5a54]">5 % av husleien · ingen bindingstid</p>
+              <span className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#171513] px-5 text-[13.5px] font-bold text-white transition group-hover:bg-[#2b2824]">Velg selvforvaltning <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
             </button>
 
-            <button type="button" onClick={() => selectService(full.id)} data-testid="service-full_forvaltning" className="group relative flex min-h-[460px] min-w-0 flex-col bg-[#1d1c1a] p-6 text-left transition-colors hover:bg-[#242220] sm:p-8 lg:p-9">
-              <div className="relative flex items-start justify-between gap-4">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-white/85"><ShieldCheck className="h-5 w-5" /></span>
-                <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white/70">Mest komplett</span>
+            {/* FULL FORVALTNING — relasjonen er produktet. Utenfor Bergen: verdig venteliste */}
+            <button type="button" onClick={() => selectService(full.id)} data-testid="service-full_forvaltning"
+              className="group relative flex min-h-[540px] min-w-0 flex-col overflow-hidden rounded-[26px] bg-[#171513] p-6 text-left shadow-[0_24px_60px_-34px_rgba(23,21,19,0.65)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_74px_-32px_rgba(23,21,19,0.75)] sm:p-8 lg:p-9">
+              <div className="flex items-start justify-between gap-4">
+                <p className="pt-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-white/50">For deg som vil slippe hele jobben</p>
+                {fullUnavailable ? (
+                  <span className="shrink-0 rounded-full border border-[#d298ff]/30 bg-[#d298ff]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#dca9ff]" data-testid="forvaltning-kommer-snart">Kommer snart{form.city ? ` til ${form.city}` : ''}</span>
+                ) : (
+                  <span className="shrink-0 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white/70">Mest komplett</span>
+                )}
               </div>
-              <p className="relative mt-7 text-[10.5px] font-bold uppercase tracking-[0.13em] text-white/55">For deg som vil slippe hele jobben</p>
-              <h2 className="relative mt-2 text-[29px] font-bold tracking-[-0.035em] text-white sm:text-[34px]" style={{ fontFamily: 'var(--font-heading)' }}>{full.title}</h2>
-              <p className="relative mt-3 max-w-[42ch] text-[13.5px] leading-relaxed text-white/70">{fullUnavailable ? 'Tjenesten er ikke lansert i området ditt ennå. Du kan likevel registrere interesse.' : full.description}</p>
+              <h2 className="mt-2.5 text-[30px] font-bold tracking-[-0.035em] text-white sm:text-[34px]" style={{ fontFamily: 'var(--font-heading)' }}>{full.title}</h2>
+              <p className="mt-2 text-[19px] font-semibold leading-snug tracking-[-0.015em] text-[#dca9ff]" style={{ fontFamily: 'var(--font-heading)' }}>Lever nøkkelen. Vi tar oss av resten.</p>
 
-              <div className="relative mt-6 border-y border-white/10 py-5">
-                <p className="text-[24px] font-bold tracking-[-0.025em] text-white">{fullUnavailable ? 'Registrer interesse' : 'Personlig tilbud'}</p>
-                <p className="mt-1 text-[12px] font-semibold text-white/50">tilpasset boligen · svar innen 24 timer</p>
+              {/* Menneskeøyeblikket */}
+              <div className={`mt-7 flex items-center gap-4 rounded-[20px] border border-white/10 bg-white/[0.045] p-4 ${fullUnavailable ? 'opacity-80' : ''}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/brand/sarah-sleeman-360.webp" alt="Sarah Sleeman, forvalter i DigiHome" className="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-white/15" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/45">Din forvalter</p>
+                  <p className="mt-0.5 text-[15px] font-bold text-white">Sarah Sleeman</p>
+                  <p className="text-[12px] leading-snug text-white/55">Fast kontaktperson gjennom hele leieforholdet</p>
+                </div>
               </div>
-              <div className="relative mt-5 space-y-3">
-                {full.points.map((point) => <p key={point} className="flex items-start gap-2.5 text-[13px] leading-snug text-white/75"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#d298ff]/15"><Check className="h-3 w-3 text-[#dca9ff]" strokeWidth={3} /></span>{point}</p>)}
+
+              {/* Reiselinjen — «hele veien» sagt visuelt */}
+              <div className={`mt-8 flex-1 ${fullUnavailable ? 'opacity-80' : ''}`} aria-hidden="true">
+                <div className="relative">
+                  <div className="absolute left-[5px] right-[5px] top-[5px] h-px bg-white/15" />
+                  <div className="dh-reise absolute left-[5px] right-[5px] top-[5px] h-px bg-[#d298ff]/70" />
+                  <div className="relative flex justify-between gap-3">
+                    {['Annonsering og visninger', 'Kontrakt og innflytting', 'Oppfølging hele veien'].map((steg, i) => (
+                      <div key={steg} className={`flex w-1/3 flex-col gap-2.5 ${i === 1 ? 'items-center text-center' : i === 2 ? 'items-end text-right' : ''}`}>
+                        <span className="h-[11px] w-[11px] rounded-full border-2 border-[#dca9ff] bg-[#171513]" />
+                        <p className="max-w-[12ch] text-[11.5px] font-semibold leading-snug text-white/65">{steg}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <span className="relative mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-white px-5 text-[13.5px] font-bold text-[#171513] transition group-hover:bg-[#f1eee9]">{fullUnavailable ? 'Registrer interesse' : 'Få personlig tilbud'} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
+
+              <p className="mt-6 border-t border-white/10 pt-4 text-[12.5px] font-semibold text-white/55">{fullUnavailable ? 'Vi lanserer i flere byer fortløpende — still deg først i køen' : 'Personlig tilbud · svar innen 24 timer'}</p>
+              <span className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d298ff] px-5 text-[13.5px] font-bold text-[#171513] transition group-hover:bg-[#dfb3ff]">{fullUnavailable ? 'Få beskjed når vi lanserer' : 'Få personlig forvaltning'} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
             </button>
           </div>
 
-          <p className="mt-6 text-center text-[11.5px] font-medium text-[#88817a]"><ShieldCheck className="mr-1.5 inline h-3.5 w-3.5 text-[#8b5cf6]" /> Begge løsninger er trygge, uforpliktende å utforske og kan endres senere.</p>
+          <p className="mt-6 text-center text-[11.5px] font-medium text-[#88817a]"><ShieldCheck className="mr-1.5 inline h-3.5 w-3.5 text-[#8b5cf6]" /> Begge løsningene er uforpliktende å utforske — og kan endres senere.</p>
         </main>
       </div>
     );
