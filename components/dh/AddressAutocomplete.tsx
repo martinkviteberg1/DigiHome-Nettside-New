@@ -107,7 +107,7 @@ export function AddressAutocomplete({
         const d = await r.json();
         if (d && d.ok && (d.postalCode || d.address)) {
           skipRef.current = true; // parent setter full label → ikke trigg nytt søk
-          onSelect({ address: d.label || d.address || s.label || s.text, postalCode: d.postalCode || '', city: d.city || '', raw: s });
+          onSelect({ address: d.label || d.address || s.label || s.text, postalCode: d.postalCode || '', city: d.city || '', lat: typeof d.lat === 'number' ? d.lat : null, lng: typeof d.lng === 'number' ? d.lng : null, raw: s });
           return;
         }
       } catch (e) { /* faller tilbake til forslags-teksten under */ }

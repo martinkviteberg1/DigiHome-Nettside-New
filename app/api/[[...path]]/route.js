@@ -817,7 +817,7 @@ async function googlePlaceDetails(placeId) {
   const hit = _addrCache.get(cacheKey);
   if (hit && Date.now() - hit.at < ADDR_TTL_MS) return hit.suggestions;
   const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}` +
-    `&fields=address_component,formatted_address&language=no&key=${key}`;
+    `&fields=address_component,formatted_address,geometry/location&language=no&key=${key}`;
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 4000);
@@ -833,11 +833,15 @@ async function googlePlaceDetails(placeId) {
     const postalCode = get('postal_code');
     const city = get('postal_town') || get('locality') || get('sublocality') || '';
     const address = street || String((data.result && data.result.formatted_address) || '').replace(/,\s*(Norge|Norway)$/i, '');
+    const loc = (data.result && data.result.geometry && data.result.geometry.location) || null;
     const out = {
       address,
       postalCode,
       city,
       label: [address, [postalCode, city].filter(Boolean).join(' ')].filter(Boolean).join(', '),
+      // Koordinater til kartet i onboarding (Maps JS). Kun tall — aldri LatLng-objekt.
+      lat: loc && Number.isFinite(Number(loc.lat)) ? Number(loc.lat) : null,
+      lng: loc && Number.isFinite(Number(loc.lng)) ? Number(loc.lng) : null,
     };
     _addrCache.set(cacheKey, { at: Date.now(), suggestions: out });
     if (_addrCache.size > ADDR_CACHE_MAX) _addrCache.delete(_addrCache.keys().next().value);

@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AddressAutocomplete } from './AddressAutocomplete';
+import AdresseKart from './AdresseKart';
 import CompanyPicker, { type Company } from './CompanyPicker';
 import { detectFinnReference } from './PropertyInputs';
 import { track, getLeadAttribution } from '@/lib/analytics';
@@ -151,11 +152,16 @@ function TopBar({ phase }: { phase: Phase }) {
   );
 }
 
-function DesktopProof() {
+function DesktopProof({ pos, adresse, kartKlar, onKartKlar }: { pos: { lat: number; lng: number } | null; adresse?: string; kartKlar: boolean; onKartKlar: () => void }) {
+  const visKart = Boolean(pos && kartKlar);
   return (
-    <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#ddd6cf] lg:block" aria-label="DigiHome boliginteriør">
-      <img src="/api/media/owner-onboarding-living-room.webp" alt="Lys og moderne stue i Bergen" className="absolute inset-0 h-full w-full object-cover object-center" />
-      <div className="absolute inset-0 bg-[#7a6a5f]/5" />
+    <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#ddd6cf] lg:block" aria-label={visKart ? 'Kart over boligens beliggenhet' : 'DigiHome boliginteriør'}>
+      {/* Kartet monteres først når vi har koordinater — null Maps-vekt før det */}
+      {pos ? <AdresseKart pos={pos} adresse={adresse} onKlar={onKartKlar} /> : null}
+      {/* Foto ligger øverst og kryssfader bort når kartet er ferdig tegnet */}
+      <img src="/api/media/owner-onboarding-living-room.webp" alt="Lys og moderne stue i Bergen"
+        className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-[900ms] ease-out ${visKart ? 'pointer-events-none opacity-0' : 'opacity-100'}`} />
+      <div className={`absolute inset-0 bg-[#7a6a5f]/5 transition-opacity duration-[900ms] ${visKart ? 'pointer-events-none opacity-0' : 'opacity-100'}`} />
     </aside>
   );
 }
@@ -317,6 +323,25 @@ export default function OwnerOnboarding2026() {
   const [companyStatusAck, setCompanyStatusAck] = useState(false);
   const [phoneCountryIso, setPhoneCountryIso] = useState('NO');
   const [addressVerified, setAddressVerified] = useState(false);
+  // Kartet i høyrepanelet: posisjon + om det er ferdig tegnet (styrer foto→kart-fade)
+  const [kartPos, setKartPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [kartKlar, setKartKlar] = useState(false);
+  /* Geokoder en tekstadresse via vår egen /api/address-proxy (Google-nøkkelen
+     forblir server-side for søket). Brukes for FINN-/prefill-adresser som
+     ikke kommer med koordinater. Stille feil — kartet er forsterkning, ikke krav. */
+  const geokodTilKart = useCallback(async (adresse: string) => {
+    try {
+      const q = String(adresse || '').trim();
+      if (q.length < 4) return;
+      const r = await fetch(`/api/address?q=${encodeURIComponent(q)}`);
+      const j = await r.json().catch(() => ({} as any));
+      const treff = (j?.suggestions || []).find((s: any) => s.place_id);
+      if (!treff) return;
+      const r2 = await fetch(`/api/address?place_id=${encodeURIComponent(treff.place_id)}`);
+      const d = await r2.json().catch(() => ({} as any));
+      if (d && typeof d.lat === 'number' && typeof d.lng === 'number') setKartPos({ lat: d.lat, lng: d.lng });
+    } catch { /* behold foto */ }
+  }, []);
   // Tjeneste forhåndsvalgt i URL-en (?tier=selvforvaltning). Produktsiden
   // /selvforvaltning lar brukeren velge FØR hen kommer hit, og da skal vi ikke
   // stille samme spørsmål på nytt. Full forvaltning honoreres bare når
@@ -407,6 +432,10 @@ export default function OwnerOnboarding2026() {
           bedrooms: data.bedrooms ? String(data.bedrooms) : '',
         }));
         setFinnCode(String(data.finnCode || code));
+        // Kartet: FINN-adressen kommer uten koordinater → geokod det vi har
+        if (resolvedAddress || postalCode || city) {
+          geokodTilKart([resolvedAddress, postalCode, city].filter(Boolean).join(' '));
+        }
         setFinnLookupNote(resolvedAddress
           ? 'Boligopplysningene er hentet fra FINN.'
           : `Gateadressen er skjult i FINN-annonsen${postalCode || city ? ` — vi har registrert ${[postalCode, city].filter(Boolean).join(' ')}` : ''}.`);
@@ -449,6 +478,7 @@ export default function OwnerOnboarding2026() {
       if (isCompleteAddress(address, postal, city)) {
         setForm((current) => ({ ...current, address, postalCode: postal, city }));
         setAddressVerified(true);
+        geokodTilKart([address, postal, city].filter(Boolean).join(' '));
         goAfterAddress(pre, postal, city);
       } else if (address) {
         setForm((current) => ({ ...current, address, postalCode: postal, city }));
@@ -900,6 +930,12 @@ export default function OwnerOnboarding2026() {
                         const address = String(data?.address || '').replace(/,\s*(Norway|Norge)$/i, '');
                         const postalCode = String(data?.postalCode || '').trim();
                         const city = String(data?.city || '').trim();
+                        // Kartet: bruk koordinatene fra Place Details direkte; ellers geokod teksten
+                        if (typeof data?.lat === 'number' && typeof data?.lng === 'number') {
+                          setKartPos({ lat: data.lat, lng: data.lng });
+                        } else {
+                          geokodTilKart([address, postalCode, city].filter(Boolean).join(' '));
+                        }
                         const complete = isCompleteAddress(address, postalCode, city);
                         setForm((current) => ({ ...current, address, postalCode, city }));
                         setAddressVerified(complete);
@@ -929,7 +965,7 @@ export default function OwnerOnboarding2026() {
           </div>
         </div>
       </main>
-      <DesktopProof />
+      <DesktopProof pos={kartPos} adresse={form.address} kartKlar={kartKlar} onKartKlar={() => setKartKlar(true)} />
     </div>
   );
 }
