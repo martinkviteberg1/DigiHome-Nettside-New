@@ -886,9 +886,7 @@ export default function OwnerOnboarding2026() {
                       <span className="inline-flex items-center gap-1.5 text-[#716b63]"><Loader2 className="h-3.5 w-3.5 animate-spin text-[#7e22ce]" /> Henter boligopplysninger fra FINN …</span>
                     ) : addressVerified ? (
                       <span className="inline-flex items-center gap-1.5 font-semibold text-[#674179]"><CheckCircle2 className="h-3.5 w-3.5 text-[#8d35c7]" /> Adressen er bekreftet</span>
-                    ) : (
-                      <span className="text-[#77716a]">Skriv gate og husnummer, og velg hele adressen fra listen. FINN-lenke eller FINN-kode fungerer også.</span>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
@@ -896,9 +894,6 @@ export default function OwnerOnboarding2026() {
                   {finnLookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   {finnLookupLoading ? 'Henter FINN-annonsen' : 'Fortsett'} {!finnLookupLoading ? <ArrowRight className="h-4 w-4" /> : null}
                 </button>
-                <p className="mt-3 text-[11.5px] font-medium text-[#77716a]">Neste: Velg hvordan du vil forvalte boligen.</p>
-
-                <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2.5 border-t border-[#ebe6df] pt-4 text-[11.5px] font-medium text-[#77716a]"><span>Gratis og uforpliktende</span><span>·</span><span>Under 1 minutt</span><span>·</span><span>Svar innen 24 timer</span></div>
               </section>
             ) : null}
 
