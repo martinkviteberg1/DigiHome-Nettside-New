@@ -160,11 +160,11 @@ function DesktopProof() {
   );
 }
 
-function StepHeading({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
+function StepHeading({ eyebrow, title, text }: { eyebrow?: string; title: string; text: string }) {
   return (
     <div>
-      <p className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#77716a]">{eyebrow}</p>
-      <h1 className="mt-3 max-w-[14ch] text-[32px] font-bold leading-[1.02] tracking-[-0.04em] text-[#111] sm:text-[42px]" style={{ fontFamily: 'var(--font-heading)' }}>{title}</h1>
+      {eyebrow ? <p className="mb-3 text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#77716a]">{eyebrow}</p> : null}
+      <h1 className="max-w-[14ch] text-[32px] font-bold leading-[1.02] tracking-[-0.04em] text-[#111] sm:text-[42px]" style={{ fontFamily: 'var(--font-heading)' }}>{title}</h1>
       <p className="mt-3 max-w-[48ch] text-[15px] leading-relaxed text-[#6d6760] sm:text-[16px]">{text}</p>
     </div>
   );
@@ -839,15 +839,47 @@ export default function OwnerOnboarding2026() {
           <div className="w-full max-w-[620px] min-w-0">
             {phase === 'address' ? (
               <section data-testid="onboarding-address-step">
-                <StepHeading eyebrow="Steg 1 av 3" title="Hvor ligger boligen?" text="Skriv inn adressen eller lim inn en FINN-annonse. Det er alt vi trenger nå." />
+                <StepHeading title="Hvor ligger boligen?" text="Skriv inn adressen — eller lim inn FINN-annonsen." />
 
                 <div className="mt-8 min-w-0" data-no-enter-advance>
-                  <label htmlFor="entry-address-input" className="mb-2 block text-[13px] font-semibold text-[#292621]">Adresse</label>
-                  <div className={`relative min-w-0 rounded-[14px] border bg-white transition-all focus-within:border-[#292621] focus-within:shadow-[0_0_0_3px_rgba(32,29,26,0.06)] ${errors.address ? 'border-red-400' : addressVerified ? 'border-[#8e8680]' : 'border-[#dcd6cf]'}`}>
-                    <span className={`pointer-events-none absolute left-4 top-7 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg ${addressVerified ? 'bg-[#f1e4fb]' : 'bg-[#f5f2ef]'}`}>
-                      {addressVerified ? <Check className="h-3.5 w-3.5 text-[#7e22ce]" strokeWidth={3} /> : <MapPin className="h-4 w-4 text-[#7e22ce]" />}
-                    </span>
-                    <AddressAutocomplete
+                  <style>{`@keyframes dhCardIn{from{opacity:0;transform:translateY(6px) scale(0.99)}to{opacity:1;transform:translateY(0) scale(1)}}`}</style>
+                  {addressVerified ? (
+                    /* Bekreftet adresse som kort — tilstanden VISES i stedet for å fortelles */
+                    <div className="flex items-center gap-4 rounded-[16px] border border-[#e5e0d9] bg-white py-4 pl-5 pr-3 shadow-[0_14px_34px_-22px_rgba(23,21,19,0.35)]"
+                      style={{ animation: 'dhCardIn 0.35s cubic-bezier(0.22,1,0.36,1) both' }} data-testid="address-card">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#f1e4fb]">
+                        <MapPin className="h-5 w-5 text-[#7e22ce]" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[16px] font-bold tracking-[-0.01em] text-[#171513]">
+                          {(() => {
+                            // Vis kun gateadressen i tittelen — postnr/sted bor i underteksten
+                            let gate = String(form.address || '');
+                            for (const suffiks of [`, ${form.postalCode} ${form.city}`, `, ${form.city}`]) {
+                              if (form.city && gate.toLowerCase().endsWith(suffiks.toLowerCase())) { gate = gate.slice(0, -suffiks.length); break; }
+                            }
+                            return gate;
+                          })()}
+                        </p>
+                        {(form.postalCode || form.city) ? (
+                          <p className="mt-0.5 text-[13px] text-[#77716a]">{[form.postalCode, form.city].filter(Boolean).join(' ')}</p>
+                        ) : null}
+                      </div>
+                      <button type="button" data-testid="address-edit"
+                        onClick={() => {
+                          setAddressVerified(false);
+                          setTimeout(() => { try { (document.querySelector('[data-testid="entry-address-input"]') as HTMLInputElement | null)?.focus(); } catch (e) {} }, 80);
+                        }}
+                        className="shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold text-[#77716a] transition-colors hover:bg-[#f5f2ef] hover:text-[#171513]">
+                        Endre
+                      </button>
+                    </div>
+                  ) : (
+                    <div className={`relative min-w-0 rounded-[14px] border bg-white transition-all focus-within:border-[#292621] focus-within:shadow-[0_0_0_3px_rgba(32,29,26,0.06)] ${errors.address ? 'border-red-400' : 'border-[#dcd6cf]'}`}>
+                      <span className="pointer-events-none absolute left-4 top-7 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg bg-[#f5f2ef]">
+                        <MapPin className="h-4 w-4 text-[#7e22ce]" />
+                      </span>
+                      <AddressAutocomplete
                       value={form.address}
                       onChange={(value: string) => {
                         const detectedFinn = detectFinnReference(value);
@@ -879,15 +911,12 @@ export default function OwnerOnboarding2026() {
                       inputClassName="h-14 w-full min-w-0 rounded-2xl bg-transparent pl-12 pr-4 text-[16px] text-[#171513] outline-none placeholder:text-[#99938c]"
                       className="min-w-0"
                     />
-                  </div>
+                    </div>
+                  )}
                   {errors.address ? <p className="mt-1.5 text-[12px] font-medium text-red-600">{errors.address}</p> : null}
-                  <div className="mt-2.5 min-h-[20px] text-[12px] leading-relaxed">
-                    {finnLookupLoading ? (
-                      <span className="inline-flex items-center gap-1.5 text-[#716b63]"><Loader2 className="h-3.5 w-3.5 animate-spin text-[#7e22ce]" /> Henter boligopplysninger fra FINN …</span>
-                    ) : addressVerified ? (
-                      <span className="inline-flex items-center gap-1.5 font-semibold text-[#674179]"><CheckCircle2 className="h-3.5 w-3.5 text-[#8d35c7]" /> Adressen er bekreftet</span>
-                    ) : null}
-                  </div>
+                  {finnLookupLoading ? (
+                    <p className="mt-2.5 inline-flex items-center gap-1.5 text-[12px] leading-relaxed text-[#716b63]"><Loader2 className="h-3.5 w-3.5 animate-spin text-[#7e22ce]" /> Henter boligopplysninger fra FINN …</p>
+                  ) : null}
                 </div>
 
                 <button type="button" onClick={continueFromAddress} disabled={finnLookupLoading || (!addressVerified && !detectFinnReference(form.address))} data-testid="address-continue" className="mt-6 inline-flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#171513] px-7 text-[15px] font-bold text-white shadow-[0_16px_34px_-20px_rgba(0,0,0,.65)] transition-all hover:-translate-y-0.5 hover:bg-[#2a2723] hover:shadow-[0_20px_40px_-20px_rgba(0,0,0,.6)] active:translate-y-0 disabled:cursor-not-allowed disabled:bg-[#e7e3df] disabled:text-[#9a948d] disabled:shadow-none sm:w-auto sm:min-w-[190px]">
