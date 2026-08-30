@@ -158,11 +158,11 @@ function TopBar({ phase, onTilSteg }: { phase: Phase; onTilSteg?: (p: Phase) => 
   );
 }
 
-function DesktopProof({ pos, adresse }: { pos: { lat: number; lng: number } | null; adresse?: string }) {
+function DesktopProof({ pos, tekst, adresse }: { pos: { lat: number; lng: number } | null; tekst?: string; adresse?: string }) {
   return (
     <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#f5f3f0] lg:block" aria-label="Kart over boligens beliggenhet">
-      {/* Kart-først, nøyaktig som korttid: uskarpt Bergen-kart til adressen velges */}
-      <AdresseKart pos={pos} adresse={adresse} />
+      {/* Kart-først, nøyaktig som korttid: våkner og panorerer levende mens man skriver */}
+      <AdresseKart pos={pos} tekst={tekst} adresse={adresse} />
     </aside>
   );
 }
@@ -905,13 +905,10 @@ export default function OwnerOnboarding2026() {
     );
   }
 
-  /* Pustende layout: kartet får mer plass på adressesteget (der det bærer
-     opplevelsen), og glir tilbake når steg 2/3 trenger bredden til innhold.
-     grid-template-columns er animerbar i moderne nettlesere; ellers snapper den. */
-  const kartBredt = phase === 'address' && Boolean(kartPos);
+  /* Fast 50/50-layout (som korttid) — kartet er likeverdig partner fra start */
   return (
     <div
-      className={`grid min-h-[100dvh] overflow-x-hidden bg-[#faf9f7] transition-[grid-template-columns] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${kartBredt ? 'lg:grid-cols-[minmax(0,0.9fr)_minmax(380px,1.1fr)]' : 'lg:grid-cols-[minmax(0,1.18fr)_minmax(380px,0.82fr)]'}`}
+      className="grid min-h-[100dvh] overflow-x-hidden bg-[#faf9f7] lg:grid-cols-[minmax(0,1fr)_minmax(380px,1fr)]"
       data-testid="owner-onboarding-2026"
     >
       <main className="flex min-w-0 flex-col">
@@ -1027,7 +1024,7 @@ export default function OwnerOnboarding2026() {
           </div>
         </div>
       </main>
-      <DesktopProof pos={kartPos} adresse={form.address} />
+      <DesktopProof pos={kartPos} tekst={form.address} adresse={form.address} />
     </div>
   );
 }

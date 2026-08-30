@@ -59,14 +59,42 @@ function gyldig(p: any): Pos | null {
     : null;
 }
 
-export default function AdresseKart({ pos, adresse }: { pos: Pos | null; adresse?: string }) {
+export default function AdresseKart({ pos, tekst, adresse }: { pos: Pos | null; tekst?: string; adresse?: string }) {
   const nodeRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const libRef = useRef<any>(null);
+  const geocoderRef = useRef<any>(null);
   const overlayRef = useRef<any>(null);
   const [klar, setKlar] = useState(false);
   const p = gyldig(pos);
   const harPos = Boolean(p);
+  // Kartet våkner (blur→skarpt) idet brukeren begynner å skrive — som korttid
+  const aktiv = harPos || Boolean((tekst || '').trim());
+
+  /* Slipp/flytt korttid-nålen på et punkt */
+  const settNål = (posisjon: any) => {
+    const map = mapRef.current;
+    const lib = libRef.current;
+    if (!map || !lib) return;
+    if (overlayRef.current) { overlayRef.current.setMap(null); overlayRef.current = null; }
+    const { OverlayView } = lib;
+    class NålOverlay extends OverlayView {
+      posisjon: any; div: HTMLDivElement | null = null;
+      constructor(pt: any) { super(); this.posisjon = pt; this.setMap(map); }
+      onAdd() {
+        this.div = document.createElement('div');
+        this.div.style.cssText = 'position:absolute;transform:translate(-50%,-100%);pointer-events:none';
+        this.div.innerHTML = NÅL_HTML;
+        (this as any).getPanes().overlayMouseTarget.appendChild(this.div);
+      }
+      draw() {
+        const pt = (this as any).getProjection()?.fromLatLngToDivPixel(this.posisjon);
+        if (pt && this.div) { this.div.style.left = pt.x + 'px'; this.div.style.top = pt.y + 'px'; }
+      }
+      onRemove() { this.div?.parentNode?.removeChild(this.div); this.div = null; }
+    }
+    overlayRef.current = new NålOverlay(posisjon);
+  };
 
   // Kartet monteres UMIDDELBART — det uskarpe Bergen-kartet ER tomtilstanden
   useEffect(() => {
@@ -81,8 +109,10 @@ export default function AdresseKart({ pos, adresse }: { pos: Pos | null; adresse
           loaderKonfigurert = true;
         }
         const lib = (await importLibrary('maps')) as any;
+        const geo = (await importLibrary('geocoding')) as any;
         if (avbrutt || !nodeRef.current) return;
         libRef.current = lib;
+        geocoderRef.current = new geo.Geocoder();
         mapRef.current = new lib.Map(nodeRef.current, {
           center: p || BERGEN,
           zoom: 15,
@@ -106,45 +136,47 @@ export default function AdresseKart({ pos, adresse }: { pos: Pos | null; adresse
 
   // Adressevalg → sentrer + slipp nålen (avsløringen skjer via blur→skarp-transitionen)
   useEffect(() => {
-    if (!p || !klar || !mapRef.current || !libRef.current) return;
-    const map = mapRef.current;
-    map.setCenter(p);
-    if (overlayRef.current) { overlayRef.current.setMap(null); overlayRef.current = null; }
-    const { OverlayView } = libRef.current;
-    class NålOverlay extends OverlayView {
-      posisjon: any; div: HTMLDivElement | null = null;
-      constructor(posisjon: any) { super(); this.posisjon = posisjon; this.setMap(map); }
-      onAdd() {
-        this.div = document.createElement('div');
-        this.div.style.cssText = 'position:absolute;transform:translate(-50%,-100%);pointer-events:none';
-        this.div.innerHTML = NÅL_HTML;
-        (this as any).getPanes().overlayMouseTarget.appendChild(this.div);
-      }
-      draw() {
-        const pt = (this as any).getProjection()?.fromLatLngToDivPixel(this.posisjon);
-        if (pt && this.div) { this.div.style.left = pt.x + 'px'; this.div.style.top = pt.y + 'px'; }
-      }
-      onRemove() { this.div?.parentNode?.removeChild(this.div); this.div = null; }
-    }
-    overlayRef.current = new NålOverlay(p);
+    if (!p || !klar || !mapRef.current) return;
+    mapRef.current.setCenter(p);
+    settNål(p);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p?.lat, p?.lng, klar]);
 
+  /* Geokoding MENS man skriver (som korttid): kartet panorerer levende etter
+     teksten og nålen følger med — valgt posisjon (p) har alltid forrang. */
+  useEffect(() => {
+    if (!klar || p) return;
+    const t = (tekst || '').trim();
+    if (t.length < 3 || !geocoderRef.current) return;
+    const id = setTimeout(() => {
+      try {
+        geocoderRef.current.geocode({ address: `${t}, Norge` }, (results: any, status: any) => {
+          if (status !== 'OK' || !results?.[0] || !mapRef.current) return;
+          const loc = results[0].geometry.location;
+          mapRef.current.setCenter(loc); // panTo hakker ved raske tastetrykk — setCenter under pågående blur er roligere
+          settNål(loc);
+        });
+      } catch { /* stille */ }
+    }, 350);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tekst, klar, p?.lat, p?.lng]);
+
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#f5f3f0]" data-testid="onboarding-kart">
-      {/* Kartlaget — uskarpt/zoomet i tomtilstand, skarpt ved valg (korttids eksakte transition) */}
+      {/* Kartlaget — uskarpt i ro, våkner (skarpt) idet man skriver — korttids eksakte transition */}
       <div
         className="absolute inset-0 transition-all duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
         style={{
-          filter: harPos ? 'blur(0px)' : 'blur(8px) saturate(0.6) brightness(1.05)',
-          transform: harPos ? 'scale(1)' : 'scale(1.1)',
+          filter: aktiv ? 'blur(0px)' : 'blur(8px) saturate(0.6) brightness(1.05)',
+          transform: aktiv ? 'scale(1)' : 'scale(1.1)',
         }}
       >
         <div ref={nodeRef} className="h-full w-full" />
       </div>
 
       {/* Premium-overlegg i tomtilstand — verbatim fra korttid */}
-      {!harPos && (
+      {!aktiv && (
         <div className="pointer-events-none absolute inset-0 z-10" style={{ background: 'radial-gradient(ellipse at 50% 45%, rgba(253,252,251,0.15) 0%, rgba(245,243,240,0.5) 100%)' }} data-testid="kart-tomtilstand">
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div className="relative mb-5">
