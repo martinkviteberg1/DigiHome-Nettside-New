@@ -96,9 +96,10 @@ export default function AdresseKart({ pos, tekst, adresse }: { pos: Pos | null; 
     overlayRef.current = new NålOverlay(posisjon);
   };
 
-  // Kartet monteres UMIDDELBART — det uskarpe Bergen-kartet ER tomtilstanden
+  // LAZY init: Maps JS lastes først når brukeren begynner å skrive (aktiv).
+  // Tomtilstanden er et statisk, forhåndsuskarpt bilde — null JS, null filter, null lag.
   useEffect(() => {
-    if (mapRef.current || !nodeRef.current) return;
+    if (!aktiv || mapRef.current || !nodeRef.current) return;
     let avbrutt = false;
     (async () => {
       try {
@@ -125,14 +126,15 @@ export default function AdresseKart({ pos, tekst, adresse }: { pos: Pos | null; 
           clickableIcons: false,
           gestureHandling: 'cooperative',
         });
-        setKlar(true);
+        // Ton inn først når flisene faktisk er tegnet — aldri vis et halvlastet kart
+        mapRef.current.addListener('tilesloaded', () => setKlar(true));
       } catch (e) {
         console.error('AdresseKart:', e);
       }
     })();
     return () => { avbrutt = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [aktiv]);
 
   // Adressevalg → sentrer + slipp nålen (avsløringen skjer via blur→skarp-transitionen)
   useEffect(() => {
@@ -164,16 +166,17 @@ export default function AdresseKart({ pos, tekst, adresse }: { pos: Pos | null; 
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#f5f3f0]" data-testid="onboarding-kart">
-      {/* Kartlaget — uskarpt i ro, våkner (skarpt) idet man skriver — korttids eksakte transition */}
-      <div
-        className="absolute inset-0 transition-all duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-        style={{
-          filter: aktiv ? 'blur(0px)' : 'blur(8px) saturate(0.6) brightness(1.05)',
-          transform: aktiv ? 'scale(1)' : 'scale(1.1)',
-        }}
-      >
+      {/* Levende kart — initieres lazy, toner inn med ren opacity (kompositor-vennlig) */}
+      <div className={`absolute inset-0 transition-opacity duration-[1200ms] ease-out ${aktiv && klar ? 'opacity-100' : 'opacity-0'}`}>
         <div ref={nodeRef} className="h-full w-full" />
       </div>
+
+      {/* Statisk forhåndsuskarpt Bergen-kart — blur er bakt inn i selve filen.
+          «Kommer i fokus»-følelsen lages med opacity + scale, aldri runtime-filter. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/kart-bergen-uskarp.jpg" alt="" aria-hidden="true"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+        style={{ opacity: aktiv && klar ? 0 : 1, transform: aktiv ? 'scale(1)' : 'scale(1.1)' }} />
 
       {/* Premium-overlegg i tomtilstand — verbatim fra korttid */}
       {!aktiv && (
