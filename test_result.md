@@ -7197,3 +7197,19 @@ agent_communication:
 agent_communication:
     -agent: "main"
     -message: "Salgsradar meglerkontakt-skjuling + Eierkontakt-filter + Se over tilbudet-flytting: ferdig og screenshot-verifisert (kun frontend, ingen backend-endring). Bruker ikke spurt om frontend-testagent ennaa."
+
+  - task: "Salgsradar arbeidsrom-redesign: rolig kortstabel (Bilder/Okonomi/Tilbudet/Historikk/Detaljer) + potensial-popover m/ delscorer i tabellen"
+    implemented: true
+    working: true
+    file: "/app/components/admin/Salgsradar.js (stylingKontroller kompakt, bildeHandlinger erstatter 300px side-inspektor, sekOkonomi/sekMelding/sekTilbud/sekBeskrivelse/sekPreview forenklet, lerret = max-w-880 kortstabel, ny PotensialCelle m/ fixed-posisjonert popover)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Screenshot-verifisert av main: (1) Lerretet er naa en sentrert kortstabel — hvite kort m/ tydelige overskrifter: Bilder (hero + filmstripe + handlingsrad under, ingen sidespalte), Okonomi (2 felter + 3 tall + kollapset prishistorikk), Tilbudet (kopier/aapne + full bredde-preview + kollapset FINN-melding og tekstredigering), Historikk (composer + tidslinje + kollapset AI-detalj), Detaljer (dl + status + faresone + kollapset FINN-tekst). Ingen doede hoyrespalter. (2) PotensialCelle: hover/klikk paa score-ringen i tabellen viser popover m/ Potensial X/100, Annonsekvalitet Y/100 og alle 6 delscorer (visuell/opplosning/format/antall/tekst/datahygiene) som fargede minibarer. position:fixed saa den ikke klippes av tabellens overflow-x-auto. Uten AI-analyse vises aerlig 'forelopig score'-melding. Kompilering verifisert (SWC OK, /admin/salgsradar 200)."
+
+agent_communication:
+    -agent: "main"
+    -message: "Arbeidsrom-redesign (kortstabel) + potensial-popover ferdig og screenshot-verifisert. Kun frontend — ingen API-endringer. Frontend-testagent IKKE kjort (krever brukertillatelse)."

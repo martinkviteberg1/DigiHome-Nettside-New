@@ -120,7 +120,7 @@ function ScoreRing({ verdi, maks = 100, forelopig = false, storrelse = 40, strek
   );
 }
 
-function PotensialBadge({ p, id, stor = false }) {
+function PotensialBadge({ p, id, stor = false, taus = false }) {
   if (!p) return null;
   return (
     <ScoreRing
@@ -129,8 +129,66 @@ function PotensialBadge({ p, id, stor = false }) {
       storrelse={stor ? 56 : 40}
       strek={stor ? 4.5 : 3.5}
       id={id ? `radar-potensial-${id}` : undefined}
-      tittel={p.forelopig ? `Foreløpig potensial ${p.score}/100 — kjør AI-analyse for full score` : `Potensial ${p.score}/100 · annonsekvalitet ${p.annonseScore}/100`}
+      tittel={taus ? undefined : (p.forelopig ? `Foreløpig potensial ${p.score}/100 — kjør AI-analyse for full score` : `Potensial ${p.score}/100 · annonsekvalitet ${p.annonseScore}/100`)}
     />
+  );
+}
+
+/* Potensial-celle i tabellen — hover/klikk viser delscorene (bilder, tekst, data …).
+   Popover er position:fixed så den ikke klippes av tabellens overflow-x-auto. */
+function PotensialCelle({ lead }) {
+  const [pop, setPop] = useState(null); // {x, y, under}
+  const p = lead.potensial;
+  if (!p) return <span className="text-[12px] text-[#ddd8d0]">–</span>;
+  const deler = lead.ai?.deler || null;
+  const vis = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const under = r.bottom + 300 <= window.innerHeight;
+    setPop({
+      x: Math.min(Math.max(r.left + r.width / 2, 150), window.innerWidth - 150),
+      y: under ? r.bottom + 10 : r.top - 10,
+      under,
+    });
+  };
+  return (
+    <span className="inline-flex justify-center" onMouseEnter={vis} onMouseLeave={() => setPop(null)}>
+      <button type="button" aria-label="Vis delscorer" data-testid={`radar-potensial-knapp-${lead.id}`}
+        onClick={(e) => { e.stopPropagation(); if (pop) setPop(null); else vis(e); }}
+        className="cursor-pointer rounded-full transition-transform hover:scale-[1.06]">
+        <PotensialBadge p={p} id={lead.id} taus />
+      </button>
+      {pop && (
+        <div className="dh-scale-in fixed z-[200] w-[268px] rounded-[14px] border border-black/[0.07] bg-white p-4 text-left shadow-[0_18px_50px_rgba(23,20,18,0.18)]"
+          style={{ left: pop.x, top: pop.y, transform: pop.under ? 'translateX(-50%)' : 'translate(-50%, -100%)' }}
+          onClick={(e) => e.stopPropagation()} data-testid={`radar-potensial-pop-${lead.id}`}>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-[13px] font-bold text-[#1c1917]" style={heading}>Potensial {p.score}<span className="font-medium text-[#a8a29a]">/100</span></p>
+            {!p.forelopig && p.annonseScore != null && (
+              <span className="text-[11px] font-medium text-[#8a857c]">Annonsekvalitet {p.annonseScore}/100</span>
+            )}
+          </div>
+          {deler ? (
+            <div className="mt-3 space-y-[7px]">
+              {DEL_ETIKETTER.map(([k, etikett]) => {
+                const v = lead.ai.deler?.[k];
+                return (
+                  <div key={k} className="flex items-center gap-2.5">
+                    <span className="w-[94px] shrink-0 text-[11.5px] text-[#78716c]">{etikett}</span>
+                    <span className="h-[5px] min-w-0 flex-1 overflow-hidden rounded-full bg-[#f0eeea]">
+                      <span className="block h-full rounded-full" style={{ width: `${Math.min(100, Math.max(4, (Number(v) || 0) * 10))}%`, background: delFarge(v) }} />
+                    </span>
+                    <span className="w-[22px] shrink-0 text-right text-[11.5px] font-bold tabular-nums" style={{ color: delFarge(v) }}>{v ?? '–'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="mt-2 text-[11.5px] leading-relaxed text-[#a8a29a]">Foreløpig score fra annonsedata — kjør AI-analysen for delscorer på bilder, tekst og data.</p>
+          )}
+          {deler && p.forelopig ? <p className="mt-2.5 text-[11px] text-[#a8a29a]">Foreløpig — analysen er ikke fullført.</p> : null}
+        </div>
+      )}
+    </span>
   );
 }
 
@@ -869,6 +927,9 @@ export default function Salgsradar({ apiKey }) {
       return evs.sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
     })();
 
+    // Kortstabel-formspråket på lerretet: hvite kort med rolige overskrifter
+    const KORT_ROM = 'scroll-mt-6 rounded-[18px] border border-black/[0.06] bg-white px-5 py-5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] sm:px-6';
+    const KORT_TITTEL = 'text-[16px] font-bold text-[#1c1917]';
     // Flat seksjonsstil — hårfin skillelinje i stedet for kort-i-kort
     const FLAT = 'border-t border-black/[0.07] pt-5 first:border-t-0 first:pt-0';
     // Delt formspråk: myk flate + rolig etikett (brukes i Oversikt og Bilder)
@@ -896,18 +957,20 @@ export default function Salgsradar({ apiKey }) {
     const mVurd = mAkt ? (ai?.bildeVurdering || []).find((x) => x.url === mAkt.kilde) : null;
     const bulkValg = [...styValgte].filter((k) => media.some((m) => m.kilde === k && m.kildeOk));
 
-    /* Stylingkontroller — én tydelig knapp; stilvalg og instruks bak «Juster stil» */
+    /* Stylingkontroller — kompakt handlingsrad; stilvalg og instruks bak «Juster stil» */
     const stylingKontroller = (kjorLabel, kilder) => (
-      <div className="mt-3 space-y-2.5" data-testid="radar-styling-kontroller">
-        <button onClick={() => styGenerer(valgt.id, kilder)} disabled={styStarter || !kilder.length} data-testid="radar-styling-generer" className={`${KNAPP_PRIMAER} w-full justify-center`}>
-          {styStarter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />} {kjorLabel}
-        </button>
-        <p className="text-[11.5px] leading-relaxed text-[#a6a19a]">~30–60 sek per bilde. Ingenting brukes før du har godkjent resultatet.</p>
-        <details className="group/stil">
+      <div data-testid="radar-styling-kontroller">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <button onClick={() => styGenerer(valgt.id, kilder)} disabled={styStarter || !kilder.length} data-testid="radar-styling-generer" className={KNAPP_PRIMAER}>
+            {styStarter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />} {kjorLabel}
+          </button>
+          <p className="text-[11.5px] leading-relaxed text-[#a6a19a]">~30–60 sek per bilde · ingenting brukes før du har godkjent</p>
+        </div>
+        <details className="group/stil mt-2.5">
           <summary className="flex cursor-pointer list-none items-center gap-1 text-[12px] font-semibold text-[#8f8a82] transition-colors hover:text-[#1c1917] [&::-webkit-details-marker]:hidden">
             <ChevronRight className="h-3 w-3 transition-transform group-open/stil:rotate-90" /> Juster stil
           </summary>
-          <div className="mt-2.5 space-y-2.5">
+          <div className="mt-2.5 max-w-[460px] space-y-2.5">
             <div className="flex flex-wrap items-center gap-1.5">
               {[['optimal', 'FINN-klar'], ['lysloft', 'Lysløft'], ['mobler', 'Møblering']].map(([k, l]) => (
                 <button key={k} onClick={() => setStyModus(k)} data-testid={`radar-modus-${k}`}
@@ -943,48 +1006,45 @@ export default function Salgsradar({ apiKey }) {
       </div>
     );
 
-    /* Inspector — kontekst og handlinger for valgt bilde (eller flervalget) */
-    const bildeInspektor = (
-      <aside className={FLATE} data-testid="radar-bilde-inspektor">
+    /* Handlingsrad — kontekst og handlinger for valgt bilde (eller flervalget).
+       Ligger under filmstripen i full bredde — ingen sidespalte. */
+    const bildeHandlinger = (
+      <div data-testid="radar-bilde-inspektor">
         {bulkValg.length > 0 ? (
           <>
             <div className="flex items-baseline justify-between">
               <p className={ETIKETT}>{bulkValg.length} bilder valgt</p>
               <button onClick={() => setStyValgte(new Set())} data-testid="radar-bulk-avbryt" className="text-[12.5px] font-medium text-[#8f8a82] transition-colors hover:text-[#1c1917]">Avbryt</button>
             </div>
-            {stylingKontroller(`Forbedre ${bulkValg.length} bilder`, bulkValg)}
+            <div className="mt-3">{stylingKontroller(`Forbedre ${bulkValg.length} bilder`, bulkValg)}</div>
             {styFeil && <p className="mt-2.5 text-[12.5px] text-[#b3261e]" data-testid="radar-styling-feil">{styFeil}</p>}
           </>
         ) : !mAkt ? null : (
           <>
-            <p className={ETIKETT}>{mVurd?.rom ? mVurd.rom.charAt(0).toUpperCase() + mVurd.rom.slice(1) : `Bilde ${hIdx + 1} av ${nB}`}</p>
-            {mVurd && (
-              <p className="mt-1.5 text-[13px] leading-relaxed text-[#6f6a63]">
-                <span className="font-semibold" style={{ color: delFarge(mVurd.score) }}>{mVurd.score}/10</span>{mVurd.funn ? ` — ${mVurd.funn}` : ''}
-              </p>
-            )}
+            <p className="text-[13px] text-[#6f6a63]">
+              <span className="font-semibold text-[#1c1917]">{mVurd?.rom ? mVurd.rom.charAt(0).toUpperCase() + mVurd.rom.slice(1) : `Bilde ${hIdx + 1} av ${nB}`}</span>
+              {mVurd && <span> · <span className="font-semibold" style={{ color: delFarge(mVurd.score) }}>{mVurd.score}/10</span>{mVurd.funn ? ` — ${mVurd.funn}` : ''}</span>}
+            </p>
             {mAkt.kjorer ? (
               <div className="mt-3 flex items-center gap-2.5 text-[13px] text-[#57534e]" data-testid="radar-inspektor-kjorer">
                 <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#8b5cf6]" /> Forbedres med AI — tar 30–60 sek…
               </div>
             ) : mAkt.kandidat ? (
               <>
-                <p className="mt-3 text-[13px] leading-relaxed text-[#57534e]">AI-forslaget ligger på bildet — dra i linjen for å sammenligne med originalen.</p>
-                <div className="mt-3 space-y-2">
-                  <button onClick={() => styReview(valgt.id, mAkt.kandidat.jobb.id, 'godkjenn')} disabled={Boolean(styBusy)} data-testid="radar-review-godkjenn" className={`${KNAPP_PRIMAER} w-full justify-center`}>
+                <p className="mt-2 text-[13px] leading-relaxed text-[#57534e]">AI-forslaget ligger på bildet — dra i linjen for å sammenligne med originalen.</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button onClick={() => styReview(valgt.id, mAkt.kandidat.jobb.id, 'godkjenn')} disabled={Boolean(styBusy)} data-testid="radar-review-godkjenn" className={KNAPP_PRIMAER}>
                     {styBusy === mAkt.kandidat.jobb.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Bruk bildet
                   </button>
-                  <div className="flex gap-2">
-                    <button onClick={() => styReview(valgt.id, mAkt.kandidat.jobb.id, 'provIgjen')} disabled={Boolean(styBusy)} data-testid="radar-review-provigjen" className={`${KNAPP_GHOST} flex-1 justify-center`}>
-                      <RefreshCw className="h-3.5 w-3.5" /> Prøv igjen
-                    </button>
-                    <button onClick={() => styReview(valgt.id, mAkt.kandidat.jobb.id, 'forkast')} disabled={Boolean(styBusy)} data-testid="radar-review-forkast"
-                      className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-[9px] px-3 text-[13px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef] disabled:opacity-50">
-                      Forkast
-                    </button>
-                  </div>
+                  <button onClick={() => styReview(valgt.id, mAkt.kandidat.jobb.id, 'provIgjen')} disabled={Boolean(styBusy)} data-testid="radar-review-provigjen" className={KNAPP_GHOST}>
+                    <RefreshCw className="h-3.5 w-3.5" /> Prøv igjen
+                  </button>
+                  <button onClick={() => styReview(valgt.id, mAkt.kandidat.jobb.id, 'forkast')} disabled={Boolean(styBusy)} data-testid="radar-review-forkast"
+                    className="flex h-9 items-center gap-1.5 rounded-[9px] px-3 text-[13px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef] disabled:opacity-50">
+                    Forkast
+                  </button>
                   <button onClick={() => setSmlPar({ ai: mAkt.kandidat.url, original: mAkt.kilde, stil: mAkt.kandidat.jobb.stil })} data-testid="radar-kandidat-fullskjerm"
-                    className="w-full text-center text-[12.5px] font-medium text-[#6d28d9] hover:underline">
+                    className="text-[12.5px] font-medium text-[#6d28d9] hover:underline">
                     Sammenlign i fullskjerm
                   </button>
                 </div>
@@ -995,30 +1055,29 @@ export default function Salgsradar({ apiKey }) {
                   <p className="mt-2 text-[12.5px] leading-relaxed text-[#b3261e]" data-testid="radar-styling-feilet">Forrige forsøk feilet{mAkt.feilet.feil ? ` — ${mAkt.feilet.feil}` : ''}. Prøv gjerne igjen.</p>
                 )}
                 {mAkt.ai && (
-                  <div className="mt-2.5 flex items-center justify-between gap-2 text-[13px]">
+                  <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
                     <span className="flex items-center gap-1.5 font-medium text-[#6d28d9]"><Sparkles className="h-3.5 w-3.5" /> AI-versjonen brukes i tilbudet</span>
-                    <button onClick={() => setSmlPar({ ai: mAkt.ai.url, original: mAkt.kilde, stil: mAkt.ai.stil })} data-testid="radar-ai-fullskjerm" className="shrink-0 text-[12.5px] font-medium text-[#6d28d9] hover:underline">Fullskjerm</button>
-                  </div>
+                    <button onClick={() => setSmlPar({ ai: mAkt.ai.url, original: mAkt.kilde, stil: mAkt.ai.stil })} data-testid="radar-ai-fullskjerm" className="text-[12.5px] font-medium text-[#6d28d9] hover:underline">Fullskjerm</button>
+                  </p>
                 )}
                 {mAkt.kildeOk ? (
-                  stylingKontroller(mAkt.ai ? 'Lag ny versjon' : 'Forbedre dette bildet', [mAkt.kilde])
+                  <div className="mt-3">{stylingKontroller(mAkt.ai ? 'Lag ny versjon' : 'Forbedre dette bildet', [mAkt.kilde])}</div>
                 ) : (
                   <p className="mt-2 text-[12.5px] leading-relaxed text-[#a6a19a]">Originalen er fjernet fra FINN — den godkjente AI-versjonen beholdes i tilbudet.</p>
                 )}
               </>
             )}
             {styFeil && <p className="mt-2.5 text-[12.5px] text-[#b3261e]" data-testid="radar-styling-feil">{styFeil}</p>}
-            <p className="mt-4 border-t border-black/[0.06] pt-3 text-[12px] leading-relaxed text-[#a6a19a]">Huk av flere bilder i filmstripen for å forbedre dem samlet.</p>
           </>
         )}
-      </aside>
+      </div>
     );
 
     /* ── Bilder-fanen: én integrert media-arbeidsflate — canvas + filmstrip +
        inspector. Styling og godkjenning skjer PÅ det valgte bildet, ikke i en
        egen seksjon. ── */
     const sekBilder = nB > 0 ? (
-      <div data-testid="radar-bilder-flate" className="mx-auto grid w-full max-w-[1160px] items-start gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div data-testid="radar-bilder-flate" className="min-w-0">
         <div className="min-w-0">
           {kandidatAntall > 0 && !mAkt?.kandidat && (
             <button onClick={() => setHeroIdx(Math.max(0, media.findIndex((m) => m.kandidat)))} data-testid="radar-kandidat-varsel"
@@ -1160,7 +1219,7 @@ export default function Salgsradar({ apiKey }) {
             })}
           </div>
         </div>
-        <div className={toKol ? '' : 'mt-3'}>{bildeInspektor}</div>
+        <div className="mt-4 border-t border-black/[0.06] pt-4">{bildeHandlinger}</div>
       </div>
     ) : (
       <p className="text-[13.5px] text-[#a6a19a]">Ingen bilder på denne annonsen.</p>
@@ -1340,15 +1399,8 @@ export default function Salgsradar({ apiKey }) {
     );
 
     const sekOkonomi = (
-      <section className={FLAT}>
-        <SekHode ikon={Banknote} tittel="Økonomi og tilbud" />
-        {valgt.analyse?.grunnlag?.snittLeie ? (
-          <p className="mt-2 text-[11.5px] text-[#a8a29a]">
-            Porteføljen vår: snittleie {kr(valgt.analyse.grunnlag.snittLeie)} ({valgt.analyse.grunnlag.antallILeide} utleide)
-            {valgt.analyse.grunnlag.snittSone ? ` · sone ${valgt.analyse.grunnlag.sone}: ${kr(valgt.analyse.grunnlag.snittSone)}` : ''}
-          </p>
-        ) : null}
-        <div className="mt-3 grid grid-cols-2 gap-3">
+      <div data-testid="radar-okonomi">
+        <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">Anbefalt leie (kr/mnd)</span>
             <input type="number" value={valgt.analyse?.anbefaltLeie ?? ''} data-testid="radar-anbefalt-input"
@@ -1373,10 +1425,18 @@ export default function Salgsradar({ apiKey }) {
             </div>
           ))}
         </div>
+        {valgt.analyse?.grunnlag?.snittLeie ? (
+          <p className="mt-2.5 text-[11.5px] text-[#a8a29a]">
+            Porteføljen vår: snittleie {kr(valgt.analyse.grunnlag.snittLeie)} ({valgt.analyse.grunnlag.antallILeide} utleide)
+            {valgt.analyse.grunnlag.snittSone ? ` · sone ${valgt.analyse.grunnlag.sone}: ${kr(valgt.analyse.grunnlag.snittSone)}` : ''}
+          </p>
+        ) : null}
         {(valgt.prisHistorikk || []).length > 0 && (
-          <div className="mt-3.5" data-testid="radar-prishistorikk">
-            <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Prishistorikk (FINN)</p>
-            <ul className="mt-1.5 space-y-1">
+          <details className="group/prish mt-3" data-testid="radar-prishistorikk">
+            <summary className="flex cursor-pointer list-none items-center gap-1 text-[12px] font-semibold text-[#8f8a82] transition-colors hover:text-[#1c1917] [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="h-3 w-3 transition-transform group-open/prish:rotate-90" /> Prishistorikk på FINN · {valgt.prisHistorikk.length}
+            </summary>
+            <ul className="mt-2 max-w-[420px] space-y-1">
               {[...valgt.prisHistorikk].reverse().slice(0, 5).map((h, i) => (
                 <li key={i} className="flex items-center gap-1.5 text-[12px] text-[#57534e]">
                   <span className={Number(h.til) < Number(h.fra) ? 'font-bold text-[#0e7490]' : 'font-bold text-[#c2413b]'}>{Number(h.til) < Number(h.fra) ? '↓' : '↑'}</span>
@@ -1387,32 +1447,34 @@ export default function Salgsradar({ apiKey }) {
                 </li>
               ))}
             </ul>
-          </div>
+          </details>
         )}
-      </section>
+      </div>
     );
 
     const sekMelding = ai && (
-      <section className={FLAT}>
-        <SekHode ikon={MessageSquare} tittel="FINN-melding" hoyre={(
-          <button onClick={() => kopierMelding(valgt)} data-testid="radar-kopier-melding" className={`${KNAPP_GHOST} h-7 text-[11.5px]`}>
-            {meldingKopiert ? <Check className="h-3.5 w-3.5 text-[#1f7a45]" /> : <Copy className="h-3.5 w-3.5" />} {meldingKopiert ? 'Kopiert!' : 'Kopier med lenke'}
-          </button>
-        )} />
-        <textarea value={ai.finnMelding || ''} rows={4} data-testid="radar-finnmelding"
-          onChange={(e) => settLead(valgt.id, (x) => ({ ...x, ai: { ...x.ai, finnMelding: e.target.value } }))}
-          onBlur={(e) => oppdater(valgt.id, { finnMelding: e.target.value }, true)}
-          className="mt-3 w-full resize-none rounded-[10px] border border-black/[0.08] bg-[#fbfaf9] px-3.5 py-3 text-[12.5px] leading-relaxed outline-none transition-colors focus:border-[#1c1917]/30 focus:bg-white" />
-        <p className="mt-1.5 text-[11px] text-[#a8a29a]">{'{LENKE}'} byttes automatisk med tilbudslenken når du kopierer. Redigeres fritt — lagres når du klikker ut.</p>
-      </section>
+      <details className="group/fm mt-5 border-t border-black/[0.06] pt-4" data-testid="radar-melding">
+        <summary className="flex cursor-pointer list-none items-center gap-1 text-[12.5px] font-semibold text-[#8f8a82] transition-colors hover:text-[#1c1917] [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="h-3 w-3 transition-transform group-open/fm:rotate-90" /> FINN-melding til huseier
+        </summary>
+        <div className="mt-3">
+          <textarea value={ai.finnMelding || ''} rows={4} data-testid="radar-finnmelding"
+            onChange={(e) => settLead(valgt.id, (x) => ({ ...x, ai: { ...x.ai, finnMelding: e.target.value } }))}
+            onBlur={(e) => oppdater(valgt.id, { finnMelding: e.target.value }, true)}
+            className="w-full resize-none rounded-[10px] border border-black/[0.08] bg-[#fbfaf9] px-3.5 py-3 text-[12.5px] leading-relaxed outline-none transition-colors focus:border-[#1c1917]/30 focus:bg-white" />
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] text-[#a8a29a]">{'{LENKE}'} byttes automatisk med tilbudslenken når du kopierer.</p>
+            <button onClick={() => kopierMelding(valgt)} data-testid="radar-kopier-melding" className={`${KNAPP_GHOST} h-8 text-[12px]`}>
+              {meldingKopiert ? <Check className="h-3.5 w-3.5 text-[#1f7a45]" /> : <Copy className="h-3.5 w-3.5" />} {meldingKopiert ? 'Kopiert!' : 'Kopier med lenke'}
+            </button>
+          </div>
+        </div>
+      </details>
     );
 
     const sekTilbud = (
-      <section className={FLAT}>
-        <SekHode ikon={Globe} tittel="Tilbudsside til huseier" hoyre={(valgt.aapninger || 0) > 0 ? (
-          <span className="flex items-center gap-1 text-[11.5px] text-[#0e7490]"><Eye className="h-3.5 w-3.5" /> Åpnet {valgt.aapninger}×{valgt.sistAapnet ? ` · ${naarSist(valgt.sistAapnet)}` : ''}</span>
-        ) : null} />
-        <div className="mt-3 flex gap-2">
+      <div data-testid="radar-tilbud-handlinger">
+        <div className="flex gap-2">
           <button onClick={() => kopierLenke(valgt)} data-testid="radar-kopier-lenke" className={`${KNAPP_PRIMAER} h-9 flex-1 justify-center`}>
             {kopiert ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {kopiert ? 'Kopiert!' : 'Kopier tilbudslenke'}
           </button>
@@ -1420,9 +1482,20 @@ export default function Salgsradar({ apiKey }) {
             Åpne <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
+        <p className="mt-2 text-[11px] text-[#a8a29a]">Send lenken via FINN-meldingen på annonsen{!erMeglerLead(valgt) && valgt.kontaktTlf ? ` — eller ring ${valgt.kontaktTlf}` : ''}. Ikke uanmodet e-post/SMS (mfl. §15).</p>
+        {(valgt.kontaktLogg || []).length > 0 && (
+          <div className="mt-3 space-y-2">
+            {valgt.kontaktLogg.map((kx, i) => (
+              <p key={i} className="flex items-start gap-2 rounded-[10px] bg-[#e9f6f9] px-3.5 py-2.5 text-[12px] text-[#0e7490]">
+                <MessageSquare className="mt-[2px] h-3.5 w-3.5 shrink-0" />
+                <span><b>{kx.navn}</b> ({kx.telefon}) — {kx.melding || 'ba om å bli ringt'} · {naarSist(kx.at)}</span>
+              </p>
+            ))}
+          </div>
+        )}
         {ai && (
-          <details className="group/tekst mt-4">
-            <summary className="flex cursor-pointer list-none items-center gap-1 text-[12px] font-semibold text-[#8f8a82] transition-colors hover:text-[#1c1917] [&::-webkit-details-marker]:hidden">
+          <details className="group/tekst mt-5 border-t border-black/[0.06] pt-4">
+            <summary className="flex cursor-pointer list-none items-center gap-1 text-[12.5px] font-semibold text-[#8f8a82] transition-colors hover:text-[#1c1917] [&::-webkit-details-marker]:hidden">
               <ChevronRight className="h-3 w-3 transition-transform group-open/tekst:rotate-90" /> Rediger tekstene i tilbudet
             </summary>
             <div className="mt-3 space-y-3">
@@ -1481,33 +1554,16 @@ export default function Salgsradar({ apiKey }) {
             </div>
           </details>
         )}
-        <p className="mt-2 text-[11px] text-[#a8a29a]">Send lenken via FINN-meldingen på annonsen{!erMeglerLead(valgt) && valgt.kontaktTlf ? ` — eller ring ${valgt.kontaktTlf}` : ''}. Ikke uanmodet e-post/SMS (mfl. §15).</p>
-        {(valgt.kontaktLogg || []).length > 0 && (
-          <div className="mt-3 space-y-2">
-            {valgt.kontaktLogg.map((kx, i) => (
-              <p key={i} className="flex items-start gap-2 rounded-[10px] bg-[#e9f6f9] px-3.5 py-2.5 text-[12px] text-[#0e7490]">
-                <MessageSquare className="mt-[2px] h-3.5 w-3.5 shrink-0" />
-                <span><b>{kx.navn}</b> ({kx.telefon}) — {kx.melding || 'ba om å bli ringt'} · {naarSist(kx.at)}</span>
-              </p>
-            ))}
-          </div>
-        )}
-      </section>
+      </div>
     );
 
     const sekBeskrivelse = Boolean(valgt.beskrivelse) && (
-      <section className={FLAT}>
-        <SekHode ikon={MessageSquare} tittel="Annonsetekst fra FINN" hoyre={<span className="text-[11px] text-[#c2beb8]">{valgt.beskrivelse.length} tegn</span>} />
-        <details className="group/besk mt-3">
-          <summary className="cursor-pointer list-none">
-            <span className="block whitespace-pre-line text-[12.5px] leading-relaxed text-[#57534e] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:5] group-open/besk:[display:block]">
-              {valgt.beskrivelse}
-            </span>
-            <span className="mt-2 inline-block text-[11.5px] font-semibold text-[#6d28d9] group-open/besk:hidden">Vis hele teksten</span>
-            <span className="mt-2 hidden text-[11.5px] font-semibold text-[#6d28d9] group-open/besk:inline-block">Vis mindre</span>
-          </summary>
-        </details>
-      </section>
+      <details className="group/besk mt-6 border-t border-black/[0.07] pt-5" data-testid="radar-beskrivelse">
+        <summary className="flex cursor-pointer list-none items-center gap-1 text-[12.5px] font-semibold text-[#8f8a82] transition-colors hover:text-[#1c1917] [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="h-3 w-3 transition-transform group-open/besk:rotate-90" /> Annonsetekst fra FINN · {valgt.beskrivelse.length} tegn
+        </summary>
+        <p className="mt-3 whitespace-pre-line text-[12.5px] leading-relaxed text-[#57534e]">{valgt.beskrivelse}</p>
+      </details>
     );
 
     /* ── Aktivitet-fanen: composer + ekte kronologisk tidslinje ── */
@@ -1648,21 +1704,18 @@ export default function Salgsradar({ apiKey }) {
     );
 
 
-    /* ── Live forhåndsvisning av tilbudssiden — sticky, teller ikke som åpning ── */
+    /* ── Live forhåndsvisning av tilbudssiden — full bredde, teller ikke som åpning ── */
     const sekPreview = (
-      <div className="sticky top-0" data-testid="radar-tilbud-preview">
+      <div className="mt-5" data-testid="radar-tilbud-preview">
         <div className="flex items-baseline justify-between pb-2">
           <p className="text-[12.5px] font-medium text-[#8f8a82]">Slik ser huseier det</p>
-          <span className="flex items-center gap-3">
-            <button onClick={() => setPreviewNokkel((k) => k + 1)} data-testid="radar-preview-oppdater" className="flex items-center gap-1 text-[11.5px] font-medium text-[#78716c] transition-colors hover:text-[#1c1917]">
-              <RefreshCw className="h-3 w-3" /> Oppdater
-            </button>
-            <a href={`/tilbud/${valgt.tilbudSlug}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[11.5px] font-semibold text-[#6d28d9] hover:underline">Åpne <ExternalLink className="h-3 w-3" /></a>
-          </span>
+          <button onClick={() => setPreviewNokkel((k) => k + 1)} data-testid="radar-preview-oppdater" className="flex items-center gap-1 text-[11.5px] font-medium text-[#78716c] transition-colors hover:text-[#1c1917]">
+            <RefreshCw className="h-3 w-3" /> Oppdater
+          </button>
         </div>
-        <div className="overflow-hidden rounded-[10px] border border-black/[0.08] bg-[#f4f2ee]">
+        <div className="overflow-hidden rounded-[12px] border border-black/[0.08] bg-[#f4f2ee]">
           <iframe key={previewNokkel} src={`/tilbud/${valgt.tilbudSlug}?preview=1`} title="Forhåndsvisning av tilbudet"
-            className="w-full" style={{ height: 'min(72vh, 760px)', minHeight: 460 }} />
+            className="w-full" style={{ height: 'min(56vh, 560px)', minHeight: 380 }} />
         </div>
         <p className="mt-1.5 text-[11px] text-[#a8a29a]">Forhåndsvisningen teller ikke som åpning hos huseier. Lagrede endringer vises automatisk.</p>
       </div>
@@ -1712,33 +1765,46 @@ export default function Salgsradar({ apiKey }) {
           </div>
         )}
 
-          {/* Lerretet — én rolig scroll: Bilder → Tilbudet → Historikk */}
+          {/* Lerretet — én rolig kortstabel: Bilder → Økonomi → Tilbudet → Historikk */}
           <div className={`min-h-0 flex-1 overflow-y-auto ${autoAktiv ? 'pointer-events-none select-none' : ''}`}>
-            <div className="mx-auto w-full max-w-[1160px] px-4 pb-10 pt-7 sm:px-8">
+            <div className="mx-auto w-full max-w-[880px] space-y-4 px-4 pb-12 pt-6 sm:px-7">
 
-              <section id="rom-bilder" className="scroll-mt-6">
-                <p className={ETIKETT}>Bilder{nB ? ` · ${nB}` : ''}</p>
-                <div className="mt-5">{sekBilder}</div>
+              <section id="rom-bilder" className={KORT_ROM}>
+                <h3 className={`${KORT_TITTEL} mb-4`} style={heading}>Bilder{nB ? <span className="ml-1.5 text-[13px] font-medium text-[#a8a29a]">{nB}</span> : null}</h3>
+                {sekBilder}
               </section>
 
-              <section id="rom-tilbud" className="mt-14 scroll-mt-6 border-t border-black/[0.07] pt-10">
-                <p className={ETIKETT}>Tilbudet</p>
-                <div className="mt-5 grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
-                  <div className="min-w-0 space-y-7">{sekOkonomi}{sekMelding}{sekTilbud}{sekBeskrivelse}</div>
-                  {sekPreview}
+              <section className={KORT_ROM}>
+                <h3 className={`${KORT_TITTEL} mb-4`} style={heading}>Økonomi</h3>
+                {sekOkonomi}
+              </section>
+
+              <section id="rom-tilbud" className={KORT_ROM}>
+                <div className="mb-4 flex items-baseline justify-between gap-3">
+                  <h3 className={KORT_TITTEL} style={heading}>Tilbudet</h3>
+                  {(valgt.aapninger || 0) > 0 && (
+                    <span className="flex items-center gap-1 text-[11.5px] font-medium text-[#0e7490]"><Eye className="h-3.5 w-3.5" /> Åpnet {valgt.aapninger}×{valgt.sistAapnet ? ` · ${naarSist(valgt.sistAapnet)}` : ''}</span>
+                  )}
                 </div>
+                {sekTilbud}
+                {sekPreview}
+                {sekMelding}
               </section>
 
-              <section id="rom-historikk" className="mt-14 scroll-mt-6 border-t border-black/[0.07] pt-10">
-                <p className={ETIKETT}>Historikk</p>
-                <div className="mt-5">{sekAktivitet}</div>
-                <details className="group mt-10">
+              <section id="rom-historikk" className={KORT_ROM}>
+                <h3 className={`${KORT_TITTEL} mb-4`} style={heading}>Historikk</h3>
+                {sekAktivitet}
+                <details className="group mt-8 border-t border-black/[0.06] pt-4">
                   <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12.5px] font-semibold text-[#8a857c] transition-colors hover:text-[#1c1917] [&::-webkit-details-marker]:hidden">
                     <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" /> AI-vurderingen i detalj
                   </summary>
                   <div className="mt-5">{sekAnalyse}</div>
                 </details>
-                <div className="mt-10 border-t border-black/[0.07] pt-8">{sekDetaljer}</div>
+              </section>
+
+              <section className={KORT_ROM}>
+                {sekDetaljer}
+                {sekBeskrivelse}
               </section>
             </div>
           </div>
@@ -2139,7 +2205,7 @@ export default function Salgsradar({ apiKey }) {
                               </span>
                             )}
                           </td>
-                          <td className="px-2 py-2 text-center"><span className="inline-flex justify-center"><PotensialBadge p={l.potensial} id={l.id} /></span></td>
+                          <td className="px-2 py-2 text-center"><PotensialCelle lead={l} /></td>
                           <td className="px-2 py-2 text-right text-[12.5px] font-semibold text-[#44403c]" style={heading}>{tall(l.pris)}</td>
                           <td className="px-2 py-2 text-right text-[12.5px] text-[#78716c]" style={heading}>{l.analyse?.anbefaltLeie ? tall(l.analyse.anbefaltLeie) : '–'}</td>
                           <td className="px-3.5 py-2 text-right text-[12.5px] text-[#0e7490]">{l.aapninger || 0}</td>
