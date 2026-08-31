@@ -271,6 +271,10 @@ export default function SalgsSkuffEnkel({
 
   const hero = (lead.bilder || [])[0] || null;
 
+  // «Se over tilbudet» hører hjemme sammen med primærknappen — vises i
+  // Neste steg-kortet så snart analysen (og dermed tilbudet) er klar.
+  const seTilbudISteg = Boolean(steg && !erMegler && lead.ai);
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#faf9f7]" data-testid="salgs-skuff-enkel">
       {/* ══ Hode: boligens «visittkort» ══ */}
@@ -296,9 +300,12 @@ export default function SalgsSkuffEnkel({
                   <span className="h-[5px] w-[5px] rounded-full" style={{ background: st.farge }} />{st.l}
                 </span>
               </p>
-              {/* Utleier-linje: navn (eller legg til) + telefon */}
+              {/* Utleier-linje: navn (eller legg til) + telefon.
+                  Megler-annonser: kontakten er forvalteren, ikke huseier — skjules. */}
               <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12.5px]">
-                {redigerNavn ? (
+                {erMegler ? (
+                  <span className="text-[11.5px] text-[#a8a29a]" data-testid="skuff-megler-note">Annonsen kjøres av megler — huseiers kontaktinfo er ikke offentlig</span>
+                ) : redigerNavn ? (
                   <span className="flex items-center gap-1.5">
                     <input ref={navnRef} value={navnUtkast} onChange={(e) => setNavnUtkast(e.target.value)} maxLength={60}
                       onKeyDown={(e) => { if (e.key === 'Enter') lagreNavn(); if (e.key === 'Escape') setRedigerNavn(false); }}
@@ -311,15 +318,15 @@ export default function SalgsSkuffEnkel({
                     <span className="flex h-[20px] w-[20px] items-center justify-center rounded-full bg-[#e9e6e0] text-[9px] font-bold text-[#57534e]">{initialer(lead.kontaktNavn)}</span>
                     <span className="font-medium text-[#44403c]">{lead.kontaktNavn}{lead.kontaktTittel ? <span className="text-[#a8a29a]"> · {lead.kontaktTittel}</span> : null}</span>
                   </button>
-                ) : !erMegler ? (
+                ) : (
                   <button onClick={() => { setNavnUtkast(''); setRedigerNavn(true); }} data-testid="skuff-navn-legg-til"
                     title="FINN viser utleiers navn kun for innloggede — lim det inn her"
                     className="flex items-center gap-1 rounded-full border border-dashed border-[#d6d2cb] px-2 py-[2px] text-[11.5px] font-medium text-[#a8a29a] transition-colors hover:border-[#6d28d9]/40 hover:text-[#6d28d9]">
                     <Plus className="h-3 w-3" /> Navn
                   </button>
-                ) : null}
-                {tlf && <a href={`tel:${tlf}`} className="font-medium text-[#57534e] tabular-nums hover:text-[#1c1917] hover:underline">{fmtTlf(tlf)}</a>}
-                {lead.kontaktEpost && <a href={`mailto:${lead.kontaktEpost}`} className="truncate font-medium text-[#57534e] hover:underline">{lead.kontaktEpost}</a>}
+                )}
+                {!erMegler && tlf && <a href={`tel:${tlf}`} className="font-medium text-[#57534e] tabular-nums hover:text-[#1c1917] hover:underline">{fmtTlf(tlf)}</a>}
+                {!erMegler && lead.kontaktEpost && <a href={`mailto:${lead.kontaktEpost}`} className="truncate font-medium text-[#57534e] hover:underline">{lead.kontaktEpost}</a>}
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
@@ -394,7 +401,21 @@ export default function SalgsSkuffEnkel({
               </p>
               <p className="mt-2 text-[17px] font-bold leading-snug text-[#1c1917]" style={heading}>{steg.tittel}</p>
               {steg.sub && <p className="mt-1 text-[12.5px] leading-relaxed text-[#8a857c]">{steg.sub}</p>}
-              <div className="mt-4">
+              <div className="mt-4 space-y-2">
+                {seTilbudISteg && (
+                  <button onClick={aapneTilbud} data-testid="skuff-se-tilbud"
+                    className="flex h-12 w-full items-center gap-2.5 rounded-[12px] border border-black/[0.08] bg-white px-3 text-left shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-all hover:border-black/[0.18] hover:bg-[#faf9f7]">
+                    <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-[#f4f2ee] text-[#57534e]"><FileText className="h-3.5 w-3.5" /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-semibold text-[#1c1917]">Se over tilbudet</span>
+                      <span className="block truncate text-[10.5px] text-[#a8a29a]">Slik huseier ser det</span>
+                    </span>
+                    {aapn > 0 && (
+                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#e6f3f6] px-2 py-[3px] text-[11px] font-bold text-[#0e7490]"><Eye className="h-3 w-3" />{aapn}</span>
+                    )}
+                    <ChevronRight className="h-4 w-4 shrink-0 text-[#b3aea6]" />
+                  </button>
+                )}
                 {steg.knapp.href ? (
                   <a href={steg.knapp.href} data-testid="skuff-stor-knapp" className={`${STOR_KNAPP} ${steg.knapp.stil}`}>
                     <steg.knapp.ikon className="h-4 w-4" /> {steg.knapp.label}
@@ -517,19 +538,21 @@ export default function SalgsSkuffEnkel({
             );
           })()}
 
-          {/* Se over tilbudet */}
-          <button onClick={aapneTilbud} data-testid="skuff-se-tilbud"
-            className="mt-3 flex w-full items-center gap-3 rounded-[14px] border border-black/[0.05] bg-white px-3.5 py-3 text-left shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all hover:border-black/[0.12] hover:shadow-[0_2px_8px_rgba(28,25,23,0.07)]">
-            <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#141414] text-white"><FileText className="h-4 w-4" /></span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[13.5px] font-semibold text-[#1c1917]">Se over tilbudet</span>
-              <span className="block text-[11px] text-[#a8a29a]">Slik huseier ser det — bygget av argumentene over</span>
-            </span>
-            {aapn > 0 && (
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#e6f3f6] px-2 py-[3px] text-[11px] font-bold text-[#0e7490]"><Eye className="h-3 w-3" />{aapn}</span>
-            )}
-            <ChevronRight className="h-4 w-4 shrink-0 text-[#b3aea6]" />
-          </button>
+          {/* Se over tilbudet — nederst kun når det ikke allerede står i Neste steg-kortet */}
+          {!seTilbudISteg && (
+            <button onClick={aapneTilbud} data-testid="skuff-se-tilbud-bunn"
+              className="mt-3 flex w-full items-center gap-3 rounded-[14px] border border-black/[0.05] bg-white px-3.5 py-3 text-left shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all hover:border-black/[0.12] hover:shadow-[0_2px_8px_rgba(28,25,23,0.07)]">
+              <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#141414] text-white"><FileText className="h-4 w-4" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13.5px] font-semibold text-[#1c1917]">Se over tilbudet</span>
+                <span className="block text-[11px] text-[#a8a29a]">Slik huseier ser det — bygget av argumentene over</span>
+              </span>
+              {aapn > 0 && (
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#e6f3f6] px-2 py-[3px] text-[11px] font-bold text-[#0e7490]"><Eye className="h-3 w-3" />{aapn}</span>
+              )}
+              <ChevronRight className="h-4 w-4 shrink-0 text-[#b3aea6]" />
+            </button>
+          )}
         </div>
       </div>
 

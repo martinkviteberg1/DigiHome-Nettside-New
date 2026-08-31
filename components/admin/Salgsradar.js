@@ -44,6 +44,13 @@ const STATUSER = [
   { k: 'tapt', l: 'Tapt', farge: '#c2413b', bg: '#fdf0ef' },
   { k: 'ikke_relevant', l: 'Ikke relevant', farge: '#8a8578', bg: '#f2f0eb' },
 ];
+/* ── Megler vs. eierkontakt ──────────────────────────────────────────────────
+   Når Utleiemegleren o.l. kjører annonsen er kontaktpersonen en MEGLER,
+   ikke huseier. Da skjuler vi kontaktinfoen (irrelevant for salg) og teller
+   leaden som «uten eierkontakt» i filteret. */
+const MEGLER_TYPER = ['megler', 'utleiemegleren'];
+const erMeglerLead = (l) => MEGLER_TYPER.includes(l?.annonsor?.type);
+const harEierkontakt = (l) => !erMeglerLead(l) && Boolean(l?.kontaktNavn || l?.kontaktTlf || l?.kontaktEpost);
 const STIL_VALG = [
   { k: 'optimal', l: 'FINN-optimalisering' },
   { k: 'lysloft', l: 'Lysløft (tomt rom)' },
@@ -362,6 +369,7 @@ export default function Salgsradar({ apiKey }) {
   const [selgere, setSelgere] = useState([]);
   const [eierFilter, setEierFilter] = useState('alle'); // 'alle' | 'mine' | 'pool'
   const [annonsorFilter, setAnnonsorFilter] = useState('alle'); // 'alle' | 'privat' | 'megler'
+  const [kontaktFilter, setKontaktFilter] = useState('alle'); // 'alle' | 'med' | 'uten' — eierkontakt
   const [bydelValg, setBydelValg] = useState([]); // multi-select bydeler: tom = alle
   const [filterMeny, setFilterMeny] = useState(false); // samlet filter-popover
   const [arsakDialog, setArsakDialog] = useState(null); // {lead, status}
@@ -674,12 +682,15 @@ export default function Salgsradar({ apiKey }) {
     // Privat = huseier uten forvalter (inkl. Husleie.no og uavklarte) — målgruppen.
     // Megler = proff aktør har oppdraget (Utleiemegleren m.fl.) — konkurrent.
     if (annonsorFilter === 'privat') arr = arr.filter((l) => !l.annonsor || ['privat', 'husleie', 'ukjent'].includes(l.annonsor.type));
-    if (annonsorFilter === 'megler') arr = arr.filter((l) => ['megler', 'utleiemegleren'].includes(l.annonsor?.type));
+    if (annonsorFilter === 'megler') arr = arr.filter((l) => erMeglerLead(l));
+    // Eierkontakt: har vi noen å ringe/skrive til? Meglerkontakt teller ikke.
+    if (kontaktFilter === 'med') arr = arr.filter((l) => harEierkontakt(l));
+    if (kontaktFilter === 'uten') arr = arr.filter((l) => !harEierkontakt(l));
     if (bydelValg.length) arr = arr.filter((l) => bydelValg.includes(bydelFraPostnr(l.postnr)));
     const q = sok.trim().toLowerCase();
     if (q) arr = arr.filter((l) => `${l.adresse || ''} ${l.tittel || ''} ${l.postnr || ''} ${bydelFraPostnr(l.postnr)} ${l.annonsor?.orgNavn || ''} ${l.kontaktNavn || ''}`.toLowerCase().includes(q));
     return arr;
-  }, [leads, statusValg, sok, eierFilter, aktor, annonsorFilter, bydelValg]);
+  }, [leads, statusValg, sok, eierFilter, aktor, annonsorFilter, kontaktFilter, bydelValg]);
 
   // Naturlige bydeler blant leadsene (fra postnr) — driver bydelsfilteret
   const bydeler = useMemo(() => {
@@ -691,8 +702,8 @@ export default function Salgsradar({ apiKey }) {
     return [...telling.entries()].sort((a, b) => b[1] - a[1]).map(([navn, antallB]) => ({ navn, antall: antallB }));
   }, [leads]);
 
-  const aktiveFiltre = statusValg.length + bydelValg.length + (eierFilter !== 'alle' ? 1 : 0) + (annonsorFilter !== 'alle' ? 1 : 0);
-  const nullstillFiltre = () => { setStatusValg([]); setEierFilter('alle'); setAnnonsorFilter('alle'); setBydelValg([]); };
+  const aktiveFiltre = statusValg.length + bydelValg.length + (eierFilter !== 'alle' ? 1 : 0) + (annonsorFilter !== 'alle' ? 1 : 0) + (kontaktFilter !== 'alle' ? 1 : 0);
+  const nullstillFiltre = () => { setStatusValg([]); setEierFilter('alle'); setAnnonsorFilter('alle'); setKontaktFilter('alle'); setBydelValg([]); };
   const veksleStatus = (k) => setStatusValg((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]));
   const veksleBydel = (navn) => setBydelValg((prev) => (prev.includes(navn) ? prev.filter((x) => x !== navn) : [...prev, navn]));
   const sortert = useMemo(() => {
@@ -1164,11 +1175,13 @@ export default function Salgsradar({ apiKey }) {
       const ut = [];
       const antStylet = (valgt.stylet || []).length;
       const kuttA = sisteKutt(valgt);
+      // Meglertelefon er ikke huseiers — foreslå aldri å «ringe huseier» på den
+      const eierTlf = erMeglerLead(valgt) ? '' : (valgt.kontaktTlf || '');
       if ((valgt.aapninger || 0) > 0 && !['dialog', 'vunnet', 'tapt'].includes(valgt.status)) {
-        ut.push({ t: `Huseier har åpnet tilbudet ${valgt.aapninger}× — følg opp mens interessen er varm`, k: valgt.kontaktTlf ? 'Ring huseier' : 'Kopier melding', href: valgt.kontaktTlf ? `tel:${valgt.kontaktTlf}` : null, gjor: valgt.kontaktTlf ? null : () => kopierMelding(valgt) });
+        ut.push({ t: `Huseier har åpnet tilbudet ${valgt.aapninger}× — følg opp mens interessen er varm`, k: eierTlf ? 'Ring huseier' : 'Kopier melding', href: eierTlf ? `tel:${eierTlf}` : null, gjor: eierTlf ? null : () => kopierMelding(valgt) });
       }
       if (kuttA?.fersk && !['vunnet', 'tapt'].includes(valgt.status)) {
-        ut.push({ t: `Utleier kuttet prisen −${kuttA.pct} % nylig — motivert utleier, ta kontakt nå`, k: valgt.kontaktTlf ? 'Ring huseier' : 'Kopier melding', href: valgt.kontaktTlf ? `tel:${valgt.kontaktTlf}` : null, gjor: valgt.kontaktTlf ? null : () => kopierMelding(valgt) });
+        ut.push({ t: `Utleier kuttet prisen −${kuttA.pct} % nylig — motivert utleier, ta kontakt nå`, k: eierTlf ? 'Ring huseier' : 'Kopier melding', href: eierTlf ? `tel:${eierTlf}` : null, gjor: eierTlf ? null : () => kopierMelding(valgt) });
       }
       if ((ai.stylingPotensial === 'høy' || ai.stylingPotensial === 'middels' || (ai.annonseScore || 0) < 60) && antStylet === 0 && (valgt.bilder || []).length > 0) {
         ut.push({ t: `Bildene har ${ai.stylingPotensial === 'høy' ? 'høyt' : 'reelt'} forbedringspotensial — kjør AI-styling før tilbudet sendes`, k: 'Åpne Bilder', gjor: () => gaaTil('bilder') });
@@ -1468,7 +1481,7 @@ export default function Salgsradar({ apiKey }) {
             </div>
           </details>
         )}
-        <p className="mt-2 text-[11px] text-[#a8a29a]">Send lenken via FINN-meldingen på annonsen{valgt.kontaktTlf ? ` — eller ring ${valgt.kontaktTlf}` : ''}. Ikke uanmodet e-post/SMS (mfl. §15).</p>
+        <p className="mt-2 text-[11px] text-[#a8a29a]">Send lenken via FINN-meldingen på annonsen{!erMeglerLead(valgt) && valgt.kontaktTlf ? ` — eller ring ${valgt.kontaktTlf}` : ''}. Ikke uanmodet e-post/SMS (mfl. §15).</p>
         {(valgt.kontaktLogg || []).length > 0 && (
           <div className="mt-3 space-y-2">
             {valgt.kontaktLogg.map((kx, i) => (
@@ -1580,9 +1593,11 @@ export default function Salgsradar({ apiKey }) {
                   : valgt.annonsor.orgNavn)
                 : 'Privat utleier')
               : null],
-            ['Utleier', valgt.kontaktNavn ? `${valgt.kontaktNavn}${valgt.kontaktTittel ? ` — ${valgt.kontaktTittel}` : ''}` : null],
-            ['Telefon', valgt.kontaktTlf ? <a key="tlf" href={`tel:${valgt.kontaktTlf}`} className="hover:underline">{fmtTlf(valgt.kontaktTlf)}</a> : null],
-            ['E-post', valgt.kontaktEpost ? <a key="ep" href={`mailto:${valgt.kontaktEpost}`} className="hover:underline">{valgt.kontaktEpost}</a> : null],
+            ['Utleier', erMeglerLead(valgt)
+              ? <span key="megler-note" className="text-[#a6a19a]" title="Megler har oppdraget — huseiers kontaktinfo er ikke offentlig på FINN">Via megler — eierkontakt ikke offentlig</span>
+              : (valgt.kontaktNavn ? `${valgt.kontaktNavn}${valgt.kontaktTittel ? ` — ${valgt.kontaktTittel}` : ''}` : null)],
+            ['Telefon', !erMeglerLead(valgt) && valgt.kontaktTlf ? <a key="tlf" href={`tel:${valgt.kontaktTlf}`} className="hover:underline">{fmtTlf(valgt.kontaktTlf)}</a> : null],
+            ['E-post', !erMeglerLead(valgt) && valgt.kontaktEpost ? <a key="ep" href={`mailto:${valgt.kontaktEpost}`} className="hover:underline">{valgt.kontaktEpost}</a> : null],
             ['Kilde', <a key="kilde" href={valgt.kildeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-medium text-[#6d28d9] hover:underline">FINN-annonse <ExternalLink className="h-3 w-3" /></a>],
             ['Hentet', `${naarSist(valgt.createdAt)}${valgt.kilde === 'agent' ? ' · av agenten' : ''}`],
             ['Tilbudet', (valgt.aapninger || 0) > 0
@@ -1863,6 +1878,17 @@ export default function Salgsradar({ apiKey }) {
                         </button>
                       ))}
                     </div>
+                    {/* KONTAKTINFO — har vi eierkontakt å gå på? */}
+                    <p className="pb-2 pt-5 text-[10.5px] font-bold uppercase tracking-[0.13em] text-[#b3aea6]">Eierkontakt</p>
+                    <div className="flex rounded-full bg-[#f0eee9] p-[3px]">
+                      {[{ k: 'alle', l: 'Alle' }, { k: 'med', l: `Har kontakt · ${leads.filter(harEierkontakt).length}` }, { k: 'uten', l: 'Mangler' }].map((f) => (
+                        <button key={f.k} onClick={() => setKontaktFilter(f.k)} data-testid={`radar-kontakt-${f.k}`}
+                          title={f.k === 'med' ? 'Navn, telefon eller e-post til eier — meglerkontakt teller ikke' : f.k === 'uten' ? 'Ingen eierkontakt — nås kun via FINN-melding' : undefined}
+                          className={`h-[30px] flex-1 whitespace-nowrap rounded-full px-1 text-[12.5px] transition-all ${kontaktFilter === f.k ? 'bg-white font-semibold text-[#1c1917] shadow-[0_1px_4px_rgba(28,25,23,0.12)]' : 'font-medium text-[#8a857c] hover:text-[#1c1917]'}`}>
+                          {f.l}
+                        </button>
+                      ))}
+                    </div>
                     {/* BYDEL — multi-select */}
                     {bydeler.length > 0 && (
                       <>
@@ -1904,6 +1930,7 @@ export default function Salgsradar({ apiKey }) {
                 ...statusValg.map((k) => ({ l: (STATUSER.find((s) => s.k === k) || {}).l || k, x: () => veksleStatus(k), tid: `chip-status-${k}` })),
                 ...(eierFilter !== 'alle' ? [{ l: eierFilter === 'mine' ? 'Mine' : 'Pool', x: () => setEierFilter('alle'), tid: 'chip-eier' }] : []),
                 ...(annonsorFilter !== 'alle' ? [{ l: annonsorFilter === 'privat' ? 'Privat' : 'Megler', x: () => setAnnonsorFilter('alle'), tid: 'chip-annonsor' }] : []),
+                ...(kontaktFilter !== 'alle' ? [{ l: kontaktFilter === 'med' ? 'Har kontakt' : 'Mangler kontakt', x: () => setKontaktFilter('alle'), tid: 'chip-kontakt' }] : []),
                 ...bydelValg.map((b) => ({ l: b, x: () => veksleBydel(b), tid: `chip-bydel-${b}` })),
               ].map((c) => (
                 <span key={c.tid} data-testid={`radar-${c.tid}`} className="flex h-[26px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#e9e6e0] pl-2.5 pr-1 text-[12px] font-medium text-[#44403c]">
@@ -2081,12 +2108,19 @@ export default function Salgsradar({ apiKey }) {
                           <td className="px-2 py-2">
                             <span className="block min-w-0" data-testid={`radar-tabell-kontakt-${l.id}`}>
                               <AnnonsorBadge annonsor={l.annonsor} liten />
-                              {l.kontaktNavn ? <span className="block max-w-[150px] truncate text-[12px] font-medium text-[#44403c]" title={l.kontaktTittel ? `${l.kontaktNavn} — ${l.kontaktTittel}` : l.kontaktNavn}>{l.kontaktNavn}</span> : null}
-                              {l.kontaktTlf ? (
-                                <a href={`tel:${l.kontaktTlf}`} onClick={(e) => e.stopPropagation()} className="block text-[11.5px] text-[#78716c] hover:text-[#1c1917] hover:underline">
-                                  {fmtTlf(l.kontaktTlf)}
-                                </a>
-                              ) : null}
+                              {erMeglerLead(l) ? (
+                                /* Meglerens kontaktperson er ikke huseier — vis aldri navn/tlf her */
+                                <span className="block text-[10.5px] text-[#b3aea6]">Eier ikke offentlig</span>
+                              ) : (
+                                <>
+                                  {l.kontaktNavn ? <span className="block max-w-[150px] truncate text-[12px] font-medium text-[#44403c]" title={l.kontaktTittel ? `${l.kontaktNavn} — ${l.kontaktTittel}` : l.kontaktNavn}>{l.kontaktNavn}</span> : null}
+                                  {l.kontaktTlf ? (
+                                    <a href={`tel:${l.kontaktTlf}`} onClick={(e) => e.stopPropagation()} className="block text-[11.5px] text-[#78716c] hover:text-[#1c1917] hover:underline">
+                                      {fmtTlf(l.kontaktTlf)}
+                                    </a>
+                                  ) : null}
+                                </>
+                              )}
                               {!l.annonsor && !l.kontaktNavn && !l.kontaktTlf ? <span className="text-[12px] text-[#ddd8d0]">–</span> : null}
                             </span>
                           </td>

@@ -7181,3 +7181,19 @@ agent_communication:
         -working: true
         -agent: "testing"
         -comment: "✅ ALL 4 TESTS PASSED (100% success rate). COMPREHENSIVE VERIFICATION OF /api/address GEOMETRY (Google Place Details proxy with lat/lng): Base URL: https://saker-hub.preview.emergentagent.com. CRITICAL SAFETY RULES FOLLOWED: (1) Read-only endpoint testing (no data modifications), (2) No QA data creation needed (public endpoint). TEST RESULTS: (T2a) ✅ AUTOCOMPLETE: GET /api/address?q=Olaf%20Ryes%20vei%2011 returns 200 with suggestions array containing 4 suggestions, at least one has place_id (e.g., 'Eh9PbGFmIFJ5ZXMgdmVpIDExLCBCZXJnZW4sIE5vcmdlIjASLgoUChIJ7Ubf1gH8PEYR0m73uk5QsaMQCyoUChIJYxrtY6r-PEYRLrVbMnr5wDg') ✓. (T2b) ✅ PLACE DETAILS WITH LAT/LNG: GET /api/address?place_id=<first_place_id> returns 200 {ok:true, address:'Olaf Ryes vei 11', postalCode:'5007', city:'Bergen', label:'Olaf Ryes vei 11, 5007 Bergen', lat:60.3865504, lng:5.320846299999999} - all required fields present, lat/lng are numbers (not strings or objects), coordinates in reasonable range for Norway (lat 58-72, lng 4-32) ✓. (T2c) ✅ INVALID PLACE_ID ERROR HANDLING: GET /api/address?place_id=ugyldig-id-123 returns 502 error (infrastructure level, endpoint didn't crash app) - graceful error handling working ✓. (T3) ✅ REGRESSION: GET /api/admin/salgsradar/meg?key=<admin_key> returns 200 with aktor object (aktor.navn='Leder') - admin endpoint working ✓. /api/address GEOMETRY WORKING PERFECTLY: Autocomplete returns suggestions with place_id (Google Places Autocomplete API integration working), place details returns lat/lng as numbers (Google Place Details API integration working with geometry/location field), coordinates are correct for Bergen addresses (lat ~60.38, lng ~5.32), all required fields present (address, postalCode, city, label, lat, lng), error handling working (invalid place_id returns controlled error without crashing), all regression tests passed. Created backend_test_ssr_address.py for comprehensive testing. Response times: <1s per request. No data modifications (read-only endpoint)."
+
+  - task: "Salgsradar: skjul meglerkontakt (Utleiemegleren m.fl.) + Eierkontakt-filter + Se over tilbudet flyttet opp til Neste steg-kortet"
+    implemented: true
+    working: true
+    file: "/app/components/admin/Salgsradar.js (erMeglerLead/harEierkontakt-helpers, kontaktFilter-state, filterpanel 'Eierkontakt', chips, tabellrad, Detaljer, Ring huseier-anbefalinger), /app/components/admin/SalgsSkuffEnkel.js (megler-note i hodet, seTilbudISteg: Se over tilbudet-knapp rett over primaerknappen i Neste steg-kortet)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND-endring (ingen API-endring). Screenshot-verifisert av main via Playwright: (1) Tabell: megler-lead viser kun Utleiemegleren-badge + 'Eier ikke offentlig' — navn/tlf borte; private leads uendret. (2) Filterpanel: ny 'Eierkontakt'-segmentkontroll Alle/Har kontakt·N/Mangler — 'Har kontakt' ga 2 av 3, 'Mangler' ga 1 av 3 (megler-leaden), chip + nullstill fungerer. (3) Skuff megler-lead: rolig note 'Annonsen kjoeres av megler — huseiers kontaktinfo er ikke offentlig', ingen tlf/navn/epost. (4) Skuff privat lead: 'Se over tilbudet' (m/ aapninger-badge) ligger naa RETT OVER 'Send tilbud' i Neste steg-kortet (y=251 vs y=307); bunn-kortet vises kun naar knappen ikke staar i steg-kortet (terminal/uten AI/megler). Detaljer-seksjonen i utvidet visning viser 'Via megler — eierkontakt ikke offentlig' og skjuler tlf/epost; 'Ring huseier'-anbefalinger bruker aldri meglertelefon."
+
+agent_communication:
+    -agent: "main"
+    -message: "Salgsradar meglerkontakt-skjuling + Eierkontakt-filter + Se over tilbudet-flytting: ferdig og screenshot-verifisert (kun frontend, ingen backend-endring). Bruker ikke spurt om frontend-testagent ennaa."
