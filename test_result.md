@@ -7245,3 +7245,15 @@ agent_communication:
 agent_communication:
     -agent: "main"
     -message: "Forsiden er naa produktledet landingsside per brukerens designretning. Cover-komponenten slettet. /priser er bevisst et v1-skall - bruker vil lage full prisside senere. Kun frontend - frontend-testagent ikke kjoert (krever brukertillatelse)."
+
+  - task: "Hero v2 paa forsiden: MacBook-ramme m/ rikt dashboard + overlappende telefon, sjekkliste, lilla CTA-er (matcher brukerens mockup)"
+    implemented: true
+    working: true
+    file: "/app/components/forside/Forside2026.js (LaptopRamme + TelefonRamme + Kurve erstatter DashboardRamme; hero-seksjon omskrevet; nav/hero/bunn-CTA lilla #7c3aed)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Screenshot-verifisert (desktop 1920 + mobil 390): MacBook-ramme i ren JSX m/ topplinje (God dag Martin, Saker-pill, Eiendommer, bjelle m/ badge), varslingsrad (leads/meldinger/saker), KPI-rad (leieinntekt/honorar/netto m/ potensiale-linjer + belegg m/ progressbar), statskort (59/84/43/71 m/ sparklines), moerkt innsiktsbanner m/ Se detaljer. Telefon overlappende nederst hoeyre (kun md+) m/ Ditt overblikk (koherente tall m/ laptopen: 84/43/71/99,2%), Kommende og tab-bar. Venstre: sjekkliste (Spar tid/Full kontroll/Trygt og sikkert), lilla Kom i gang + Play 'Se hvordan det fungerer' (/tour), mikrolinje (2 minutter/ingen bindingstid/norsk support - fra brukerens mockup). Gulvskygge under komposisjonen. Mobil: laptop alene, telefon skjult. Kompilerer rent, / -> 200."
