@@ -106,8 +106,8 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
           </div>
           {cols.map((c: any) => (
             <div key={c.title}>
-              <h2 className="text-[13.5px] font-semibold text-white mb-5">{c.title}</h2>
-              <ul className="space-y-3">{c.links.map((l: any) => (<li key={l.l}><Link href={l.h} className="inline-block py-1 -my-1 text-[14px] text-white/60 hover:text-white transition-colors duration-200">{l.l}</Link></li>))}</ul>
+              <h2 className="mb-5 text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">{c.title}</h2>
+              <ul className="space-y-3">{c.links.map((l: any) => (<li key={l.l}><Link href={l.h} className="inline-block py-1 -my-1 text-[13.5px] text-white/60 hover:text-white transition-colors duration-200">{l.l}</Link></li>))}</ul>
             </div>
           ))}
         </div>

@@ -160,7 +160,7 @@ export default function Forside2026() {
   return (
     <div className="min-h-screen overflow-x-clip bg-[#FDFCFB]" data-testid="forside-2026">
       {/* ── Navbar ── */}
-      <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'border-b border-[#E6E1D9] bg-[#FDFCFB]/90 backdrop-blur-md' : 'bg-transparent'}`}>
+      <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'border-b border-[#ECE8E0] bg-[#FDFCFB]/90 backdrop-blur-md' : 'bg-transparent'}`}>
         <div className="mx-auto flex h-[66px] w-full max-w-[1320px] items-center justify-between gap-4 px-6 sm:px-10">
           <Link href="/" className="flex shrink-0 items-center" data-testid="forside-logo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -235,7 +235,7 @@ export default function Forside2026() {
 
 
         {/* ── Integrasjoner ── */}
-        <section className="border-b border-[#E6E1D9] bg-[#FCFBF8]">
+        <section className="border-y border-[#ECE8E0]">
           <Avsloer className="mx-auto w-full max-w-[1320px] px-6 py-8 sm:px-10">
             <p className="text-center text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#a49e93]">Snakker med det dere allerede bruker</p>
             <ul className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:gap-x-10">
@@ -371,7 +371,7 @@ export default function Forside2026() {
         </section>
 
         {/* ── Slutt-CTA ── */}
-        <section className="border-t border-[#E6E1D9]">
+        <section className="border-t border-[#ECE8E0]">
           <Avsloer className="mx-auto flex w-full max-w-[1320px] flex-wrap items-center justify-between gap-6 px-6 py-12 sm:px-10 sm:py-16">
             <div>
               <h2 className="e-display text-[24px] sm:text-[30px]">Klar for å gjøre utleie enklere?</h2>

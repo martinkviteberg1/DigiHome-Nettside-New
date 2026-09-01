@@ -7434,3 +7434,20 @@ agent_communication:
     -agent: "main"
     -message: "To crisp-pass fullfoert: flatt vindu m/ knivskarp tekst, minimal dekor, konsistent 20px-radius, strammere skygger + py-18-bugfiks (ROI manglet mobil-padding). Frontend-testagent ikke kjoert (krever brukertillatelse)."
 
+
+  - task: "Crisp-pass 3 (hele siden): footer small-caps titler, integrasjonsbaand som hairline-stripe, samlet border-farge #ECE8E0"
+    implemented: true
+    working: true
+    file: "/app/components/dh/Footer.tsx, /app/components/forside/Forside2026.js, /app/components/forside/StegDemo.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. (1) Footer: kolonnetitler -> small-caps eyebrows (text-[11px] uppercase tracking-[0.14em] white/40), lenker 14->13.5px. (2) Integrasjonsbaand: bg-tint fjernet, border-y hairline-stripe. (3) Alle #E6E1D9-borders -> lysere #ECE8E0 (sed paa Forside2026+StegDemo). VIKTIG LAERDOM: screenshot-verktoyets sluttbilde viste footeren LYS selv om koden sier bg-[#0B0A09] - grundig feilsoeking (computed styles, elementFromPoint-kjede, html/body-filter, OG pikselsampling via page.screenshot()+PIL INNE i nettleseren) beviste at footeren faktisk rendres moerk rgb(11,10,9). Verktoyets returnerte bilde har en fargeartefakt for denne regionen - IKKE en app-bug. Ved fremtidige fargetvil: bruk PIL-pikselsampling i skriptet, ikke stol blindt paa sluttbildet."
+
+agent_communication:
+    -agent: "main"
+    -message: "Crisp-pass 3 ferdig. NB: screenshot-verktoyet kan returnere fargeforvrengte sluttbilder (footer viste lys, reell paint er moerk - bevist m/ PIL-pikselsampling). Frontend-testagent ikke kjoert (krever brukertillatelse)."
+
