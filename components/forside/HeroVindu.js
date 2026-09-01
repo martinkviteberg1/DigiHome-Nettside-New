@@ -239,8 +239,8 @@ function FlateOversikt() {
 const KCOL = 58;
 const KSIDE = 148;
 const KROW = 52;
-const KUKEDAG = ['Ti', 'On', 'To', 'Fr', 'Lø', 'Sø', 'Ma', 'Ti', 'On', 'To', 'Fr', 'Lø'];
-const KDATO = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const KUKEDAG = ['Ti', 'On', 'To', 'Fr', 'Lø', 'Sø', 'Ma', 'Ti', 'On', 'To', 'Fr', 'Lø', 'Sø', 'Ma'];
+const KDATO = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 const K_IDAG = 0;
 const kHelg = (i) => KUKEDAG[i] === 'Lø' || KUKEDAG[i] === 'Sø';
 const kMandag = (i) => KUKEDAG[i] === 'Ma';
@@ -265,36 +265,40 @@ const KENHETER = [
   { navn: 'Marken 8 · Leilighet 2', omraade: 'Bergenhus', modell: 'KT', pris: '1 850', barer: [
     { type: 'booking', fra: 0, len: 3, tittel: 'Emma Berger', kilde: 'A', netter: 3 },
     { type: 'booking', fra: 4, len: 4, tittel: 'Jonas Müller', kilde: 'B', netter: 4 },
-    { type: 'booking', fra: 9, len: 3, tittel: 'Nina Holm', kilde: 'A', netter: 2 },
+    { type: 'booking', fra: 9, len: 3, tittel: 'Nina Holm', kilde: 'A', netter: 3 },
+    { type: 'booking', fra: 13, len: 2, tittel: 'Lea Voss', kilde: 'D', netter: 2 },
   ] },
   { navn: 'Nygård 12 · H0301', omraade: 'Årstad', modell: 'LT', barer: [
-    { type: 'lease', fra: 0, len: 12, tittel: 'Sofie Hansen', pris: '18 500 kr/m' },
+    { type: 'lease', fra: 0, len: 14, tittel: 'Sofie Hansen', pris: '18 500 kr/m' },
   ] },
   { navn: 'Skuteviken 5 · Sjøbod', omraade: 'Bergenhus', modell: 'KT', pris: '2 400', barer: [
     { type: 'booking', fra: 1, len: 3, tittel: 'Liam Carter', kilde: 'A', netter: 3 },
     { type: 'maint', fra: 5, len: 2, tittel: 'Rørlegger · bad' },
     { type: 'booking', fra: 8, len: 3, tittel: 'Nora Vik', kilde: 'B', netter: 3 },
+    { type: 'booking', fra: 12, len: 2, tittel: 'Tom Berg', kilde: 'A', netter: 2 },
   ] },
   { navn: 'Kong Oscars gt. 21', omraade: 'Bergenhus', modell: 'LT', barer: [
-    { type: 'lease', fra: 0, len: 12, tittel: 'Martin Solheim', pris: '16 900 kr/m' },
+    { type: 'lease', fra: 0, len: 14, tittel: 'Martin Solheim', pris: '16 900 kr/m' },
   ] },
   { navn: 'Møhlenpris 3 · Studio', omraade: 'Årstad', modell: 'KT', pris: '1 450', barer: [
     { type: 'booking', fra: 2, len: 3, tittel: 'Yuki Tanaka', kilde: 'B', netter: 3 },
     { type: 'block', fra: 6, len: 3, tittel: 'Eier · privat bruk' },
-    { type: 'booking', fra: 10, len: 2, tittel: 'Ida Strøm', kilde: 'A', netter: 2 },
+    { type: 'booking', fra: 10, len: 3, tittel: 'Ida Strøm', kilde: 'A', netter: 3 },
   ] },
   { navn: 'Sandviken 44 · H0102', omraade: 'Bergenhus', modell: 'LT', barer: [
-    { type: 'lease', fra: 0, len: 12, tittel: 'Anna Ruud', pris: '21 000 kr/m' },
+    { type: 'lease', fra: 0, len: 14, tittel: 'Anna Ruud', pris: '21 000 kr/m' },
   ] },
   { navn: 'Løvstakkveien 7', omraade: 'Årstad', modell: 'KT', pris: '1 650', barer: [
     { type: 'booking', fra: 0, len: 3, tittel: 'Piotr Nowak', kilde: 'A', netter: 3 },
     { type: 'booking', fra: 5, len: 4, tittel: 'Sara Lie', kilde: 'A', netter: 4 },
+    { type: 'booking', fra: 10, len: 4, tittel: 'María García', kilde: 'B', netter: 4 },
   ] },
   { navn: 'Strandgaten 19 · Loft', omraade: 'Bergenhus', modell: 'KT', pris: '2 100', barer: [
-    { type: 'booking', fra: 3, len: 5, tittel: 'María García', kilde: 'B', netter: 5 },
+    { type: 'booking', fra: 3, len: 5, tittel: 'Ben Fischer', kilde: 'B', netter: 5 },
+    { type: 'booking', fra: 9, len: 4, tittel: 'Oda Lien', kilde: 'A', netter: 4 },
   ] },
   { navn: 'Fjellsiden 2 · H0401', omraade: 'Bergenhus', modell: 'LT', barer: [
-    { type: 'lease', fra: 0, len: 12, tittel: 'Kristoffer Aase', pris: '19 800 kr/m' },
+    { type: 'lease', fra: 0, len: 14, tittel: 'Kristoffer Aase', pris: '19 800 kr/m' },
   ] },
 ];
 

@@ -218,8 +218,8 @@ export default function Forside2026() {
                 ))}
               </ul>
             </div>
-            {/* Produktkomposisjonen: flytende vindu + telefon */}
-            <div className="dh-cover-inn relative min-w-0 pb-14 lg:pb-16" style={{ animationDelay: '.24s' }}>
+            {/* Produktkomposisjonen: flytende vindu + telefon — bleder mot høyre på store skjermer */}
+            <div className="dh-cover-inn relative min-w-0 pb-14 lg:pb-16 lg:mr-[min(0px,calc((1320px-100vw)/2+48px))]" style={{ animationDelay: '.24s' }}>
               <div className="md:pr-14 lg:pr-16">
                 <VinduRamme />
               </div>

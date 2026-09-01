@@ -7451,3 +7451,20 @@ agent_communication:
     -agent: "main"
     -message: "Crisp-pass 3 ferdig. NB: screenshot-verktoyet kan returnere fargeforvrengte sluttbilder (footer viste lys, reell paint er moerk - bevist m/ PIL-pikselsampling). Frontend-testagent ikke kjoert (krever brukertillatelse)."
 
+
+  - task: "Hero v6.6: vinduet bleder mot hoyre paa store skjermer (+250px ved 1920) + telefon foelger + kalender utvidet til 14 dager"
+    implemented: true
+    working: true
+    file: "/app/components/forside/Forside2026.js (lg:mr-[min(0px,calc((1320px-100vw)/2+48px))] paa komposisjonen), /app/components/forside/HeroVindu.js (KDATO/KUKEDAG 14 dager, leases len 14, 5 nye bookinger)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Bruker ba om bredere vindu mot hoyre paa desktop + telefon flyttet tilsvarende + kalender-fiks. (1) Komposisjonswrapper faar progressiv negativ hoyremargin via min(): ved 1920 bleder vinduet ~250px forbi containeren (hoyrekant 1768, bredde 1029), ved laptop-bredder (<1410) ingen endring, scrollWidth fortsatt = viewport (ingen overflow). Telefonen er ankret right-0 og foelger automatisk. (2) Kalenderen utvidet 12->14 dager, leases len 12->14, nye bookinger paa dag 9-14 (Lea Voss D, Tom Berg A, Oda Lien A, Ben Fischer B, Maria Garcia utvidet) saa tidslinjen fyller hele den bredere flaten m/ naturlig kutt. Screenshot-verifisert 1920: Oversikt + Kalender fyller bredden, telefon flyttet med, sw=1920."
+
+agent_communication:
+    -agent: "main"
+    -message: "Hero-komposisjonen bleder naa mot hoyre viewport-kant paa store skjermer, kalenderen fyller bredden m/ 14 dager. Frontend-testagent ikke kjoert (krever brukertillatelse)."
+
