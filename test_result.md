@@ -7281,3 +7281,20 @@ agent_communication:
         -working: true
         -agent: "main"
         -comment: "KUN FRONTEND. Bruker delte skjermbilde av den EKTE appen (forvalter-redesign preview /forvalter) - replikaen er bygget mot den: moerk sidemeny (digihome-logo, Soek m/ cmd-K, ARBEID: Oversikt aktiv/Operasjonssentral/Innboks badge 13/Reservasjoner/Kalender/Kanaler/Oppgaver/Driftsassistent, DRIFT: Eiendommer/Utleieprosesser/Leieforhold/Dokumenter/Saker, bruker-rad nederst), stor God dag Martin-header m/ Saker/Eiendommer-pills + bjelle, 3 varslingskort, ETT KPI-baand m/ hairline-delte kolonner (894 500/126 987,5/767 512,5 + Potensiale-linjer + fra X ledige + Belegg 48.8% m/ bar), 4 statskort (LIVE-dot, sparklines, 41 utleid/Trenger oppfoelging), moerk banner m/ Se detaljer, og Aktive saker/Portefoelje kuttet av skjermkanten som ekte scroll. Screenshot-verifisert: matcher appen. MERK: repoet (bergen-urban) inneholdt IKKE dette dashboardet - replika bygget fra brukerens skjermbilde. Tokenklone slettet fra /tmp; bruker baadt om aa rotere tokenet."
+
+
+  - task: "Hero v5: rammeloest flytende produktvindu (VinduRamme i HeroVindu.js) + subtil lavendel-atmosfaere + klikkbar StegDemo-seksjon (01-05 m/ levende produktflater)"
+    implemented: true
+    working: true
+    file: "/app/components/forside/Forside2026.js (imports + hero omskrevet), /app/components/forside/HeroVindu.js (ny), /app/components/forside/StegDemo.js (ny)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Forrige sesjon ble kuttet midt i wiring - / ga 500 (ReferenceError: VinduRamme is not defined). Fikset ved aa legge til manglende imports av VinduRamme (HeroVindu.js) og StegDemo (StegDemo.js) i Forside2026.js. Kompilerer rent, / -> 200. Screenshot-verifisert desktop 1920: hero m/ 'Utleie paa autopilot.', flytende rammeloest produktvindu (ikon-rail, God dag Martin, varslingskort 2/13/71/59, Oekonomi m/ sparklines, Belegg-bar, Aktiviteter) lett tiltet 1.1deg + telefon 3.2deg nederst hoeyre, lavendel-gradienter + lilla gulvskygge. StegDemo klikkbar verifisert: klikk paa steg-03 bytter produktflaten til Signering (Leiekontrakt.pdf, Martin signert, Sofie venter, Signer med BankID) - state-bytte fungerer. Mobil 390 verifisert: hero ren, telefon/rail skjult som designet, vinduet flyter under teksten. Ingen ekte kundeclaims - demo-data + randomuser-portretter."
+
+agent_communication:
+    -agent: "main"
+    -message: "Hero v5 + klikkbar stepper er naa ferdig wiret og screenshot-verifisert (desktop + mobil + state-bytte i stepper). Rotaarsaken til 500-feilen var manglende imports etter forrige sesjons avbrutte redigering. Kun frontend beroert - frontend-testagent ikke kjoert (krever brukertillatelse)."

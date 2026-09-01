@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { site } from '@/lib/site';
 import { track } from '@/lib/analytics';
+import VinduRamme from '@/components/forside/HeroVindu';
+import StegDemo from '@/components/forside/StegDemo';
 
 /* ---------------------------------------------------------------------------
    Forsiden — digihome.no som produktledet landingsside.
@@ -36,12 +38,6 @@ const NAV = [
 
 const INTEGRASJONER = ['FINN', 'BankID', 'Vipps', 'Keyhole', 'PowerOffice', 'Fiken', 'Tripletex', 'Airbnb', 'Booking.com'];
 
-const FUNKSJONER = [
-  { nr: '01', t: 'Finn leietaker', b: 'Publiser annonsen og følg interessenter gjennom hele utleieprosessen — fra første henvendelse til signert kontrakt.' },
-  { nr: '02', t: 'Signer digitalt', b: 'Leiekontrakt og vedlegg signeres trygt med BankID — juridisk holdbart og arkivert automatisk.' },
-  { nr: '03', t: 'Få betalt', b: 'Husleie, depositum og full betalingsoversikt — med automatiske påminnelser når noe forfaller.' },
-  { nr: '04', t: 'La DigiHome følge opp', b: 'Saker, frister og kommunikasjon samlet på ett sted — med varsel når noe faktisk krever deg.' },
-];
 
 const BILDE_PRIVAT = 'https://images.pexels.com/photos/19866421/pexels-photo-19866421.jpeg?auto=compress&cs=tinysrgb&w=1200';
 const BILDE_PRO = 'https://images.unsplash.com/photo-1725785218870-b41365703511?q=80&w=1200&auto=format&fit=crop';
@@ -55,192 +51,6 @@ function Kurve({ farge = '#1f7a45', punkter = '0,18 12,14 24,15 36,10 48,7 60,3'
   );
 }
 
-/* ── MacBook-rammen: nøyaktig replika av forvalter-dashboardet i appen ── */
-function LaptopRamme() {
-  const arbeid = [
-    [LayoutGrid, 'Oversikt', true, null],
-    [Clock, 'Operasjonssentral', false, null],
-    [Inbox, 'Innboks', false, 13],
-    [CalendarDays, 'Reservasjoner', false, null],
-    [CalendarDays, 'Kalender', false, null],
-    [MessageSquare, 'Kanaler', false, null],
-    [ClipboardList, 'Oppgaver', false, null],
-    [Sparkles, 'Driftsassistent', false, null],
-  ];
-  const drift = [
-    [Building2, 'Eiendommer'],
-    [Megaphone, 'Utleieprosesser'],
-    [FileText, 'Leieforhold'],
-    [FolderOpen, 'Dokumenter'],
-    [ClipboardList, 'Saker'],
-  ];
-  return (
-    <div className="relative" aria-hidden="true">
-      {/* Skjerm — lys aluminiumsbezel */}
-      <div className="rounded-[18px] bg-gradient-to-b from-[#FDFCFB] to-[#E5E2DD] p-[8px] pb-[10px] shadow-[0_80px_160px_-48px_rgba(23,18,12,0.42),0_0_0_1px_rgba(0,0,0,0.07)] sm:rounded-[22px] sm:p-[10px] sm:pb-[12px]">
-        <div className="flex overflow-hidden rounded-[10px] bg-[#FAFAF8] ring-1 ring-black/[0.06]">
-
-          {/* Mørk sidemeny — som i appen */}
-          <div className="hidden w-[128px] shrink-0 flex-col bg-[#0C0C0E] px-2 py-2.5 md:flex">
-            <div className="flex items-center gap-1.5 px-1">
-              <span className="flex h-[16px] w-[16px] items-center justify-center rounded-[5px] bg-[#7c3aed] text-[8.5px] font-black italic text-white" style={heading}>H</span>
-              <span className="text-[9px] font-bold text-white" style={heading}>digihome</span>
-            </div>
-            <div className="mt-2 flex items-center gap-1.5 rounded-[6px] bg-white/[0.07] px-2 py-[4px]">
-              <Search className="h-[7px] w-[7px] text-white/40" />
-              <span className="flex-1 text-[7px] text-white/40">Søk</span>
-              <span className="rounded-[3px] bg-white/[0.1] px-[3px] text-[5.5px] font-semibold text-white/50">⌘K</span>
-            </div>
-            <p className="mt-2.5 px-1 text-[5.5px] font-bold uppercase tracking-[0.14em] text-white/35">Arbeid</p>
-            <div className="mt-1 space-y-[1px]">
-              {arbeid.map(([Ikon, l, aktiv, badge]) => (
-                <div key={l} className={`flex items-center gap-1.5 rounded-[5px] px-1.5 py-[3.5px] text-[7px] font-semibold ${aktiv ? 'bg-[#7c3aed]/[0.22] text-[#C9A6F0]' : 'text-white/55'}`}>
-                  <Ikon className="h-[7.5px] w-[7.5px] shrink-0" />
-                  <span className="flex-1 truncate">{l}</span>
-                  {badge ? <span className="rounded-full bg-white/[0.12] px-[4px] py-[0.5px] text-[5.5px] font-bold text-white/80">{badge}</span> : null}
-                </div>
-              ))}
-            </div>
-            <p className="mt-2.5 px-1 text-[5.5px] font-bold uppercase tracking-[0.14em] text-white/35">Drift</p>
-            <div className="mt-1 space-y-[1px]">
-              {drift.map(([Ikon, l]) => (
-                <div key={l} className="flex items-center gap-1.5 rounded-[5px] px-1.5 py-[3.5px] text-[7px] font-semibold text-white/55">
-                  <Ikon className="h-[7.5px] w-[7.5px] shrink-0" />
-                  <span className="truncate">{l}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-auto flex items-center gap-1.5 border-t border-white/[0.08] px-1 pt-2">
-              <span className="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#7c3aed] to-[#9B5BD6] text-[6px] font-bold text-white">M</span>
-              <div className="min-w-0">
-                <p className="truncate text-[6.5px] font-bold leading-tight text-white/85">Martin Kviteberg</p>
-                <p className="truncate text-[5.5px] text-white/40">martin@digihome.no</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Innhold — som i appen */}
-          <div className="min-w-0 flex-1 px-3 pb-0 pt-3 sm:px-4 sm:pt-4">
-            {/* Header */}
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-gradient-to-br from-[#7c3aed] to-[#9B5BD6] text-[12px] font-bold text-white ring-2 ring-white">M</span>
-                <div>
-                  <p className="text-[15px] font-bold leading-tight tracking-[-0.02em] text-[#0A0A0A]" style={heading}>God dag, Martin</p>
-                  <p className="mt-[1px] text-[8px] text-[#a49e93]">Tirsdag 1. September 2026</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="flex items-center gap-1.5 rounded-full bg-white px-2.5 py-[5px] text-[8.5px] font-semibold text-[#0A0A0A] shadow-[0_1px_2px_rgba(23,18,12,0.06)] ring-1 ring-black/[0.06]">
-                  Saker <span className="rounded-full bg-[#7c3aed] px-[5px] py-[1px] text-[6.5px] font-bold text-white">71</span>
-                </span>
-                <span className="rounded-full bg-[#141216] px-3 py-[6px] text-[8.5px] font-semibold text-white">Eiendommer</span>
-                <span className="relative flex h-[22px] w-[22px] items-center justify-center rounded-full bg-white ring-1 ring-black/[0.06]">
-                  <Bell className="h-[9px] w-[9px] text-[#0A0A0A]" />
-                  <span className="absolute -right-[2px] -top-[2px] flex h-[9px] w-[9px] items-center justify-center rounded-full bg-[#d13438] text-[5.5px] font-bold text-white">4</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Varslingsrad — 3 kort som i appen */}
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {[
-                ['2', '2 nye leads venter svar', '#2563eb', '#EAF0FD'],
-                ['13', '13 uleste meldinger', '#7c3aed', '#F1E9FB'],
-                ['71', '71 åpne saker', '#c2410c', '#FBEFE4'],
-              ].map(([n, t, c, bg]) => (
-                <div key={t} className="flex items-center gap-2 rounded-[9px] bg-white px-2.5 py-2 shadow-[0_1px_2px_rgba(23,18,12,0.05)] ring-1 ring-black/[0.05]">
-                  <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[6px] text-[8.5px] font-bold" style={{ color: c, background: bg }}>{n}</span>
-                  <span className="min-w-0 flex-1 truncate text-[8px] font-semibold text-[#3A3733]">{t}</span>
-                  <ChevronRight className="h-[9px] w-[9px] shrink-0 text-[#c8c3ba]" />
-                </div>
-              ))}
-            </div>
-
-            {/* KPI-bånd — ett kort, fire kolonner med hairlines, som i appen */}
-            <div className="mt-2 grid grid-cols-4 divide-x divide-black/[0.05] rounded-[10px] bg-white shadow-[0_1px_2px_rgba(23,18,12,0.05)] ring-1 ring-black/[0.05]">
-              {[
-                ['Leieinntekt / mnd', '894 500', 'Potensiale: 1 393 800 kr/mnd', '+499 300 fra 27 ledige', '#1f7a45'],
-                ['Honorar / mnd', '126 987,5', 'Potensiale: 169 682,5 kr/mnd', '+42 695 fra 15 ledige', '#7c3aed'],
-                ['Netto til huseiere / mnd', '767 512,5', 'Potensiale: 1 224 117,5 kr/mnd', '+456 605 fra 27 ledige', '#1f7a45'],
-              ].map(([l, v, pot, sub, farge]) => (
-                <div key={l} className="p-2.5">
-                  <p className="truncate text-[7.5px] font-medium text-[#a49e93]">{l}</p>
-                  <p className="mt-1 text-[14px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>{v}<span className="ml-[2px] text-[7.5px] font-semibold text-[#a49e93]">kr</span></p>
-                  <div className="mt-1.5"><Kurve farge={farge} /></div>
-                  <p className="mt-1 truncate text-[6.5px] font-semibold text-[#7c3aed]">{pot}</p>
-                  <p className="truncate text-[6px] text-[#a49e93]">{sub}</p>
-                </div>
-              ))}
-              <div className="p-2.5">
-                <div className="flex items-baseline justify-between">
-                  <p className="text-[7.5px] font-medium text-[#a49e93]">Belegg</p>
-                  <p className="text-[6.5px] font-semibold text-[#a49e93]">41/84</p>
-                </div>
-                <p className="mt-1 text-[14px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>48.8<span className="ml-[2px] text-[7.5px] font-semibold text-[#a49e93]">%</span></p>
-                <div className="mt-[9px] h-[4px] overflow-hidden rounded-full bg-[#EFEBE4]">
-                  <div className="h-full w-[49%] rounded-full bg-gradient-to-r from-[#7c3aed] to-[#9B5BD6]" />
-                </div>
-                <p className="mt-[6px] truncate text-[6.5px] text-[#a49e93]">41 enheter utleid</p>
-              </div>
-            </div>
-
-            {/* Statskort — som i appen */}
-            <div className="mt-2 grid grid-cols-4 gap-2">
-              {[
-                [Building2, '59', 'Eiendommer', null, null, 'LIVE', '#1f7a45', false],
-                [Home, '84', 'Enheter', '41 utleid', '#1f7a45', null, '#1f7a45', false],
-                [Users, '43', 'Leietakere', null, null, null, '#2563eb', false],
-                [Clock, '71', 'Åpne saker', 'Trenger oppfølging', '#c2410c', null, '#d13438', true],
-              ].map(([Ikon, v, l, sub, subFarge, live, kurveFarge, ned]) => (
-                <div key={l} className="rounded-[10px] bg-white p-2.5 shadow-[0_1px_2px_rgba(23,18,12,0.05)] ring-1 ring-black/[0.05]">
-                  <div className="flex items-center justify-between">
-                    <span className="flex h-[20px] w-[20px] items-center justify-center rounded-[7px] bg-[#F4F1EB]"><Ikon className="h-[10px] w-[10px] text-[#57534e]" /></span>
-                    {live
-                      ? <span className="flex items-center gap-1 text-[6.5px] font-bold text-[#1f7a45]"><span className="h-[4px] w-[4px] animate-pulse rounded-full bg-[#1f7a45]" />LIVE</span>
-                      : <Kurve farge={kurveFarge} ned={ned} />}
-                  </div>
-                  <p className="mt-2 text-[16px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>{v}</p>
-                  <p className="mt-[3px] truncate text-[7.5px] font-medium text-[#8d877d]">{l}</p>
-                  {sub ? <p className="truncate text-[6.5px] font-semibold" style={{ color: subFarge }}>{sub}</p> : <p className="text-[6.5px]">&nbsp;</p>}
-                </div>
-              ))}
-            </div>
-
-            {/* Mørk innsiktsbanner — som i appen */}
-            <div className="mt-2 flex items-center justify-between gap-3 overflow-hidden rounded-[11px] bg-[#141216] px-3 py-2.5">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[8px] bg-white/[0.09]"><Sparkles className="h-[10px] w-[10px] text-[#C9A6F0]" /></span>
-                <div className="min-w-0">
-                  <p className="truncate text-[9.5px] font-bold text-white" style={heading}>Potensial for høyere belegg</p>
-                  <p className="truncate text-[7.5px] text-white/50">41 av 84 enheter utleid. 49% belegg.</p>
-                </div>
-              </div>
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#7c3aed] px-3 py-[6px] text-[8.5px] font-bold text-white">Se detaljer <ArrowUpRight className="h-[9px] w-[9px]" /></span>
-            </div>
-
-            {/* Aktive saker / Portefølje — kuttet av skjermkanten, som ekte scroll */}
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              {['Aktive saker', 'Portefølje'].map((t) => (
-                <div key={t}>
-                  <div className="flex items-baseline justify-between">
-                    <p className="text-[10px] font-bold text-[#0A0A0A]" style={heading}>{t}</p>
-                    <span className="text-[7px] font-semibold text-[#8d877d]">Se alle</span>
-                  </div>
-                  <div className="mt-1.5 h-[22px] rounded-t-[8px] bg-white ring-1 ring-black/[0.05]" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* MacBook-basen — lys aluminium */}
-      <div className="absolute -bottom-[11px] left-1/2 h-[13px] w-[116%] -translate-x-1/2 rounded-b-[16px] rounded-t-[3px] bg-gradient-to-b from-[#F4F2EF] via-[#E3E0DB] to-[#C7C4BF] shadow-[0_26px_54px_-18px_rgba(23,18,12,0.4)]">
-        <div className="mx-auto h-[5px] w-[104px] rounded-b-[9px] bg-[#D3D0CB]" />
-      </div>
-    </div>
-  );
-}
 
 /* ── Telefonrammen: lys premium-utgave ── */
 function TelefonRamme() {
@@ -305,38 +115,6 @@ function TelefonRamme() {
   );
 }
 
-/* ── Interessent-flaten til funksjonsseksjonen ── */
-function InteressentRamme() {
-  const rader = [
-    ['Sofie Nilsen', 'Leilighet 12B', 'Kvalifisert', '#1f7a45', '#E7F3EC'],
-    ['Thomas Berg', 'Leilighet 3A', 'Visning', '#9a6b1c', '#FBF3E4'],
-    ['Martine Johansen', 'Leilighet 7C', 'Ny', '#5b5650', '#F1EEE8'],
-    ['Andrea Steen', 'Leilighet 1A', 'Tilbud sendt', '#7c3aed', '#F1E9FB'],
-    ['Emma Solberg', 'Leilighet 5B', 'Reservert', '#0e7490', '#E6F3F6'],
-  ];
-  return (
-    <div className="overflow-hidden rounded-[16px] bg-white shadow-[0_44px_100px_-40px_rgba(23,18,12,0.4)] ring-1 ring-black/[0.07] sm:rounded-[20px]" aria-hidden="true">
-      <div className="flex items-center justify-between border-b border-[#EDE9E2] px-5 py-3.5">
-        <p className="text-[14px] font-bold text-[#0A0A0A]" style={heading}>Interessenter</p>
-        <span className="rounded-full bg-[#9B5BD6] px-3 py-[5px] text-[10.5px] font-semibold text-white">Ny interessent</span>
-      </div>
-      <div className="flex gap-1.5 overflow-hidden px-5 pt-3.5">
-        {['Alle', 'Nye', 'Visning', 'Kvalifisert', 'Tilbud sendt'].map((f, i) => (
-          <span key={f} className={`whitespace-nowrap rounded-full px-2.5 py-[4px] text-[10.5px] font-semibold ${i === 0 ? 'bg-[#0A0A0A] text-white' : 'text-[#8d877d] ring-1 ring-black/[0.07]'}`}>{f}</span>
-        ))}
-      </div>
-      <div className="px-5 py-3.5">
-        {rader.map(([navn, enhet, status, c, bg], i) => (
-          <div key={navn} className={`flex items-center justify-between gap-3 rounded-[9px] px-3 py-[9px] text-[11.5px] ${i % 2 ? '' : 'bg-[#FCFBF9]'}`}>
-            <span className="w-[34%] truncate font-semibold text-[#0A0A0A]">{navn}</span>
-            <span className="w-[28%] truncate text-[#6F6A60]">{enhet}</span>
-            <span className="rounded-full px-2 py-[3px] text-[10px] font-bold" style={{ color: c, background: bg }}>{status}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function Forside2026() {
   const [scrolled, setScrolled] = useState(false);
@@ -374,97 +152,57 @@ export default function Forside2026() {
       </header>
 
       <main>
-        {/* ── Hero: løftet + produktet (MacBook + telefon) ── */}
+        {/* ── Hero: løftet + flytende produktvindu ── */}
         <section className="relative overflow-x-clip">
-          {/* Myk lilla vask i DigiHome-fargene */}
-          <div aria-hidden="true" className="pointer-events-none absolute -left-44 bottom-[-60px] h-[440px] w-[560px] rounded-full bg-[#7c3aed]/[0.06] blur-3xl" />
-          <div aria-hidden="true" className="pointer-events-none absolute -right-40 top-4 h-[400px] w-[520px] rounded-full bg-[#9B5BD6]/[0.05] blur-3xl" />
-          <div className="relative mx-auto grid w-full max-w-[1320px] items-center gap-14 px-6 pb-24 pt-10 sm:px-10 sm:pt-14 lg:grid-cols-[0.6fr_1.4fr] lg:gap-10 lg:pb-32 xl:gap-12">
+          {/* Lavendel-atmosfære i DigiHome-lilla — subtil så teksten forblir skarp */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(124,58,237,0) 0%, rgba(124,58,237,0.055) 34%, rgba(155,91,214,0.075) 62%, rgba(124,58,237,0) 100%)' }} />
+          <div aria-hidden="true" className="pointer-events-none absolute -right-40 top-8 h-[520px] w-[640px] rounded-full bg-[#9B5BD6]/[0.09] blur-3xl" />
+          <div aria-hidden="true" className="pointer-events-none absolute -left-44 bottom-[-80px] h-[440px] w-[560px] rounded-full bg-[#7c3aed]/[0.06] blur-3xl" />
+          <div className="relative mx-auto grid w-full max-w-[1320px] items-center gap-14 px-6 pb-28 pt-10 sm:px-10 sm:pt-16 lg:grid-cols-[0.58fr_1.42fr] lg:gap-12 lg:pb-36 xl:gap-14">
             <div>
               <p className="e-label dh-cover-inn !text-[#7c3aed]">Ny generasjon utleie</p>
               <h1 className="e-display dh-cover-inn mt-4 text-[46px] sm:text-[58px] lg:text-[60px] xl:text-[70px]" style={{ animationDelay: '.06s' }}>
                 Utleie på<br />autopilot<span className="text-[#9B5BD6]">.</span>
               </h1>
-              <p className="dh-cover-inn mt-6 max-w-[44ch] text-[15.5px] leading-[1.65] text-[#6F6A60] sm:text-[16.5px]" style={{ animationDelay: '.14s' }}>
-                DigiHome kobler sammen alle stegene i utleieprosessen — fra annonse
-                til BankID-signering, husleie, saker og oppfølging.
-                <span className="text-[#0A0A0A]"> Én plattform. Full kontroll. Helt automatisk.</span>
+              <p className="dh-cover-inn mt-6 max-w-[34ch] text-[16px] leading-[1.65] text-[#6F6A60] sm:text-[17px]" style={{ animationDelay: '.14s' }}>
+                DigiHome samler hele utleieprosessen — fra annonse til betaling
+                og oppfølging.
               </p>
-              <ul className="dh-cover-inn mt-6 space-y-2.5" style={{ animationDelay: '.18s' }}>
-                {[
-                  ['Spar tid', 'vi automatiserer det repetitive'],
-                  ['Full kontroll', 'alt samlet på ett sted'],
-                  ['Trygt og sikkert', 'BankID og kryptert data'],
-                ].map(([b, r]) => (
-                  <li key={b} className="flex items-center gap-2.5 text-[14.5px] text-[#3A3733]">
-                    <CheckCircle2 className="h-[18px] w-[18px] shrink-0 text-[#7c3aed]" strokeWidth={1.9} />
-                    <span><b className="font-semibold text-[#0A0A0A]">{b}</b> — {r}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-3" style={{ animationDelay: '.22s' }}>
+              <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-3" style={{ animationDelay: '.2s' }}>
                 <Link href="/bli-utleier/start" prefetch onClick={() => klikk('hero')} data-testid="forside-hero-cta"
-                  className="e-btn e-btn-dark group !bg-[#7c3aed] hover:!bg-[#6d28d9]">
+                  className="e-btn e-btn-dark group !bg-[#7c3aed] shadow-[0_16px_34px_-12px_rgba(124,58,237,0.55)] hover:!bg-[#6d28d9]">
                   Kom i gang
                   <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
-                <Link href="/tour" prefetch className="e-btn e-btn-ghost" data-testid="forside-hero-tour">
-                  <Play className="h-3.5 w-3.5 fill-current" /> Se hvordan det fungerer
+                <Link href="/tour" prefetch className="e-btn e-btn-ghost !bg-white" data-testid="forside-hero-tour">
+                  <Play className="h-3.5 w-3.5 fill-current" /> Se systemet
                 </Link>
               </div>
-              <ul className="dh-cover-inn mt-7 flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px] text-[#8d877d]" style={{ animationDelay: '.26s' }}>
-                {[[Lock, 'Kom i gang på 2 minutter'], [Check, 'Ingen bindingstid'], [MessageSquare, 'Norsk support']].map(([Ikon, t], i) => (
+              <ul className="dh-cover-inn mt-9 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-medium text-[#a49e93]" style={{ animationDelay: '.26s' }}>
+                {['BankID', 'FINN', 'Husleie', 'Saker', 'AI'].map((t, i) => (
                   <li key={t} className="flex items-center gap-3">
                     {i > 0 && <span aria-hidden="true" className="h-[3px] w-[3px] rounded-full bg-[#D6CFC4]" />}
-                    <span className="flex items-center gap-1.5"><Ikon className="h-[12px] w-[12px] shrink-0 text-[#a49e93]" />{t}</span>
+                    {t}
                   </li>
                 ))}
               </ul>
             </div>
-            {/* Produktkomposisjonen: rett-på MacBook + telefon over høyre kant */}
-            <div className="dh-cover-inn relative pb-12 lg:pb-16" style={{ animationDelay: '.24s' }}>
-              <div className="md:pr-10 lg:pr-12">
-                <LaptopRamme />
+            {/* Produktkomposisjonen: flytende vindu + telefon, lett tilt */}
+            <div className="dh-cover-inn relative pb-14 lg:pb-16" style={{ animationDelay: '.24s' }}>
+              <div className="md:pr-14 lg:pr-16" style={{ transform: 'rotate(1.1deg)' }}>
+                <VinduRamme />
               </div>
-              <div className="absolute -bottom-12 right-0 hidden md:block lg:-right-2">
+              <div className="absolute -bottom-8 right-0 hidden md:block lg:-right-1" style={{ transform: 'rotate(3.2deg)' }}>
                 <TelefonRamme />
               </div>
-              {/* Gulvskygge */}
-              <div aria-hidden="true" className="absolute -bottom-7 left-1/2 h-[44px] w-[84%] -translate-x-1/2 rounded-[100%] bg-black/[0.09] blur-2xl" />
+              {/* Gulvskygge i lilla toner */}
+              <div aria-hidden="true" className="absolute -bottom-6 left-1/2 h-[46px] w-[86%] -translate-x-1/2 rounded-[100%] bg-[#5b3aa5]/[0.13] blur-2xl" />
             </div>
           </div>
         </section>
 
-        {/* ── Alt du trenger — på ett sted: prosessen 01–05 ── */}
-        <section id="produkt" className="scroll-mt-20 border-y border-[#E6E1D9] bg-white">
-          <div className="mx-auto w-full max-w-[1320px] px-6 py-14 sm:px-10 sm:py-20">
-            <p className="text-center text-[11px] font-bold uppercase tracking-[0.16em] text-[#7c3aed]">Alt du trenger — på ett sted</p>
-            <h2 className="e-display mx-auto mt-3 max-w-[26ch] text-center text-[28px] sm:text-[38px]">Fra manuelt arbeid til automatisert drift<span className="text-[#9B5BD6]">.</span></h2>
-            <div className="mt-12 grid grid-cols-1 gap-y-9 gap-x-8 sm:grid-cols-2 lg:flex lg:items-start lg:gap-4 sm:mt-14">
-              {[
-                [Megaphone, 'Finn leietaker', 'Publiser på FINN og motta interessenter — vi hjelper deg hele veien.'],
-                [UserCheck, 'Screening', 'Finn og vurder de beste leietakerne.'],
-                [FileSignature, 'Kontrakt', 'Digital kontrakt og BankID-signering.'],
-                [Wallet, 'Husleie', 'Automatisk betaling, KID og purringer.'],
-                [MessageSquare, 'Oppfølging', 'Saker, kommunikasjon og fornyelser.'],
-              ].map(([Ikon, t, b], i) => (
-                <React.Fragment key={t}>
-                  <div className="flex gap-4 lg:flex-1">
-                    <div className="shrink-0">
-                      <p className="text-[16px] font-bold leading-none text-[#7c3aed] tabular-nums" style={heading}>0{i + 1}</p>
-                      <Ikon className="mt-3 h-[24px] w-[24px] text-[#7c3aed]" strokeWidth={1.5} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[15.5px] font-bold tracking-[-0.015em] text-[#0A0A0A]" style={heading}>{t}</p>
-                      <p className="mt-1.5 text-[12.5px] leading-[1.65] text-[#6F6A60]">{b}</p>
-                    </div>
-                  </div>
-                  {i < 4 && <ArrowRight className="mt-[2px] hidden h-4 w-4 shrink-0 text-[#D6CFC4] lg:block" />}
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-        </section>
+        <StegDemo />
+
 
         {/* ── Integrasjoner ── */}
         <section className="border-b border-[#E6E1D9] bg-[#FCFBF8]">
@@ -531,29 +269,6 @@ export default function Forside2026() {
           </div>
         </section>
 
-        {/* ── Funksjonene: editorial 01–04 + produktflate ── */}
-        <section className="border-t border-[#E6E1D9]">
-          <div className="mx-auto grid w-full max-w-[1320px] items-center gap-12 px-6 py-16 sm:px-10 sm:py-24 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
-            <div>
-              <p className="e-label">Bygget for å gjøre jobben</p>
-              <h2 className="e-display mt-3 max-w-[16ch] text-[28px] sm:text-[36px]">Fra første visning til siste husleie.</h2>
-              <div className="mt-9">
-                {FUNKSJONER.map((f) => (
-                  <div key={f.nr} className="group border-t border-[#E6E1D9] py-5 first:border-t-0 first:pt-0">
-                    <p className="flex items-baseline gap-4">
-                      <span className="text-[12.5px] font-bold text-[#9B5BD6] tabular-nums" style={heading}>{f.nr}</span>
-                      <span className="text-[17px] font-bold tracking-[-0.015em] text-[#0A0A0A]" style={heading}>{f.t}</span>
-                    </p>
-                    <p className="mt-1.5 pl-[34px] max-w-[52ch] text-[13.5px] leading-[1.65] text-[#6F6A60]">{f.b}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="px-2 sm:px-6 lg:px-0">
-              <InteressentRamme />
-            </div>
-          </div>
-        </section>
 
         {/* ── Mørk ROI-seksjon ── */}
         <section className="relative overflow-hidden bg-[#0B0A09] text-white">
