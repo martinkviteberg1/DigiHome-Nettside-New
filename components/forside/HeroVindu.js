@@ -183,17 +183,18 @@ function FlateOversikt() {
       </div>
 
       {/* Aktive saker / Portefølje — som i appen, kuttet av bunnkanten */}
-      <div className="mt-3.5 grid h-[104px] grid-cols-2 gap-3 overflow-hidden">
-        <div>
+      <div className="mt-3.5 grid h-[158px] grid-cols-2 gap-3 overflow-hidden">
+        <div className="flex h-full flex-col">
           <div className="flex items-baseline justify-between">
             <p className="text-[13px] font-bold text-[#0A0A0A]" style={heading}>Aktive saker</p>
             <span className="text-[9px] font-semibold text-[#8d877d]">Se alle</span>
           </div>
-          <div className="mt-2 rounded-t-[10px] bg-white ring-1 ring-black/[0.05]">
+          <div className="mt-2 min-h-0 flex-1 overflow-hidden rounded-t-[10px] bg-white ring-1 ring-black/[0.05]">
             {[
               ['Oppvaskmaskin stopper midt i program', 'Annet · 2d', 'Åpen', '#0e7490', '#7c3aed'],
               ['Varmtvannsbereder lekker', 'Annet · 3d', 'Pågår', '#9a6b1c', '#9a6b1c'],
               ['Behov for hageklipp', 'Annet · 5d', 'Åpen', '#0e7490', '#c2410c'],
+              ['Lås på bod treg — trenger smøring', 'Annet · 6d', 'Åpen', '#0e7490', '#2563eb'],
             ].map(([t, s, status, c, dot], i) => (
               <div key={t} className={`flex items-center gap-2 px-2.5 py-[7px] ${i > 0 ? 'border-t border-black/[0.04]' : ''}`}>
                 <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[6px] bg-[#F1E9FB]"><Sparkles className="h-[8px] w-[8px] text-[#7c3aed]" /></span>
@@ -209,12 +210,12 @@ function FlateOversikt() {
             ))}
           </div>
         </div>
-        <div>
+        <div className="flex h-full flex-col">
           <div className="flex items-baseline justify-between">
             <p className="text-[13px] font-bold text-[#0A0A0A]" style={heading}>Portefølje</p>
             <span className="text-[9px] font-semibold text-[#8d877d]">Se alle</span>
           </div>
-          <div className="mt-2 rounded-t-[10px] bg-white px-3 py-1 ring-1 ring-black/[0.05]">
+          <div className="mt-2 min-h-0 flex-1 overflow-hidden rounded-t-[10px] bg-white px-3 py-1 ring-1 ring-black/[0.05]">
             {[
               ['Aktive eiendommer', '59', '#1f7a45'],
               ['Aktive kontrakter', '41', '#2563eb'],
@@ -299,6 +300,11 @@ const KENHETER = [
   ] },
   { navn: 'Fjellsiden 2 · H0401', omraade: 'Bergenhus', modell: 'LT', barer: [
     { type: 'lease', fra: 0, len: 14, tittel: 'Kristoffer Aase', pris: '19 800 kr/m' },
+  ] },
+  { navn: 'Christies gate 10 · H0201', omraade: 'Bergenhus', modell: 'KT', pris: '1 950', barer: [
+    { type: 'booking', fra: 1, len: 4, tittel: 'Hanna Eide', kilde: 'B', netter: 4 },
+    { type: 'booking', fra: 7, len: 3, tittel: 'Luca Rossi', kilde: 'A', netter: 3 },
+    { type: 'booking', fra: 11, len: 3, tittel: 'Eva Brekke', kilde: 'D', netter: 3 },
   ] },
 ];
 
@@ -682,7 +688,7 @@ export default function VinduRamme() {
       onMouseEnter={() => { pausedRef.current = true; }}
       onMouseLeave={() => { pausedRef.current = false; }}
     >
-      <div className="overflow-hidden rounded-[18px] bg-[#FAFAF8] shadow-[0_56px_120px_-44px_rgba(84,50,160,0.3),0_20px_48px_-28px_rgba(23,18,12,0.14),0_0_0_1px_rgba(0,0,0,0.05)] sm:rounded-[24px]" aria-hidden="true">
+      <div className="isolate overflow-hidden rounded-[18px] bg-[#FAFAF8] shadow-[0_56px_120px_-44px_rgba(84,50,160,0.3),0_20px_48px_-28px_rgba(23,18,12,0.14),0_0_0_1px_rgba(0,0,0,0.05)] sm:rounded-[24px]" aria-hidden="true">
         <div className="flex items-stretch">
 
           {/* Mørk sidemeny — flat liste som i appen, glir fra kollapset til åpen */}

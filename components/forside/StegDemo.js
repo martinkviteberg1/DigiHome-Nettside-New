@@ -220,7 +220,7 @@ export default function StegDemo() {
   const [aktiv, setAktiv] = useState(0);
   const Flate = FLATER[aktiv];
   return (
-    <section id="produkt" className="scroll-mt-20 border-y border-[#ECE8E0] bg-white">
+    <section id="produkt" className="relative scroll-mt-20">
       <div className="mx-auto grid w-full max-w-[1320px] grid-cols-1 items-start gap-12 px-6 py-16 sm:px-10 sm:py-24 lg:grid-cols-[0.42fr_0.58fr] lg:gap-16">
         {/* Venstre: fortelling + stepper */}
         <Avsloer>

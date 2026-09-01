@@ -7467,4 +7467,6 @@ agent_communication:
 agent_communication:
     -agent: "main"
     -message: "Hero-komposisjonen bleder naa mot hoyre viewport-kant paa store skjermer, kalenderen fyller bredden m/ 14 dager. Frontend-testagent ikke kjoert (krever brukertillatelse)."
+    -agent: "main"
+    -message: "KUN FRONTEND (3 fikser, screenshot-verifisert 1920 + 390): (1) Kalender-kollisjon: booking-barene (zIndex 2) roemte stacking-konteksten og ble tegnet oppaa telefonmockupen — fikset med 'isolate' paa vindusrammen i HeroVindu.js + z-[1] paa telefon-wrapper i Forside2026.js. (2) Desktopvinduet hoyere: bunnseksjonen i FlateOversikt utvidet h-[104px]->h-[158px], kortene strekker seg til kuttlinjen (flex-col + flex-1), 4. sak-rad lagt til, 10. kalenderrad (Christies gate 10) lagt til saa kalenderen bloer naturlig av bunnkanten. (3) Soemloes overgang hero->seksjon 2: lavendel-atmosfaeren flyttet til felles wrapper som spenner over hero + StegDemo (gradient 0->0.075 @30% -> 0 @82%), StegDemo mistet bg-white + border-y og er naa transparent paa samme ivory-flate. Ingen hard kant, ingen overflow (sw=1920/390)."
 

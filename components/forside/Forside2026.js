@@ -183,12 +183,15 @@ export default function Forside2026() {
       </header>
 
       <main>
+        {/* ── Hero + stegdemo: delt lavendel-atmosfære — seksjonene flyter sammen uten kant ── */}
+        <div className="relative overflow-x-clip">
+          {/* Én sammenhengende atmosfære bak begge seksjonene — fader ut mot bunnen av stegdemoen */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(124,58,237,0) 0%, rgba(124,58,237,0.055) 16%, rgba(155,91,214,0.075) 30%, rgba(139,74,225,0.045) 55%, rgba(124,58,237,0) 82%)' }} />
+          <div aria-hidden="true" className="pointer-events-none absolute -right-40 top-8 h-[520px] w-[640px] rounded-full bg-[#9B5BD6]/[0.06] blur-3xl" />
+          <div aria-hidden="true" className="pointer-events-none absolute -left-44 top-[34%] h-[440px] w-[560px] rounded-full bg-[#7c3aed]/[0.04] blur-3xl" />
+
         {/* ── Hero: løftet + flytende produktvindu ── */}
         <section className="relative overflow-x-clip">
-          {/* Lavendel-atmosfære i DigiHome-lilla — subtil så teksten forblir skarp */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(124,58,237,0) 0%, rgba(124,58,237,0.055) 34%, rgba(155,91,214,0.075) 62%, rgba(124,58,237,0) 100%)' }} />
-          <div aria-hidden="true" className="pointer-events-none absolute -right-40 top-8 h-[520px] w-[640px] rounded-full bg-[#9B5BD6]/[0.06] blur-3xl" />
-          <div aria-hidden="true" className="pointer-events-none absolute -left-44 bottom-[-80px] h-[440px] w-[560px] rounded-full bg-[#7c3aed]/[0.04] blur-3xl" />
           <div className="relative mx-auto grid w-full max-w-[1320px] grid-cols-1 items-center gap-14 px-6 pb-24 pt-10 sm:px-10 sm:pt-14 lg:grid-cols-[0.58fr_1.42fr] lg:gap-12 lg:pb-28 xl:gap-14">
             <div>
               <p className="e-label dh-cover-inn !text-[#7c7466]">Ny generasjon utleie</p>
@@ -223,7 +226,7 @@ export default function Forside2026() {
               <div className="md:pr-14 lg:pr-16">
                 <VinduRamme />
               </div>
-              <div className="absolute -bottom-8 right-0 hidden md:block lg:-right-1" style={{ transform: 'rotate(2.2deg)' }}>
+              <div className="absolute -bottom-8 right-0 z-[1] hidden md:block lg:-right-1" style={{ transform: 'rotate(2.2deg)' }}>
                 <TelefonRamme />
               </div>
               {/* Gulvskygge fjernet — vinduets egen skygge bærer forankringen */}
@@ -232,6 +235,7 @@ export default function Forside2026() {
         </section>
 
         <StegDemo />
+        </div>
 
 
         {/* ── Integrasjoner ── */}
