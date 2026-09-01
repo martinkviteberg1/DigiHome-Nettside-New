@@ -7257,3 +7257,15 @@ agent_communication:
         -working: true
         -agent: "main"
         -comment: "KUN FRONTEND. Screenshot-verifisert (desktop 1920 + mobil 390): MacBook-ramme i ren JSX m/ topplinje (God dag Martin, Saker-pill, Eiendommer, bjelle m/ badge), varslingsrad (leads/meldinger/saker), KPI-rad (leieinntekt/honorar/netto m/ potensiale-linjer + belegg m/ progressbar), statskort (59/84/43/71 m/ sparklines), moerkt innsiktsbanner m/ Se detaljer. Telefon overlappende nederst hoeyre (kun md+) m/ Ditt overblikk (koherente tall m/ laptopen: 84/43/71/99,2%), Kommende og tab-bar. Venstre: sjekkliste (Spar tid/Full kontroll/Trygt og sikkert), lilla Kom i gang + Play 'Se hvordan det fungerer' (/tour), mikrolinje (2 minutter/ingen bindingstid/norsk support - fra brukerens mockup). Gulvskygge under komposisjonen. Mobil: laptop alene, telefon skjult. Kompilerer rent, / -> 200."
+
+  - task: "Hero v3: rett-paa MacBook (lys bezel, ikon-rail, Oekonomi/Aktiviteter) + rett telefon over hoeyre kant, sammensslaatt 01-05-prosesseksjon (Alt du trenger), navbar = hero-container (1320px)"
+    implemented: true
+    working: true
+    file: "/app/components/forside/Forside2026.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Skraastilling ble foerst provd (rotateX/Y/Z) men brukers referansebilde viste rett-paa - transforms fjernet. Screenshot-verifisert mot referansen: lys aluminium-MacBook m/ ikon-rail (H-logo, badges), God dag Martin-topplinje, varslingskort, Oekonomi denne maaneden (894 500/126 987/767 512/48,8% m/ sparklines + fra forrige maaned-linjer), Aktiviteter m/ tider, Se alle aktiviteter. Telefon rett, lys bezel, 9:41-statuslinje, Ditt overblikk (98%/142/3/99,2%), Kommende, tab-bar m/ lilla pluss. CTA-er paa en linje, mikrolinje enkeltlinje. Gamle 6-stegs prosesseksjon + Alt du trenger-panel erstattet av EN seksjon: 'Fra manuelt arbeid til automatisert drift.' m/ 01-05 (Finn leietaker/Screening/Kontrakt/Husleie/Oppfoelging) + piler. Alle containere 1320px (navbar = hero, brukerkrav). PROSESS-konstant fjernet. Repo-klone i /tmp slettet (inneholdt token i git-config)."

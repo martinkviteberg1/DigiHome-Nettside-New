@@ -5,7 +5,8 @@ import Link from 'next/link';
 import {
   ArrowRight, ArrowUpRight, Check, CheckCircle2, Megaphone, UserCheck, FileSignature, ShieldCheck,
   Banknote, MessageSquare, Home, User, Building2, Bell, Play, Lock, Sparkles, ChevronRight,
-  Users, Clock, CalendarDays, LayoutGrid, Menu, Plus,
+  Users, Clock, CalendarDays, LayoutGrid, Menu, Plus, FileText, ClipboardList, FolderOpen,
+  BarChart3, Settings, HelpCircle, ChevronDown, Wallet,
 } from 'lucide-react';
 import { site } from '@/lib/site';
 import { track } from '@/lib/analytics';
@@ -35,15 +36,6 @@ const NAV = [
 
 const INTEGRASJONER = ['FINN', 'BankID', 'Vipps', 'Keyhole', 'PowerOffice', 'Fiken', 'Tripletex', 'Airbnb', 'Booking.com'];
 
-const PROSESS = [
-  { ikon: Megaphone, t: 'Annonse', b: 'Publiser og nå leietakerne der de leter.' },
-  { ikon: UserCheck, t: 'Screening', b: 'Følg interessenter og finn riktig leietaker.' },
-  { ikon: FileSignature, t: 'Kontrakt', b: 'Signeres digitalt med BankID.' },
-  { ikon: ShieldCheck, t: 'Depositum', b: 'Trygt og etter husleieloven.' },
-  { ikon: Banknote, t: 'Husleie', b: 'Betaling og full oversikt, hver måned.' },
-  { ikon: MessageSquare, t: 'Oppfølging', b: 'Saker, frister og kommunikasjon.' },
-];
-
 const FUNKSJONER = [
   { nr: '01', t: 'Finn leietaker', b: 'Publiser annonsen og følg interessenter gjennom hele utleieprosessen — fra første henvendelse til signert kontrakt.' },
   { nr: '02', t: 'Signer digitalt', b: 'Leiekontrakt og vedlegg signeres trygt med BankID — juridisk holdbart og arkivert automatisk.' },
@@ -63,129 +55,156 @@ function Kurve({ farge = '#1f7a45', punkter = '0,18 12,14 24,15 36,10 48,7 60,3'
   );
 }
 
-/* ── MacBook-rammen: dashboardet som helt. Ren JSX — ingen skjermbilder. ── */
+/* ── MacBook-rammen: lys premium-utgave med DigiHome-sidemeny ── */
 function LaptopRamme() {
+  const meny = [
+    [LayoutGrid, 'Oversikt', true, null],
+    [Building2, 'Eiendommer', false, null],
+    [Users, 'Leietakere', false, null],
+    [MessageSquare, 'Meldinger', false, 3],
+    [FileText, 'Leieforhold', false, null],
+    [ClipboardList, 'Saker', false, 2],
+    [FolderOpen, 'Dokumenter', false, null],
+    [BarChart3, 'Økonomi', false, null],
+    [Settings, 'Innstillinger', false, null],
+  ];
   return (
     <div className="relative" aria-hidden="true">
-      {/* Skjerm med bezel */}
-      <div className="rounded-[16px] bg-[#101013] p-[9px] pb-[12px] shadow-[0_70px_150px_-45px_rgba(23,18,12,0.55)] sm:rounded-[20px] sm:p-[11px]">
-        <div className="overflow-hidden rounded-[9px] bg-[#F7F5F1] sm:rounded-[11px]">
-          <div className="p-3.5 sm:p-5">
+      {/* Skjerm — lys aluminiumsbezel */}
+      <div className="rounded-[18px] bg-gradient-to-b from-[#FDFCFB] to-[#E5E2DD] p-[8px] shadow-[0_80px_160px_-48px_rgba(23,18,12,0.42),0_0_0_1px_rgba(0,0,0,0.07)] sm:rounded-[22px] sm:p-[10px]">
+        <div className="flex overflow-hidden rounded-[11px] bg-[#FBFAF9] ring-1 ring-black/[0.06]">
+          {/* Ikon-rail — som i appen */}
+          <div className="hidden w-[42px] shrink-0 flex-col items-center gap-[3px] border-r border-black/[0.05] bg-white py-3 md:flex">
+            <span className="mb-2 flex h-[20px] w-[20px] items-center justify-center rounded-[6px] bg-[#7c3aed] text-[10px] font-black italic text-white" style={heading}>H</span>
+            {meny.map(([Ikon, l, aktiv, badge]) => (
+              <span key={l} title={l} className={`relative flex h-[26px] w-[26px] items-center justify-center rounded-[8px] ${aktiv ? 'bg-[#F1E9FB] text-[#7c3aed]' : 'text-[#8d877d]'}`}>
+                <Ikon className="h-[12px] w-[12px]" strokeWidth={aktiv ? 2.2 : 1.8} />
+                {badge ? <span className="absolute -right-[2px] -top-[2px] flex h-[10px] w-[10px] items-center justify-center rounded-full bg-[#7c3aed] text-[5.5px] font-bold text-white">{badge}</span> : null}
+              </span>
+            ))}
+          </div>
+          {/* Innhold */}
+          <div className="min-w-0 flex-1 p-3 sm:p-4">
             {/* Topplinje */}
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-[32px] w-[32px] items-center justify-center rounded-full bg-[#0A0A0A] text-[12px] font-bold text-white">M</span>
+              <div className="flex items-center gap-2">
+                <span className="flex h-[28px] w-[28px] items-center justify-center rounded-full bg-gradient-to-br from-[#7c3aed] to-[#9B5BD6] text-[11px] font-bold text-white">M</span>
                 <div>
-                  <p className="text-[13px] font-bold leading-tight text-[#0A0A0A]" style={heading}>God dag, Martin 👋</p>
-                  <p className="text-[9.5px] text-[#a49e93]">Tirsdag 1. september 2026</p>
+                  <p className="text-[12px] font-bold leading-tight text-[#0A0A0A]" style={heading}>God dag, Martin 👋</p>
+                  <p className="text-[8.5px] text-[#a49e93]">Tirsdag 1. september 2026</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="hidden items-center gap-1.5 rounded-full bg-white px-2.5 py-[5px] text-[10px] font-semibold text-[#0A0A0A] ring-1 ring-black/[0.07] sm:flex">
-                  Saker <span className="rounded-full bg-[#7c3aed] px-1.5 py-[1px] text-[8.5px] font-bold text-white">71</span>
+                <span className="flex items-center gap-1 rounded-full bg-white px-2.5 py-[4px] text-[8.5px] font-semibold text-[#3A3733] ring-1 ring-black/[0.07]">
+                  <HelpCircle className="h-[9px] w-[9px] text-[#8d877d]" /> Hjelp
                 </span>
-                <span className="rounded-full bg-[#0A0A0A] px-3 py-[6px] text-[10px] font-semibold text-white">Eiendommer</span>
-                <span className="relative flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white ring-1 ring-black/[0.07]">
-                  <Bell className="h-[11px] w-[11px] text-[#0A0A0A]" />
-                  <span className="absolute -right-[2px] -top-[2px] flex h-[11px] w-[11px] items-center justify-center rounded-full bg-[#d13438] text-[6.5px] font-bold text-white">4</span>
+                <span className="relative flex h-[24px] w-[24px] items-center justify-center rounded-full bg-white ring-1 ring-black/[0.07]">
+                  <Bell className="h-[10px] w-[10px] text-[#0A0A0A]" />
+                  <span className="absolute -right-[2px] -top-[2px] flex h-[10px] w-[10px] items-center justify-center rounded-full bg-[#d13438] text-[6px] font-bold text-white">4</span>
                 </span>
               </div>
             </div>
-            {/* Varslingsrad */}
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {[['2', 'nye leads venter svar', '#2563eb', '#EAF0FD'], ['13', 'uleste meldinger', '#2563eb', '#EAF0FD'], ['71', 'åpne saker', '#7c3aed', '#F1E9FB']].map(([n, t, c, bg]) => (
-                <div key={t} className="flex items-center gap-2 rounded-[9px] bg-white px-2.5 py-2 ring-1 ring-black/[0.05]">
-                  <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] text-[9px] font-bold" style={{ color: c, background: bg }}>{n}</span>
-                  <span className="truncate text-[9.5px] font-medium text-[#3A3733]">{n} {t}</span>
-                  <ChevronRight className="ml-auto h-[10px] w-[10px] shrink-0 text-[#c8c3ba]" />
+            {/* Varslingskort */}
+            <div className="mt-3 grid grid-cols-4 gap-1.5">
+              {[
+                [UserCheck, '2', 'Nye leads venter svar', '#2563eb', '#EAF0FD'],
+                [MessageSquare, '13', 'Uleste meldinger', '#2563eb', '#EAF0FD'],
+                [ClipboardList, '71', 'Åpne saker', '#c2410c', '#FBEFE4'],
+                [Building2, '59', 'Eiendommer totalt', '#1f7a45', '#E7F3EC'],
+              ].map(([Ikon, n, t, c, bg]) => (
+                <div key={t} className="rounded-[9px] bg-white p-2 ring-1 ring-black/[0.05]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex h-[16px] w-[16px] shrink-0 items-center justify-center rounded-[5px]" style={{ background: bg }}><Ikon className="h-[8px] w-[8px]" style={{ color: c }} /></span>
+                    <span className="text-[12px] font-bold text-[#0A0A0A] tabular-nums" style={heading}>{n}</span>
+                  </div>
+                  <p className="mt-1 truncate text-[7.5px] font-medium text-[#a49e93]">{t}</p>
                 </div>
               ))}
             </div>
-            {/* KPI-rad */}
-            <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {/* Økonomi */}
+            <div className="mt-3 flex items-baseline justify-between">
+              <p className="text-[9.5px] font-bold text-[#0A0A0A]" style={heading}>Økonomi denne måneden</p>
+              <span className="flex items-center gap-1 rounded-full bg-white px-2 py-[3px] text-[7.5px] font-semibold text-[#6F6A60] ring-1 ring-black/[0.06]">Denne måneden <ChevronDown className="h-[7px] w-[7px]" /></span>
+            </div>
+            <div className="mt-1.5 grid grid-cols-2 gap-1.5 lg:grid-cols-4">
               {[
-                ['Leieinntekt / mnd', '894 500', 'kr', 'Potensiale: 1 393 800 kr/mnd', '#1f7a45'],
-                ['Honorar / mnd', '126 987,5', 'kr', 'Potensiale: 169 682,5 kr/mnd', '#7c3aed'],
-                ['Netto til huseiere / mnd', '767 512,5', 'kr', 'Potensiale: 1 224 117,5 kr/mnd', '#1f7a45'],
-              ].map(([l, v, enh, pot, farge]) => (
-                <div key={l} className="rounded-[10px] bg-white p-2.5 ring-1 ring-black/[0.05]">
-                  <p className="truncate text-[8.5px] font-medium text-[#a49e93]">{l}</p>
-                  <p className="mt-0.5 text-[15px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>{v}<span className="ml-0.5 text-[8.5px] font-semibold text-[#a49e93]">{enh}</span></p>
-                  <div className="mt-1.5"><Kurve farge={farge} /></div>
-                  <p className="mt-1 truncate text-[7.5px] font-semibold text-[#7c3aed]">{pot}</p>
+                ['Leieinntekt', '894 500', 'kr', '+499 300 fra forrige måned', '#1f7a45'],
+                ['Honorar', '126 987', 'kr', '+42 695 fra forrige måned', '#7c3aed'],
+                ['Netto til huseiere', '767 512', 'kr', '+456 605 fra forrige måned', '#8d877d'],
+              ].map(([l, v, enh, sub, farge]) => (
+                <div key={l} className="rounded-[9px] bg-white p-2 ring-1 ring-black/[0.05]">
+                  <p className="truncate text-[7.5px] font-medium text-[#a49e93]">{l}</p>
+                  <p className="mt-0.5 text-[13px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>{v}<span className="ml-0.5 text-[7.5px] font-semibold text-[#a49e93]">{enh}</span></p>
+                  <div className="mt-1"><Kurve farge={farge} /></div>
+                  <p className="truncate text-[6.5px] font-semibold" style={{ color: farge === '#8d877d' ? '#1f7a45' : farge }}>{sub}</p>
                 </div>
               ))}
-              <div className="rounded-[10px] bg-white p-2.5 ring-1 ring-black/[0.05]">
-                <div className="flex items-baseline justify-between">
-                  <p className="text-[8.5px] font-medium text-[#a49e93]">Belegg</p>
-                  <p className="text-[7.5px] font-semibold text-[#a49e93]">41/84</p>
-                </div>
-                <p className="mt-0.5 text-[15px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>48,8<span className="ml-0.5 text-[8.5px] font-semibold text-[#a49e93]">%</span></p>
-                <div className="mt-2 h-[4px] overflow-hidden rounded-full bg-[#EFEBE4]">
+              <div className="rounded-[9px] bg-white p-2 ring-1 ring-black/[0.05]">
+                <p className="text-[7.5px] font-medium text-[#a49e93]">Belegg</p>
+                <p className="mt-0.5 text-[13px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>48,8<span className="ml-0.5 text-[7.5px] font-semibold text-[#a49e93]">%</span></p>
+                <div className="mt-[7px] h-[4px] overflow-hidden rounded-full bg-[#EFEBE4]">
                   <div className="h-full w-[49%] rounded-full bg-gradient-to-r from-[#7c3aed] to-[#9B5BD6]" />
                 </div>
-                <p className="mt-1.5 truncate text-[7.5px] font-medium text-[#a49e93]">41 enheter utleid</p>
+                <p className="mt-[5px] truncate text-[6.5px] font-medium text-[#a49e93]">41 enheter utleid</p>
               </div>
             </div>
-            {/* Statskort */}
-            <div className="mt-2 grid grid-cols-4 gap-2">
-              {[
-                [Building2, '59', 'Eiendommer', 'LIVE', '#1f7a45', false],
-                [Home, '84', 'Enheter', '41 utleid', '#1f7a45', false],
-                [Users, '43', 'Leietakere', '', '#2563eb', false],
-                [Clock, '71', 'Åpne saker', 'Trenger oppfølging', '#d13438', true],
-              ].map(([Ikon, v, l, sub, farge, ned]) => (
-                <div key={l} className="rounded-[10px] bg-white p-2.5 ring-1 ring-black/[0.05]">
-                  <div className="flex items-center justify-between">
-                    <span className="flex h-[20px] w-[20px] items-center justify-center rounded-[6px] bg-[#F4F1EB]"><Ikon className="h-[10px] w-[10px] text-[#57534e]" /></span>
-                    {sub === 'LIVE'
-                      ? <span className="flex items-center gap-1 text-[7px] font-bold text-[#1f7a45]"><span className="h-[4px] w-[4px] animate-pulse rounded-full bg-[#1f7a45]" />LIVE</span>
-                      : <Kurve farge={farge} ned={ned} />}
+            {/* Aktiviteter */}
+            <p className="mt-3 text-[9.5px] font-bold text-[#0A0A0A]" style={heading}>Aktiviteter</p>
+            <div className="mt-1.5 rounded-[10px] bg-white p-2 ring-1 ring-black/[0.05]">
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  [CalendarDays, 'Visning i morgen', 'Leilighet 2B', '10:00'],
+                  [Clock, 'Kontrakt utløper', 'Leilighet 1A', '2 dager'],
+                  [MessageSquare, 'Ny melding fra Emma', 'Leilighet 3C', '1 time siden'],
+                ].map(([Ikon, t, s, når]) => (
+                  <div key={t} className="flex items-center gap-1.5 rounded-[8px] bg-[#FBFAF9] px-2 py-[6px]">
+                    <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/[0.06]"><Ikon className="h-[8px] w-[8px] text-[#57534e]" /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[8px] font-bold leading-tight text-[#0A0A0A]">{t}</p>
+                      <p className="truncate text-[6.5px] text-[#a49e93]">{s}</p>
+                    </div>
+                    <span className="hidden shrink-0 text-[6.5px] font-semibold text-[#a49e93] lg:block">{når}</span>
                   </div>
-                  <p className="mt-1.5 text-[16px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>{v}</p>
-                  <p className="mt-0.5 truncate text-[8px] font-medium text-[#a49e93]">{l}{sub && sub !== 'LIVE' ? <span className="text-[#7c3aed]"> · {sub}</span> : ''}</p>
-                </div>
-              ))}
-            </div>
-            {/* Mørk innsiktsbanner */}
-            <div className="mt-2 flex items-center justify-between gap-3 overflow-hidden rounded-[10px] bg-[#141216] px-3 py-2.5">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-white/[0.08]"><Sparkles className="h-[10px] w-[10px] text-[#C9A6F0]" /></span>
-                <div className="min-w-0">
-                  <p className="truncate text-[10px] font-bold text-white">Potensial for høyere belegg</p>
-                  <p className="truncate text-[8.5px] text-white/50">41 av 84 enheter utleid, 49 % belegg.</p>
-                </div>
+                ))}
               </div>
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#7c3aed] px-3 py-[6px] text-[9.5px] font-bold text-white">Se detaljer <ArrowUpRight className="h-[10px] w-[10px]" /></span>
+              <p className="mt-1.5 flex items-center justify-end gap-1 pr-1 text-[7.5px] font-bold text-[#7c3aed]">Se alle aktiviteter <ArrowRight className="h-[7px] w-[7px]" /></p>
             </div>
           </div>
         </div>
       </div>
-      {/* MacBook-basen */}
-      <div className="absolute -bottom-[11px] left-1/2 h-[13px] w-[116%] -translate-x-1/2 rounded-b-[16px] rounded-t-[3px] bg-gradient-to-b from-[#EAE7E2] via-[#D9D6D1] to-[#BEBBB6] shadow-[0_24px_50px_-18px_rgba(23,18,12,0.45)]">
-        <div className="mx-auto h-[5px] w-[104px] rounded-b-[9px] bg-[#ABA8A3]" />
+      {/* MacBook-basen — lys aluminium */}
+      <div className="absolute -bottom-[11px] left-1/2 h-[13px] w-[116%] -translate-x-1/2 rounded-b-[16px] rounded-t-[3px] bg-gradient-to-b from-[#F4F2EF] via-[#E3E0DB] to-[#C7C4BF] shadow-[0_26px_54px_-18px_rgba(23,18,12,0.4)]">
+        <div className="mx-auto h-[5px] w-[104px] rounded-b-[9px] bg-[#D3D0CB]" />
       </div>
     </div>
   );
 }
 
-/* ── Telefonrammen: mobilappen ── */
+/* ── Telefonrammen: lys premium-utgave ── */
 function TelefonRamme() {
   return (
-    <div className="w-[188px] rounded-[30px] bg-[#101013] p-[7px] shadow-[0_46px_100px_-30px_rgba(23,18,12,0.6)]" aria-hidden="true">
-      <div className="relative overflow-hidden rounded-[24px] bg-[#F7F5F1]">
-        <div className="absolute left-1/2 top-[7px] h-[13px] w-[54px] -translate-x-1/2 rounded-full bg-[#101013]" />
-        <div className="px-3 pb-2.5 pt-7">
+    <div className="w-[186px] rounded-[30px] bg-gradient-to-b from-[#FBFAF8] to-[#DAD7D2] p-[6px] shadow-[0_50px_110px_-32px_rgba(23,18,12,0.5),0_0_0_1px_rgba(0,0,0,0.08)]" aria-hidden="true">
+      <div className="relative overflow-hidden rounded-[25px] bg-[#FBFAF9] ring-1 ring-black/[0.06]">
+        {/* Statuslinje + dynamic island */}
+        <div className="flex items-center justify-between px-4 pt-2">
+          <span className="text-[8px] font-bold text-[#0A0A0A] tabular-nums">9:41</span>
+          <span className="h-[12px] w-[50px] rounded-full bg-[#101013]" />
+          <span className="flex items-center gap-[2px]">
+            {[3, 4.5, 6].map((h) => <span key={h} className="w-[2px] rounded-full bg-[#0A0A0A]" style={{ height: h }} />)}
+            <span className="ml-[3px] h-[6px] w-[11px] rounded-[2.5px] border border-[#0A0A0A]/70"><span className="block h-full w-[70%] rounded-[1.5px] bg-[#0A0A0A]" /></span>
+          </span>
+        </div>
+        <div className="px-3 pb-2.5 pt-2.5">
           <div className="flex items-center justify-between">
             <p className="text-[10.5px] font-bold text-[#0A0A0A]" style={heading}>God dag, Martin 👋</p>
             <Bell className="h-[10px] w-[10px] text-[#8d877d]" />
           </div>
-          <p className="mt-2.5 text-[8px] font-bold uppercase tracking-[0.1em] text-[#a49e93]">Ditt overblikk</p>
+          <p className="mt-2 text-[8px] font-bold text-[#0A0A0A]" style={heading}>Ditt overblikk</p>
           <div className="mt-1.5 space-y-[5px]">
             {[
-              [Home, '84', 'Enheter · 41 utleid', '#F1E9FB', '#7c3aed'],
-              [Users, '43', 'Leietakere', '#EAF0FD', '#2563eb'],
-              [Clock, '71', 'Åpne saker', '#FBF3E4', '#9a6b1c'],
+              [LayoutGrid, '98 %', 'Utleid', '#F1E9FB', '#7c3aed'],
+              [Users, '142', 'Aktive leieforhold', '#EAF0FD', '#2563eb'],
+              [ClipboardList, '3', 'Åpne saker', '#FBEFE4', '#c2410c'],
               [Banknote, '99,2 %', 'Betalt denne måneden', '#E7F3EC', '#1f7a45'],
             ].map(([Ikon, v, l, bg, c]) => (
               <div key={l} className="flex items-center gap-2 rounded-[9px] bg-white px-2 py-[6px] ring-1 ring-black/[0.05]">
@@ -197,9 +216,9 @@ function TelefonRamme() {
               </div>
             ))}
           </div>
-          <p className="mt-2.5 text-[8px] font-bold uppercase tracking-[0.1em] text-[#a49e93]">Kommende</p>
+          <p className="mt-2.5 text-[8px] font-bold text-[#0A0A0A]" style={heading}>Kommende</p>
           <div className="mt-1.5 space-y-[5px]">
-            {[['Visning i morgen', 'Leilighet 2B', '10:00'], ['Kontrakt utløper', 'Leilighet 1A', '2 dager']].map(([t, s, når]) => (
+            {[['Visning i morgen', 'Leilighet 2B', '10.00'], ['Kontrakt utløper', 'Leilighet 1A', '2 dager']].map(([t, s, når]) => (
               <div key={t} className="flex items-center gap-2 rounded-[9px] bg-white px-2 py-[6px] ring-1 ring-black/[0.05]">
                 <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-[#F4F1EB]"><CalendarDays className="h-[10px] w-[10px] text-[#57534e]" /></span>
                 <div className="min-w-0 flex-1">
@@ -212,11 +231,11 @@ function TelefonRamme() {
           </div>
           {/* Tab-bar */}
           <div className="mt-2.5 flex items-center justify-between rounded-full bg-white px-3.5 py-[7px] ring-1 ring-black/[0.06]">
-            <LayoutGrid className="h-[11px] w-[11px] text-[#7c3aed]" />
-            <Building2 className="h-[11px] w-[11px] text-[#c8c3ba]" />
-            <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#7c3aed]"><Plus className="h-[12px] w-[12px] text-white" /></span>
-            <MessageSquare className="h-[11px] w-[11px] text-[#c8c3ba]" />
-            <Menu className="h-[11px] w-[11px] text-[#c8c3ba]" />
+            <span className="flex flex-col items-center gap-[1px]"><LayoutGrid className="h-[11px] w-[11px] text-[#7c3aed]" /><span className="text-[4.5px] font-bold text-[#7c3aed]">Oversikt</span></span>
+            <span className="flex flex-col items-center gap-[1px]"><Building2 className="h-[11px] w-[11px] text-[#c8c3ba]" /><span className="text-[4.5px] font-semibold text-[#c8c3ba]">Eiendommer</span></span>
+            <span className="flex h-[24px] w-[24px] items-center justify-center rounded-full bg-[#7c3aed] shadow-[0_6px_14px_-4px_rgba(124,58,237,0.6)]"><Plus className="h-[13px] w-[13px] text-white" /></span>
+            <span className="flex flex-col items-center gap-[1px]"><ClipboardList className="h-[11px] w-[11px] text-[#c8c3ba]" /><span className="text-[4.5px] font-semibold text-[#c8c3ba]">Saker</span></span>
+            <span className="flex flex-col items-center gap-[1px]"><Menu className="h-[11px] w-[11px] text-[#c8c3ba]" /><span className="text-[4.5px] font-semibold text-[#c8c3ba]">Meny</span></span>
           </div>
         </div>
       </div>
@@ -271,7 +290,7 @@ export default function Forside2026() {
     <div className="min-h-screen bg-[#FDFCFB]" data-testid="forside-2026">
       {/* ── Navbar ── */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'border-b border-[#E6E1D9] bg-[#FDFCFB]/90 backdrop-blur-md' : 'bg-transparent'}`}>
-        <div className="mx-auto flex h-[66px] w-full max-w-[1280px] items-center justify-between gap-4 px-6 sm:px-10">
+        <div className="mx-auto flex h-[66px] w-full max-w-[1320px] items-center justify-between gap-4 px-6 sm:px-10">
           <Link href="/" className="flex shrink-0 items-center" data-testid="forside-logo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[22px] w-auto" />
@@ -286,7 +305,7 @@ export default function Forside2026() {
           <div className="flex shrink-0 items-center gap-2">
             <a href={site.loginUrl} className="hidden rounded-full px-3.5 py-2 text-[13.5px] font-medium text-[#1f1f1f]/70 transition-colors hover:text-[#0a0a0a] sm:block">Logg inn</a>
             <Link href="/bli-utleier/start" prefetch onClick={() => klikk('nav')} data-testid="forside-nav-cta" className="e-btn e-btn-dark !h-[40px] !bg-[#7c3aed] !px-4 !text-[13.5px] hover:!bg-[#6d28d9]">
-              Kom i gang
+              Kom i gang <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </div>
@@ -294,16 +313,20 @@ export default function Forside2026() {
 
       <main>
         {/* ── Hero: løftet + produktet (MacBook + telefon) ── */}
-        <section className="overflow-x-clip">
-          <div className="mx-auto grid w-full max-w-[1360px] items-center gap-14 px-6 pb-20 pt-10 sm:px-10 sm:pt-14 lg:grid-cols-[0.78fr_1.22fr] lg:gap-12 lg:pb-28 xl:gap-16">
+        <section className="relative overflow-x-clip">
+          {/* Myk lilla vask i DigiHome-fargene */}
+          <div aria-hidden="true" className="pointer-events-none absolute -left-44 bottom-[-60px] h-[440px] w-[560px] rounded-full bg-[#7c3aed]/[0.06] blur-3xl" />
+          <div aria-hidden="true" className="pointer-events-none absolute -right-40 top-4 h-[400px] w-[520px] rounded-full bg-[#9B5BD6]/[0.05] blur-3xl" />
+          <div className="relative mx-auto grid w-full max-w-[1320px] items-center gap-14 px-6 pb-24 pt-10 sm:px-10 sm:pt-14 lg:grid-cols-[0.68fr_1.32fr] lg:gap-10 lg:pb-32 xl:gap-12">
             <div>
               <p className="e-label dh-cover-inn !text-[#7c3aed]">Ny generasjon utleie</p>
               <h1 className="e-display dh-cover-inn mt-4 text-[46px] sm:text-[58px] lg:text-[60px] xl:text-[70px]" style={{ animationDelay: '.06s' }}>
                 Utleie på<br />autopilot<span className="text-[#9B5BD6]">.</span>
               </h1>
-              <p className="dh-cover-inn mt-6 max-w-[40ch] text-[16px] leading-[1.6] text-[#6F6A60] sm:text-[17px]" style={{ animationDelay: '.14s' }}>
-                Én plattform som tar deg fra annonse til BankID-signering, husleie,
-                saker og oppfølging — helt automatisk.
+              <p className="dh-cover-inn mt-6 max-w-[44ch] text-[15.5px] leading-[1.65] text-[#6F6A60] sm:text-[16.5px]" style={{ animationDelay: '.14s' }}>
+                DigiHome kobler sammen alle stegene i utleieprosessen — fra annonse
+                til BankID-signering, husleie, saker og oppfølging.
+                <span className="text-[#0A0A0A]"> Én plattform. Full kontroll. Helt automatisk.</span>
               </p>
               <ul className="dh-cover-inn mt-6 space-y-2.5" style={{ animationDelay: '.18s' }}>
                 {[
@@ -327,31 +350,62 @@ export default function Forside2026() {
                   <Play className="h-3.5 w-3.5 fill-current" /> Se hvordan det fungerer
                 </Link>
               </div>
-              <ul className="dh-cover-inn mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-[#8d877d]" style={{ animationDelay: '.26s' }}>
+              <ul className="dh-cover-inn mt-7 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-[#8d877d]" style={{ animationDelay: '.26s' }}>
                 {[[Lock, 'Kom i gang på 2 minutter'], [Check, 'Ingen bindingstid'], [MessageSquare, 'Norsk support']].map(([Ikon, t], i) => (
-                  <li key={t} className={`flex items-center gap-1.5 ${i > 0 ? 'border-l border-[#E6E1D9] pl-5' : ''}`}>
-                    <Ikon className="h-[13px] w-[13px] text-[#a49e93]" />{t}
+                  <li key={t} className={`flex items-center gap-1.5 ${i > 0 ? 'border-l border-[#E6E1D9] pl-4' : ''}`}>
+                    <Ikon className="h-[12px] w-[12px] shrink-0 text-[#a49e93]" />{t}
                   </li>
                 ))}
               </ul>
             </div>
-            {/* Produktkomposisjonen: MacBook + overlappende telefon */}
-            <div className="dh-cover-inn relative pb-8 lg:pb-12" style={{ animationDelay: '.24s' }}>
-              <div className="md:pr-20 xl:pr-24">
+            {/* Produktkomposisjonen: rett-på MacBook + telefon over høyre kant */}
+            <div className="dh-cover-inn relative pb-12 lg:pb-16" style={{ animationDelay: '.24s' }}>
+              <div className="md:pr-14 lg:pr-16 xl:pr-20">
                 <LaptopRamme />
               </div>
-              <div className="absolute -bottom-6 right-0 hidden md:block xl:-right-3">
+              <div className="absolute -bottom-10 right-0 hidden md:block lg:-right-1">
                 <TelefonRamme />
               </div>
               {/* Gulvskygge */}
-              <div aria-hidden="true" className="absolute -bottom-8 left-1/2 h-[46px] w-[82%] -translate-x-1/2 rounded-[100%] bg-black/[0.09] blur-2xl" />
+              <div aria-hidden="true" className="absolute -bottom-7 left-1/2 h-[44px] w-[84%] -translate-x-1/2 rounded-[100%] bg-black/[0.09] blur-2xl" />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Alt du trenger — på ett sted: prosessen 01–05 ── */}
+        <section id="produkt" className="scroll-mt-20 border-y border-[#E6E1D9] bg-white">
+          <div className="mx-auto w-full max-w-[1320px] px-6 py-14 sm:px-10 sm:py-20">
+            <p className="text-center text-[11px] font-bold uppercase tracking-[0.16em] text-[#7c3aed]">Alt du trenger — på ett sted</p>
+            <h2 className="e-display mx-auto mt-3 max-w-[26ch] text-center text-[28px] sm:text-[38px]">Fra manuelt arbeid til automatisert drift<span className="text-[#9B5BD6]">.</span></h2>
+            <div className="mt-12 grid grid-cols-1 gap-y-9 gap-x-8 sm:grid-cols-2 lg:flex lg:items-start lg:gap-4 sm:mt-14">
+              {[
+                [Megaphone, 'Finn leietaker', 'Publiser på FINN og motta interessenter — vi hjelper deg hele veien.'],
+                [UserCheck, 'Screening', 'Finn og vurder de beste leietakerne.'],
+                [FileSignature, 'Kontrakt', 'Digital kontrakt og BankID-signering.'],
+                [Wallet, 'Husleie', 'Automatisk betaling, KID og purringer.'],
+                [MessageSquare, 'Oppfølging', 'Saker, kommunikasjon og fornyelser.'],
+              ].map(([Ikon, t, b], i) => (
+                <React.Fragment key={t}>
+                  <div className="flex gap-4 lg:flex-1">
+                    <div className="shrink-0">
+                      <p className="text-[16px] font-bold leading-none text-[#7c3aed] tabular-nums" style={heading}>0{i + 1}</p>
+                      <Ikon className="mt-3 h-[24px] w-[24px] text-[#7c3aed]" strokeWidth={1.5} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[15.5px] font-bold tracking-[-0.015em] text-[#0A0A0A]" style={heading}>{t}</p>
+                      <p className="mt-1.5 text-[12.5px] leading-[1.65] text-[#6F6A60]">{b}</p>
+                    </div>
+                  </div>
+                  {i < 4 && <ArrowRight className="mt-[2px] hidden h-4 w-4 shrink-0 text-[#D6CFC4] lg:block" />}
+                </React.Fragment>
+              ))}
             </div>
           </div>
         </section>
 
         {/* ── Integrasjoner ── */}
-        <section className="border-y border-[#E6E1D9] bg-[#FCFBF8]">
-          <div className="mx-auto w-full max-w-[1280px] px-6 py-8 sm:px-10">
+        <section className="border-b border-[#E6E1D9] bg-[#FCFBF8]">
+          <div className="mx-auto w-full max-w-[1320px] px-6 py-8 sm:px-10">
             <p className="text-center text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#a49e93]">Snakker med det dere allerede bruker</p>
             <ul className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:gap-x-10">
               {INTEGRASJONER.map((n) => (
@@ -361,29 +415,8 @@ export default function Forside2026() {
           </div>
         </section>
 
-        {/* ── Historien: én plattform, hele prosessen ── */}
-        <section id="produkt" className="mx-auto w-full max-w-[1280px] scroll-mt-20 px-6 py-16 sm:px-10 sm:py-24">
-          <p className="e-label text-center !text-[#9B5BD6]">Fra manuelt arbeid til automatisert drift</p>
-          <h2 className="e-display mx-auto mt-3 max-w-[22ch] text-center text-[30px] sm:text-[42px]">Én plattform. Hele leieprosessen.</h2>
-          <div className="mt-12 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:flex lg:items-start lg:gap-2">
-            {PROSESS.map((s, i) => (
-              <React.Fragment key={s.t}>
-                <div className="flex flex-col items-center text-center lg:flex-1">
-                  <span className="flex h-[46px] w-[46px] items-center justify-center rounded-[14px] bg-white ring-1 ring-black/[0.07] shadow-[0_1px_3px_rgba(23,18,12,0.05)]">
-                    <s.ikon className="h-[19px] w-[19px] text-[#0A0A0A]" strokeWidth={1.7} />
-                  </span>
-                  <p className="mt-3 text-[14.5px] font-bold tracking-[-0.01em] text-[#0A0A0A]" style={heading}>{s.t}</p>
-                  <p className="mt-1 max-w-[20ch] text-[12px] leading-[1.55] text-[#8d877d]">{s.b}</p>
-                </div>
-                {i < PROSESS.length - 1 && <ArrowRight className="mt-[15px] hidden h-4 w-4 shrink-0 text-[#D6CFC4] lg:block" />}
-              </React.Fragment>
-            ))}
-          </div>
-          <p className="mt-10 text-center text-[13.5px] text-[#8d877d]">DigiHome sørger for at ingenting faller mellom stegene.</p>
-        </section>
-
         {/* ── Målgruppene ── */}
-        <section className="mx-auto w-full max-w-[1280px] px-6 pb-16 sm:px-10 sm:pb-24">
+        <section className="mx-auto w-full max-w-[1320px] px-6 py-16 sm:px-10 sm:py-24">
           <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
             {/* Privat */}
             <div className="grid overflow-hidden rounded-[22px] bg-white ring-1 ring-black/[0.06] shadow-[0_2px_5px_rgba(23,18,12,0.04)] sm:grid-cols-[1.15fr_1fr]" data-testid="forside-kort-privat">
@@ -437,7 +470,7 @@ export default function Forside2026() {
 
         {/* ── Funksjonene: editorial 01–04 + produktflate ── */}
         <section className="border-t border-[#E6E1D9]">
-          <div className="mx-auto grid w-full max-w-[1280px] items-center gap-12 px-6 py-16 sm:px-10 sm:py-24 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
+          <div className="mx-auto grid w-full max-w-[1320px] items-center gap-12 px-6 py-16 sm:px-10 sm:py-24 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
             <div>
               <p className="e-label">Bygget for å gjøre jobben</p>
               <h2 className="e-display mt-3 max-w-[16ch] text-[28px] sm:text-[36px]">Fra første visning til siste husleie.</h2>
@@ -462,7 +495,7 @@ export default function Forside2026() {
         {/* ── Mørk ROI-seksjon ── */}
         <section className="relative overflow-hidden bg-[#0B0A09] text-white">
           <div aria-hidden="true" className="pointer-events-none absolute -top-44 left-[8%] h-[560px] w-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(155,91,214,0.16) 0%, transparent 62%)' }} />
-          <div className="relative mx-auto w-full max-w-[1280px] px-6 py-18 sm:px-10 sm:py-24">
+          <div className="relative mx-auto w-full max-w-[1320px] px-6 py-18 sm:px-10 sm:py-24">
             <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-20">
               <div>
                 <h2 className="e-display max-w-[16ch] text-[30px] !text-white sm:text-[42px]">Hva om én forvalter kunne håndtere dobbelt så mange boliger?</h2>
@@ -496,7 +529,7 @@ export default function Forside2026() {
         </section>
 
         {/* ── Hvordan vil du bruke DigiHome? ── */}
-        <section className="mx-auto w-full max-w-[1280px] px-6 py-16 sm:px-10 sm:py-24">
+        <section className="mx-auto w-full max-w-[1320px] px-6 py-16 sm:px-10 sm:py-24">
           <h2 className="e-display mx-auto max-w-[20ch] text-center text-[28px] sm:text-[38px]">Hvordan vil du bruke DigiHome?</h2>
           <div className="mx-auto mt-10 grid max-w-[1060px] gap-4 sm:grid-cols-3 sm:gap-6 sm:mt-14">
             {[
@@ -521,7 +554,7 @@ export default function Forside2026() {
 
         {/* ── Slutt-CTA ── */}
         <section className="border-t border-[#E6E1D9]">
-          <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center justify-between gap-6 px-6 py-12 sm:px-10 sm:py-16">
+          <div className="mx-auto flex w-full max-w-[1320px] flex-wrap items-center justify-between gap-6 px-6 py-12 sm:px-10 sm:py-16">
             <div>
               <h2 className="e-display text-[24px] sm:text-[30px]">Klar for å gjøre utleie enklere?</h2>
               <p className="mt-2 text-[14px] text-[#8d877d]">Kom i gang på minuttet — eller book en prat med oss.</p>
