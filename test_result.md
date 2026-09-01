@@ -7400,3 +7400,20 @@ agent_communication:
     -agent: "main"
     -message: "Hero v6.3: marketing-chrome er naa portal-ink m/ lavendel-aksenter, mockup-logoen er appens ekte logo-assets. Frontend-testagent ikke kjoert (krever brukertillatelse)."
 
+
+  - task: "Hero v6.4: telefon-mockup m/ fysisk korrekt stoerrelse + verdensklasse ramme (slank bezel, sideknapper)"
+    implemented: true
+    working: true
+    file: "/app/components/forside/Forside2026.js (TelefonRamme)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Bruker diskuterte rammeloes mobil - anbefaling: BEHOLD rammen (bezelen er signalet 'egen app i lomma', kontrast mot rammeloest vindu gir dybde), bruker godkjente + ba om riktig stoerrelse. Maalte foer: aspekt 0.40 (altfor smal/hoey, ekte iPhone = 0.481) og 92% av vindushoeyden (for stor, maal ~75%). Fikser: (1) fjernet I dag-seksjonen (-85px), (2) boligbilde 74->86px (stoerre vakkert bilde + finjustering), (3) bezel slanket 6->5px, radius 32/27->30/25, (4) sideknapper lagt til (2 volum venstre, power hoeyre, #2a2a2a nubs). Maalt etter (kompensert for 3.2deg tilt): aspekt 0.483 (= ekte iPhone), relativ hoeyde 0.75 (perfekt komposisjonshierarki). Screenshot-verifisert."
+
+agent_communication:
+    -agent: "main"
+    -message: "Hero v6.4: telefonen har naa eksakt iPhone-proporsjon (0.483) og riktig relativ stoerrelse (75% av vindu), slank bezel + sideknapper. Frontend-testagent ikke kjoert (krever brukertillatelse)."
+

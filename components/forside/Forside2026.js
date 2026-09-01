@@ -58,8 +58,12 @@ function Kurve({ farge = '#1f7a45', punkter = '0,18 12,14 24,15 36,10 48,7 60,3'
       m/ lavendel-glød, grønn #0f9d6e, lilla #7c3aed) — «Min bolig» m/ boligbilde. ── */
 function TelefonRamme() {
   return (
-    <div className="w-[196px] rounded-[32px] bg-[#0a0a0a] p-[6px] shadow-[0_50px_110px_-32px_rgba(23,18,12,0.5),0_0_0_1px_rgba(0,0,0,0.1)]" aria-hidden="true">
-      <div className="relative overflow-hidden rounded-[27px] bg-[#F7F5F1]">
+    <div className="relative w-[196px] rounded-[30px] bg-[#0a0a0a] p-[5px] shadow-[0_50px_110px_-32px_rgba(23,18,12,0.5),0_0_0_1px_rgba(0,0,0,0.1)]" aria-hidden="true">
+      {/* Sideknapper — fysisk detalj */}
+      <span className="absolute -left-[2px] top-[92px] h-[22px] w-[2.5px] rounded-full bg-[#2a2a2a]" />
+      <span className="absolute -left-[2px] top-[122px] h-[22px] w-[2.5px] rounded-full bg-[#2a2a2a]" />
+      <span className="absolute -right-[2px] top-[108px] h-[38px] w-[2.5px] rounded-full bg-[#2a2a2a]" />
+      <div className="relative overflow-hidden rounded-[25px] bg-[#F7F5F1]">
         {/* Dynamic island */}
         <div className="absolute left-1/2 top-[7px] z-[2] h-[13px] w-[52px] -translate-x-1/2 rounded-full bg-black" />
         {/* Statuslinje */}
@@ -83,7 +87,7 @@ function TelefonRamme() {
           {/* Min bolig — nydelig boligbilde */}
           <p className="mt-2.5 text-[7px] font-bold uppercase tracking-[0.14em] text-[#b3aa9e]">Min bolig</p>
           <div className="mt-1.5 overflow-hidden rounded-[13px] border border-[#eee9e0] bg-white shadow-[0_1px_3px_rgba(23,18,12,0.05)]">
-            <div className="relative h-[74px]">
+            <div className="relative h-[86px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/interior-openplan-hero.webp" alt="" loading="lazy" className="h-full w-full object-cover" />
               <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-white/90 px-1.5 py-[2.5px] text-[6px] font-bold text-[#0f9d6e] backdrop-blur-sm">
@@ -125,22 +129,8 @@ function TelefonRamme() {
             ))}
           </div>
 
-          {/* I dag */}
-          <p className="mt-2.5 text-[7px] font-bold uppercase tracking-[0.14em] text-[#b3aa9e]">I dag</p>
-          <div className="mt-1.5 space-y-[5px]">
-            {[[Wrench, 'Vaktmester kommer', 'Torsdag 09:00'], [FileText, 'Leiekontrakt', 'Signert med BankID']].map(([Ikon, t, s]) => (
-              <div key={t} className="flex items-center gap-2 rounded-[11px] border border-[#eee9e0] bg-white px-2 py-[6px] shadow-[0_1px_3px_rgba(23,18,12,0.04)]">
-                <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-[#F4F1EB]"><Ikon className="h-[8px] w-[8px] text-[#57534e]" /></span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[7.5px] font-bold leading-tight text-[#0a0a0a]">{t}</p>
-                  <p className="truncate text-[6.5px] text-[#8d877d]">{s}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
           {/* Tab-bar */}
-          <div className="mt-2.5 flex items-center justify-around rounded-full border border-[#eee9e0] bg-white px-2 py-[6px] shadow-[0_1px_3px_rgba(23,18,12,0.04)]">
+          <div className="mt-3 flex items-center justify-around rounded-full border border-[#eee9e0] bg-white px-2 py-[6px] shadow-[0_1px_3px_rgba(23,18,12,0.04)]">
             {[[Home, 'Hjem', true], [Building2, 'Min bolig', false], [Wallet, 'Betaling', false], [MessageSquare, 'Meldinger', false]].map(([Ikon, l, aktiv]) => (
               <span key={l} className="flex flex-col items-center gap-[1px]">
                 <Ikon className={`h-[10px] w-[10px] ${aktiv ? 'text-[#7c3aed]' : 'text-[#c8c3ba]'}`} />
