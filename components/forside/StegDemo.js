@@ -5,6 +5,7 @@ import {
   ArrowRight, Check, MessageSquare, FileSignature, ShieldCheck, Sparkles,
   Wrench, RefreshCw, CalendarDays,
 } from 'lucide-react';
+import Avsloer from '@/components/forside/Avsloer';
 
 /* ---------------------------------------------------------------------------
    StegDemo — «Fra manuelt arbeid til automatisert drift.»
@@ -220,16 +221,39 @@ export default function StegDemo() {
   const Flate = FLATER[aktiv];
   return (
     <section id="produkt" className="scroll-mt-20 border-y border-[#E6E1D9] bg-white">
-      <div className="mx-auto grid w-full max-w-[1320px] items-start gap-12 px-6 py-16 sm:px-10 sm:py-24 lg:grid-cols-[0.42fr_0.58fr] lg:gap-16">
+      <div className="mx-auto grid w-full max-w-[1320px] grid-cols-1 items-start gap-12 px-6 py-16 sm:px-10 sm:py-24 lg:grid-cols-[0.42fr_0.58fr] lg:gap-16">
         {/* Venstre: fortelling + stepper */}
-        <div>
+        <Avsloer>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7c3aed]">Alt du trenger — på ett sted</p>
           <h2 className="e-display mt-3 max-w-[16ch] text-[28px] sm:text-[38px]">Fra manuelt arbeid til automatisert drift<span className="text-[#9B5BD6]">.</span></h2>
           <p className="mt-4 max-w-[38ch] text-[14.5px] leading-[1.65] text-[#6F6A60]">
             DigiHome binder sammen oppgavene som tradisjonelt har ligget i
             forskjellige systemer, innbokser og regneark.
           </p>
-          <div className="mt-8">
+          {/* Mobil: sveipbare steg-chips */}
+          <div className="-mx-6 mt-6 flex gap-2 overflow-x-auto px-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-10 sm:px-10 lg:hidden">
+            {STEG.map((s, i) => (
+              <button
+                key={s.nr}
+                onClick={(e) => {
+                  setAktiv(i);
+                  try {
+                    const el = e.currentTarget;
+                    const boks = el.parentElement;
+                    boks.scrollTo({ left: el.offsetLeft - (boks.clientWidth - el.clientWidth) / 2, behavior: 'smooth' });
+                  } catch (err) { /* ok */ }
+                }}
+                data-testid={`steg-mobil-${s.nr}`}
+                className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-[9px] text-[13px] font-semibold transition-colors ${i === aktiv ? 'bg-[#7c3aed] text-white shadow-[0_10px_22px_-8px_rgba(124,58,237,0.55)]' : 'bg-white text-[#57534e] ring-1 ring-black/[0.08]'}`}
+              >
+                <span className={`text-[11px] font-bold tabular-nums ${i === aktiv ? 'text-white/70' : 'text-[#b3aca1]'}`} style={heading}>{s.nr}</span>
+                {s.t}
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-[13px] leading-[1.6] text-[#8d877d] lg:hidden">{STEG[aktiv].b}</p>
+          {/* Desktop: vertikal stepper */}
+          <div className="mt-8 hidden lg:block">
             {STEG.map((s, i) => {
               const valgt = i === aktiv;
               return (
@@ -247,14 +271,14 @@ export default function StegDemo() {
               );
             })}
           </div>
-        </div>
+        </Avsloer>
         {/* Høyre: levende produktflate */}
-        <div className="lg:sticky lg:top-24">
+        <Avsloer delay={150} className="lg:sticky lg:top-24">
           <div key={aktiv} className="dh-cover-inn overflow-hidden rounded-[20px] bg-[#FCFBF9] shadow-[0_40px_100px_-40px_rgba(84,50,160,0.3),0_0_0_1px_rgba(0,0,0,0.05)]">
             <Flate />
           </div>
           <p className="mt-4 text-center text-[12.5px] italic text-[#a49e93]">Slik ser det ut når du lar DigiHome gjøre jobben.</p>
-        </div>
+        </Avsloer>
       </div>
     </section>
   );

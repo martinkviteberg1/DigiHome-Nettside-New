@@ -2,17 +2,17 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  LayoutGrid, Home, Users, MessageSquare, FileText, Bell, ClipboardList, Building2,
-  CalendarDays, Clock, Inbox, Sparkles, Megaphone, FolderOpen, Search, ChevronRight,
-  ArrowUpRight, Wallet, Plus,
+  LayoutGrid, Home, Users, MessageSquare, FileText, ClipboardList, Building2,
+  CalendarDays, Clock, Inbox, Sparkles, Search, ChevronRight, ChevronDown,
+  ArrowUpRight, Wallet, Plus, TrendingUp, BookOpen, Landmark, ShieldCheck,
+  PanelLeft, Wrench,
 } from 'lucide-react';
 
 /* ---------------------------------------------------------------------------
-   Hero-vinduet — levende produktvindu med rolig koreografi:
-   0s   Oversikt (kollapset sidebar)
-   2.4s Sidebaren glir ut — labels fader inn
-   5.2s → Kalender → Enheter → Økonomi → Oversikt (loop, 5.2s per modul)
-   Kun opacity/transform — ingen filter/layout per frame. Pause ved hover.
+   Hero-vinduet — levende produktvindu, bygget som replika av appens ekte
+   Oversikt-dashboard (fasit: /public/deck-desktop.webp — skjermbilde av appen).
+   Koreografi: 2.4s sidebar glir ut → modulbytte Oversikt/Kalender/Enheter/
+   Økonomi hver 5.2s. Kun opacity/transform. Pause ved hover.
    prefers-reduced-motion → statisk Oversikt m/ åpen sidebar.
 --------------------------------------------------------------------------- */
 
@@ -20,30 +20,34 @@ const heading = { fontFamily: 'var(--font-heading), sans-serif' };
 const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
 const MODULER = ['oversikt', 'kalender', 'enheter', 'okonomi'];
 
-const ARBEID = [
-  [LayoutGrid, 'Oversikt', 'oversikt', null],
-  [Clock, 'Operasjonssentral', null, null],
-  [Inbox, 'Innboks', null, 13],
-  [CalendarDays, 'Reservasjoner', null, null],
-  [CalendarDays, 'Kalender', 'kalender', null],
-  [MessageSquare, 'Kanaler', null, null],
-  [ClipboardList, 'Oppgaver', null, null],
-  [Sparkles, 'Driftsassistent', null, null],
-];
-
-const DRIFT = [
+/* Flat nav-liste — nøyaktig som i appen */
+const NAV = [
+  [LayoutGrid, 'Oversikt', 'oversikt'],
+  [Inbox, 'Innboks', null],
+  [CalendarDays, 'Kalender', 'kalender'],
+  [Clock, 'Operasjonssentral', null],
   [Building2, 'Eiendommer', 'enheter'],
-  [Megaphone, 'Utleieprosesser', null],
-  [FileText, 'Leieforhold', null],
-  [FolderOpen, 'Dokumenter', null],
+  [TrendingUp, 'Salg', null],
   [ClipboardList, 'Saker', null],
+  [BookOpen, 'Driftshåndbok', null],
+  [FileText, 'Kontrakter', null],
   [Wallet, 'Økonomi', 'okonomi'],
+  [Wrench, 'Leverandører', null],
+  [Users, 'Brukere', null],
 ];
 
-function Kurve({ farge = '#1f7a45', ned = false }) {
+const BUNN = [
+  [Landmark, 'Organisasjon'],
+  [ShieldCheck, 'Superadmin'],
+];
+
+function Kurve({ farge = '#1f7a45', ned = false, flat = false }) {
+  const pts = flat
+    ? '0,10 12,10 24,10 36,10 48,10 60,10'
+    : ned ? '0,5 12,8 24,6 36,12 48,14 60,17' : '0,17 12,13 24,14 36,9 48,6 60,2';
   return (
     <svg viewBox="0 0 60 20" className="h-[18px] w-[60px]" aria-hidden="true">
-      <polyline points={ned ? '0,5 12,8 24,6 36,12 48,14 60,17' : '0,17 12,13 24,14 36,9 48,6 60,2'} fill="none" stroke={farge} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={pts} fill="none" stroke={farge} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -62,16 +66,6 @@ function Lbl({ apen, delay = 0, className = '', children }) {
   );
 }
 
-/* Seksjonsoverskrift: hairline når kollapset ↔ tekst når åpen */
-function SeksjonLbl({ apen, tekst }) {
-  return (
-    <div className="relative mb-1 mt-3 h-[13px] w-full">
-      <span className="absolute left-[12px] top-1/2 h-px w-[24px] -translate-y-1/2 bg-white/[0.12]" style={{ opacity: apen ? 0 : 1, transition: `opacity 400ms ${EASE}` }} />
-      <span className="absolute left-[10px] top-0 text-[7px] font-bold uppercase tracking-[0.14em] text-white/35" style={{ opacity: apen ? 1 : 0, transition: `opacity 480ms ${EASE} 180ms` }}>{tekst}</span>
-    </div>
-  );
-}
-
 /* Modul-lag — crossfade med opacity + liten løft. Oversikt ligger i flyt og gir høyden. */
 function Lag({ aktiv, iFlyt = false, children }) {
   return (
@@ -86,58 +80,55 @@ function Lag({ aktiv, iFlyt = false, children }) {
   );
 }
 
-/* ── Modul: Oversikt ── */
+/* ── Modul: Oversikt — replika av appens dashboard ── */
 function FlateOversikt() {
   return (
     <div className="px-4 pb-0 pt-4 sm:px-5 sm:pt-5">
+      {/* Header — fotoavatar + God morgen, som i appen */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-[36px] w-[36px] items-center justify-center rounded-full bg-gradient-to-br from-[#7c3aed] to-[#9B5BD6] text-[14px] font-bold text-white ring-2 ring-white">M</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="https://randomuser.me/api/portraits/men/85.jpg" alt="" loading="lazy" className="h-[38px] w-[38px] rounded-full object-cover ring-2 ring-white" />
           <div>
-            <p className="whitespace-nowrap text-[19px] font-bold leading-tight tracking-[-0.02em] text-[#0A0A0A]" style={heading}>God dag, Martin</p>
+            <p className="whitespace-nowrap text-[19px] font-bold leading-tight tracking-[-0.02em] text-[#0A0A0A]" style={heading}>God morgen, Martin</p>
             <p className="mt-[2px] whitespace-nowrap text-[10px] text-[#a49e93]">Tirsdag 1. September 2026</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="hidden items-center gap-1.5 rounded-full bg-white px-3 py-[7px] text-[10.5px] font-semibold text-[#0A0A0A] shadow-[0_1px_2px_rgba(23,18,12,0.06)] ring-1 ring-black/[0.06] sm:flex">
-            Saker <span className="rounded-full bg-[#7c3aed] px-[6px] py-[1px] text-[8px] font-bold text-white">71</span>
+            Saker <span className="rounded-full bg-[#d13438] px-[6px] py-[1px] text-[8px] font-bold text-white">71</span>
           </span>
           <span className="hidden rounded-full bg-[#141216] px-3.5 py-[8px] text-[10.5px] font-semibold text-white sm:block">Eiendommer</span>
-          <span className="relative flex h-[28px] w-[28px] items-center justify-center rounded-full bg-white ring-1 ring-black/[0.06]">
-            <Bell className="h-[11px] w-[11px] text-[#0A0A0A]" />
-            <span className="absolute -right-[2px] -top-[2px] flex h-[11px] w-[11px] items-center justify-center rounded-full bg-[#d13438] text-[7px] font-bold text-white">4</span>
-          </span>
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2.5">
-        {[
-          ['2', '2 nye leads venter svar', '#2563eb', '#EAF0FD'],
-          ['13', '13 uleste meldinger', '#7c3aed', '#F1E9FB'],
-          ['71', '71 åpne saker', '#c2410c', '#FBEFE4'],
-        ].map(([n, t, c, bg]) => (
-          <div key={t} className="flex items-center gap-2.5 rounded-[11px] bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(23,18,12,0.05)] ring-1 ring-black/[0.05]">
-            <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[7px] text-[10px] font-bold" style={{ color: c, background: bg }}>{n}</span>
-            <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-[#3A3733]">{t}</span>
-            <ChevronRight className="h-[11px] w-[11px] shrink-0 text-[#c8c3ba]" />
-          </div>
-        ))}
+      {/* Ett varslingskort — som i appen */}
+      <div className="mt-4 flex max-w-[300px] items-center gap-2.5 rounded-[11px] bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(23,18,12,0.05)] ring-1 ring-black/[0.05]">
+        <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[7px] bg-[#FBEFE4] text-[10px] font-bold text-[#c2410c]">71</span>
+        <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-[#3A3733]">71 åpne saker</span>
+        <ChevronRight className="h-[11px] w-[11px] shrink-0 text-[#c8c3ba]" />
       </div>
 
-      <div className="mt-2.5 grid grid-cols-4 divide-x divide-black/[0.05] rounded-[12px] bg-white shadow-[0_1px_2px_rgba(23,18,12,0.05)] ring-1 ring-black/[0.05]">
-        {[
-          ['Leieinntekt / mnd', '894 500', 'Potensiale: 1 393 800 kr/mnd', '+499 300 fra 27 ledige', '#1f7a45'],
-          ['Honorar / mnd', '126 987,5', 'Potensiale: 169 682,5 kr/mnd', '+42 695 fra 15 ledige', '#7c3aed'],
-          ['Netto til huseiere / mnd', '767 512,5', 'Potensiale: 1 224 117,5 kr/mnd', '+456 605 fra 27 ledige', '#1f7a45'],
-        ].map(([l, v, pot, sub, farge]) => (
-          <div key={l} className="p-3">
-            <p className="truncate text-[9px] font-medium text-[#a49e93]">{l}</p>
-            <p className="mt-1.5 text-[17px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>{v}<span className="ml-[2px] text-[9px] font-semibold text-[#a49e93]">kr</span></p>
-            <div className="mt-2"><Kurve farge={farge} /></div>
-            <p className="mt-1.5 truncate text-[8px] font-semibold text-[#7c3aed]">{pot}</p>
-            <p className="truncate text-[7.5px] text-[#a49e93]">{sub}</p>
+      {/* KPI-bånd — Månedlig inntekt / Årsestimat / Honorar / Belegg, som i appen */}
+      <div className="mt-3 grid grid-cols-4 divide-x divide-black/[0.05] rounded-[12px] bg-white shadow-[0_1px_2px_rgba(23,18,12,0.05)] ring-1 ring-black/[0.05]">
+        <div className="p-3">
+          <div className="flex items-center justify-between gap-1">
+            <p className="truncate text-[9px] font-medium text-[#a49e93]">Månedlig inntekt</p>
+            <span className="shrink-0 rounded-full bg-[#E7F3EC] px-1.5 py-[2px] text-[7.5px] font-bold text-[#1f7a45]">+8.2%</span>
           </div>
-        ))}
+          <p className="mt-1.5 text-[17px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>894 500<span className="ml-[2px] text-[9px] font-semibold text-[#a49e93]">kr</span></p>
+          <div className="mt-2.5"><Kurve farge="#1f7a45" /></div>
+        </div>
+        <div className="p-3">
+          <p className="truncate text-[9px] font-medium text-[#a49e93]">Årsestimat</p>
+          <p className="mt-1.5 text-[17px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>10.7M<span className="ml-[2px] text-[9px] font-semibold text-[#a49e93]">kr</span></p>
+          <div className="mt-2.5"><Kurve farge="#d68fc0" /></div>
+        </div>
+        <div className="p-3">
+          <p className="truncate text-[9px] font-medium text-[#a49e93]">DigiHome honorar</p>
+          <p className="mt-1.5 text-[17px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>126 987<span className="ml-[2px] text-[9px] font-semibold text-[#a49e93]">kr</span></p>
+          <div className="mt-2.5"><Kurve farge="#c8c3ba" flat /></div>
+        </div>
         <div className="p-3">
           <div className="flex items-baseline justify-between">
             <p className="text-[9px] font-medium text-[#a49e93]">Belegg</p>
@@ -151,19 +142,21 @@ function FlateOversikt() {
         </div>
       </div>
 
+      {/* Statskort — som i appen */}
       <div className="mt-2.5 grid grid-cols-4 gap-2.5">
         {[
-          [Building2, '59', 'Eiendommer', null, null, 'LIVE', '#1f7a45', false],
-          [Home, '84', 'Enheter', '41 utleid', '#1f7a45', null, '#1f7a45', false],
-          [Users, '43', 'Leietakere', null, null, null, '#2563eb', false],
-          [Clock, '71', 'Åpne saker', 'Trenger oppfølging', '#c2410c', null, '#d13438', true],
-        ].map(([Ikon, v, l, sub, subFarge, live, kurveFarge, ned]) => (
+          [Building2, '59', 'Eiendommer', null, null, true, '#1f7a45', false, '#F4F1EB', '#57534e'],
+          [Home, '84', 'Enheter', '41 utleid', '#1f7a45', false, '#2563eb', false, '#F4F1EB', '#57534e'],
+          [Users, '43', 'Leietakere', null, null, false, '#c8c3ba', false, '#F4F1EB', '#57534e'],
+          [Clock, '71', 'Åpne saker', 'Trenger oppfølging', '#d13438', false, '#d13438', true, '#FBEFE4', '#c2410c'],
+        ].map(([Ikon, v, l, sub, subFarge, live, kurveFarge, ned, ikonBg, ikonFarge]) => (
           <div key={l} className="rounded-[12px] bg-white p-3 shadow-[0_1px_2px_rgba(23,18,12,0.05)] ring-1 ring-black/[0.05]">
             <div className="flex items-center justify-between">
-              <span className="flex h-[24px] w-[24px] items-center justify-center rounded-[8px] bg-[#F4F1EB]"><Ikon className="h-[12px] w-[12px] text-[#57534e]" /></span>
-              {live
-                ? <span className="flex items-center gap-1 text-[8px] font-bold text-[#1f7a45]"><span className="h-[5px] w-[5px] animate-pulse rounded-full bg-[#1f7a45]" />LIVE</span>
-                : <Kurve farge={kurveFarge} ned={ned} />}
+              <span className="flex h-[24px] w-[24px] items-center justify-center rounded-[8px]" style={{ background: ikonBg }}><Ikon className="h-[12px] w-[12px]" style={{ color: ikonFarge }} /></span>
+              <span className="flex items-center gap-1.5">
+                {live ? <span className="flex items-center gap-1 text-[8px] font-bold text-[#1f7a45]"><span className="h-[5px] w-[5px] animate-pulse rounded-full bg-[#1f7a45]" />LIVE</span> : null}
+                <Kurve farge={kurveFarge} ned={ned} />
+              </span>
             </div>
             <p className="mt-2.5 text-[19px] font-bold leading-none text-[#0A0A0A] tabular-nums" style={heading}>{v}</p>
             <p className="mt-[4px] truncate text-[9px] font-medium text-[#8d877d]">{l}</p>
@@ -172,43 +165,48 @@ function FlateOversikt() {
         ))}
       </div>
 
-      <div className="mt-2.5 flex items-center justify-between gap-3 overflow-hidden rounded-[13px] bg-[#141216] px-4 py-3">
+      {/* Mørk innsiktsbanner — som i appen */}
+      <div className="mt-2.5 flex items-center justify-between gap-3 overflow-hidden rounded-[14px] bg-[#0f0d0e] px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[9px] bg-white/[0.09]"><Sparkles className="h-[12px] w-[12px] text-[#C9A6F0]" /></span>
+          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[9px] bg-[#7c3aed]/[0.35]"><Sparkles className="h-[12px] w-[12px] text-[#D9B4FF]" /></span>
           <div className="min-w-0">
-            <p className="truncate text-[11.5px] font-bold text-white" style={heading}>Potensial for høyere belegg</p>
-            <p className="truncate text-[9px] text-white/50">41 av 84 enheter utleid. 49% belegg.</p>
+            <p className="truncate text-[11.5px] font-bold text-white" style={heading}>Porteføljen presterer over gjennomsnittet</p>
+            <p className="truncate text-[9px] text-white/50">Leieinntektene har økt 8.2% siste 30 dager.</p>
           </div>
         </div>
-        <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#7c3aed] px-3.5 py-[7px] text-[10px] font-bold text-white">Se detaljer <ArrowUpRight className="h-[10px] w-[10px]" /></span>
+        <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#B583F0] px-3.5 py-[7px] text-[10px] font-bold text-white">Se detaljer <ArrowUpRight className="h-[10px] w-[10px]" /></span>
       </div>
 
+      {/* Aktive saker / Portefølje — som i appen, kuttet av bunnkanten */}
       <div className="mt-3.5 grid h-[104px] grid-cols-2 gap-3 overflow-hidden">
         <div>
           <div className="flex items-baseline justify-between">
-            <p className="text-[12px] font-bold text-[#0A0A0A]" style={heading}>Aktive saker</p>
+            <p className="text-[13px] font-bold text-[#0A0A0A]" style={heading}>Aktive saker</p>
             <span className="text-[9px] font-semibold text-[#8d877d]">Se alle</span>
           </div>
           <div className="mt-2 rounded-t-[10px] bg-white ring-1 ring-black/[0.05]">
             {[
-              ['Oppvaskmaskin stopper midt i program', 'Annet · 2d', 'Åpen', '#0e7490', '#ecfeff'],
-              ['Varmtvannsbereder lekker', 'Annet · 3d', 'Pågår', '#9a6b1c', '#fef9ec'],
-              ['Behov for hageklipp', 'Annet · 5d', 'Åpen', '#0e7490', '#ecfeff'],
-            ].map(([t, s, status, c, bg], i) => (
+              ['Oppvaskmaskin stopper midt i program', 'Annet · 2d', 'Åpen', '#0e7490', '#7c3aed'],
+              ['Varmtvannsbereder lekker', 'Annet · 3d', 'Pågår', '#9a6b1c', '#9a6b1c'],
+              ['Behov for hageklipp', 'Annet · 5d', 'Åpen', '#0e7490', '#c2410c'],
+            ].map(([t, s, status, c, dot], i) => (
               <div key={t} className={`flex items-center gap-2 px-2.5 py-[7px] ${i > 0 ? 'border-t border-black/[0.04]' : ''}`}>
                 <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[6px] bg-[#F1E9FB]"><Sparkles className="h-[8px] w-[8px] text-[#7c3aed]" /></span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[8.5px] font-bold leading-tight text-[#0A0A0A]">{t}</p>
                   <p className="truncate text-[7px] text-[#a49e93]">{s}</p>
                 </div>
-                <span className="shrink-0 rounded-full px-2 py-[2.5px] text-[7px] font-bold" style={{ color: c, background: bg }}>{status}</span>
+                <span className="flex shrink-0 items-center gap-1 rounded-full px-2 py-[2.5px] text-[7px] font-bold ring-1" style={{ color: c, borderColor: c, '--tw-ring-color': `${c}55` }}>
+                  <Clock className="h-[7px] w-[7px]" /> {status}
+                </span>
+                <span className="h-[5px] w-[5px] shrink-0 rounded-full" style={{ background: dot }} />
               </div>
             ))}
           </div>
         </div>
         <div>
           <div className="flex items-baseline justify-between">
-            <p className="text-[12px] font-bold text-[#0A0A0A]" style={heading}>Portefølje</p>
+            <p className="text-[13px] font-bold text-[#0A0A0A]" style={heading}>Portefølje</p>
             <span className="text-[9px] font-semibold text-[#8d877d]">Se alle</span>
           </div>
           <div className="mt-2 rounded-t-[10px] bg-white px-3 py-1 ring-1 ring-black/[0.05]">
@@ -343,13 +341,13 @@ function FlateEnheter() {
       </div>
 
       <div className="mt-3 overflow-hidden rounded-t-[12px] bg-white shadow-[0_1px_2px_rgba(23,18,12,0.05)] ring-1 ring-black/[0.05]">
-        <div className="grid grid-cols-[2fr_1.1fr_1.2fr_0.9fr_0.8fr] gap-2 border-b border-black/[0.05] px-3 py-2">
+        <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,0.8fr)] gap-2 border-b border-black/[0.05] px-3 py-2">
           {['Eiendom', 'Type', 'Leietaker', 'Leie/mnd', 'Status'].map((h) => (
             <span key={h} className="text-[7.5px] font-bold uppercase tracking-[0.1em] text-[#a49e93]">{h}</span>
           ))}
         </div>
         {rader.map(([img, adr, type, leietaker, leie, status, c, bg], i) => (
-          <div key={adr} className={`grid grid-cols-[2fr_1.1fr_1.2fr_0.9fr_0.8fr] items-center gap-2 px-3 py-[7px] ${i > 0 ? 'border-t border-black/[0.04]' : ''}`}>
+          <div key={adr} className={`grid grid-cols-[minmax(0,2fr)_minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,0.8fr)] items-center gap-2 px-3 py-[7px] ${i > 0 ? 'border-t border-black/[0.04]' : ''}`}>
             <div className="flex min-w-0 items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={img} alt="" loading="lazy" className="h-[26px] w-[36px] shrink-0 rounded-[6px] object-cover" />
@@ -395,7 +393,7 @@ function FlateOkonomi() {
         ))}
       </div>
 
-      <div className="mt-2.5 grid grid-cols-[1.25fr_1fr] gap-2.5">
+      <div className="mt-2.5 grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-2.5">
         <div className="rounded-[12px] bg-white p-3.5 shadow-[0_1px_2px_rgba(23,18,12,0.05)] ring-1 ring-black/[0.05]">
           <div className="flex items-center justify-between">
             <p className="text-[11.5px] font-bold text-[#0A0A0A]" style={heading}>Leieinntekt</p>
@@ -445,7 +443,7 @@ function FlateOkonomi() {
       </div>
 
       <div className="mt-3 overflow-hidden rounded-t-[12px] bg-white shadow-[0_1px_2px_rgba(23,18,12,0.05)] ring-1 ring-black/[0.05]">
-        <div className="grid grid-cols-[1.3fr_1.3fr_0.8fr_0.7fr] gap-2 border-b border-black/[0.05] px-3 py-2">
+        <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,0.7fr)] gap-2 border-b border-black/[0.05] px-3 py-2">
           {['Huseier', 'Eiendom', 'Beløp', 'Utbetales'].map((h) => (
             <span key={h} className="text-[7.5px] font-bold uppercase tracking-[0.1em] text-[#a49e93]">{h}</span>
           ))}
@@ -455,7 +453,7 @@ function FlateOkonomi() {
           ['Per Haugen', 'Sandviksveien 18', '18 020', '15. mars'],
           ['Kari Nes', 'Marken 7B', '16 290', '15. mars'],
         ].map(([navn, eiendom, belop, dato], i) => (
-          <div key={navn} className={`grid grid-cols-[1.3fr_1.3fr_0.8fr_0.7fr] items-center gap-2 px-3 py-[7px] ${i > 0 ? 'border-t border-black/[0.04]' : ''}`}>
+          <div key={navn} className={`grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,0.7fr)] items-center gap-2 px-3 py-[7px] ${i > 0 ? 'border-t border-black/[0.04]' : ''}`}>
             <span className="truncate text-[9px] font-bold text-[#0A0A0A]">{navn}</span>
             <span className="truncate text-[8.5px] text-[#78716c]">{eiendom}</span>
             <span className="truncate text-[9px] font-bold text-[#0A0A0A] tabular-nums" style={heading}>{belop} <span className="text-[7px] font-semibold text-[#a49e93]">kr</span></span>
@@ -495,57 +493,47 @@ export default function VinduRamme() {
       <div className="overflow-hidden rounded-[18px] bg-[#FAFAF8] shadow-[0_70px_150px_-42px_rgba(84,50,160,0.4),0_24px_60px_-30px_rgba(23,18,12,0.18),0_0_0_1px_rgba(0,0,0,0.05)] sm:rounded-[24px]" aria-hidden="true">
         <div className="flex items-stretch">
 
-          {/* Mørk sidemeny — glir fra kollapset til åpen */}
+          {/* Mørk sidemeny — flat liste som i appen, glir fra kollapset til åpen */}
           <div
-            className="hidden shrink-0 flex-col overflow-hidden bg-[#0C0C0E] px-[10px] py-4 md:flex"
+            className="hidden shrink-0 flex-col overflow-hidden bg-[#0C0C0E] px-[10px] py-3.5 md:flex"
             style={{ width: apen ? 172 : 58, transition: `width 800ms ${EASE}` }}
           >
             <div className="flex items-center">
               <span className="flex w-[38px] shrink-0 justify-center">
-                <span className="flex h-[24px] w-[24px] items-center justify-center rounded-[7px] bg-[#7c3aed] text-[12px] font-black italic text-white" style={heading}>H</span>
+                <span className="flex h-[23px] w-[23px] items-center justify-center rounded-[7px] bg-[#7c3aed] text-[11.5px] font-black italic text-white" style={heading}>H</span>
               </span>
-              <Lbl apen={apen} delay={140} className="text-[12px] font-bold text-white">digihome</Lbl>
+              <Lbl apen={apen} delay={120} className="flex-1 text-[12px] font-bold text-white">digihome</Lbl>
+              <Lbl apen={apen} delay={200}><PanelLeft className="mr-1 h-[10px] w-[10px] text-white/35" /></Lbl>
             </div>
-            <div className="mt-3 flex h-[28px] w-full items-center rounded-[8px] bg-white/[0.07]">
-              <span className="flex w-[38px] shrink-0 justify-center"><Search className="h-[11px] w-[11px] text-white/45" /></span>
-              <Lbl apen={apen} delay={180} className="flex-1 text-[9px] text-white/40">Søk</Lbl>
-              <Lbl apen={apen} delay={220} className="mr-2 rounded-[4px] bg-white/[0.1] px-[4px] py-[1px] text-[7px] font-semibold text-white/50">⌘K</Lbl>
-            </div>
-            <SeksjonLbl apen={apen} tekst="Arbeid" />
-            <div className="space-y-[3px]">
-              {ARBEID.map(([Ikon, l, nokkel, badge], i) => {
+            <div className="mt-3 space-y-[2px]">
+              {NAV.map(([Ikon, l, nokkel], i) => {
                 const aktiv = nokkel === modul;
                 return (
-                  <div key={l} className={`flex h-[27px] w-full items-center rounded-[8px] transition-colors duration-500 ${aktiv ? 'bg-[#7c3aed]/[0.24] text-[#C9A6F0]' : 'text-white/50'}`}>
-                    <span className="relative flex w-[38px] shrink-0 justify-center">
-                      <Ikon className="h-[11.5px] w-[11.5px]" strokeWidth={aktiv ? 2.1 : 1.8} />
-                      {badge ? <span className="absolute -right-[1px] -top-[4px] flex h-[10px] min-w-[10px] items-center justify-center rounded-full bg-[#7c3aed] px-[2.5px] text-[6px] font-bold text-white">{badge}</span> : null}
-                    </span>
-                    <Lbl apen={apen} delay={200 + i * 24} className="text-[9.5px] font-semibold">{l}</Lbl>
+                  <div key={l} className={`flex h-[25px] w-full items-center rounded-[7px] transition-colors duration-500 ${aktiv ? 'bg-white/[0.1] text-white' : 'text-white/45'}`}>
+                    <span className="flex w-[38px] shrink-0 justify-center"><Ikon className="h-[11px] w-[11px]" strokeWidth={aktiv ? 2.1 : 1.7} /></span>
+                    <Lbl apen={apen} delay={160 + i * 22} className="text-[9px] font-semibold">{l}</Lbl>
                   </div>
                 );
               })}
             </div>
-            <SeksjonLbl apen={apen} tekst="Drift" />
-            <div className="space-y-[3px]">
-              {DRIFT.map(([Ikon, l, nokkel], i) => {
-                const aktiv = nokkel === modul;
-                return (
-                  <div key={l} className={`flex h-[27px] w-full items-center rounded-[8px] transition-colors duration-500 ${aktiv ? 'bg-[#7c3aed]/[0.24] text-[#C9A6F0]' : 'text-white/50'}`}>
-                    <span className="flex w-[38px] shrink-0 justify-center"><Ikon className="h-[11.5px] w-[11.5px]" strokeWidth={aktiv ? 2.1 : 1.8} /></span>
-                    <Lbl apen={apen} delay={300 + i * 24} className="text-[9.5px] font-semibold">{l}</Lbl>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-auto flex items-center pt-3">
-              <span className="flex w-[38px] shrink-0 justify-center">
-                <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-gradient-to-br from-[#7c3aed] to-[#9B5BD6] text-[8.5px] font-bold text-white">M</span>
-              </span>
-              <Lbl apen={apen} delay={360}>
-                <span className="block truncate text-[8.5px] font-bold leading-tight text-white/85">Martin Kviteberg</span>
-                <span className="block truncate text-[7.5px] text-white/40">martin@digihome.no</span>
-              </Lbl>
+            <div className="mt-auto space-y-[2px] border-t border-white/[0.07] pt-2">
+              {BUNN.map(([Ikon, l], i) => (
+                <div key={l} className="flex h-[24px] w-full items-center rounded-[7px] text-white/40">
+                  <span className="flex w-[38px] shrink-0 justify-center"><Ikon className="h-[10.5px] w-[10.5px]" strokeWidth={1.7} /></span>
+                  <Lbl apen={apen} delay={440 + i * 24} className="text-[9px] font-semibold">{l}</Lbl>
+                </div>
+              ))}
+              <div className="flex items-center pt-1.5">
+                <span className="flex w-[38px] shrink-0 justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="https://randomuser.me/api/portraits/men/85.jpg" alt="" loading="lazy" className="h-[21px] w-[21px] rounded-full object-cover" />
+                </span>
+                <Lbl apen={apen} delay={500} className="min-w-0 flex-1">
+                  <span className="block truncate text-[8.5px] font-bold leading-tight text-white/85">Martin Kviteberg</span>
+                  <span className="block truncate text-[7.5px] text-white/40">martin@digihome.no</span>
+                </Lbl>
+                <Lbl apen={apen} delay={540}><ChevronDown className="mr-1 h-[9px] w-[9px] text-white/35" /></Lbl>
+              </div>
             </div>
           </div>
 

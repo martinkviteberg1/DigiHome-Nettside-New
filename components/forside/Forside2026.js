@@ -12,6 +12,7 @@ import { site } from '@/lib/site';
 import { track } from '@/lib/analytics';
 import VinduRamme from '@/components/forside/HeroVindu';
 import StegDemo from '@/components/forside/StegDemo';
+import Avsloer from '@/components/forside/Avsloer';
 
 /* ---------------------------------------------------------------------------
    Forsiden — digihome.no som produktledet landingsside.
@@ -167,7 +168,7 @@ export default function Forside2026() {
   const klikk = (hvor) => { try { track('forside_cta', { hvor }); } catch (e) { /* ok */ } };
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB]" data-testid="forside-2026">
+    <div className="min-h-screen overflow-x-clip bg-[#FDFCFB]" data-testid="forside-2026">
       {/* ── Navbar ── */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'border-b border-[#E6E1D9] bg-[#FDFCFB]/90 backdrop-blur-md' : 'bg-transparent'}`}>
         <div className="mx-auto flex h-[66px] w-full max-w-[1320px] items-center justify-between gap-4 px-6 sm:px-10">
@@ -198,7 +199,7 @@ export default function Forside2026() {
           <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(124,58,237,0) 0%, rgba(124,58,237,0.055) 34%, rgba(155,91,214,0.075) 62%, rgba(124,58,237,0) 100%)' }} />
           <div aria-hidden="true" className="pointer-events-none absolute -right-40 top-8 h-[520px] w-[640px] rounded-full bg-[#9B5BD6]/[0.09] blur-3xl" />
           <div aria-hidden="true" className="pointer-events-none absolute -left-44 bottom-[-80px] h-[440px] w-[560px] rounded-full bg-[#7c3aed]/[0.06] blur-3xl" />
-          <div className="relative mx-auto grid w-full max-w-[1320px] items-center gap-14 px-6 pb-24 pt-10 sm:px-10 sm:pt-14 lg:grid-cols-[0.58fr_1.42fr] lg:gap-12 lg:pb-28 xl:gap-14">
+          <div className="relative mx-auto grid w-full max-w-[1320px] grid-cols-1 items-center gap-14 px-6 pb-24 pt-10 sm:px-10 sm:pt-14 lg:grid-cols-[0.58fr_1.42fr] lg:gap-12 lg:pb-28 xl:gap-14">
             <div>
               <p className="e-label dh-cover-inn !text-[#7c3aed]">Ny generasjon utleie</p>
               <h1 className="e-display dh-cover-inn mt-4 text-[46px] sm:text-[58px] lg:text-[60px] xl:text-[70px]" style={{ animationDelay: '.06s' }}>
@@ -228,7 +229,7 @@ export default function Forside2026() {
               </ul>
             </div>
             {/* Produktkomposisjonen: flytende vindu + telefon, lett tilt */}
-            <div className="dh-cover-inn relative pb-14 lg:pb-16" style={{ animationDelay: '.24s' }}>
+            <div className="dh-cover-inn relative min-w-0 pb-14 lg:pb-16" style={{ animationDelay: '.24s' }}>
               <div className="md:pr-14 lg:pr-16" style={{ transform: 'rotate(1.1deg)' }}>
                 <VinduRamme />
               </div>
@@ -246,21 +247,22 @@ export default function Forside2026() {
 
         {/* ── Integrasjoner ── */}
         <section className="border-b border-[#E6E1D9] bg-[#FCFBF8]">
-          <div className="mx-auto w-full max-w-[1320px] px-6 py-8 sm:px-10">
+          <Avsloer className="mx-auto w-full max-w-[1320px] px-6 py-8 sm:px-10">
             <p className="text-center text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#a49e93]">Snakker med det dere allerede bruker</p>
             <ul className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:gap-x-10">
               {INTEGRASJONER.map((n) => (
                 <li key={n} className="text-[15px] font-bold tracking-[-0.02em] text-[#8d877d] sm:text-[16.5px]" style={heading}>{n}</li>
               ))}
             </ul>
-          </div>
+          </Avsloer>
         </section>
 
         {/* ── Målgruppene ── */}
         <section className="mx-auto w-full max-w-[1320px] px-6 py-16 sm:px-10 sm:py-24">
           <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
             {/* Privat */}
-            <div className="grid overflow-hidden rounded-[22px] bg-white ring-1 ring-black/[0.06] shadow-[0_2px_5px_rgba(23,18,12,0.04)] sm:grid-cols-[1.15fr_1fr]" data-testid="forside-kort-privat">
+            <Avsloer>
+            <div className="grid h-full overflow-hidden rounded-[22px] bg-white ring-1 ring-black/[0.06] shadow-[0_2px_5px_rgba(23,18,12,0.04)] sm:grid-cols-[1.15fr_1fr]" data-testid="forside-kort-privat">
               <div className="flex flex-col justify-between gap-8 p-7 sm:p-9">
                 <div>
                   <p className="e-label !text-[#9B5BD6]">For private huseiere</p>
@@ -282,8 +284,10 @@ export default function Forside2026() {
                 <img src={BILDE_PRIVAT} alt="Lys og varm stue i utleiebolig" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
               </div>
             </div>
+            </Avsloer>
             {/* Pro */}
-            <div className="relative grid overflow-hidden rounded-[22px] bg-[#0B0A09] text-white ring-1 ring-black/[0.2] sm:grid-cols-[1.15fr_1fr]" data-testid="forside-kort-pro">
+            <Avsloer delay={140}>
+            <div className="relative grid h-full overflow-hidden rounded-[22px] bg-[#0B0A09] text-white ring-1 ring-black/[0.2] sm:grid-cols-[1.15fr_1fr]" data-testid="forside-kort-pro">
               <div className="relative z-10 flex flex-col justify-between gap-8 p-7 sm:p-9">
                 <div>
                   <p className="e-label !text-[#C9A6F0]">For profesjonelle forvaltere</p>
@@ -306,6 +310,7 @@ export default function Forside2026() {
                 <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#0B0A09] via-[#0B0A09]/35 to-transparent" />
               </div>
             </div>
+            </Avsloer>
           </div>
         </section>
 
@@ -314,6 +319,7 @@ export default function Forside2026() {
         <section className="relative overflow-hidden bg-[#0B0A09] text-white">
           <div aria-hidden="true" className="pointer-events-none absolute -top-44 left-[8%] h-[560px] w-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(155,91,214,0.16) 0%, transparent 62%)' }} />
           <div className="relative mx-auto w-full max-w-[1320px] px-6 py-18 sm:px-10 sm:py-24">
+            <Avsloer>
             <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-20">
               <div>
                 <h2 className="e-display max-w-[16ch] text-[30px] !text-white sm:text-[42px]">Hva om én forvalter kunne håndtere dobbelt så mange boliger?</h2>
@@ -343,12 +349,16 @@ export default function Forside2026() {
             <p className="relative mt-14 border-t border-white/[0.1] pt-6 text-[13px] text-white/45">
               Vi er selv forvaltere — DigiHome Forvaltning driver hele sin portefølje i Bergen på dette systemet. Hver dag.
             </p>
+            </Avsloer>
           </div>
         </section>
 
         {/* ── Hvordan vil du bruke DigiHome? ── */}
         <section className="mx-auto w-full max-w-[1320px] px-6 py-16 sm:px-10 sm:py-24">
-          <h2 className="e-display mx-auto max-w-[20ch] text-center text-[28px] sm:text-[38px]">Hvordan vil du bruke DigiHome?</h2>
+          <Avsloer>
+            <h2 className="e-display mx-auto max-w-[20ch] text-center text-[28px] sm:text-[38px]">Hvordan vil du bruke DigiHome?</h2>
+          </Avsloer>
+          <Avsloer delay={140}>
           <div className="mx-auto mt-10 grid max-w-[1060px] gap-4 sm:grid-cols-3 sm:gap-6 sm:mt-14">
             {[
               { ikon: Home, href: '/forvaltning', t: 'Full forvaltning', b: 'Vi gjør jobben for deg — visning, kontrakt, innkreving og oppfølging. Bergen og omegn.' },
@@ -368,11 +378,12 @@ export default function Forside2026() {
               </Link>
             ))}
           </div>
+          </Avsloer>
         </section>
 
         {/* ── Slutt-CTA ── */}
         <section className="border-t border-[#E6E1D9]">
-          <div className="mx-auto flex w-full max-w-[1320px] flex-wrap items-center justify-between gap-6 px-6 py-12 sm:px-10 sm:py-16">
+          <Avsloer className="mx-auto flex w-full max-w-[1320px] flex-wrap items-center justify-between gap-6 px-6 py-12 sm:px-10 sm:py-16">
             <div>
               <h2 className="e-display text-[24px] sm:text-[30px]">Klar for å gjøre utleie enklere?</h2>
               <p className="mt-2 text-[14px] text-[#8d877d]">Kom i gang på minuttet — eller book en prat med oss.</p>
@@ -381,7 +392,7 @@ export default function Forside2026() {
               Kom i gang
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
-          </div>
+          </Avsloer>
         </section>
       </main>
     </div>

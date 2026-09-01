@@ -7349,3 +7349,20 @@ agent_communication:
     -agent: "main"
     -message: "Hero v6 levende produktvindu ferdig og verifisert i alle 4 modultilstander + sidebar-aapning. En enkelt screenshot-kjoering viste tilsynelatende reset ved t=17s, men evaluate-diagnose m/ marker bekreftet at det var treg hydrering i den kjoringen - ingen faktisk remount-bug. Frontend-testagent ikke kjoert (krever brukertillatelse)."
 
+
+  - task: "Hero v6.1: desktop-mockup = noyaktig replika av appens ekte skjermbilde (deck-desktop.webp) + scroll-reveals (Avsloer) + mobil-stepper m/ sveipbare chips + mobil overflow-fiks"
+    implemented: true
+    working: true
+    file: "/app/components/forside/HeroVindu.js (omskrevet: flat nav, fotoavatar, app-eksakt Oversikt), /app/components/forside/Avsloer.js (ny reveal-komponent), /app/components/forside/Forside2026.js (reveals + grid-cols-1 + overflow-x-clip + min-w-0), /app/components/forside/StegDemo.js (mobil-chips + reveals + grid-cols-1)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. (1) APP-EKSAKT MOCKUP: fasit = /app/public/deck-desktop.webp (ekte skjermbilde av appens lyse Oversikt; repo-klone slettet, token skal ikke gjenbrukes). Sidebar naa FLAT liste som i appen (Oversikt/Innboks/Kalender/Operasjonssentral/Eiendommer/Salg/Saker/Driftshaandbok/Kontrakter/Okonomi/Leverandoerer/Brukere + Organisasjon/Superadmin/Martin m/ fotoavatar nederst), aktiv = bg-white/[0.1] (IKKE lilla), digihome-wordmark + collapse-ikon. Header: fotoavatar (randomuser men/85) + God morgen Martin, Saker-pill m/ ROED badge, Eiendommer-pill (hidden sm). ETT varslingskort (71 aapne saker, oransje). KPI-baand m/ appens labels: Maanedlig inntekt +8.2%-pill/Aarsestimat 10.7M/DigiHome honorar/Belegg m/ sparklines. Statskort m/ LIVE+sparkline, oransje ikon paa Aapne saker. Banner: Portefoeljen presterer over gjennomsnittet + lavendel #B583F0-knapp. Aktive saker m/ outline-pills + klokkeikon + fargedot. (2) SCROLL-REVEALS: ny Avsloer.js (IntersectionObserver, opacity+translateY 800ms, once, reduced-motion-fallback) paa Integrasjoner/Maalgruppekort (stagger 140ms)/ROI/Veivalg/CTA + StegDemo-kolonner. (3) MOBIL-STEPPER: sveipbare chips (steg-mobil-01..05) m/ intern container-scroll (IKKE scrollIntoView - den scrollet hele siden), aktiv beskrivelse under, vertikal stepper hidden lg:block. (4) OVERFLOW-BUGFIKS mobil: scrollWidth var 528/390. Rotaarsaker: (a) hero/StegDemo-grids manglet grid-cols-1 paa mobil - implisitt kolonne = max-content, (b) custom grid-templates m/ 1fr (ikke minmax(0,..)) i Okonomi/Enheter-flater, (c) manglende min-w-0 paa hero-komposisjonen, (d) Eiendommer-pill manglet hidden sm:block. Alt fikset + overflow-x-clip paa rotdiv som vakt. VERIFISERT: scrollWidth=390, chips-container scrollLeft 182, chip 05 -> Drift-flate, scrollX=0, reveals utloeses ved scroll, desktop intakt."
+
+agent_communication:
+    -agent: "main"
+    -message: "Hero v6.1: mockup matcher appens ekte skjermbilde noyaktig, scroll-reveals paa alle seksjoner, sveipbar mobil-stepper, og en reell mobil-overflow-bug (horisontal side-scroll) funnet og fikset ved rotaarsak. Frontend-testagent ikke kjoert (krever brukertillatelse)."
+
