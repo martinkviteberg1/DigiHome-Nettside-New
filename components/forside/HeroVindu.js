@@ -678,7 +678,7 @@ export default function VinduRamme() {
       onMouseEnter={() => { pausedRef.current = true; }}
       onMouseLeave={() => { pausedRef.current = false; }}
     >
-      <div className="overflow-hidden rounded-[18px] bg-[#FAFAF8] shadow-[0_70px_150px_-42px_rgba(84,50,160,0.4),0_24px_60px_-30px_rgba(23,18,12,0.18),0_0_0_1px_rgba(0,0,0,0.05)] sm:rounded-[24px]" aria-hidden="true">
+      <div className="overflow-hidden rounded-[18px] bg-[#FAFAF8] shadow-[0_56px_120px_-44px_rgba(84,50,160,0.3),0_20px_48px_-28px_rgba(23,18,12,0.14),0_0_0_1px_rgba(0,0,0,0.05)] sm:rounded-[24px]" aria-hidden="true">
         <div className="flex items-stretch">
 
           {/* Mørk sidemeny — flat liste som i appen, glir fra kollapset til åpen */}

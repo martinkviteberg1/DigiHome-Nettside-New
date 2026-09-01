@@ -58,7 +58,7 @@ function Kurve({ farge = '#1f7a45', punkter = '0,18 12,14 24,15 36,10 48,7 60,3'
       m/ lavendel-glød, grønn #0f9d6e, lilla #7c3aed) — «Min bolig» m/ boligbilde. ── */
 function TelefonRamme() {
   return (
-    <div className="relative w-[196px] rounded-[30px] bg-[#0a0a0a] p-[5px] shadow-[0_50px_110px_-32px_rgba(23,18,12,0.5),0_0_0_1px_rgba(0,0,0,0.1)]" aria-hidden="true">
+    <div className="relative w-[196px] rounded-[30px] bg-[#0a0a0a] p-[5px] shadow-[0_44px_96px_-32px_rgba(23,18,12,0.42),0_0_0_1px_rgba(0,0,0,0.1)]" aria-hidden="true">
       {/* Sideknapper — fysisk detalj */}
       <span className="absolute -left-[2px] top-[92px] h-[22px] w-[2.5px] rounded-full bg-[#2a2a2a]" />
       <span className="absolute -left-[2px] top-[122px] h-[22px] w-[2.5px] rounded-full bg-[#2a2a2a]" />
@@ -187,8 +187,8 @@ export default function Forside2026() {
         <section className="relative overflow-x-clip">
           {/* Lavendel-atmosfære i DigiHome-lilla — subtil så teksten forblir skarp */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(124,58,237,0) 0%, rgba(124,58,237,0.055) 34%, rgba(155,91,214,0.075) 62%, rgba(124,58,237,0) 100%)' }} />
-          <div aria-hidden="true" className="pointer-events-none absolute -right-40 top-8 h-[520px] w-[640px] rounded-full bg-[#9B5BD6]/[0.09] blur-3xl" />
-          <div aria-hidden="true" className="pointer-events-none absolute -left-44 bottom-[-80px] h-[440px] w-[560px] rounded-full bg-[#7c3aed]/[0.06] blur-3xl" />
+          <div aria-hidden="true" className="pointer-events-none absolute -right-40 top-8 h-[520px] w-[640px] rounded-full bg-[#9B5BD6]/[0.06] blur-3xl" />
+          <div aria-hidden="true" className="pointer-events-none absolute -left-44 bottom-[-80px] h-[440px] w-[560px] rounded-full bg-[#7c3aed]/[0.04] blur-3xl" />
           <div className="relative mx-auto grid w-full max-w-[1320px] grid-cols-1 items-center gap-14 px-6 pb-24 pt-10 sm:px-10 sm:pt-14 lg:grid-cols-[0.58fr_1.42fr] lg:gap-12 lg:pb-28 xl:gap-14">
             <div>
               <p className="e-label dh-cover-inn !text-[#7c7466]">Ny generasjon utleie</p>
@@ -201,7 +201,7 @@ export default function Forside2026() {
               </p>
               <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-3" style={{ animationDelay: '.2s' }}>
                 <Link href="/bli-utleier/start" prefetch onClick={() => klikk('hero')} data-testid="forside-hero-cta"
-                  className="e-btn e-btn-dark group !rounded-full shadow-[0_16px_34px_-14px_rgba(17,17,17,0.4)]">
+                  className="e-btn e-btn-dark group !rounded-full shadow-[0_14px_30px_-14px_rgba(17,17,17,0.32)]">
                   Kom i gang
                   <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
@@ -209,7 +209,7 @@ export default function Forside2026() {
                   <Play className="h-3.5 w-3.5 fill-current" /> Se systemet
                 </Link>
               </div>
-              <ul className="dh-cover-inn mt-9 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-medium text-[#a49e93]" style={{ animationDelay: '.26s' }}>
+              <ul className="dh-cover-inn mt-9 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11.5px] font-semibold uppercase tracking-[0.1em] text-[#b3aca1]" style={{ animationDelay: '.26s' }}>
                 {['BankID', 'FINN', 'Husleie', 'Saker', 'AI'].map((t, i) => (
                   <li key={t} className="flex items-center gap-3">
                     {i > 0 && <span aria-hidden="true" className="h-[3px] w-[3px] rounded-full bg-[#D6CFC4]" />}
@@ -218,16 +218,16 @@ export default function Forside2026() {
                 ))}
               </ul>
             </div>
-            {/* Produktkomposisjonen: flytende vindu + telefon, lett tilt */}
+            {/* Produktkomposisjonen: flytende vindu + telefon */}
             <div className="dh-cover-inn relative min-w-0 pb-14 lg:pb-16" style={{ animationDelay: '.24s' }}>
-              <div className="md:pr-14 lg:pr-16" style={{ transform: 'rotate(1.1deg)' }}>
+              <div className="md:pr-14 lg:pr-16">
                 <VinduRamme />
               </div>
-              <div className="absolute -bottom-8 right-0 hidden md:block lg:-right-1" style={{ transform: 'rotate(3.2deg)' }}>
+              <div className="absolute -bottom-8 right-0 hidden md:block lg:-right-1" style={{ transform: 'rotate(2.2deg)' }}>
                 <TelefonRamme />
               </div>
               {/* Gulvskygge i lilla toner */}
-              <div aria-hidden="true" className="absolute -bottom-6 left-1/2 h-[46px] w-[86%] -translate-x-1/2 rounded-[100%] bg-[#5b3aa5]/[0.13] blur-2xl" />
+              <div aria-hidden="true" className="absolute -bottom-6 left-1/2 h-[46px] w-[86%] -translate-x-1/2 rounded-[100%] bg-[#5b3aa5]/[0.09] blur-2xl" />
             </div>
           </div>
         </section>
@@ -241,7 +241,7 @@ export default function Forside2026() {
             <p className="text-center text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#a49e93]">Snakker med det dere allerede bruker</p>
             <ul className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:gap-x-10">
               {INTEGRASJONER.map((n) => (
-                <li key={n} className="text-[15px] font-bold tracking-[-0.02em] text-[#8d877d] sm:text-[16.5px]" style={heading}>{n}</li>
+                <li key={n} className="text-[14px] font-semibold tracking-[-0.01em] text-[#9b948a] sm:text-[15px]" style={heading}>{n}</li>
               ))}
             </ul>
           </Avsloer>
