@@ -7332,3 +7332,20 @@ agent_communication:
     -agent: "main"
     -message: "Hero v5.3: telefonen bruker naa appens lyse tema (fasit: deck-desktop.webp + PortalMockup.tsx i dette repoet), desktop-vinduet har ekte innhold nederst. Frontend-testagent fortsatt ikke kjoert (krever brukertillatelse)."
 
+
+  - task: "Hero v6: levende produktvindu m/ rolig koreografi - sidebar glir ut (kollapset->aapen m/ labels som fader inn), deretter modulbytte Oversikt->Kalender->Enheter->Okonomi (crossfade, loop 5.2s/modul)"
+    implemented: true
+    working: true
+    file: "/app/components/forside/HeroVindu.js (omskrevet til 'use client' m/ tidslinje, 4 modulflater, Lag-crossfade, Lbl/SeksjonLbl sidebar-animasjon, modulindikator-dots)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Bruker godkjente koreografi-forslag ('Ja tenk verdensklasse og super smooth'). Implementert: (1) Tidslinje via useEffect: t=2.4s sidebar width 58->172px (transition width 800ms cubic-bezier(0.22,1,0.36,1)), labels fader inn m/ stagger-delay (Lbl-komponent, opacity+translateX), seksjonsoverskrifter crossfader hairline->ARBEID/DRIFT-tekst. Interval 5.2s bytter modul: oversikt->kalender->enheter->okonomi->loop. Aktiv nav-item flytter seg (transition-colors 500ms). (2) Modulflater: FlateOversikt (som foer), FlateKalender (ukegrid m/ hendelseschips, I dag-agenda 5 rader), FlateEnheter (soek/Ny eiendom, filterchips Alle 84/Utleid 41/Ledig 27/Klargjoering 16, eiendomstabell 9 rader m/ fotothumbs kuttet i bunn), FlateOkonomi (KPI-kort, graf m/ avstemmingsrad, moerkt Neste utbetaling-kort, Siste transaksjoner 5 rader, Kommende utbetalinger-tabell kuttet i bunn). (3) Crossfade via Lag-komponent: kun opacity+translateY(12px), 640ms - Oversikt i flyt gir hoyden, andre absolute inset-0. (4) Hover = pause (pausedRef), prefers-reduced-motion = statisk Oversikt m/ aapen sidebar, diskret dots-indikator under vinduet (aktiv dot 18px lilla). VERIFISERT m/ evaluate-diagnose: ingen remount/reload, sidebar 58->172 en gang, dots 0->1->2->3 korrekt. Screenshots: Kalender-, Enheter- og Okonomi-tilstand alle riktige m/ aktiv nav-markering. Nye DRIFT-item Okonomi (Wallet) lagt til. Kompilerer, / -> 200."
+
+agent_communication:
+    -agent: "main"
+    -message: "Hero v6 levende produktvindu ferdig og verifisert i alle 4 modultilstander + sidebar-aapning. En enkelt screenshot-kjoering viste tilsynelatende reset ved t=17s, men evaluate-diagnose m/ marker bekreftet at det var treg hydrering i den kjoringen - ingen faktisk remount-bug. Frontend-testagent ikke kjoert (krever brukertillatelse)."
+
