@@ -7229,3 +7229,19 @@ agent_communication:
 agent_communication:
     -agent: "main"
     -message: "Rot-cover + /privat + /bedrift shippet og screenshot-verifisert i preview. Kun frontend. MERK: en deploy ble initiert FOER disse endringene - ny deploy kreves for aa faa cover/bedrift live."
+
+  - task: "Forsiden ombygget til produktledet landingsside (Forside2026): hero m/ dashboardramme + flytende hendelser, integrasjonsbaand, prosesslinje, privat/pro-kort m/ bilder, editorial 01-04, moerk ROI-seksjon, 'Hvordan vil du bruke DigiHome?', /priser v1-skall"
+    implemented: true
+    working: true
+    file: "/app/components/forside/Forside2026.js (ny), /app/app/page.js (renderer Forside2026 + Footer), /app/app/priser/page.js (ny v1), /app/app/sitemap.js (+/priser), /app/components/cover/ (SLETTET - coveret pensjonert)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Screenshot-verifisert av main, alle seksjoner: (1) Navbar: Produkt/Priser/Tjenester/For bedrifter/Om oss + Logg inn + Kom i gang (/bli-utleier/start). (2) Hero: 'Utleie paa autopilot.' + JSX-dashboardramme (KPI 98%/142/3/99,2%, graf, aktiviteter) m/ flytende chips (Kontrakt signert m/ BankID, Husleie mottatt, Paaminnelse sendt automatisk - sistnevnte flyttet for aa unngaa overlapp). Sekundaer-CTA -> /tour. (3) Integrasjonsbaand godkjent av bruker: FINN/BankID/Vipps/Keyhole/PowerOffice/Fiken/Tripletex/Airbnb/Booking.com (tekstmerker). (4) Prosesslinje Annonse->Screening->Kontrakt->Depositum->Husleie->Oppfoelging m/ piler. (5) Privat/Pro-kort m/ vision_expert-bilder, lenker til /privat, /bedrift og /priser - INGEN priser paa forsiden (brukerkrav). (6) Editorial 01-04 + Interessenter-produktflate. (7) Moerk ROI: 'Hva om en forvalter kunne haandtere dobbelt saa mange boliger?' + aerlige stats (Mindre/24-7/1 system) + selvbruk-bevislinje. (8) 'Hvordan vil du bruke DigiHome?' -> /forvaltning, /selvforvaltning, /bedrift. (9) /priser: v1-skall uten tall (kalkulator for privat, demo for bedrift). INGEN fiktive kundelogoer eller oppdiktede tall. Alle ruter 200."
+
+agent_communication:
+    -agent: "main"
+    -message: "Forsiden er naa produktledet landingsside per brukerens designretning. Cover-komponenten slettet. /priser er bevisst et v1-skall - bruker vil lage full prisside senere. Kun frontend - frontend-testagent ikke kjoert (krever brukertillatelse)."
