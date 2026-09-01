@@ -277,7 +277,6 @@ export default function StegDemo() {
           <div key={aktiv} className="dh-cover-inn overflow-hidden rounded-[20px] bg-[#FCFBF9] shadow-[0_36px_90px_-42px_rgba(84,50,160,0.22),0_0_0_1px_rgba(0,0,0,0.05)]">
             <Flate />
           </div>
-          <p className="mt-4 text-center text-[12px] text-[#a49e93]">Slik ser det ut når du lar DigiHome gjøre jobben.</p>
         </Avsloer>
       </div>
     </section>

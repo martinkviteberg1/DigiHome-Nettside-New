@@ -175,7 +175,7 @@ export default function Forside2026() {
           </nav>
           <div className="flex shrink-0 items-center gap-2">
             <a href={site.loginUrl} className="hidden rounded-full px-3.5 py-2 text-[13.5px] font-medium text-[#1f1f1f]/70 transition-colors hover:text-[#0a0a0a] sm:block">Logg inn</a>
-            <Link href="/bli-utleier/start" prefetch onClick={() => klikk('nav')} data-testid="forside-nav-cta" className="e-btn e-btn-dark !h-[40px] !rounded-full !px-4 !text-[13.5px] shadow-[0_4px_14px_rgba(17,17,17,0.18)]">
+            <Link href="/bli-utleier/start" prefetch onClick={() => klikk('nav')} data-testid="forside-nav-cta" className="e-btn e-btn-dark !h-[40px] !rounded-full !px-4 !text-[13.5px] shadow-[0_4px_12px_rgba(17,17,17,0.14)]">
               Kom i gang <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -226,8 +226,7 @@ export default function Forside2026() {
               <div className="absolute -bottom-8 right-0 hidden md:block lg:-right-1" style={{ transform: 'rotate(2.2deg)' }}>
                 <TelefonRamme />
               </div>
-              {/* Gulvskygge i lilla toner */}
-              <div aria-hidden="true" className="absolute -bottom-6 left-1/2 h-[46px] w-[86%] -translate-x-1/2 rounded-[100%] bg-[#5b3aa5]/[0.09] blur-2xl" />
+              {/* Gulvskygge fjernet — vinduets egen skygge bærer forankringen */}
             </div>
           </div>
         </section>
@@ -252,7 +251,7 @@ export default function Forside2026() {
           <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
             {/* Privat */}
             <Avsloer>
-            <div className="grid h-full overflow-hidden rounded-[22px] bg-white ring-1 ring-black/[0.06] shadow-[0_2px_5px_rgba(23,18,12,0.04)] sm:grid-cols-[1.15fr_1fr]" data-testid="forside-kort-privat">
+            <div className="grid h-full overflow-hidden rounded-[20px] bg-white ring-1 ring-black/[0.06] shadow-[0_2px_5px_rgba(23,18,12,0.04)] sm:grid-cols-[1.15fr_1fr]" data-testid="forside-kort-privat">
               <div className="flex flex-col justify-between gap-8 p-7 sm:p-9">
                 <div>
                   <p className="e-label !text-[#7c7466]">For private huseiere</p>
@@ -277,7 +276,7 @@ export default function Forside2026() {
             </Avsloer>
             {/* Pro */}
             <Avsloer delay={140}>
-            <div className="relative grid h-full overflow-hidden rounded-[22px] bg-[#0B0A09] text-white ring-1 ring-black/[0.2] sm:grid-cols-[1.15fr_1fr]" data-testid="forside-kort-pro">
+            <div className="relative grid h-full overflow-hidden rounded-[20px] bg-[#0B0A09] text-white ring-1 ring-black/[0.2] sm:grid-cols-[1.15fr_1fr]" data-testid="forside-kort-pro">
               <div className="relative z-10 flex flex-col justify-between gap-8 p-7 sm:p-9">
                 <div>
                   <p className="e-label !text-[#C9A6F0]">For profesjonelle forvaltere</p>
@@ -307,8 +306,8 @@ export default function Forside2026() {
 
         {/* ── Mørk ROI-seksjon ── */}
         <section className="relative overflow-hidden bg-[#0B0A09] text-white">
-          <div aria-hidden="true" className="pointer-events-none absolute -top-44 left-[8%] h-[560px] w-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(155,91,214,0.16) 0%, transparent 62%)' }} />
-          <div className="relative mx-auto w-full max-w-[1320px] px-6 py-18 sm:px-10 sm:py-24">
+          <div aria-hidden="true" className="pointer-events-none absolute -top-44 left-[8%] h-[560px] w-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(155,91,214,0.12) 0%, transparent 62%)' }} />
+          <div className="relative mx-auto w-full max-w-[1320px] px-6 py-16 sm:px-10 sm:py-24">
             <Avsloer>
             <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-20">
               <div>
@@ -356,7 +355,7 @@ export default function Forside2026() {
               { ikon: Building2, href: '/bedrift', t: 'DigiHome Pro', b: 'For profesjonelle porteføljer fra 5 til 1000+ enheter. Kraftig, skalerbart, effektivt.' },
             ].map((k) => (
               <Link key={k.href} href={k.href} data-testid={`forside-vei-${k.t.toLowerCase().replace(/\s/g, '-')}`}
-                className="group rounded-[18px] bg-white p-6 ring-1 ring-black/[0.05] shadow-[0_1px_3px_rgba(23,18,12,0.04)] transition-all duration-300 hover:-translate-y-[2px] hover:shadow-[0_18px_44px_-20px_rgba(23,18,12,0.22)] sm:p-7">
+                className="group rounded-[20px] bg-white p-6 ring-1 ring-black/[0.05] shadow-[0_1px_3px_rgba(23,18,12,0.04)] transition-all duration-300 hover:-translate-y-[2px] hover:shadow-[0_18px_44px_-20px_rgba(23,18,12,0.18)] sm:p-7">
                 <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[11px] bg-[#f5f0fc] text-[#6d28d9]">
                   <k.ikon className="h-[17px] w-[17px]" strokeWidth={1.8} />
                 </span>
@@ -378,7 +377,7 @@ export default function Forside2026() {
               <h2 className="e-display text-[24px] sm:text-[30px]">Klar for å gjøre utleie enklere?</h2>
               <p className="mt-2 text-[14px] text-[#8d877d]">Kom i gang på minuttet — eller book en prat med oss.</p>
             </div>
-            <Link href="/bli-utleier/start" prefetch onClick={() => klikk('bunn')} data-testid="forside-bunn-cta" className="e-btn e-btn-dark group !rounded-full shadow-[0_14px_30px_-12px_rgba(17,17,17,0.4)]">
+            <Link href="/bli-utleier/start" prefetch onClick={() => klikk('bunn')} data-testid="forside-bunn-cta" className="e-btn e-btn-dark group !rounded-full shadow-[0_14px_30px_-14px_rgba(17,17,17,0.32)]">
               Kom i gang
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>

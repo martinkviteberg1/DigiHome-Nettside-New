@@ -7417,3 +7417,20 @@ agent_communication:
     -agent: "main"
     -message: "Hero v6.4: telefonen har naa eksakt iPhone-proporsjon (0.483) og riktig relativ stoerrelse (75% av vindu), slank bezel + sideknapper. Frontend-testagent ikke kjoert (krever brukertillatelse)."
 
+
+  - task: "Hero v6.5: crisp & clean-pass x2 (flatt vindu, dempet vask, strammere skygger, radius-konsistens, py-18-bugfiks)"
+    implemented: true
+    working: true
+    file: "/app/components/forside/Forside2026.js, /app/components/forside/StegDemo.js, /app/components/forside/HeroVindu.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Pass 1: vindu-tilt fjernet (1.1deg -> 0, subpiksel-uskarphet paa mockup-tekst borte - naa knivskarp), telefon-tilt 3.2 -> 2.2deg, lavendel-blurs dempet (0.09->0.06, 0.06->0.04), vindusskygge strammet (lilla 0.4->0.3), tillitsrad -> small-caps m/ tracking, integrasjonsnavn lettere, StegDemo-skygge 0.3->0.22 + caption ikke-kursiv. Pass 2 (enda mer crisp): gulvskygge-ellipse FJERNET (redundant), radius-konsistens paa alle marketing-kort -> 20px (maalgruppe 22->20, veivalg 18->20), ROI-gloed 0.16->0.12, hover-skygger 0.22->0.18, alle CTA-skygger 0.32/0.14, StegDemo-caption fjernet helt. BUGFIKS: ROI-seksjonen brukte py-18 som IKKE finnes i Tailwind -> null vertikal padding paa mobil; fikset til py-16. Bruker valgte ogsaa eksplisitt: flatt desktop-vindu + subtil telefon-tilt (moderne moenster, Linear/Stripe). Screenshot-verifisert hero + midtseksjoner."
+
+agent_communication:
+    -agent: "main"
+    -message: "To crisp-pass fullfoert: flatt vindu m/ knivskarp tekst, minimal dekor, konsistent 20px-radius, strammere skygger + py-18-bugfiks (ROI manglet mobil-padding). Frontend-testagent ikke kjoert (krever brukertillatelse)."
+
