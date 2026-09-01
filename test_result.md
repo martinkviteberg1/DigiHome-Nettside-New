@@ -7315,3 +7315,20 @@ agent_communication:
     -agent: "main"
     -message: "Hero v5.2 ferdig: desktop-vindu er naa app-replika m/ kollapset ikon-sidebar, telefonen er leietaker-appen i moerkt tema m/ boligbilde. Hvis bruker vil ha pikselnoyaktig leietakerskjerm boer de dele screenshot fra den ekte appen (repo-tilgang finnes ikke lenger)."
 
+
+  - task: "Hero v5.3: telefon = leietaker-appen i appens LYSE tema + desktop-vindu m/ ekte bunninnhold (Aktive saker-rader + Portefoelje-legend fra appens ekte skjermbilde)"
+    implemented: true
+    working: true
+    file: "/app/components/forside/Forside2026.js (TelefonRamme lys), /app/components/forside/HeroVindu.js (Aktive saker/Portefoelje m/ innhold)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Bruker ba om lys versjon av appen + innhold nederst i desktop-vinduet. Repo-klone finnes ikke lenger, men fant fasit I DETTE repoet: /app/public/deck-desktop.webp er et EKTE skjermbilde av appens lyse Oversikt-dashboard, og PortalMockup.tsx dokumenterer lyst designspraak (flate #F7F5F1, hvite kort #eee9e0-hairline, INK-moerkt hero-kort m/ lavendel-gloed). (1) TelefonRamme omskrevet til LYS leietaker-app: lys flate, hvite kort, Min bolig m/ boligbilde + Aktiv leieavtale (groenn #0f9d6e), INK-moerkt Neste husleie-kort m/ lavendel-gloed (18 500 kr, Februar betalt), hurtigvalg m/ lilla chips, I DAG-rader, lys tab-bar m/ lilla aktiv. (2) Desktop-vinduets bunn: Aktive saker m/ ekte rader fra app-skjermbildet (Oppvaskmaskin stopper midt i program/Aapen teal, Varmtvannsbereder lekker/Paagaar amber, Behov for hageklipp) m/ lilla sparkle-ikoner + Portefoelje-legend (Aktive eiendommer 59/Aktive kontrakter 41/Leverandoerer 12/Leads 2/Onboarding 3 m/ fargedotter) - begge i h-[104px] overflow-hidden saa de kuttes av bunnkanten som ekte scroll. Kompilerer, / -> 200, screenshot-verifisert desktop 1920."
+
+agent_communication:
+    -agent: "main"
+    -message: "Hero v5.3: telefonen bruker naa appens lyse tema (fasit: deck-desktop.webp + PortalMockup.tsx i dette repoet), desktop-vinduet har ekte innhold nederst. Frontend-testagent fortsatt ikke kjoert (krever brukertillatelse)."
+

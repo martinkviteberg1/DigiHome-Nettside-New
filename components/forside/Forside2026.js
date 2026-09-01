@@ -52,58 +52,58 @@ function Kurve({ farge = '#1f7a45', punkter = '0,18 12,14 24,15 36,10 48,7 60,3'
 }
 
 
-/* ── Telefonrammen: leietaker-appen i appens mørke tema (fra Expo-appen:
-      flate #0E0C0B, kort #181410/#2A2520, lilla gradient-hero m/ lavendel-glød,
-      aksent #CF97FC/#D9B4FF) — «Min bolig» med boligbilde. ── */
+/* ── Telefonrammen: leietaker-appen i appens LYSE tema (fra portal-/appkoden:
+      lys flate #F7F5F1, hvite kort m/ #eee9e0-hairline, INK-mørkt husleiekort
+      m/ lavendel-glød, grønn #0f9d6e, lilla #7c3aed) — «Min bolig» m/ boligbilde. ── */
 function TelefonRamme() {
   return (
-    <div className="w-[196px] rounded-[32px] bg-[#0a0a0a] p-[6px] shadow-[0_50px_110px_-32px_rgba(23,18,12,0.55),0_0_0_1px_rgba(255,255,255,0.06)]" aria-hidden="true">
-      <div className="relative overflow-hidden rounded-[27px] bg-[#0E0C0B]">
+    <div className="w-[196px] rounded-[32px] bg-[#0a0a0a] p-[6px] shadow-[0_50px_110px_-32px_rgba(23,18,12,0.5),0_0_0_1px_rgba(0,0,0,0.1)]" aria-hidden="true">
+      <div className="relative overflow-hidden rounded-[27px] bg-[#F7F5F1]">
         {/* Dynamic island */}
         <div className="absolute left-1/2 top-[7px] z-[2] h-[13px] w-[52px] -translate-x-1/2 rounded-full bg-black" />
         {/* Statuslinje */}
         <div className="flex items-center justify-between px-4 pt-2">
-          <span className="text-[8px] font-bold text-[#F4EFE7] tabular-nums">9:41</span>
+          <span className="text-[8px] font-bold text-[#0a0a0a] tabular-nums">9:41</span>
           <span className="flex items-center gap-[2px]">
-            {[3, 4.5, 6].map((h) => <span key={h} className="w-[2px] rounded-full bg-[#F4EFE7]" style={{ height: h }} />)}
-            <span className="ml-[3px] h-[6px] w-[11px] rounded-[2.5px] border border-[#F4EFE7]/60"><span className="block h-full w-[70%] rounded-[1.5px] bg-[#F4EFE7]" /></span>
+            {[3, 4.5, 6].map((h) => <span key={h} className="w-[2px] rounded-full bg-[#0a0a0a]" style={{ height: h }} />)}
+            <span className="ml-[3px] h-[6px] w-[11px] rounded-[2.5px] border border-[#0a0a0a]/50"><span className="block h-full w-[70%] rounded-[1.5px] bg-[#0a0a0a]" /></span>
           </span>
         </div>
         <div className="px-3 pb-2.5 pt-3">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold text-[#F4EFE7]" style={heading}>God dag, Sofie 👋</p>
-              <p className="mt-[1px] text-[7px] text-[#6E665B]">Leietaker · Olaf Ryes vei 11C</p>
+              <p className="text-[11px] font-bold text-[#0a0a0a]" style={heading}>God dag, Sofie 👋</p>
+              <p className="mt-[1px] text-[7px] text-[#8d877d]">Leietaker · Olaf Ryes vei 11C</p>
             </div>
-            <span className="flex h-[20px] w-[20px] items-center justify-center rounded-full bg-[#CF97FC]/[0.16] text-[7.5px] font-bold text-[#D9B4FF]">SL</span>
+            <span className="flex h-[20px] w-[20px] items-center justify-center rounded-full bg-[#F1E9FB] text-[7.5px] font-bold text-[#7c3aed]">SL</span>
           </div>
 
           {/* Min bolig — nydelig boligbilde */}
-          <p className="mt-2.5 text-[7px] font-bold uppercase tracking-[0.14em] text-[#6E665B]">Min bolig</p>
-          <div className="mt-1.5 overflow-hidden rounded-[13px] border border-[#2A2520] bg-[#181410]">
+          <p className="mt-2.5 text-[7px] font-bold uppercase tracking-[0.14em] text-[#b3aa9e]">Min bolig</p>
+          <div className="mt-1.5 overflow-hidden rounded-[13px] border border-[#eee9e0] bg-white shadow-[0_1px_3px_rgba(23,18,12,0.05)]">
             <div className="relative h-[74px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/interior-openplan-hero.webp" alt="" loading="lazy" className="h-full w-full object-cover" />
-              <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-black/55 px-1.5 py-[2.5px] text-[6px] font-bold text-[#5CC98E] backdrop-blur-sm">
-                <span className="h-[4px] w-[4px] rounded-full bg-[#5CC98E]" /> Aktiv leieavtale
+              <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-white/90 px-1.5 py-[2.5px] text-[6px] font-bold text-[#0f9d6e] backdrop-blur-sm">
+                <span className="h-[4px] w-[4px] rounded-full bg-[#0f9d6e]" /> Aktiv leieavtale
               </span>
             </div>
             <div className="flex items-center justify-between p-2">
               <div className="min-w-0">
-                <p className="truncate text-[9px] font-bold text-[#F4EFE7]" style={heading}>Olaf Ryes vei 11C</p>
-                <p className="text-[6.5px] text-[#6E665B]">5007 Bergen · 2-roms · 49 m²</p>
+                <p className="truncate text-[9px] font-bold text-[#0a0a0a]" style={heading}>Olaf Ryes vei 11C</p>
+                <p className="text-[6.5px] text-[#8d877d]">5007 Bergen · 2-roms · 49 m²</p>
               </div>
-              <ChevronRight className="h-[9px] w-[9px] shrink-0 text-[#6E665B]" />
+              <ChevronRight className="h-[9px] w-[9px] shrink-0 text-[#c8c3ba]" />
             </div>
           </div>
 
-          {/* Husleie — lilla gradient m/ lavendel-glød, som i appen */}
-          <div className="relative mt-2 overflow-hidden rounded-[13px] p-2.5" style={{ background: 'linear-gradient(135deg,#2A2140 0%,#1A1522 55%,#14100F 100%)' }}>
-            <div className="pointer-events-none absolute -right-5 -top-8 h-20 w-20 rounded-full blur-2xl" style={{ background: 'radial-gradient(circle,rgba(207,151,252,0.4),transparent 70%)' }} />
+          {/* Husleie — INK-mørkt kort m/ lavendel-glød, som i appen */}
+          <div className="relative mt-2 overflow-hidden rounded-[13px] bg-[#0f0d0b] p-2.5">
+            <div className="pointer-events-none absolute -right-5 -top-8 h-20 w-20 rounded-full blur-2xl" style={{ background: 'radial-gradient(circle,rgba(207,151,252,0.38),transparent 70%)' }} />
             <div className="flex items-center justify-between">
               <p className="text-[6.5px] font-bold uppercase tracking-[0.14em] text-[#D9B4FF]/85">Neste husleie</p>
-              <span className="flex items-center gap-[3px] rounded-full bg-white/[0.08] px-1.5 py-[2px] text-[6px] font-semibold text-[#5CC98E]">
+              <span className="flex items-center gap-[3px] rounded-full bg-white/[0.1] px-1.5 py-[2px] text-[6px] font-semibold text-[#7fe0b2]">
                 <Check className="h-[6px] w-[6px]" strokeWidth={3} /> Februar betalt
               </span>
             </div>
@@ -114,41 +114,41 @@ function TelefonRamme() {
           {/* Hurtigvalg */}
           <div className="mt-2 grid grid-cols-2 gap-2">
             {[[Wrench, 'Meld inn sak', null], [MessageSquare, 'Meldinger', 1]].map(([Ikon, l, badge]) => (
-              <div key={l} className="flex items-center gap-1.5 rounded-[11px] border border-[#2A2520] bg-[#181410] px-2 py-[7px]">
-                <span className="relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[6px] bg-[#CF97FC]/[0.13]">
-                  <Ikon className="h-[8.5px] w-[8.5px] text-[#D9B4FF]" />
-                  {badge ? <span className="absolute -right-[3px] -top-[3px] flex h-[8px] w-[8px] items-center justify-center rounded-full bg-[#CF97FC] text-[5px] font-bold text-[#0a0a0a]">{badge}</span> : null}
+              <div key={l} className="flex items-center gap-1.5 rounded-[11px] border border-[#eee9e0] bg-white px-2 py-[7px] shadow-[0_1px_3px_rgba(23,18,12,0.04)]">
+                <span className="relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[6px] bg-[#F1E9FB]">
+                  <Ikon className="h-[8.5px] w-[8.5px] text-[#7c3aed]" />
+                  {badge ? <span className="absolute -right-[3px] -top-[3px] flex h-[8px] w-[8px] items-center justify-center rounded-full bg-[#7c3aed] text-[5px] font-bold text-white">{badge}</span> : null}
                 </span>
-                <span className="truncate text-[7.5px] font-semibold text-[#F4EFE7]">{l}</span>
+                <span className="truncate text-[7.5px] font-semibold text-[#0a0a0a]">{l}</span>
               </div>
             ))}
           </div>
 
           {/* I dag */}
-          <p className="mt-2.5 text-[7px] font-bold uppercase tracking-[0.14em] text-[#6E665B]">I dag</p>
+          <p className="mt-2.5 text-[7px] font-bold uppercase tracking-[0.14em] text-[#b3aa9e]">I dag</p>
           <div className="mt-1.5 space-y-[5px]">
             {[[Wrench, 'Vaktmester kommer', 'Torsdag 09:00'], [FileText, 'Leiekontrakt', 'Signert med BankID']].map(([Ikon, t, s]) => (
-              <div key={t} className="flex items-center gap-2 rounded-[11px] border border-[#2A2520] bg-[#181410] px-2 py-[6px]">
-                <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.06]"><Ikon className="h-[8px] w-[8px] text-[#a49e93]" /></span>
+              <div key={t} className="flex items-center gap-2 rounded-[11px] border border-[#eee9e0] bg-white px-2 py-[6px] shadow-[0_1px_3px_rgba(23,18,12,0.04)]">
+                <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-[#F4F1EB]"><Ikon className="h-[8px] w-[8px] text-[#57534e]" /></span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[7.5px] font-bold leading-tight text-[#F4EFE7]">{t}</p>
-                  <p className="truncate text-[6.5px] text-[#6E665B]">{s}</p>
+                  <p className="truncate text-[7.5px] font-bold leading-tight text-[#0a0a0a]">{t}</p>
+                  <p className="truncate text-[6.5px] text-[#8d877d]">{s}</p>
                 </div>
               </div>
             ))}
           </div>
 
           {/* Tab-bar */}
-          <div className="mt-2.5 flex items-center justify-around rounded-full border border-[#2A2520] bg-[#181410] px-2 py-[6px]">
+          <div className="mt-2.5 flex items-center justify-around rounded-full border border-[#eee9e0] bg-white px-2 py-[6px] shadow-[0_1px_3px_rgba(23,18,12,0.04)]">
             {[[Home, 'Hjem', true], [Building2, 'Min bolig', false], [Wallet, 'Betaling', false], [MessageSquare, 'Meldinger', false]].map(([Ikon, l, aktiv]) => (
               <span key={l} className="flex flex-col items-center gap-[1px]">
-                <Ikon className={`h-[10px] w-[10px] ${aktiv ? 'text-[#D9B4FF]' : 'text-[#514b42]'}`} />
-                <span className={`text-[4.5px] font-bold ${aktiv ? 'text-[#D9B4FF]' : 'text-[#514b42]'}`}>{l}</span>
+                <Ikon className={`h-[10px] w-[10px] ${aktiv ? 'text-[#7c3aed]' : 'text-[#c8c3ba]'}`} />
+                <span className={`text-[4.5px] font-bold ${aktiv ? 'text-[#7c3aed]' : 'text-[#c8c3ba]'}`}>{l}</span>
               </span>
             ))}
           </div>
           {/* Home-indikator */}
-          <div className="mx-auto mt-1.5 h-[3px] w-[46px] rounded-full bg-white/20" />
+          <div className="mx-auto mt-1.5 h-[3px] w-[46px] rounded-full bg-[#0a0a0a]/70" />
         </div>
       </div>
     </div>

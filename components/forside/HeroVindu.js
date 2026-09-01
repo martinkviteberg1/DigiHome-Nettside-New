@@ -171,17 +171,51 @@ export default function VinduRamme() {
             <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#7c3aed] px-3.5 py-[7px] text-[10px] font-bold text-white">Se detaljer <ArrowUpRight className="h-[10px] w-[10px]" /></span>
           </div>
 
-          {/* Aktive saker / Portefølje — kuttet av vinduskanten, som ekte scroll */}
-          <div className="mt-3.5 grid grid-cols-2 gap-3">
-            {['Aktive saker', 'Portefølje'].map((t) => (
-              <div key={t}>
-                <div className="flex items-baseline justify-between">
-                  <p className="text-[12px] font-bold text-[#0A0A0A]" style={heading}>{t}</p>
-                  <span className="text-[9px] font-semibold text-[#8d877d]">Se alle</span>
-                </div>
-                <div className="mt-2 h-[26px] rounded-t-[10px] bg-white ring-1 ring-black/[0.05]" />
+          {/* Aktive saker / Portefølje — ekte innhold, kuttet av vinduskanten som scroll */}
+          <div className="mt-3.5 grid h-[104px] grid-cols-2 gap-3 overflow-hidden">
+            <div>
+              <div className="flex items-baseline justify-between">
+                <p className="text-[12px] font-bold text-[#0A0A0A]" style={heading}>Aktive saker</p>
+                <span className="text-[9px] font-semibold text-[#8d877d]">Se alle</span>
               </div>
-            ))}
+              <div className="mt-2 rounded-t-[10px] bg-white ring-1 ring-black/[0.05]">
+                {[
+                  ['Oppvaskmaskin stopper midt i program', 'Annet · 2d', 'Åpen', '#0e7490', '#ecfeff'],
+                  ['Varmtvannsbereder lekker', 'Annet · 3d', 'Pågår', '#9a6b1c', '#fef9ec'],
+                  ['Behov for hageklipp', 'Annet · 5d', 'Åpen', '#0e7490', '#ecfeff'],
+                ].map(([t, s, status, c, bg], i) => (
+                  <div key={t} className={`flex items-center gap-2 px-2.5 py-[7px] ${i > 0 ? 'border-t border-black/[0.04]' : ''}`}>
+                    <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[6px] bg-[#F1E9FB]"><Sparkles className="h-[8px] w-[8px] text-[#7c3aed]" /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[8.5px] font-bold leading-tight text-[#0A0A0A]">{t}</p>
+                      <p className="truncate text-[7px] text-[#a49e93]">{s}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full px-2 py-[2.5px] text-[7px] font-bold" style={{ color: c, background: bg }}>{status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="flex items-baseline justify-between">
+                <p className="text-[12px] font-bold text-[#0A0A0A]" style={heading}>Portefølje</p>
+                <span className="text-[9px] font-semibold text-[#8d877d]">Se alle</span>
+              </div>
+              <div className="mt-2 rounded-t-[10px] bg-white px-3 py-1 ring-1 ring-black/[0.05]">
+                {[
+                  ['Aktive eiendommer', '59', '#1f7a45'],
+                  ['Aktive kontrakter', '41', '#2563eb'],
+                  ['Leverandører', '12', '#0e7490'],
+                  ['Leads', '2', '#c2410c'],
+                  ['Onboarding', '3', '#7c3aed'],
+                ].map(([l, n, c], i) => (
+                  <div key={l} className={`flex items-center gap-2 py-[5.5px] ${i > 0 ? 'border-t border-black/[0.04]' : ''}`}>
+                    <span className="h-[6px] w-[6px] shrink-0 rounded-full" style={{ background: c }} />
+                    <span className="min-w-0 flex-1 truncate text-[8.5px] font-medium text-[#57534e]">{l}</span>
+                    <span className="shrink-0 text-[9px] font-bold text-[#0A0A0A] tabular-nums" style={heading}>{n}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
