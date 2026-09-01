@@ -192,7 +192,7 @@ export default function Forside2026() {
 
         {/* ── Hero: løftet + flytende produktvindu ── */}
         <section className="relative overflow-x-clip">
-          <div className="relative mx-auto grid w-full max-w-[1320px] grid-cols-1 items-center gap-14 px-6 pb-24 pt-10 sm:px-10 sm:pt-14 lg:grid-cols-[0.58fr_1.42fr] lg:gap-12 lg:pb-28 xl:gap-14">
+          <div className="relative mx-auto grid w-full max-w-[1320px] grid-cols-1 items-center gap-14 px-6 pb-12 pt-10 sm:px-10 sm:pt-14 lg:grid-cols-[0.58fr_1.42fr] lg:gap-12 lg:pb-14 xl:gap-14">
             <div>
               <p className="e-label dh-cover-inn !text-[#7c7466]">Ny generasjon utleie</p>
               <h1 className="e-display dh-cover-inn mt-4 text-[46px] sm:text-[58px] lg:text-[60px] xl:text-[70px]" style={{ animationDelay: '.06s' }}>

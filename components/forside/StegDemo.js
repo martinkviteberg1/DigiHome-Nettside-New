@@ -221,7 +221,7 @@ export default function StegDemo() {
   const Flate = FLATER[aktiv];
   return (
     <section id="produkt" className="relative scroll-mt-20">
-      <div className="mx-auto grid w-full max-w-[1320px] grid-cols-1 items-start gap-12 px-6 py-16 sm:px-10 sm:py-24 lg:grid-cols-[0.42fr_0.58fr] lg:gap-16">
+      <div className="mx-auto grid w-full max-w-[1320px] grid-cols-1 items-start gap-12 px-6 pb-16 pt-8 sm:px-10 sm:pb-24 sm:pt-12 lg:grid-cols-[0.42fr_0.58fr] lg:gap-16">
         {/* Venstre: fortelling + stepper */}
         <Avsloer>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7c7466]">Alt du trenger — på ett sted</p>
