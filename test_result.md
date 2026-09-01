@@ -7298,3 +7298,20 @@ agent_communication:
 agent_communication:
     -agent: "main"
     -message: "Hero v5 + klikkbar stepper er naa ferdig wiret og screenshot-verifisert (desktop + mobil + state-bytte i stepper). Rotaarsaken til 500-feilen var manglende imports etter forrige sesjons avbrutte redigering. Kun frontend beroert - frontend-testagent ikke kjoert (krever brukertillatelse)."
+
+  - task: "Hero v5.2: desktop-vindu = app-replika av Oversikt-dashboardet m/ KOLLAPSET sidebar (kun ikoner) + telefon = leietaker-appen i appens moerke Expo-tema m/ Min bolig-boligbilde"
+    implemented: true
+    working: true
+    file: "/app/components/forside/HeroVindu.js (app-replika + kollapset sidebar), /app/components/forside/Forside2026.js (TelefonRamme omskrevet til leietaker-app, Wrench-import)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. (1) Bruker meldte at vinduet var for lavt/flatt - foerst utvidet m/ stoerre typografi + graf, deretter ba bruker om at innholdet skulle vaere Oversikt-dashboardet fra appen: hentet Hero v4 app-replikaen fra git-historikk (commit f914283) og bygget den inn i det flytende vinduet - varslingsrad, KPI-baand m/ hairlines (894 500/126 987,5/767 512,5/Belegg 48.8%), 4 statskort m/ LIVE-dot, moerk innsiktsbanner, Aktive saker/Portefoelje kuttet i bunnkant. (2) Sidebar deretter KOLLAPSET per brukeroenske: kun ikoner (H-logo, soek, ARBEID m/ Oversikt aktiv + Innboks-badge 13, hairline-divider, DRIFT, avatar M nederst), 58px bred. (3) Telefonen omskrevet til LEIETAKER-appen i appens ekte moerke tema (fra PhoneMockup.tsx-replikaen av Expo-appen: flate #0E0C0B, kort #181410/#2A2520, lilla gradient m/ lavendel-gloed #CF97FC/#D9B4FF): God dag Sofie, MIN BOLIG-kort m/ nydelig boligbilde (/interior-openplan-hero.webp) + Aktiv leieavtale-pill, NESTE HUSLEIE 18 500 kr m/ Februar betalt, hurtigvalg (Meld inn sak/Meldinger), I DAG-rader, moerk tab-bar. Koherent m/ StegDemo-narrativet (Sofie Larsen/Olaf Ryes vei 11C/18 500 kr). MERK: referanserepoet (bergen-urban) er slettet fra /tmp og token skal ikke gjenbrukes - leietakerskjermen er bygget i appens dokumenterte designsystem, ikke pikselverifisert mot ekte leietakerskjerm. Kompilerer, / -> 200, screenshot-verifisert desktop. Mobile: telefon + sidebar skjult (hidden md:flex/block), header-pills skjult paa sm."
+
+agent_communication:
+    -agent: "main"
+    -message: "Hero v5.2 ferdig: desktop-vindu er naa app-replika m/ kollapset ikon-sidebar, telefonen er leietaker-appen i moerkt tema m/ boligbilde. Hvis bruker vil ha pikselnoyaktig leietakerskjerm boer de dele screenshot fra den ekte appen (repo-tilgang finnes ikke lenger)."
+

@@ -6,7 +6,7 @@ import {
   ArrowRight, ArrowUpRight, Check, CheckCircle2, Megaphone, UserCheck, FileSignature, ShieldCheck,
   Banknote, MessageSquare, Home, User, Building2, Bell, Play, Lock, Sparkles, ChevronRight,
   Users, Clock, CalendarDays, LayoutGrid, Menu, Plus, FileText, ClipboardList, FolderOpen,
-  BarChart3, Settings, HelpCircle, ChevronDown, Wallet, Inbox, Search,
+  BarChart3, Settings, HelpCircle, ChevronDown, Wallet, Inbox, Search, Wrench,
 } from 'lucide-react';
 import { site } from '@/lib/site';
 import { track } from '@/lib/analytics';
@@ -52,63 +52,103 @@ function Kurve({ farge = '#1f7a45', punkter = '0,18 12,14 24,15 36,10 48,7 60,3'
 }
 
 
-/* ── Telefonrammen: lys premium-utgave ── */
+/* ── Telefonrammen: leietaker-appen i appens mørke tema (fra Expo-appen:
+      flate #0E0C0B, kort #181410/#2A2520, lilla gradient-hero m/ lavendel-glød,
+      aksent #CF97FC/#D9B4FF) — «Min bolig» med boligbilde. ── */
 function TelefonRamme() {
   return (
-    <div className="w-[186px] rounded-[30px] bg-gradient-to-b from-[#FBFAF8] to-[#DAD7D2] p-[6px] shadow-[0_50px_110px_-32px_rgba(23,18,12,0.5),0_0_0_1px_rgba(0,0,0,0.08)]" aria-hidden="true">
-      <div className="relative overflow-hidden rounded-[25px] bg-[#FBFAF9] ring-1 ring-black/[0.06]">
-        {/* Statuslinje + dynamic island */}
+    <div className="w-[196px] rounded-[32px] bg-[#0a0a0a] p-[6px] shadow-[0_50px_110px_-32px_rgba(23,18,12,0.55),0_0_0_1px_rgba(255,255,255,0.06)]" aria-hidden="true">
+      <div className="relative overflow-hidden rounded-[27px] bg-[#0E0C0B]">
+        {/* Dynamic island */}
+        <div className="absolute left-1/2 top-[7px] z-[2] h-[13px] w-[52px] -translate-x-1/2 rounded-full bg-black" />
+        {/* Statuslinje */}
         <div className="flex items-center justify-between px-4 pt-2">
-          <span className="text-[8px] font-bold text-[#0A0A0A] tabular-nums">9:41</span>
-          <span className="h-[12px] w-[50px] rounded-full bg-[#101013]" />
+          <span className="text-[8px] font-bold text-[#F4EFE7] tabular-nums">9:41</span>
           <span className="flex items-center gap-[2px]">
-            {[3, 4.5, 6].map((h) => <span key={h} className="w-[2px] rounded-full bg-[#0A0A0A]" style={{ height: h }} />)}
-            <span className="ml-[3px] h-[6px] w-[11px] rounded-[2.5px] border border-[#0A0A0A]/70"><span className="block h-full w-[70%] rounded-[1.5px] bg-[#0A0A0A]" /></span>
+            {[3, 4.5, 6].map((h) => <span key={h} className="w-[2px] rounded-full bg-[#F4EFE7]" style={{ height: h }} />)}
+            <span className="ml-[3px] h-[6px] w-[11px] rounded-[2.5px] border border-[#F4EFE7]/60"><span className="block h-full w-[70%] rounded-[1.5px] bg-[#F4EFE7]" /></span>
           </span>
         </div>
-        <div className="px-3 pb-2.5 pt-2.5">
+        <div className="px-3 pb-2.5 pt-3">
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <p className="text-[10.5px] font-bold text-[#0A0A0A]" style={heading}>God dag, Martin 👋</p>
-            <Bell className="h-[10px] w-[10px] text-[#8d877d]" />
+            <div>
+              <p className="text-[11px] font-bold text-[#F4EFE7]" style={heading}>God dag, Sofie 👋</p>
+              <p className="mt-[1px] text-[7px] text-[#6E665B]">Leietaker · Olaf Ryes vei 11C</p>
+            </div>
+            <span className="flex h-[20px] w-[20px] items-center justify-center rounded-full bg-[#CF97FC]/[0.16] text-[7.5px] font-bold text-[#D9B4FF]">SL</span>
           </div>
-          <p className="mt-2 text-[8px] font-bold text-[#0A0A0A]" style={heading}>Ditt overblikk</p>
-          <div className="mt-1.5 space-y-[5px]">
-            {[
-              [LayoutGrid, '98 %', 'Utleid', '#F1E9FB', '#7c3aed'],
-              [Users, '142', 'Aktive leieforhold', '#EAF0FD', '#2563eb'],
-              [ClipboardList, '3', 'Åpne saker', '#FBEFE4', '#c2410c'],
-              [Banknote, '99,2 %', 'Betalt denne måneden', '#E7F3EC', '#1f7a45'],
-            ].map(([Ikon, v, l, bg, c]) => (
-              <div key={l} className="flex items-center gap-2 rounded-[9px] bg-white px-2 py-[6px] ring-1 ring-black/[0.05]">
-                <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-[6px]" style={{ background: bg }}><Ikon className="h-[10px] w-[10px]" style={{ color: c }} /></span>
-                <div className="min-w-0">
-                  <p className="text-[10.5px] font-bold leading-tight text-[#0A0A0A] tabular-nums" style={heading}>{v}</p>
-                  <p className="truncate text-[7px] text-[#a49e93]">{l}</p>
-                </div>
+
+          {/* Min bolig — nydelig boligbilde */}
+          <p className="mt-2.5 text-[7px] font-bold uppercase tracking-[0.14em] text-[#6E665B]">Min bolig</p>
+          <div className="mt-1.5 overflow-hidden rounded-[13px] border border-[#2A2520] bg-[#181410]">
+            <div className="relative h-[74px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/interior-openplan-hero.webp" alt="" loading="lazy" className="h-full w-full object-cover" />
+              <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-black/55 px-1.5 py-[2.5px] text-[6px] font-bold text-[#5CC98E] backdrop-blur-sm">
+                <span className="h-[4px] w-[4px] rounded-full bg-[#5CC98E]" /> Aktiv leieavtale
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-2">
+              <div className="min-w-0">
+                <p className="truncate text-[9px] font-bold text-[#F4EFE7]" style={heading}>Olaf Ryes vei 11C</p>
+                <p className="text-[6.5px] text-[#6E665B]">5007 Bergen · 2-roms · 49 m²</p>
+              </div>
+              <ChevronRight className="h-[9px] w-[9px] shrink-0 text-[#6E665B]" />
+            </div>
+          </div>
+
+          {/* Husleie — lilla gradient m/ lavendel-glød, som i appen */}
+          <div className="relative mt-2 overflow-hidden rounded-[13px] p-2.5" style={{ background: 'linear-gradient(135deg,#2A2140 0%,#1A1522 55%,#14100F 100%)' }}>
+            <div className="pointer-events-none absolute -right-5 -top-8 h-20 w-20 rounded-full blur-2xl" style={{ background: 'radial-gradient(circle,rgba(207,151,252,0.4),transparent 70%)' }} />
+            <div className="flex items-center justify-between">
+              <p className="text-[6.5px] font-bold uppercase tracking-[0.14em] text-[#D9B4FF]/85">Neste husleie</p>
+              <span className="flex items-center gap-[3px] rounded-full bg-white/[0.08] px-1.5 py-[2px] text-[6px] font-semibold text-[#5CC98E]">
+                <Check className="h-[6px] w-[6px]" strokeWidth={3} /> Februar betalt
+              </span>
+            </div>
+            <p className="mt-1 text-[16px] font-bold leading-none tracking-[-0.02em] text-white tabular-nums" style={heading}>18 500 <span className="text-[8px] font-medium text-white/40">kr</span></p>
+            <p className="mt-1.5 text-[6.5px] text-white/55">Trekkes automatisk 1. mars · KID</p>
+          </div>
+
+          {/* Hurtigvalg */}
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {[[Wrench, 'Meld inn sak', null], [MessageSquare, 'Meldinger', 1]].map(([Ikon, l, badge]) => (
+              <div key={l} className="flex items-center gap-1.5 rounded-[11px] border border-[#2A2520] bg-[#181410] px-2 py-[7px]">
+                <span className="relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[6px] bg-[#CF97FC]/[0.13]">
+                  <Ikon className="h-[8.5px] w-[8.5px] text-[#D9B4FF]" />
+                  {badge ? <span className="absolute -right-[3px] -top-[3px] flex h-[8px] w-[8px] items-center justify-center rounded-full bg-[#CF97FC] text-[5px] font-bold text-[#0a0a0a]">{badge}</span> : null}
+                </span>
+                <span className="truncate text-[7.5px] font-semibold text-[#F4EFE7]">{l}</span>
               </div>
             ))}
           </div>
-          <p className="mt-2.5 text-[8px] font-bold text-[#0A0A0A]" style={heading}>Kommende</p>
+
+          {/* I dag */}
+          <p className="mt-2.5 text-[7px] font-bold uppercase tracking-[0.14em] text-[#6E665B]">I dag</p>
           <div className="mt-1.5 space-y-[5px]">
-            {[['Visning i morgen', 'Leilighet 2B', '10.00'], ['Kontrakt utløper', 'Leilighet 1A', '2 dager']].map(([t, s, når]) => (
-              <div key={t} className="flex items-center gap-2 rounded-[9px] bg-white px-2 py-[6px] ring-1 ring-black/[0.05]">
-                <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-[#F4F1EB]"><CalendarDays className="h-[10px] w-[10px] text-[#57534e]" /></span>
+            {[[Wrench, 'Vaktmester kommer', 'Torsdag 09:00'], [FileText, 'Leiekontrakt', 'Signert med BankID']].map(([Ikon, t, s]) => (
+              <div key={t} className="flex items-center gap-2 rounded-[11px] border border-[#2A2520] bg-[#181410] px-2 py-[6px]">
+                <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.06]"><Ikon className="h-[8px] w-[8px] text-[#a49e93]" /></span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[8.5px] font-bold leading-tight text-[#0A0A0A]">{t}</p>
-                  <p className="truncate text-[7px] text-[#a49e93]">{s}</p>
+                  <p className="truncate text-[7.5px] font-bold leading-tight text-[#F4EFE7]">{t}</p>
+                  <p className="truncate text-[6.5px] text-[#6E665B]">{s}</p>
                 </div>
-                <span className="shrink-0 text-[7px] font-semibold text-[#a49e93]">{når}</span>
               </div>
             ))}
           </div>
+
           {/* Tab-bar */}
-          <div className="mt-2.5 flex items-center justify-between rounded-full bg-white px-3.5 py-[7px] ring-1 ring-black/[0.06]">
-            <span className="flex flex-col items-center gap-[1px]"><LayoutGrid className="h-[11px] w-[11px] text-[#7c3aed]" /><span className="text-[4.5px] font-bold text-[#7c3aed]">Oversikt</span></span>
-            <span className="flex flex-col items-center gap-[1px]"><Building2 className="h-[11px] w-[11px] text-[#c8c3ba]" /><span className="text-[4.5px] font-semibold text-[#c8c3ba]">Eiendommer</span></span>
-            <span className="flex h-[24px] w-[24px] items-center justify-center rounded-full bg-[#7c3aed] shadow-[0_6px_14px_-4px_rgba(124,58,237,0.6)]"><Plus className="h-[13px] w-[13px] text-white" /></span>
-            <span className="flex flex-col items-center gap-[1px]"><ClipboardList className="h-[11px] w-[11px] text-[#c8c3ba]" /><span className="text-[4.5px] font-semibold text-[#c8c3ba]">Saker</span></span>
-            <span className="flex flex-col items-center gap-[1px]"><Menu className="h-[11px] w-[11px] text-[#c8c3ba]" /><span className="text-[4.5px] font-semibold text-[#c8c3ba]">Meny</span></span>
+          <div className="mt-2.5 flex items-center justify-around rounded-full border border-[#2A2520] bg-[#181410] px-2 py-[6px]">
+            {[[Home, 'Hjem', true], [Building2, 'Min bolig', false], [Wallet, 'Betaling', false], [MessageSquare, 'Meldinger', false]].map(([Ikon, l, aktiv]) => (
+              <span key={l} className="flex flex-col items-center gap-[1px]">
+                <Ikon className={`h-[10px] w-[10px] ${aktiv ? 'text-[#D9B4FF]' : 'text-[#514b42]'}`} />
+                <span className={`text-[4.5px] font-bold ${aktiv ? 'text-[#D9B4FF]' : 'text-[#514b42]'}`}>{l}</span>
+              </span>
+            ))}
           </div>
+          {/* Home-indikator */}
+          <div className="mx-auto mt-1.5 h-[3px] w-[46px] rounded-full bg-white/20" />
         </div>
       </div>
     </div>
@@ -158,7 +198,7 @@ export default function Forside2026() {
           <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(124,58,237,0) 0%, rgba(124,58,237,0.055) 34%, rgba(155,91,214,0.075) 62%, rgba(124,58,237,0) 100%)' }} />
           <div aria-hidden="true" className="pointer-events-none absolute -right-40 top-8 h-[520px] w-[640px] rounded-full bg-[#9B5BD6]/[0.09] blur-3xl" />
           <div aria-hidden="true" className="pointer-events-none absolute -left-44 bottom-[-80px] h-[440px] w-[560px] rounded-full bg-[#7c3aed]/[0.06] blur-3xl" />
-          <div className="relative mx-auto grid w-full max-w-[1320px] items-center gap-14 px-6 pb-28 pt-10 sm:px-10 sm:pt-16 lg:grid-cols-[0.58fr_1.42fr] lg:gap-12 lg:pb-36 xl:gap-14">
+          <div className="relative mx-auto grid w-full max-w-[1320px] items-center gap-14 px-6 pb-24 pt-10 sm:px-10 sm:pt-14 lg:grid-cols-[0.58fr_1.42fr] lg:gap-12 lg:pb-28 xl:gap-14">
             <div>
               <p className="e-label dh-cover-inn !text-[#7c3aed]">Ny generasjon utleie</p>
               <h1 className="e-display dh-cover-inn mt-4 text-[46px] sm:text-[58px] lg:text-[60px] xl:text-[70px]" style={{ animationDelay: '.06s' }}>
