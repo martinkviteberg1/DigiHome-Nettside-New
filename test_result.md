@@ -7213,3 +7213,19 @@ agent_communication:
 agent_communication:
     -agent: "main"
     -message: "Arbeidsrom-redesign (kortstabel) + potensial-popover ferdig og screenshot-verifisert. Kun frontend — ingen API-endringer. Frontend-testagent IKKE kjort (krever brukertillatelse)."
+
+  - task: "Ny rot-arkitektur: DigiHome-cover paa / (Utleie paa autopilot + to doerer), forbrukersiden flyttet til /privat, ny B2B-landingsside /bedrift"
+    implemented: true
+    working: true
+    file: "/app/app/page.js (nytt cover), /app/app/privat/page.js (forbrukersiden 1:1), /app/components/cover/RotCover.js (ny), /app/app/bedrift/page.js + /app/components/bedrift/BedriftLanding.js (ny one-pager), /app/components/dh/Header.tsx (logo -> /privat), /app/components/dh/Footer.tsx (For bedrifter-lenke), /app/app/globals.css (dh-cover-inn keyframes), /app/app/sitemap.js (/privat + /bedrift)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Screenshot-verifisert av main: (1) / viser cover: 'Utleie paa autopilot.' + delt valgark (lys privat-doer m/ husleie-minibevis, moerk bedrift-doer m/ portefoelje-minibevis), tillitsstripe, 'Tre maater aa bruke det paa'-kort (/forvaltning, /selvforvaltning, /bedrift) + hovedfooter. Valget huskes i localStorage ('dh-verden') -> 'Fortsett der du slapp'-chip verifisert. (2) Klikk paa bedrift-doer navigerer til /bedrift: egen slank sticky header m/ ankre (Moduler/Norsk standard/Sikkerhet/FAQ) + Book demo (/book-mote), hero 'Hele driften. En flate.', abstrakt produktramme-mockup (ingen ekte data), 'vi bruker det selv'-bevis, 6 modulkort, norsk standard, sikkerhet, FAQ (details), moerk CTA, slank egen footer. Salgsradar er IKKE med som modul (venter paa brukerbeslutning). (3) /privat = gammel forside 1:1, verifisert intakt m/ header/hero/seksjoner (foerste screenshot var mid-kompilering; re-test OK). Alle 3 ruter HTTP 200. Konsument-header-logo peker naa paa /privat."
+
+agent_communication:
+    -agent: "main"
+    -message: "Rot-cover + /privat + /bedrift shippet og screenshot-verifisert i preview. Kun frontend. MERK: en deploy ble initiert FOER disse endringene - ny deploy kreves for aa faa cover/bedrift live."

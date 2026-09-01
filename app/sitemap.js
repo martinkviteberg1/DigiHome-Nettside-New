@@ -14,6 +14,8 @@ export default async function sitemap() {
 
   const core = [
     { url: `${base}/`, lastModified: staticDate, changeFrequency: 'weekly', priority: 1.0 },
+    { url: `${base}/privat`, lastModified: new Date('2026-09-01T00:00:00.000Z'), changeFrequency: 'weekly', priority: 1.0 },
+    { url: `${base}/bedrift`, lastModified: new Date('2026-09-01T00:00:00.000Z'), changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/bli-utleier`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/bli-leietaker`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/tjenester`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.8 },

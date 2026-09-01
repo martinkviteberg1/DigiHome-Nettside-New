@@ -71,7 +71,7 @@ export default function Header() {
         >
           {/* ─── LOGO ─── */}
           <Link
-            href="/"
+            href="/privat"
             className="flex items-center shrink-0 group"
             data-testid="header-logo-link"
           >

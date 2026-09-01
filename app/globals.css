@@ -979,3 +979,16 @@ html.dh-tour-snap.dh-tour-flyt { scroll-snap-type: none; }
   background-size: 200% 100%;
   animation: dh-shimmer 1.4s ease infinite;
 }
+
+/* ── Coveret (digihome.no rot): rolig entrance for løftet og dørene ── */
+@keyframes dhCoverInn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.dh-cover-inn {
+  opacity: 0;
+  animation: dhCoverInn 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dh-cover-inn { animation: none; opacity: 1; }
+}
