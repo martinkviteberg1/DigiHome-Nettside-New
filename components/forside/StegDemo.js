@@ -224,8 +224,8 @@ export default function StegDemo() {
       <div className="mx-auto grid w-full max-w-[1320px] grid-cols-1 items-start gap-12 px-6 py-16 sm:px-10 sm:py-24 lg:grid-cols-[0.42fr_0.58fr] lg:gap-16">
         {/* Venstre: fortelling + stepper */}
         <Avsloer>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7c3aed]">Alt du trenger — på ett sted</p>
-          <h2 className="e-display mt-3 max-w-[16ch] text-[28px] sm:text-[38px]">Fra manuelt arbeid til automatisert drift<span className="text-[#9B5BD6]">.</span></h2>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7c7466]">Alt du trenger — på ett sted</p>
+          <h2 className="e-display mt-3 max-w-[16ch] text-[28px] sm:text-[38px]">Fra manuelt arbeid til automatisert drift<span className="text-[#cf97fc]">.</span></h2>
           <p className="mt-4 max-w-[38ch] text-[14.5px] leading-[1.65] text-[#6F6A60]">
             DigiHome binder sammen oppgavene som tradisjonelt har ligget i
             forskjellige systemer, innbokser og regneark.
@@ -244,7 +244,7 @@ export default function StegDemo() {
                   } catch (err) { /* ok */ }
                 }}
                 data-testid={`steg-mobil-${s.nr}`}
-                className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-[9px] text-[13px] font-semibold transition-colors ${i === aktiv ? 'bg-[#7c3aed] text-white shadow-[0_10px_22px_-8px_rgba(124,58,237,0.55)]' : 'bg-white text-[#57534e] ring-1 ring-black/[0.08]'}`}
+                className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-[9px] text-[13px] font-semibold transition-colors ${i === aktiv ? 'bg-[#1a1a1a] text-white shadow-[0_10px_22px_-8px_rgba(17,17,17,0.45)]' : 'bg-white text-[#57534e] ring-1 ring-black/[0.08]'}`}
               >
                 <span className={`text-[11px] font-bold tabular-nums ${i === aktiv ? 'text-white/70' : 'text-[#b3aca1]'}`} style={heading}>{s.nr}</span>
                 {s.t}
@@ -259,12 +259,12 @@ export default function StegDemo() {
               return (
                 <button key={s.nr} onClick={() => setAktiv(i)} data-testid={`steg-${s.nr}`}
                   className={`group flex w-full items-start gap-5 border-t border-[#EDE9E2] py-4 text-left transition-colors first:border-t-0 first:pt-0 ${valgt ? '' : 'opacity-60 hover:opacity-100'}`}>
-                  <span className={`text-[15px] font-bold tabular-nums ${valgt ? 'text-[#7c3aed]' : 'text-[#b3aca1]'}`} style={heading}>{s.nr}</span>
+                  <span className={`text-[15px] font-bold tabular-nums ${valgt ? 'text-[#1a1a1a]' : 'text-[#b3aca1]'}`} style={heading}>{s.nr}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[16px] font-bold tracking-[-0.015em] text-[#0A0A0A]" style={heading}>{s.t}</span>
                     <span className="mt-0.5 block text-[12.5px] leading-[1.6] text-[#8d877d]">{s.b}</span>
                   </span>
-                  <span className={`mt-1 flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full transition-all ${valgt ? 'bg-[#7c3aed] text-white shadow-[0_8px_18px_-6px_rgba(124,58,237,0.55)]' : 'text-[#c8c3ba] ring-1 ring-black/[0.08] group-hover:text-[#7c3aed]'}`}>
+                  <span className={`mt-1 flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full transition-all ${valgt ? 'bg-[#1a1a1a] text-white shadow-[0_8px_18px_-6px_rgba(17,17,17,0.45)]' : 'text-[#c8c3ba] ring-1 ring-black/[0.08] group-hover:text-[#1a1a1a]'}`}>
                     <ArrowRight className="h-[13px] w-[13px]" />
                   </span>
                 </button>

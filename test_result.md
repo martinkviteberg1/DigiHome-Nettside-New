@@ -7366,3 +7366,37 @@ agent_communication:
     -agent: "main"
     -message: "Hero v6.1: mockup matcher appens ekte skjermbilde noyaktig, scroll-reveals paa alle seksjoner, sveipbar mobil-stepper, og en reell mobil-overflow-bug (horisontal side-scroll) funnet og fikset ved rotaarsak. Frontend-testagent ikke kjoert (krever brukertillatelse)."
 
+
+  - task: "Hero v6.2: Kalender/Enheter/Okonomi-modulene i hero-vinduet = 1:1-replikaer av appen (fasit funnet i repoets egne replika-komponenter)"
+    implemented: true
+    working: true
+    file: "/app/components/forside/HeroVindu.js (FlateKalender/FlateEnheter/FlateOkonomi omskrevet)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Bruker ba om at Kalender osv. skal vaere noyaktig som i appen. Repo-klonen finnes ikke (/tmp slettet, token skal ikke gjenbrukes), men fant 1:1-replikaer bygget fra selve repo-koden I DETTE prosjektet: (1) FlateKalender = AdminCalendar multi-tidslinje fra ForvalterFullskjerm.tsx KalenderMulti ('1:1-replika av den faktiske kalendermodulen'): Airbnb-aktig tidslinje m/ segmentkontroll Kalender/Perioder, Alle boliger-velger m/ gradient-ikon, I dag-nav, sok/filter, maanedslabel september 2026 + 84 enheter m/ groenn dot, dagstripe m/ lilla i dag-pille (Ti 1), enhetsrader (initialboks, omraade, KT #FF385C / LT #3B82F6-badge), event-pills: booking #FF385C rounded-full m/ kanal-avatar A/B/D, lease #6366f1, sperret #484848 stripet m/ laas, vedlikehold beige m/ Wrench, priser i celler, helg/fortid-bakgrunner, lilla i dag-kolonnering. 9 rader kuttet i bunn, 12 dager kuttet i hoyre (som ekte scroll). (2) FlateEnheter = AdminUnitDetail/StedetTab fra EnhetDetalj-replikaen: kontekstuell venstre-rail (Marken 8 tilbake, ENHET/Leilighet 2, faner Stedet aktiv moerk/Utleie/Saker/Meldinger/Kalender/Okonomi/Dokumenter, Andre enheter), breadcrumb + Live FINN+2 kanaler-pill, foto-mosaikk 1 stor + 2x2 m/ LOKALE bilder + Vis alle 14 bilder-badge, tittel Leilighet 2 - 2. etasje, Om boligen, Hvor du sover m/ BedDouble-kort, Personer-rail (Eier Kari Nordvik m/ brun gradient-avatar + Aktiv forvaltningsavtale, Neste gjest Nina Holm lavendel). (3) FlateOkonomi = Eieroppgjor/OwnerFinance fra OkonomiDemo.tsx ('noyaktig som i portalen'): moerkt Netto i aar-kort m/ groenn Wallet, Siste utbetaling m/ lavendel DollarSign, Antall oppgjor m/ cyan FileText, oppgjorstabell m/ kalender-ikonboks, status-pill under perioden (Utbetalt #ecfdf5/#15803d m/ CircleCheck, Sendt #ecfeff/#0891b2 m/ Send), honorar i lavendel #cf97fc, netto bold, sluttlinje 'Innkreving, purring og utbetaling - helt automatisk' m/ groenn dot. Narrativ koherens: Kari Nordvik/Marken 8/Nina Holm gaar igjen paa tvers av moduler. Kompilerer, / -> 200. Screenshot-verifisert alle 3 nye moduler + aktiv nav-markering."
+
+agent_communication:
+    -agent: "main"
+    -message: "Hero v6.2: alle 4 modulflater i det levende vinduet er naa 1:1-replikaer av appen, hentet fra replika-komponentene i dette repoet (ForvalterFullskjerm/OkonomiDemo, bygget fra faktisk repo-kode) + deck-desktop.webp. Frontend-testagent ikke kjoert (krever brukertillatelse)."
+
+
+  - task: "Hero v6.3: knapper/chrome i portal-ink (ikke moerkelilla) + ekte digihome-logo i mockup-sidebar (merke kollapset, hvit wordmark aapen)"
+    implemented: true
+    working: true
+    file: "/app/components/forside/Forside2026.js, /app/components/forside/StegDemo.js, /app/components/forside/HeroVindu.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. (1) PORTAL-INK KNAPPER: alle marketing-knapper byttet fra #7c3aed til e-btn-dark ink (#1a1a1a via --e-ink) som rounded-full pills m/ myk skygge rgba(17,17,17,0.4) - nav-CTA, hero-CTA, bunn-CTA, mobil-chips aktiv, vertikal stepper-tall/pil aktiv. Eyebrows -> portal-taupe #7c7466, overskrift-punktum -> lavendel #cf97fc, les mer-lenker -> ink, veivalg-ikonchips -> portalens #f5f0fc/#6d28d9. BEHOLDT lilla: app-replika i vinduet/telefonen (appens eget design) + lavendel-atmosfaere-blurs. (2) LOGO: mockup-sidebaren bruker naa ekte brand-assets som i appen (fasit: ForvalterFullskjerm 1:1-replika bruker /digihome-logo-white.svg): kollapset = /digihome-mark.svg (lavendel D298FF-merke), aapen = crossfade til /digihome-logo-white.svg wordmark + PanelLeftClose-ikon (som i AdminLayout). Dots-indikator aktiv -> ink. Kompilerer, / -> 200, screenshot-verifisert: nav/hero-knapper ink pills, wordmark-logo i aapen sidebar."
+
+agent_communication:
+    -agent: "main"
+    -message: "Hero v6.3: marketing-chrome er naa portal-ink m/ lavendel-aksenter, mockup-logoen er appens ekte logo-assets. Frontend-testagent ikke kjoert (krever brukertillatelse)."
+
