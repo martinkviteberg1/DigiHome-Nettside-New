@@ -7269,3 +7269,15 @@ agent_communication:
         -working: true
         -agent: "main"
         -comment: "KUN FRONTEND. Skraastilling ble foerst provd (rotateX/Y/Z) men brukers referansebilde viste rett-paa - transforms fjernet. Screenshot-verifisert mot referansen: lys aluminium-MacBook m/ ikon-rail (H-logo, badges), God dag Martin-topplinje, varslingskort, Oekonomi denne maaneden (894 500/126 987/767 512/48,8% m/ sparklines + fra forrige maaned-linjer), Aktiviteter m/ tider, Se alle aktiviteter. Telefon rett, lys bezel, 9:41-statuslinje, Ditt overblikk (98%/142/3/99,2%), Kommende, tab-bar m/ lilla pluss. CTA-er paa en linje, mikrolinje enkeltlinje. Gamle 6-stegs prosesseksjon + Alt du trenger-panel erstattet av EN seksjon: 'Fra manuelt arbeid til automatisert drift.' m/ 01-05 (Finn leietaker/Screening/Kontrakt/Husleie/Oppfoelging) + piler. Alle containere 1320px (navbar = hero, brukerkrav). PROSESS-konstant fjernet. Repo-klone i /tmp slettet (inneholdt token i git-config)."
+
+  - task: "Hero v4: skjerminnholdet i laptopen er naa noeyaktig replika av forvalter-dashboardet i appen (moerk sidemeny ARBEID/DRIFT, KPI-baand m/ potensiale, statskort, moerk banner, Aktive saker/Portefoelje-kutt) + laptop gjort vesentlig stoerre"
+    implemented: true
+    working: true
+    file: "/app/components/forside/Forside2026.js (LaptopRamme omskrevet som app-replika; hero-grid 0.6/1.4; mikrolinje dot-separatorer)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Bruker delte skjermbilde av den EKTE appen (forvalter-redesign preview /forvalter) - replikaen er bygget mot den: moerk sidemeny (digihome-logo, Soek m/ cmd-K, ARBEID: Oversikt aktiv/Operasjonssentral/Innboks badge 13/Reservasjoner/Kalender/Kanaler/Oppgaver/Driftsassistent, DRIFT: Eiendommer/Utleieprosesser/Leieforhold/Dokumenter/Saker, bruker-rad nederst), stor God dag Martin-header m/ Saker/Eiendommer-pills + bjelle, 3 varslingskort, ETT KPI-baand m/ hairline-delte kolonner (894 500/126 987,5/767 512,5 + Potensiale-linjer + fra X ledige + Belegg 48.8% m/ bar), 4 statskort (LIVE-dot, sparklines, 41 utleid/Trenger oppfoelging), moerk banner m/ Se detaljer, og Aktive saker/Portefoelje kuttet av skjermkanten som ekte scroll. Screenshot-verifisert: matcher appen. MERK: repoet (bergen-urban) inneholdt IKKE dette dashboardet - replika bygget fra brukerens skjermbilde. Tokenklone slettet fra /tmp; bruker baadt om aa rotere tokenet."
