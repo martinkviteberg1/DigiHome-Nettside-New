@@ -3,8 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, Scale, Banknote, HeartHandshake, Layers } from 'lucide-react';
-import { heading, Avsloer } from './motion';
-import { NIVAAER } from './Reisen';
+import { heading, display, Avsloer, Etikett, Knapp, Lenke } from './motion';
+import { NIVAAER, Hvem } from './Reisen';
 
 /* ---------------------------------------------------------------------------
    Seksjoner — Statement · Nivå (gaffelen) · Trygghet · Slutt-CTA
@@ -14,13 +14,13 @@ import { NIVAAER } from './Reisen';
 export function Statement() {
   return (
     <section className="relative" data-testid="v3-statement">
-      <div className="mx-auto w-full max-w-[1320px] px-6 py-28 sm:px-10 sm:py-40">
+      <div className="mx-auto w-full max-w-[1280px] px-6 py-24 sm:px-8 sm:py-32">
         <div className="grid gap-10 lg:grid-cols-[1.25fr_1fr] lg:gap-20">
           <Avsloer>
-            <h2 className="e-display max-w-[11ch] text-[44px] sm:text-[64px] lg:text-[84px]">Utleie skal ikke være en deltidsjobb<span className="text-[#cf97fc]">.</span></h2>
+            <h2 className="max-w-[17ch] text-[36px] sm:text-[52px] lg:text-[64px]" style={display}>Utleie skal ikke være en deltidsjobb<span className="text-[#cf97fc]">.</span></h2>
           </Avsloer>
           <Avsloer delay={140} className="lg:pt-3">
-            <p className="text-[18px] leading-[1.6] text-[#3A3733] sm:text-[21px]">
+            <p className="text-[18px] leading-[1.55] text-[#3A3733] sm:text-[20px]">
               De fleste som leier ut har én bolig og en full jobb. De som forvalter
               mange har for få timer. DigiHome er bygget for begge: systemet gjør
               det repetitive, du tar avgjørelsene — eller lar oss ta dem.
@@ -36,9 +36,9 @@ export function Statement() {
 export function Bilde() {
   return (
     <section data-testid="v3-bilde">
-      <div className="mx-auto w-full max-w-[1320px] px-6 sm:px-10">
+      <div className="mx-auto w-full max-w-[1280px] px-6 sm:px-8">
         <Avsloer>
-          <figure className="relative overflow-hidden rounded-[24px] sm:rounded-[28px]">
+          <figure className="relative overflow-hidden rounded-[14px] sm:rounded-[16px]">
             <div className="relative h-[380px] sm:h-[520px] lg:h-[600px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/bergen-aerial.webp" alt="Bergen sett fra Fløyen — byen der DigiHome forvalter sin egen portefølje" loading="lazy" className="h-full w-full object-cover" style={{ objectPosition: '50% 60%' }} />
@@ -46,8 +46,8 @@ export function Bilde() {
             </div>
             <figcaption className="absolute inset-x-0 bottom-0 flex flex-col gap-4 p-7 text-white sm:flex-row sm:items-end sm:justify-between sm:p-10">
               <div className="max-w-[40ch]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">Bergen</p>
-                <p className="mt-2 text-[22px] font-bold leading-[1.1] tracking-[-0.025em] sm:text-[30px]" style={heading}>Vi er selv forvaltere.</p>
+                <Etikett mork>Bergen</Etikett>
+                <p className="mt-2 text-[22px] font-medium leading-[1.15] tracking-[-0.02em] sm:text-[28px]">Vi er selv forvaltere.</p>
                 <p className="mt-2 text-[14.5px] leading-[1.6] text-white/75 sm:text-[15.5px]">DigiHome Forvaltning driver hele sin portefølje i Bergen på dette systemet — hver dag. Det du ser på denne siden, bruker vi selv.</p>
               </div>
               <Link href="/om-oss" className="group inline-flex shrink-0 items-center gap-2 text-[14px] font-semibold text-white">Om oss <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" /></Link>
@@ -95,8 +95,8 @@ function HvemRad({ hvem, mork }) {
   return (
     <div className="flex flex-wrap gap-1.5" aria-label="Hvem gjør hvert steg">
       {hvem.map((k, i) => (
-        <span key={i} className="inline-flex h-[26px] items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold" style={farge(k)}>
-          <span className="tabular-nums opacity-60" style={heading}>0{i + 1}</span> {tekst[k]}
+        <span key={i} className="inline-flex h-[26px] items-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-medium" style={farge(k)}>
+          <span className="tabular-nums opacity-60">0{i + 1}</span> {tekst[k]}
         </span>
       ))}
     </div>
@@ -106,16 +106,16 @@ function HvemRad({ hvem, mork }) {
 export function Nivaa({ nivaa, setNivaa }) {
   return (
     <section id="nivaa" className="scroll-mt-20" data-testid="v3-nivaa">
-      <div className="mx-auto w-full max-w-[1320px] px-6 py-24 sm:px-10 sm:py-32">
+      <div className="mx-auto w-full max-w-[1280px] px-6 py-20 sm:px-8 sm:py-28">
         <Avsloer>
-          <p className="e-label !text-[#7c7466]">Tre grader av autopilot</p>
-          <h2 className="e-display mt-4 max-w-[14ch] text-[38px] sm:text-[52px] lg:text-[64px]">Én bolig eller hundre<span className="text-[#cf97fc]">?</span></h2>
-          <p className="mt-5 max-w-[52ch] text-[16px] leading-[1.65] text-[#6F6A60] sm:text-[17px]">
+          <Etikett>Tre grader av autopilot</Etikett>
+          <h2 className="mt-3 max-w-[14ch] text-[34px] sm:text-[44px] lg:text-[52px]" style={display}>Én bolig eller hundre<span className="text-[#cf97fc]">?</span></h2>
+          <p className="mt-5 max-w-[52ch] text-[16px] leading-[1.55] text-[#52504B] sm:text-[17px]">
             Samme system, samme oversikt, samme kontrakter. Forskjellen er hvor mye
             du vil sitte ved rattet — og du kan ta over når du vil.
           </p>
         </Avsloer>
-        <div className="mt-12 grid gap-4 lg:grid-cols-3 lg:gap-5 sm:mt-16">
+        <div className="mt-10 grid gap-4 lg:grid-cols-3 sm:mt-12">
           {KORT.map((k, i) => {
             const valgt = nivaa === i;
             return (
@@ -123,29 +123,26 @@ export function Nivaa({ nivaa, setNivaa }) {
                 <article
                   onMouseEnter={() => setNivaa && setNivaa(i)}
                   data-testid={`v3-kort-${k.id}`}
-                  className={`relative flex h-full flex-col rounded-[28px] p-8 transition-[box-shadow,transform] duration-300 sm:p-9 ${k.mork ? 'bg-[#0B0A09] text-white ring-1 ring-black/[0.2]' : 'bg-white ring-1 ring-black/[0.06]'} ${valgt ? 'shadow-[0_36px_80px_-40px_rgba(84,50,160,0.35)] -translate-y-[2px]' : 'shadow-[0_1px_2px_rgba(23,18,12,0.04)]'}`}
+                  className={`relative flex h-full flex-col rounded-[16px] border p-7 transition-colors duration-300 sm:p-8 ${k.mork ? 'border-[#0B0A09] bg-[#0B0A09] text-white' : valgt ? 'border-[#0A0A0A] bg-white' : 'border-[#E8E5DF] bg-white'}`}
                 >
-                  {k.mork && <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-[320px] w-[320px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(155,91,214,0.16) 0%, transparent 62%)' }} />}
                   <div className="relative">
-                    <p className={`e-label ${k.mork ? '!text-[#C9A6F0]' : '!text-[#7c7466]'}`}>{k.eyebrow}</p>
-                    <h3 className={`e-display mt-4 text-[26px] sm:text-[30px] ${k.mork ? '!text-white' : ''}`}>{k.t}</h3>
-                    <p className={`mt-4 text-[14.5px] leading-[1.65] ${k.mork ? 'text-white/60' : 'text-[#6F6A60]'}`}>{k.b}</p>
+                    <Etikett mork={k.mork}>{k.eyebrow}</Etikett>
+                    <h3 className={`mt-3 text-[22px] sm:text-[26px] ${k.mork ? 'text-white' : 'text-[#0A0A0A]'}`} style={display}>{k.t}</h3>
+                    <p className={`mt-3 text-[14.5px] leading-[1.6] ${k.mork ? 'text-white/60' : 'text-[#52504B]'}`}>{k.b}</p>
                     <div className="mt-6"><HvemRad hvem={k.hvem} mork={k.mork} /></div>
-                    <ul className={`mt-7 space-y-2.5 border-t pt-6 ${k.mork ? 'border-white/[0.12]' : 'border-[#ECE8E0]'}`}>
+                    <ul className={`mt-6 space-y-2.5 border-t pt-5 ${k.mork ? 'border-white/[0.12]' : 'border-[#E8E5DF]'}`}>
                       {k.punkter.map((p) => (
                         <li key={p} className={`flex items-center gap-2.5 text-[14px] ${k.mork ? 'text-white/85' : 'text-[#3A3733]'}`}>
-                          <Check className={`h-4 w-4 shrink-0 ${k.mork ? 'text-[#C9A6F0]' : 'text-[#6D4FB0]'}`} strokeWidth={2.4} /> {p}
+                          <Check className={`h-4 w-4 shrink-0 ${k.mork ? 'text-white/70' : 'text-[#0A0A0A]'}`} strokeWidth={2.2} /> {p}
                         </li>
                       ))}
                     </ul>
                   </div>
                   <div className="relative mt-auto pt-8">
-                    <p className={`text-[12px] font-semibold uppercase tracking-[0.12em] ${k.mork ? 'text-white/40' : 'text-[#a49e93]'}`}>{k.meta}</p>
+                    <p className={`text-[13px] ${k.mork ? 'text-white/45' : 'text-[#8A867F]'}`}>{k.meta}</p>
                     <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
-                      <Link href={k.href} prefetch data-testid={`v3-kort-cta-${k.id}`} className={`e-btn e-btn-sm group !rounded-full ${k.mork ? 'e-btn-light' : 'e-btn-dark shadow-[0_14px_30px_-14px_rgba(17,17,17,0.32)]'}`}>
-                        {k.cta} <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                      </Link>
-                      <Link href={k.mer} className={`text-[14px] font-semibold transition-colors ${k.mork ? 'text-white/60 hover:text-white' : 'text-[#0A0A0A]/60 hover:text-[#0A0A0A]'}`}>Les mer</Link>
+                      <Knapp href={k.href} variant={k.mork ? 'lys' : 'primar'} data-testid={`v3-kort-cta-${k.id}`}>{k.cta}</Knapp>
+                      <Link href={k.mer} className={`text-[14px] font-medium transition-colors ${k.mork ? 'text-white/60 hover:text-white' : 'text-[#52504B] hover:text-[#0A0A0A]'}`}>Les mer</Link>
                     </div>
                   </div>
                 </article>
@@ -170,34 +167,34 @@ const INTEGRASJONER = ['FINN', 'BankID', 'Posten Signering', 'Keyhole', 'Lea Ban
 
 export function Trygghet() {
   return (
-    <section className="border-t border-[#ECE8E0]" data-testid="v3-trygghet">
-      <div className="mx-auto w-full max-w-[1320px] px-6 py-24 sm:px-10 sm:py-32">
+    <section className="border-t border-[#E8E5DF]" data-testid="v3-trygghet">
+      <div className="mx-auto w-full max-w-[1280px] px-6 py-20 sm:px-8 sm:py-28">
         <Avsloer>
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-end">
             <div>
-              <p className="e-label !text-[#7c7466]">Trygghet</p>
-              <h2 className="e-display mt-4 max-w-[12ch] text-[38px] sm:text-[52px] lg:text-[64px]">Trygt. Norsk. Etter boka<span className="text-[#cf97fc]">.</span></h2>
+              <Etikett>Trygghet</Etikett>
+              <h2 className="mt-3 max-w-[12ch] text-[34px] sm:text-[44px] lg:text-[52px]" style={display}>Trygt. Norsk. Etter boka<span className="text-[#cf97fc]">.</span></h2>
             </div>
-            <p className="max-w-[46ch] text-[16px] leading-[1.65] text-[#6F6A60] sm:text-[17px] lg:pb-3">
+            <p className="max-w-[46ch] text-[16px] leading-[1.55] text-[#52504B] sm:text-[17px] lg:pb-2">
               Autopilot betyr ikke at ingen har kontroll. Det betyr at kontrollen
               er bygget inn — i kontraktene, i pengeflyten og i menneskene bak.
             </p>
           </div>
         </Avsloer>
         <Avsloer delay={120}>
-          <div className="mt-14 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-x-8">
+          <div className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
             {PILARER.map((p) => (
-              <div key={p.t} className="border-t border-[#D6CFC4] pt-6">
-                <span className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#F1EAFB]"><p.Ikon className="h-[19px] w-[19px] text-[#6D4FB0]" strokeWidth={1.7} /></span>
-                <p className="mt-5 text-[19px] font-bold tracking-[-0.02em] text-[#0A0A0A]" style={heading}>{p.t}</p>
-                <p className="mt-2.5 text-[14.5px] leading-[1.65] text-[#6F6A60]">{p.b}</p>
+              <div key={p.t} className="border-t border-[#DDD9D1] pt-5">
+                <p.Ikon className="h-[22px] w-[22px] text-[#0A0A0A]" strokeWidth={1.6} />
+                <p className="mt-5 text-[18px] font-medium tracking-[-0.015em] text-[#0A0A0A]">{p.t}</p>
+                <p className="mt-2 text-[14.5px] leading-[1.6] text-[#52504B]">{p.b}</p>
               </div>
             ))}
           </div>
         </Avsloer>
         <Avsloer delay={200}>
-          <div className="mt-20 flex flex-col gap-5 border-t border-[#ECE8E0] pt-8 lg:flex-row lg:items-center lg:justify-between">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#a49e93]">Snakker med det du allerede bruker</p>
+          <div className="mt-16 flex flex-col gap-5 border-t border-[#E8E5DF] pt-7 lg:flex-row lg:items-center lg:justify-between">
+            <Etikett>Snakker med det du allerede bruker</Etikett>
             <ul className="flex flex-wrap items-center gap-x-7 gap-y-3">
               {INTEGRASJONER.map((n) => {
                 const logo = n === 'FINN' ? '/finn-logo.png' : n === 'BankID' ? '/bankid-logo.png' : null;
@@ -206,7 +203,7 @@ export function Trygghet() {
                     {logo
                       // eslint-disable-next-line @next/next/no-img-element
                       ? <img src={logo} alt={n} loading="lazy" className="h-[18px] w-auto opacity-60 grayscale" />
-                      : <span className="text-[15px] font-bold tracking-[-0.01em] text-[#9b948a]" style={heading}>{n}</span>}
+                      : <span className="text-[15px] font-medium tracking-[-0.01em] text-[#8A867F]">{n}</span>}
                   </li>
                 );
               })}
@@ -222,17 +219,14 @@ export function Trygghet() {
 export function SluttCTA({ nivaa = 0, onKlikk }) {
   const n = NIVAAER[nivaa];
   return (
-    <section className="relative overflow-hidden border-t border-[#ECE8E0]" data-testid="v3-cta">
-      <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[900px] -translate-x-1/2 rounded-full" style={{ background: 'radial-gradient(circle, rgba(155,91,214,0.10) 0%, transparent 62%)' }} />
-      <div className="relative mx-auto w-full max-w-[1320px] px-6 py-28 text-center sm:px-10 sm:py-40">
+    <section className="relative overflow-hidden border-t border-[#E8E5DF]" data-testid="v3-cta">
+      <div className="relative mx-auto w-full max-w-[1280px] px-6 py-24 text-center sm:px-8 sm:py-32">
         <Avsloer>
-          <h2 className="e-display mx-auto max-w-[14ch] text-[44px] sm:text-[64px] lg:text-[84px]">Klar for utleie på autopilot<span className="text-[#cf97fc]">?</span></h2>
-          <p className="mx-auto mt-6 max-w-[40ch] text-[16px] leading-[1.65] text-[#6F6A60] sm:text-[18px]">Kom i gang på minuttet — eller book en prat, så finner vi riktig grad av autopilot for deg.</p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Link href={n.href} prefetch onClick={() => onKlikk && onKlikk('bunn')} data-testid="v3-bunn-cta" className="e-btn e-btn-dark group !rounded-full shadow-[0_14px_30px_-14px_rgba(17,17,17,0.32)]">
-              {n.cta} <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-            </Link>
-            <Link href="/book-mote" prefetch className="e-btn e-btn-ghost !rounded-full !bg-white" data-testid="v3-bunn-book">Book en prat</Link>
+          <h2 className="mx-auto max-w-[14ch] text-[36px] sm:text-[52px] lg:text-[64px]" style={display}>Klar for utleie på autopilot<span className="text-[#cf97fc]">?</span></h2>
+          <p className="mx-auto mt-5 max-w-[40ch] text-[16px] leading-[1.55] text-[#52504B] sm:text-[18px]">Kom i gang på minuttet — eller book en prat, så finner vi riktig grad av autopilot for deg.</p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Knapp href={n.href} onClick={() => onKlikk && onKlikk('bunn')} data-testid="v3-bunn-cta">{n.cta}</Knapp>
+            <Knapp href="/book-mote" variant="sekundar" data-testid="v3-bunn-book">Book en prat</Knapp>
           </div>
         </Avsloer>
       </div>

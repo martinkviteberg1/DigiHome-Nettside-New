@@ -819,3 +819,9 @@ Google Ads-styring via native REST API).
 - Produktfasit hentet fra GitHub-repo martinkviteberg1/DigiHome (branch newsan) klonet til /tmp/dh-ref (ikke varig). Bekreftede integrasjoner i backend/integrations: finn, posten_signering (BankID), keyhole, lea_bank, poweroffice, fiken, channex (Airbnb/Booking), eiendomsverdi, infotorg. IKKE dokumentert: Vipps, Tripletex → fjernet fra forsiden.
 - Status: shippet på /v3, screenshot-verifisert desktop+mobil, IKKE brukerbekreftet. Frontend-testagent ikke kjørt.
 - Neste: brukerens visuelle aksept → evt. justeringer → bytte / til V3 → frontend-test (etter tillatelse).
+
+## 2026-09-02 (kveld): V3 pass 2+3 — designresett etter brukerfeedback («sammenlign med Linear»)
+- Bruker avviste første V3-utkast som ikke moderne. Rotårsak: fet Right Grotesk display-type, versal-eyebrows, lilla blobs/tonet skygge, for store produktfliser, svevende velgere.
+- Resett (gjeldende designspråk for V3): hvit canvas · display-type = ABC Diatype Medium (Right Grotesk kun i produktmocker) · setningsform (Etikett) · ingen gradient-blobs · radius 10–16 · små knapper 40 px (Knapp/Lenke i motion.js) · hårlinjer #E8E5DF · sekundærtekst #52504B/#6B6862.
+- Nav: fullbredde 64 px (OpenAI-stil), mega-paneler, mobil fullskjerm-ark. Hero: Linear-stille (luft, H1 76 px medium, én undertekst, små knapper, produkt i 1:1 med fade). HeroPortal i tre visninger styrt av global nivå-state. Reisen: velger + stegpiller i panelets topplinje.
+- Status: shippet på /v3, screenshot-verifisert, IKKE brukerbekreftet. / uendret.

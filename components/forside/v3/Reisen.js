@@ -4,13 +4,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Sparkles, ShieldCheck, User, Users } from 'lucide-react';
 import { FlateFinn, FlateVelg, FlateSigner, FlateBetalt, FlateDrift } from '@/components/forside/StegDemo';
-import { heading, EASE, useMedia, useSynlig, Avsloer, Stakk } from './motion';
+import { heading, EASE, display, useMedia, useSynlig, Avsloer, Stakk, Etikett, Knapp } from './motion';
 
 /* ---------------------------------------------------------------------------
    Reisen — «Fra annonse til innbetaling.»
-   Scroll-drevne kapitler (01–05) med sticky produktpanel. Én velger over
-   reisen bestemmer graden av autopilot — Selvbetjent · Forvaltning · Portefølje —
-   og endrer «hvem gjør det» på hvert steg + CTA. Én side, tre kjøpere.
+   Scroll-drevne kapitler (01–05) med sticky produktpanel. Graden av autopilot
+   (Selvbetjent · Forvaltning · Portefølje) er forankret i panelets topplinje —
+   som en kontroll i appen — og endrer «hvem gjør det» på hvert steg + CTA.
 --------------------------------------------------------------------------- */
 
 export const NIVAAER = [
@@ -19,7 +19,7 @@ export const NIVAAER = [
   { id: 'portefolje', label: 'Portefølje', ingress: 'Teamet ditt styrer. Systemet gjør jobben.', cta: 'Book en demo', href: '/book-mote' },
 ];
 
-const STEG = [
+export const STEG = [
   {
     nr: '01', t: 'Finn leietaker',
     b: 'Annonsen publiseres på FINN. Interessentene samles på ett sted, og DigiHome svarer på det som kan svares på — også klokken 23.',
@@ -49,31 +49,36 @@ const STEG = [
 
 const FLATER = [FlateFinn, FlateVelg, FlateSigner, FlateBetalt, FlateDrift];
 
-function Hvem({ v }) {
+export function Hvem({ v }) {
   const auto = v === 'Automatisk';
   const dh = v === 'DigiHome';
   const team = v === 'Teamet ditt';
   const Ikon = auto ? Sparkles : dh ? ShieldCheck : team ? Users : User;
   const stil = auto
     ? 'bg-[#F1EAFB] text-[#6D4FB0]'
-    : dh ? 'bg-[#0A0A0A] text-white' : 'bg-white text-[#0A0A0A] ring-1 ring-black/[0.1]';
+    : dh ? 'bg-[#0A0A0A] text-white' : 'bg-white text-[#0A0A0A] ring-1 ring-[#DDD9D1]';
   return (
-    <span className={`inline-flex h-[30px] items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold ${stil}`}>
-      <Ikon className="h-[13px] w-[13px]" strokeWidth={2} /> {v}
+    <span className={`inline-flex h-[28px] items-center gap-1.5 rounded-full px-2.5 text-[12.5px] font-medium ${stil}`}>
+      <Ikon className="h-[12px] w-[12px]" strokeWidth={2} /> {v}
     </span>
   );
 }
 
-/* Nivåvelger — segmentert pille med glidende indikator */
+/* Segmentert kontroll — grå spor, hvit aktiv pille (som i appen) */
 export function NivaaVelger({ nivaa, onChange, size = 'md', className = '' }) {
-  const h = size === 'lg' ? 'h-[52px]' : 'h-[44px]';
-  const tekst = size === 'lg' ? 'text-[15px]' : 'text-[13.5px]';
+  const h = size === 'sm' ? 'h-[30px]' : 'h-[36px]';
+  const tekst = size === 'sm' ? 'text-[13px]' : 'text-[13.5px]';
+  const px = size === 'sm' ? 'px-3' : 'px-4';
+  const onKey = (e) => {
+    if (e.key === 'ArrowRight') onChange((nivaa + 1) % 3);
+    if (e.key === 'ArrowLeft') onChange((nivaa + 2) % 3);
+  };
   return (
-    <div role="tablist" aria-label="Grad av autopilot" className={`relative inline-grid grid-cols-3 rounded-full bg-white p-1 ring-1 ring-black/[0.08] shadow-[0_1px_2px_rgba(23,18,12,0.04)] ${className}`} data-testid="v3-nivaavelger">
-      <span aria-hidden="true" className={`absolute top-1 bottom-1 rounded-full bg-[#0A0A0A] shadow-[0_8px_18px_-8px_rgba(17,17,17,0.5)]`} style={{ left: `calc(4px + ${nivaa} * (100% - 8px) / 3)`, width: 'calc((100% - 8px) / 3)', transition: `left 420ms ${EASE}` }} />
+    <div role="tablist" aria-label="Grad av autopilot" onKeyDown={onKey} className={`relative inline-grid grid-cols-3 rounded-[10px] bg-[#F1EFEA] p-[3px] ${className}`} data-testid="v3-nivaavelger">
+      <span aria-hidden="true" className="absolute top-[3px] bottom-[3px] rounded-[8px] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.05)]" style={{ left: `calc(3px + ${nivaa} * (100% - 6px) / 3)`, width: 'calc((100% - 6px) / 3)', transition: `left 360ms ${EASE}` }} />
       {NIVAAER.map((n, i) => (
-        <button key={n.id} role="tab" aria-selected={nivaa === i} onClick={() => onChange(i)} data-testid={`v3-nivaa-${n.id}`}
-          className={`relative z-[1] ${h} rounded-full px-5 ${tekst} font-semibold transition-colors duration-300 sm:px-7 ${nivaa === i ? 'text-white' : 'text-[#57534e] hover:text-[#0A0A0A]'}`}>
+        <button key={n.id} role="tab" type="button" aria-selected={nivaa === i} tabIndex={nivaa === i ? 0 : -1} onClick={() => onChange(i)} data-testid={`v3-nivaa-${n.id}`}
+          className={`relative z-[1] ${h} rounded-[8px] ${px} ${tekst} font-medium transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] ${nivaa === i ? 'text-[#0A0A0A]' : 'text-[#52504B] hover:text-[#0A0A0A]'}`}>
           {n.label}
         </button>
       ))}
@@ -81,20 +86,25 @@ export function NivaaVelger({ nivaa, onChange, size = 'md', className = '' }) {
   );
 }
 
-/* Produktpanel med fremdrift */
-function Panel({ aktiv, kjorer, className = '' }) {
+/* Produktpanel — topplinje med stegpiller + velger, som en app */
+function Panel({ aktiv, kjorer, nivaa, setNivaa, onSteg }) {
   return (
-    <div className={`overflow-hidden rounded-[24px] bg-[#FCFBF9] shadow-[0_40px_100px_-48px_rgba(84,50,160,0.24),0_0_0_1px_rgba(0,0,0,0.05)] ${className}`} data-testid="v3-reise-panel">
-      <div className="flex items-center gap-1.5 px-5 pt-4" aria-hidden="true">
-        {STEG.map((s, i) => (
-          <span key={s.nr} className="h-[3px] flex-1 overflow-hidden rounded-full bg-black/[0.06]">
-            <span className="block h-full rounded-full bg-[#0A0A0A]" style={{ width: i < aktiv ? '100%' : i === aktiv ? '100%' : '0%', opacity: i === aktiv ? 1 : i < aktiv ? 0.35 : 0, transition: `opacity 500ms ${EASE}` }} />
-          </span>
-        ))}
+    <div className="overflow-hidden rounded-[14px] border border-[#E3DFD8] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_24px_48px_-32px_rgba(0,0,0,0.14)]" data-testid="v3-reise-panel">
+      <div className="flex h-[52px] items-center justify-between gap-4 border-b border-[#ECE9E3] px-3">
+        <div className="flex items-center gap-1" role="tablist" aria-label="Steg">
+          {STEG.map((s, i) => (
+            <button key={s.nr} type="button" role="tab" aria-selected={aktiv === i} onClick={() => onSteg(i)} data-testid={`v3-steg-pille-${s.nr}`}
+              className={`flex h-[30px] items-center gap-2 rounded-[8px] px-2.5 text-[13px] font-medium tabular-nums transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] ${aktiv === i ? 'bg-[#0A0A0A] text-white' : 'text-[#8A867F] hover:bg-[#F1EFEA] hover:text-[#0A0A0A]'}`}>
+              {s.nr}
+              {aktiv === i && <span className="hidden text-[13px] font-medium xl:inline">{s.t}</span>}
+            </button>
+          ))}
+        </div>
+        <NivaaVelger nivaa={nivaa} onChange={setNivaa} size="sm" />
       </div>
-      <div className="relative min-h-[470px]">
+      <div className="relative min-h-[480px] bg-[#FCFBF9]">
         {FLATER.map((Flate, i) => (
-          <div key={i} className={`flex flex-col justify-center ${i === 0 ? 'relative min-h-[470px]' : 'absolute inset-0'}`} style={{ opacity: aktiv === i ? 1 : 0, transform: aktiv === i ? 'none' : 'translateY(10px)', transition: `opacity 560ms ${EASE}, transform 560ms ${EASE}`, pointerEvents: aktiv === i ? 'auto' : 'none' }} aria-hidden={aktiv !== i}>
+          <div key={i} className={`flex flex-col justify-center ${i === 0 ? 'relative min-h-[480px]' : 'absolute inset-0'}`} style={{ opacity: aktiv === i ? 1 : 0, transform: aktiv === i ? 'none' : 'translateY(8px)', transition: `opacity 480ms ${EASE}, transform 480ms ${EASE}`, pointerEvents: aktiv === i ? 'auto' : 'none' }} aria-hidden={aktiv !== i}>
             <Flate kjorer={kjorer && aktiv === i} />
           </div>
         ))}
@@ -109,7 +119,7 @@ function MobilPanel({ i }) {
   const synlig = useSynlig(ref, 0.3);
   const Flate = FLATER[i];
   return (
-    <div ref={ref} className="mt-6 overflow-hidden rounded-[22px] bg-[#FCFBF9] shadow-[0_30px_70px_-40px_rgba(84,50,160,0.22),0_0_0_1px_rgba(0,0,0,0.05)]">
+    <div ref={ref} className="mt-6 overflow-hidden rounded-[14px] border border-[#E3DFD8] bg-[#FCFBF9]">
       <Flate kjorer={synlig} />
     </div>
   );
@@ -123,7 +133,6 @@ export default function Reisen({ nivaa, setNivaa }) {
   const panelSynlig = useSynlig(panelRef, 0.2);
   const n = NIVAAER[nivaa];
 
-  /* Kapittel i midtbåndet av viewporten er aktivt */
   useEffect(() => {
     if (!desktop || typeof IntersectionObserver === 'undefined') return undefined;
     const io = new IntersectionObserver((entries) => {
@@ -138,70 +147,44 @@ export default function Reisen({ nivaa, setNivaa }) {
     return () => io.disconnect();
   }, [desktop]);
 
+  const gaaTil = (i) => { try { kapitler.current[i].scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* ok */ } };
+
   return (
-    <section id="reisen" className="relative scroll-mt-20" data-testid="v3-reisen">
-      <div className="mx-auto w-full max-w-[1320px] px-6 pt-24 sm:px-10 sm:pt-32 lg:pt-40">
-        {/* Tittel + velger */}
+    <section id="reisen" className="relative scroll-mt-16" data-testid="v3-reisen">
+      <div className="mx-auto w-full max-w-[1280px] px-6 pt-20 sm:px-8 sm:pt-28 lg:pt-32">
         <Avsloer>
-          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
-            <div>
-              <p className="e-label !text-[#7c7466]">Slik virker det</p>
-              <h2 className="e-display mt-4 max-w-[13ch] text-[38px] sm:text-[52px] lg:text-[64px]">Fra annonse til innbetaling<span className="text-[#cf97fc]">.</span></h2>
+          <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
+            <div className="lg:col-span-7">
+              <Etikett>Slik virker det</Etikett>
+              <h2 className="mt-3 max-w-[14ch] text-[34px] sm:text-[44px] lg:text-[52px]" style={display}>Fra annonse til innbetaling<span className="text-[#cf97fc]">.</span></h2>
             </div>
-            <div className="lg:pb-2">
-              <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#a49e93]">Hvor mye vil du gjøre selv?</p>
-              <NivaaVelger nivaa={nivaa} onChange={setNivaa} />
-              <div className="mt-3 h-[22px] text-[14.5px] text-[#6F6A60]" aria-live="polite">
-                <Stakk idx={nivaa}>
-                  {NIVAAER.map((x) => <span key={x.id} className="block">{x.ingress}</span>)}
-                </Stakk>
-              </div>
-            </div>
+            <p className="max-w-[44ch] text-[17px] leading-[1.55] text-[#52504B] lg:col-span-5 lg:self-end lg:pb-1">
+              Fem steg. Hvem som gjør dem, bestemmer du — systemet gjør resten. Bytt grad av autopilot i panelet og se hva som endrer seg.
+            </p>
           </div>
         </Avsloer>
 
-        {/* Kapitler + sticky panel */}
-        <div className="mt-14 grid grid-cols-1 gap-10 lg:mt-20 lg:grid-cols-[0.36fr_0.64fr] lg:gap-16">
-          <div className="relative lg:-my-[10vh] lg:pl-9">
-            {/* Fremdriftsskinne (desktop) */}
-            <div aria-hidden="true" className="absolute bottom-[10vh] left-[7px] top-[10vh] hidden w-px bg-[#E6E1D9] lg:block" />
+        <div className="mt-12 grid grid-cols-1 gap-8 lg:mt-16 lg:grid-cols-12 lg:gap-10">
+          <div className="lg:col-span-4">
             {STEG.map((s, i) => (
               <div
                 key={s.nr}
                 ref={(el) => { kapitler.current[i] = el; }}
                 data-kap={i}
                 data-testid={`v3-kapittel-${s.nr}`}
-                className={`relative flex flex-col justify-center border-t border-[#ECE8E0] py-10 first:border-t-0 lg:min-h-[68vh] lg:border-t-0 lg:py-0 ${i === 0 ? 'lg:pt-[10vh]' : ''} ${i === STEG.length - 1 ? 'lg:pb-[10vh]' : ''}`}
+                className={`flex flex-col border-t border-[#E8E5DF] py-9 first:border-t-0 lg:border-t-0 lg:py-0 ${i === 0 ? 'lg:min-h-[52vh] lg:justify-start lg:pt-2' : 'lg:min-h-[58vh] lg:justify-center'} ${i === STEG.length - 1 ? 'lg:pb-[6vh]' : ''}`}
               >
-                {/* Punkt på skinnen */}
-                <button
-                  type="button"
-                  aria-label={`Gå til steg ${Number(s.nr)}: ${s.t}`}
-                  onClick={() => { try { kapitler.current[i].scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* ok */ } }}
-                  className="absolute -left-9 top-1/2 hidden h-[15px] w-[15px] -translate-y-1/2 items-center justify-center rounded-full bg-[#FBFAF7] lg:flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] focus-visible:ring-offset-2"
-                  style={{ marginTop: i === 0 ? '5vh' : i === STEG.length - 1 ? '-5vh' : 0 }}
-                >
-                  <span className="block rounded-full transition-[width,height,background-color] duration-500" style={{ width: aktiv === i ? 11 : 7, height: aktiv === i ? 11 : 7, background: aktiv === i ? '#0A0A0A' : i < aktiv ? '#8d877d' : '#D6CFC4' }} />
-                </button>
                 <div
-                  role="button"
-                  tabIndex={-1}
-                  onClick={() => { if (desktop) { try { kapitler.current[i].scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* ok */ } } }}
-                  className="relative transition-opacity duration-500 lg:cursor-pointer"
-                  style={{ opacity: desktop ? (aktiv === i ? 1 : 0.3) : 1 }}
+                  onClick={() => desktop && gaaTil(i)}
+                  className="transition-opacity duration-500 lg:cursor-pointer"
+                  style={{ opacity: desktop ? (aktiv === i ? 1 : 0.34) : 1 }}
                 >
-                  {/* Stort, svakt siffer bak tittelen — editorial rytme */}
-                  <span aria-hidden="true" className="pointer-events-none absolute -left-3 -top-12 select-none text-[132px] font-bold leading-none tracking-[-0.06em] text-[#0A0A0A]/[0.045]" style={heading}>{s.nr}</span>
-                  <p className="relative flex items-center gap-3 text-[13px] font-bold tabular-nums text-[#a49e93]" style={heading}>
-                    <span>{s.nr}</span>
-                    <span className="h-px w-8 bg-[#D6CFC4]" />
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#a49e93]">Steg {Number(s.nr)} av 5</span>
-                  </p>
-                  <h3 className="e-display relative mt-4 text-[30px] sm:text-[38px]">{s.t}</h3>
-                  <p className="relative mt-4 max-w-[38ch] text-[16px] leading-[1.65] text-[#6F6A60]">{s.b}</p>
-                  <div className="relative mt-6 flex items-center gap-3">
-                    <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#a49e93]">Hvem gjør det</span>
-                    <Stakk idx={nivaa} className="h-[30px]">
+                  <p className="text-[13px] font-medium tabular-nums text-[#8A867F]">{s.nr}</p>
+                  <h3 className="mt-2 text-[24px] sm:text-[28px]" style={display}>{s.t}</h3>
+                  <p className="mt-3 max-w-[38ch] text-[15.5px] leading-[1.6] text-[#52504B]">{s.b}</p>
+                  <div className="mt-5 flex items-center gap-2.5">
+                    <span className="text-[13px] text-[#8A867F]">Hvem gjør det</span>
+                    <Stakk idx={nivaa} className="h-[28px]">
                       {s.hvem.map((v, k) => <span key={k} className="block"><Hvem v={v} /></span>)}
                     </Stakk>
                   </div>
@@ -212,24 +195,22 @@ export default function Reisen({ nivaa, setNivaa }) {
           </div>
 
           {desktop && (
-            <div className="hidden lg:block">
-              <div ref={panelRef} className="sticky top-[88px]">
-                <Panel aktiv={aktiv} kjorer={panelSynlig} />
+            <div className="hidden lg:col-span-8 lg:block">
+              <div ref={panelRef} className="sticky top-[76px]">
+                <Panel aktiv={aktiv} kjorer={panelSynlig} nivaa={nivaa} setNivaa={setNivaa} onSteg={gaaTil} />
               </div>
             </div>
           )}
         </div>
 
         {/* Nivå-CTA — følger velgeren */}
-        <Avsloer className="mt-16 lg:mt-8">
-          <div className="flex flex-col gap-5 rounded-[24px] bg-white p-6 ring-1 ring-black/[0.06] sm:flex-row sm:items-center sm:justify-between sm:p-8" data-testid="v3-reise-cta">
+        <Avsloer className="mt-14 lg:mt-6">
+          <div className="flex flex-col gap-4 border-t border-[#E8E5DF] pt-7 sm:flex-row sm:items-center sm:justify-between" data-testid="v3-reise-cta">
             <div>
-              <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#a49e93]">{n.label}</p>
-              <p className="mt-1 text-[19px] font-bold tracking-[-0.02em] text-[#0A0A0A]" style={heading}>{n.ingress}</p>
+              <Etikett>{n.label}</Etikett>
+              <p className="mt-1 text-[19px] font-medium tracking-[-0.02em] text-[#0A0A0A]">{n.ingress}</p>
             </div>
-            <Link href={n.href} prefetch className="e-btn e-btn-dark group !rounded-full shadow-[0_14px_30px_-14px_rgba(17,17,17,0.32)]" data-testid="v3-reise-cta-knapp">
-              {n.cta} <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-            </Link>
+            <Knapp href={n.href} data-testid="v3-reise-cta-knapp">{n.cta}</Knapp>
           </div>
         </Avsloer>
       </div>

@@ -5,7 +5,7 @@ import {
   Check, ChevronRight, MessageSquare, Wrench, Home, Building2, Wallet, FileText,
   ShieldCheck, Sparkles, Star, CalendarDays, Send, Download,
 } from 'lucide-react';
-import { heading, EASE, Avsloer, useSynlig, Inn } from './motion';
+import { heading, EASE, display, Avsloer, useSynlig, Inn, Etikett } from './motion';
 
 /* ---------------------------------------------------------------------------
    Bento — «Alt på ett sted.» Fem celler med EKTE produktutsnitt i stor skala.
@@ -16,10 +16,10 @@ function Celle({ t, b, className = '', children, testid }) {
   const ref = useRef(null);
   const inne = useSynlig(ref, 0.35);
   return (
-    <div ref={ref} className={`group relative flex flex-col overflow-hidden rounded-[26px] bg-white ring-1 ring-black/[0.06] shadow-[0_1px_2px_rgba(23,18,12,0.04)] transition-[transform,box-shadow] duration-300 hover:-translate-y-[2px] hover:shadow-[0_28px_64px_-34px_rgba(23,18,12,0.24)] ${className}`} data-testid={testid}>
-      <div className="px-7 pt-7">
-        <p className="text-[21px] font-bold tracking-[-0.022em] text-[#0A0A0A]" style={heading}>{t}</p>
-        <p className="mt-1.5 text-[14.5px] leading-[1.55] text-[#6F6A60]">{b}</p>
+    <div ref={ref} className={`group relative flex flex-col overflow-hidden rounded-[16px] border border-[#E8E5DF] bg-white ${className}`} data-testid={testid}>
+      <div className="px-6 pt-6">
+        <p className="text-[19px] font-medium tracking-[-0.02em] text-[#0A0A0A]">{t}</p>
+        <p className="mt-1.5 text-[14.5px] leading-[1.55] text-[#52504B]">{b}</p>
       </div>
       <div className="relative mt-6 flex-1 overflow-hidden" aria-hidden="true">
         {typeof children === 'function' ? children(inne) : children}
@@ -31,7 +31,7 @@ function Celle({ t, b, className = '', children, testid }) {
 /* Utsnitt-ramme: lys produktflate som kuttes av cellekanten */
 function Flate({ className = '', children }) {
   return (
-    <div className={`mx-5 rounded-t-[18px] bg-[#F7F5F1] p-5 ring-1 ring-black/[0.05] ${className}`}>{children}</div>
+    <div className={`mx-5 rounded-t-[12px] border border-b-0 border-[#E8E5DF] bg-[#F7F5F1] p-5 ${className}`}>{children}</div>
   );
 }
 
@@ -59,7 +59,7 @@ function Okonomi({ inne }) {
           })}
         </div>
       </div>
-      <div className="mt-5 overflow-hidden rounded-[14px] bg-white ring-1 ring-black/[0.05]">
+      <div className="mt-5 overflow-hidden rounded-[14px] bg-white border border-[#E8E5DF]">
         {[
           ['Mars', 'Betalt 1. mars · KID', '18 500 kr'],
           ['Februar', 'Betalt 1. februar · KID', '18 500 kr'],
@@ -85,11 +85,11 @@ function Meldinger({ inne }) {
         <span><span className="block text-[13px] font-bold text-[#111827]" style={heading}>Jonas Berg</span><span className="block text-[10.5px] text-[#8d877d]">Leietaker · Marken 8</span></span>
       </div>
       <div className="mt-3 space-y-2">
-        <Inn vis={inne} delay={100} dy={8}><div className="max-w-[86%] rounded-[14px] rounded-bl-[5px] bg-white px-3.5 py-2.5 text-[12.5px] leading-[1.45] text-[#111827] ring-1 ring-black/[0.05]">Hei! Varmtvannet er borte 😬</div></Inn>
+        <Inn vis={inne} delay={100} dy={8}><div className="max-w-[86%] rounded-[14px] rounded-bl-[5px] bg-white px-3.5 py-2.5 text-[12.5px] leading-[1.45] text-[#111827] border border-[#E8E5DF]">Hei! Varmtvannet er borte 😬</div></Inn>
         <Inn vis={inne} delay={700} dy={8}><div className="ml-auto max-w-[90%] rounded-[14px] rounded-br-[5px] bg-[#111827] px-3.5 py-2.5 text-[12.5px] leading-[1.45] text-white">Takk for beskjed — sak er opprettet. Rørlegger kommer torsdag kl. 09:00.</div></Inn>
-        <Inn vis={inne} delay={1400} dy={8}><div className="max-w-[60%] rounded-[14px] rounded-bl-[5px] bg-white px-3.5 py-2.5 text-[12.5px] text-[#111827] ring-1 ring-black/[0.05]">Perfekt, takk! 🙏</div></Inn>
+        <Inn vis={inne} delay={1400} dy={8}><div className="max-w-[60%] rounded-[14px] rounded-bl-[5px] bg-white px-3.5 py-2.5 text-[12.5px] text-[#111827] border border-[#E8E5DF]">Perfekt, takk! 🙏</div></Inn>
       </div>
-      <div className="mt-3 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 ring-1 ring-black/[0.06]">
+      <div className="mt-3 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 border border-[#E8E5DF]">
         <span className="flex-1 text-[12px] text-[#a49e93]">Skriv en melding…</span>
         <Send className="h-3.5 w-3.5 text-[#6D4FB0]" />
       </div>
@@ -101,7 +101,7 @@ function Meldinger({ inne }) {
 function Dokumenter({ inne }) {
   return (
     <Flate className="h-[250px]">
-      <div className="overflow-hidden rounded-[14px] bg-white ring-1 ring-black/[0.05]">
+      <div className="overflow-hidden rounded-[14px] bg-white border border-[#E8E5DF]">
         {[
           ['Leiekontrakt — Marken 8', 'Signert med BankID · 12. jan 2025', true],
           ['Depositumsavtale', 'Signert med BankID · 12. jan 2025', true],
@@ -130,7 +130,7 @@ function Saker({ inne }) {
         <span className="inline-flex items-center gap-1 rounded-full bg-[#effaf0] px-2 py-[3px] text-[10px] font-bold text-[#157347]" style={{ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'scale(0.7)', transition: `opacity 500ms ${EASE} 1500ms, transform 500ms ${EASE} 1500ms` }}><Check className="h-3 w-3" strokeWidth={3} /> Håndtert</span>
       </div>
       <p className="mt-0.5 text-[11px] text-[#8d877d]">Meldt av leietaker · tirsdag 21:14 · Bad</p>
-      <div className="mt-3 rounded-[14px] bg-white p-3.5 ring-1 ring-black/[0.05]">
+      <div className="mt-3 rounded-[14px] bg-white p-3.5 border border-[#E8E5DF]">
         <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#6D4FB0]"><Sparkles className="h-3 w-3" /> Foreslått av DigiHome</p>
         <div className="mt-2.5 flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-[11px] bg-[#F7F5F1]"><Wrench className="h-[17px] w-[17px] text-[#57534e]" strokeWidth={1.7} /></span>
@@ -206,21 +206,21 @@ function Telefon({ inne = true }) {
 export default function Bento() {
   return (
     <section id="produkt" className="scroll-mt-20" data-testid="v3-bento">
-      <div className="mx-auto w-full max-w-[1320px] px-6 py-24 sm:px-10 sm:py-32">
+      <div className="mx-auto w-full max-w-[1280px] px-6 py-20 sm:px-8 sm:py-28">
         <Avsloer>
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-end">
             <div>
-              <p className="e-label !text-[#7c7466]">Alt på ett sted</p>
-              <h2 className="e-display mt-4 max-w-[12ch] text-[38px] sm:text-[52px] lg:text-[64px]">Ikke fem verktøy. Ett<span className="text-[#cf97fc]">.</span></h2>
+              <Etikett>Alt på ett sted</Etikett>
+              <h2 className="mt-3 max-w-[12ch] text-[34px] sm:text-[44px] lg:text-[52px]" style={display}>Ikke fem verktøy. Ett<span className="text-[#cf97fc]">.</span></h2>
             </div>
-            <p className="max-w-[46ch] text-[16px] leading-[1.65] text-[#6F6A60] sm:text-[17px] lg:pb-3">
+            <p className="max-w-[46ch] text-[16px] leading-[1.55] text-[#52504B] sm:text-[17px] lg:pb-2">
               Meldinger, dokumenter, økonomi og saker bor i samme system — for deg,
               leietakeren og forvalteren. Alle ser det samme. Ingen leter i innboksen.
             </p>
           </div>
         </Avsloer>
 
-        <div className="mt-12 grid gap-4 sm:mt-16 lg:grid-cols-3 lg:gap-5">
+        <div className="mt-10 grid gap-4 sm:mt-12 lg:grid-cols-3">
           <Avsloer className="lg:col-span-2"><Celle t="Økonomi som stemmer" b="Husleie, KID og oppgjør — betalt i tide, hver måned. Eksporter til regnskapet med ett klikk." className="h-full" testid="v3-celle-okonomi">{(inne) => <Okonomi inne={inne} />}</Celle></Avsloer>
           <Avsloer delay={90}><Celle t="Én samtale" b="Leietaker, eier og forvalter i samme tråd. Saker opprettes rett fra meldingen." className="h-full" testid="v3-celle-meldinger">{(inne) => <Meldinger inne={inne} />}</Celle></Avsloer>
           <Avsloer><Celle t="Dokumenter med bevis" b="Kontrakt, depositum og protokoll — signert med BankID og lagret der de hører hjemme." className="h-full" testid="v3-celle-dokumenter">{(inne) => <Dokumenter inne={inne} />}</Celle></Avsloer>

@@ -7486,3 +7486,19 @@ agent_communication:
 agent_communication:
     -agent: "main"
     -message: "Forside V3 shippet paa /v3 (ikke brukerbekreftet). Root / er uroert til bruker godkjenner. Frontend-testagent ikke kjoert (krever brukertillatelse). Referanseklone av produktrepo ligger i /tmp/dh-ref (ikke varig; token skrubbet fra remote)."
+
+  - task: "Forside V3 — pass 2+3: fullbredde-nav (OpenAI-stil), hero i tre produktvisninger, designresett (Linear-stille)"
+    implemented: true
+    working: true
+    file: "/app/components/forside/v3/{ForsideV3,Nav,HeroPortal,Reisen,Bento,Seksjoner,motion}.js, /app/components/forside/HeroVindu.js (kun ny navngitt eksport FlateOversikt)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Bruker: 'ser ikke bra/moderne ut' + 'sammenlign med Linear'. Diagnose: fet display-type, versal-etiketter, lilla blobs/skygger, kjempefliser, svevende kontroller. Resett: hvit canvas, all display-typografi i ABC Diatype Medium (Right Grotesk kun inne i produktmocker), setningsform (ny Etikett), ingen blobs, radius 10-16, små knapper (ny Knapp/Lenke 40px). Nav: full bredde 64px, lenker venstre uten chevroner, mega-paneler (Produkt/Løsninger/Ressurser), mobil fullskjerm-ark. Hero: mye luft, H1 76px medium, én undertekst, Knapp + tekstlenke; produktvindu i 1:1 (zoom 0.8) som fader inn i siden; liten nivåvelger over vinduet. HeroPortal morfer mellom Selvbetjent (eierportal), Forvaltning (Din forvalter-flis, 'Følges opp av forvalter', badge Forvaltet av DigiHome) og Portefølje (forvalter-sidemeny + FlateOversikt). Reisen: velger + stegpiller i panelets topplinje; kapitler uten skinne/kjempesiffer. Bildebrudd (bergen-aerial.webp). Bento levende ved innrulling. Sticky mobil-CTA. Screenshot-verifisert 1920x1040 + 390. Ingen konsollfeil."
+
+agent_communication:
+    -agent: "main"
+    -message: "V3 designresett shippet paa /v3 (ikke brukerbekreftet). Root / fortsatt uroert. Frontend-testagent ikke kjoert (krever tillatelse)."

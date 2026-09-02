@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 
 /* ---------------------------------------------------------------------------
    Bevegelsesverktøy for forside-V3.
@@ -10,6 +12,52 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 export const heading = { fontFamily: 'var(--font-heading), sans-serif' };
 export const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
+/* Designtokens V3 — hvit canvas, ink, hårlinjer. Lilla kun som punktum/aktiv chip. */
+export const T = {
+  ink: '#0A0A0A',
+  ink2: '#3A3733',
+  sek: '#52504B',
+  ter: '#8A867F',
+  hair: '#E8E5DF',
+  hair2: '#DDD9D1',
+  band: '#F4F2EE',
+  flate: '#F7F5F1',
+  lilla: '#CF97FC',
+  lillaSoft: '#F1EAFB',
+  lillaText: '#6D4FB0',
+};
+
+/* Etikett — 13 px, medium, setningsform. Aldri versaler. */
+export function Etikett({ children, className = '', mork = false }) {
+  return <p className={`text-[13px] font-medium ${mork ? 'text-white/55' : 'text-[#8A867F]'} ${className}`}>{children}</p>;
+}
+
+/* Display-typografi V3 — Diatype Medium (Inter Display-følelse), rolig tracking.
+   Right Grotesk Bold brukes kun inne i produktmockene, slik appen selv gjør. */
+export const display = { fontFamily: 'var(--font-body), sans-serif', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.06, textWrap: 'balance' };
+
+/* Knapper V3 — små, rolige. 40 px, radius 10. */
+const KNAPP = {
+  primar: 'bg-[#0A0A0A] text-white hover:bg-[#232323]',
+  sekundar: 'border border-[#DDD9D1] bg-white text-[#0A0A0A] hover:border-[#0A0A0A]',
+  lys: 'bg-white text-[#0A0A0A] hover:bg-[#F1EFEA]',
+};
+export function Knapp({ href, variant = 'primar', size = 'md', className = '', children, ...rest }) {
+  const h = size === 'sm' ? 'h-8 px-3 text-[13px] rounded-[8px]' : 'h-10 px-4 text-[14px] rounded-[10px]';
+  const cls = `inline-flex items-center justify-center gap-2 font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] focus-visible:ring-offset-2 ${h} ${KNAPP[variant]} ${className}`;
+  if (href && href.startsWith('#')) return <a href={href} className={cls} {...rest}>{children}</a>;
+  if (href) return <Link href={href} prefetch className={cls} {...rest}>{children}</Link>;
+  return <button type="button" className={cls} {...rest}>{children}</button>;
+}
+
+/* Tekstlenke med pil */
+export function Lenke({ href, className = '', children, ...rest }) {
+  const cls = `group inline-flex items-center gap-1.5 text-[14px] font-medium text-[#0A0A0A] transition-colors hover:text-[#52504B] ${className}`;
+  const pil = <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" strokeWidth={1.8} />;
+  if (href.startsWith('#')) return <a href={href} className={cls} {...rest}>{children}{pil}</a>;
+  return <Link href={href} className={cls} {...rest}>{children}{pil}</Link>;
+}
 
 export function useRedusert() {
   const [r, setR] = useState(false);

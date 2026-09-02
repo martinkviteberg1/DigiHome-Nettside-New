@@ -82,7 +82,7 @@ function Hurtig({ Ikon, l }) {
 function Toast({ vis, Ikon, farge, bg, t, s }) {
   return (
     <div
-      className="pointer-events-none absolute right-5 top-5 z-20 flex w-[300px] items-center gap-3 rounded-[16px] bg-white p-3.5 shadow-[0_18px_48px_-18px_rgba(23,18,12,0.28),0_0_0_1px_rgba(0,0,0,0.06)] sm:right-8 sm:top-7"
+      className="pointer-events-none absolute right-5 top-5 z-20 flex w-[300px] items-center gap-3 rounded-[12px] bg-white p-3.5 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.22),0_0_0_1px_rgba(0,0,0,0.06)] sm:right-8 sm:top-7"
       style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-10px) scale(0.98)', transition: `opacity 520ms ${EASE}, transform 520ms ${EASE}` }}
       aria-hidden={!vis}
     >
@@ -98,9 +98,7 @@ function Toast({ vis, Ikon, farge, bg, t, s }) {
 /* Mørk flis (INK_HERO) — delt av inntekt, leietaker og forvalter */
 function Flis({ className = '', children }) {
   return (
-    <div className={`relative overflow-hidden rounded-[22px] p-6 sm:p-7 ${className}`} style={{ background: INK_HERO }}>
-      <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full" style={{ background: 'radial-gradient(circle,#CF97FC33,transparent 70%)' }} />
-      <div className="absolute inset-x-0 top-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,#CF97FC55,transparent)' }} />
+    <div className={`relative overflow-hidden rounded-[16px] p-5 sm:p-6 ${className}`} style={{ background: INK_HERO }}>
       <div className="relative flex h-full flex-col">{children}</div>
     </div>
   );
@@ -171,7 +169,7 @@ function Rad({ tone, Ikon, eyebrow, t, s, knapper }) {
     ink: { bg: '#ffffff', ic: '#6D4FB0', icbg: '#6D4FB014', bd: '#E5E7EB' },
   }[tone];
   return (
-    <div className="flex items-center gap-4 rounded-[18px] border p-4" style={{ background: c.bg, borderColor: c.bd }}>
+    <div className="flex items-center gap-4 rounded-[14px] border p-4" style={{ background: c.bg, borderColor: c.bd }}>
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px]" style={{ background: c.icbg }}><Ikon className="h-5 w-5" style={{ color: c.ic }} strokeWidth={1.7} /></span>
       <span className="min-w-0 flex-1">
         {eyebrow && <span className="block text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: c.ic }}>{eyebrow}</span>}
@@ -245,7 +243,7 @@ function Eierportal({ managed, er, navn }) {
         <p className="text-[20px] font-bold tracking-[-0.025em] text-[#111827]" style={heading}>Din bolig</p>
         <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#6D4FB0]">Se detaljer <ArrowUpRight className="h-3.5 w-3.5" /></span>
       </div>
-      <div className="mt-4 flex overflow-hidden rounded-[20px] border border-[#E5E7EB] bg-white">
+      <div className="mt-4 flex overflow-hidden rounded-[14px] border border-[#E5E7EB] bg-white">
         <div className="relative h-[150px] w-[240px] shrink-0 overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/interior-kitchen.webp" alt="" loading="lazy" className="h-full w-full object-cover" />
@@ -269,7 +267,7 @@ function Eierportal({ managed, er, navn }) {
 function Sidemeny({ portefolje, meldinger }) {
   const nav = portefolje ? NAV_FORVALTER : NAV_EIER;
   return (
-    <aside className="hidden w-[228px] shrink-0 flex-col border-r border-[#2A2233] bg-[#1B1423] px-4 pb-5 pt-6 lg:flex">
+    <aside className="hidden w-[212px] shrink-0 flex-col border-r border-[#2A2233] bg-[#1B1423] px-4 pb-5 pt-6 lg:flex">
       <div className="flex items-center justify-between px-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/digihome-logo-white.svg" alt="" className="h-[18px] w-auto" />
@@ -334,14 +332,12 @@ export default function HeroPortal({ nivaa = 0 }) {
 
   return (
     <div ref={rot} className="relative" data-testid="v3-hero-portal" data-nivaa={nivaa}>
-      <div className="relative isolate h-[600px] overflow-hidden rounded-[22px] bg-[#F7F5F1] shadow-[0_70px_140px_-56px_rgba(84,50,160,0.28),0_24px_56px_-32px_rgba(23,18,12,0.16),0_0_0_1px_rgba(0,0,0,0.06)] sm:h-[640px] sm:rounded-[28px] lg:h-[700px]" aria-hidden="true">
-        <div className="flex h-full items-stretch">
+      <div className="relative isolate h-[820px] overflow-hidden rounded-[12px] border border-[#E5E2DC] bg-[#F7F5F1] shadow-[0_1px_2px_rgba(0,0,0,0.03),0_24px_48px_-32px_rgba(0,0,0,0.14)]" aria-hidden="true">
+        <div className="flex h-full items-stretch" style={{ zoom: desktop ? 0.8 : 0.9 }}>
           <Sidemeny portefolje={portefolje} meldinger={er('melding')} />
 
           {/* Innhold */}
           <div className="relative min-w-0 flex-1">
-            {/* Myk avslutning mot bunnen — innholdet «titter» ut under kanten, sidemenyen står */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[120px]" style={{ background: 'linear-gradient(180deg, rgba(247,245,241,0) 0%, rgba(247,245,241,0.92) 72%, #F7F5F1 100%)' }} />
 
             {/* Eierportal (selv / forvaltning) */}
             <div className="absolute inset-0 px-5 pt-6 sm:px-9 sm:pt-8 lg:px-11 lg:pt-9" style={{ opacity: portefolje ? 0 : 1, transform: portefolje ? 'translateY(10px)' : 'none', transition: `opacity 560ms ${EASE}, transform 560ms ${EASE}` }}>
@@ -350,7 +346,7 @@ export default function HeroPortal({ nivaa = 0 }) {
 
             {/* Porteføljedashbord (forvalter) — appens ekte dashbord, skalert opp til lesbar størrelse */}
             <div className="absolute inset-0 bg-[#FAFAF8]" style={{ opacity: portefolje ? 1 : 0, transform: portefolje ? 'none' : 'translateY(10px)', transition: `opacity 560ms ${EASE}, transform 560ms ${EASE}` }}>
-              <div style={{ zoom: desktop ? 1.28 : 0.92 }}><FlateOversikt /></div>
+              <div style={{ zoom: desktop ? 1.36 : 1 }}><FlateOversikt /></div>
             </div>
           </div>
         </div>
