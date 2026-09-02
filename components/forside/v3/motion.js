@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 /* ---------------------------------------------------------------------------
-   Bevegelsesverktøy for forside-V3.
+   Bevegelses- og designverktøy for forside-V3.
    Én regel: produktet beveger seg, siden gjør det ikke.
    Kun opacity/transform. prefers-reduced-motion → stabilt sluttbilde.
 --------------------------------------------------------------------------- */
@@ -13,41 +13,54 @@ import { ArrowRight } from 'lucide-react';
 export const heading = { fontFamily: 'var(--font-heading), sans-serif' };
 export const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
-/* Designtokens V3 — mørk, kinematisk (Linear-klasse). Én aksent: lilla. */
+/* Designtokens V3 — light-first brand, mørk som kinematisk virkemiddel.
+   Mørk canvas har en knapt synlig varm/lilla undertone så den harmonerer
+   med aksenten i stedet for å bli «#000 tech startup». */
 export const T = {
-  bg: '#0A0A0B',
-  flate: '#111113',
-  flate2: '#16161A',
-  lilla: '#CF97FC',
-  lillaText: '#D9B4FF',
+  bg: '#0D0B0F',        // mørk canvas (hero, Bergen-bånd, CTA, footer)
+  flate: '#141118',     // mørk flate
+  lys: '#FAF8F4',       // lys canvas — varm off-white
+  lysFlate: '#F3F0EA',  // lys produktflate
+  ink: '#0F0E10',
+  lilla: '#D496FF',     // aksent — kun punktum i H1 og «?» i CTA
+  lillaInk: '#6D4FB0',
+  lillaLys: '#F4EFFA',
 };
 
-/* Etikett — 13 px, medium, setningsform. Aldri versaler. */
-export function Etikett({ children, className = '', mork = true }) {
+/* Tall med ubrytelig mellomrom som tusenskille (norsk konvensjon).
+   U+00A0 — ikke U+202F: Right Grotesk mangler den smale glyfen. De store
+   tallene bruker ikke tabular-nums, så mellomrommet f\u00e5r normal bredde. */
+export const tall = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
+
+/* Etikett — 13 px, medium, setningsform. Aldri versaler. Lys er standard. */
+export function Etikett({ children, className = '', mork = false }) {
   return <p className={`text-[13px] font-medium ${mork ? 'text-white/45' : 'text-[#8A867F]'} ${className}`}>{children}</p>;
 }
 
-/* Display-typografi V3 — Diatype Medium (Inter Display-følelse), rolig tracking.
+/* Display-typografi V3 — Diatype Medium, rolig tracking.
    Right Grotesk Bold brukes kun inne i produktmockene, slik appen selv gjør. */
 export const display = { fontFamily: 'var(--font-body), sans-serif', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.06, textWrap: 'balance' };
 
-/* Knapper V3 — små, rolige. 40 px, radius 10. */
+/* Knapper V3 — små, rolige. 40 px, radius 10.
+   primar/sekundar på mørk flate · lys/lysSekundar på lys flate. */
 const KNAPP = {
-  primar: 'bg-white text-[#0A0A0B] hover:bg-[#E9E6E0]',
+  primar: 'bg-white text-[#0F0E10] hover:bg-[#EEE9E0]',
   sekundar: 'border border-white/15 bg-white/[0.03] text-white hover:border-white/40 hover:bg-white/[0.06]',
-  lys: 'bg-[#0A0A0B] text-white hover:bg-[#232326]',
+  lys: 'bg-[#0F0E10] text-white hover:bg-[#2A2730]',
+  lysSekundar: 'border border-[#0F0E10]/15 text-[#0F0E10] hover:border-[#0F0E10]/40 hover:bg-[#0F0E10]/[0.04]',
 };
 export function Knapp({ href, variant = 'primar', size = 'md', className = '', children, ...rest }) {
   const h = size === 'sm' ? 'h-8 px-3 text-[13px] rounded-[8px]' : 'h-10 px-4 text-[14px] rounded-[10px]';
-  const cls = `inline-flex items-center justify-center gap-2 font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0B] ${h} ${KNAPP[variant]} ${className}`;
+  const cls = `inline-flex items-center justify-center gap-2 font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D496FF]/70 ${h} ${KNAPP[variant]} ${className}`;
   if (href && href.startsWith('#')) return <a href={href} className={cls} {...rest}>{children}</a>;
   if (href) return <Link href={href} prefetch className={cls} {...rest}>{children}</Link>;
   return <button type="button" className={cls} {...rest}>{children}</button>;
 }
 
-/* Tekstlenke med pil */
-export function Lenke({ href, className = '', children, ...rest }) {
-  const cls = `group inline-flex items-center gap-1.5 text-[14px] font-medium text-white transition-colors hover:text-white/70 ${className}`;
+/* Tekstlenke med pil — ink på lys flate, hvit på mørk (mork) */
+export function Lenke({ href, mork = false, className = '', children, ...rest }) {
+  const farge = mork ? 'text-white hover:text-white/70' : 'text-[#0F0E10] hover:text-[#0F0E10]/60';
+  const cls = `group inline-flex items-center gap-1.5 text-[14px] font-medium transition-colors ${farge} ${className}`;
   const pil = <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" strokeWidth={1.8} />;
   if (href.startsWith('#')) return <a href={href} className={cls} {...rest}>{children}{pil}</a>;
   return <Link href={href} className={cls} {...rest}>{children}{pil}</Link>;

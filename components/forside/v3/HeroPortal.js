@@ -3,29 +3,19 @@
 import React, { useRef } from 'react';
 import {
   LayoutDashboard, Building2, Users, MessageSquare, FileText, DollarSign, Settings,
-  ArrowRight, TrendingUp, FileSignature, Wallet, Wrench, CheckCircle2, Sparkles,
-  ChevronRight, MapPin, ArrowUpRight, Check, Bell, HelpCircle, ChevronDown, ShieldCheck,
-  Briefcase, ClipboardList, Phone, Mail, Inbox, CalendarDays, Clock, TrendingUp as Salg,
-  BookOpen, Landmark, LayoutGrid,
+  ArrowRight, TrendingUp, FileSignature, Wrench, CheckCircle2, Sparkles,
+  ChevronRight, Check, Bell, HelpCircle, ChevronDown,
 } from 'lucide-react';
-import { FlateOversikt } from '@/components/forside/HeroVindu';
-import { NivaaVelger } from './Reisen';
-import { heading, EASE, useKoreografi, useSynlig, useMedia, Bytt, Stakk } from './motion';
+import { heading, EASE, useKoreografi, useSynlig, useMedia, Bytt, Stakk, tall } from './motion';
 
 /* ---------------------------------------------------------------------------
-   HeroPortal — produktet slik det faktisk er, i tre grader av autopilot.
-   · Selvbetjent   → eierportalen (OwnerDashboard B1, isSelfService)
-   · Forvaltning   → samme eier, «Forvaltet av DigiHome»: Din forvalter-flis,
-                     saker «følges opp av forvalter»  (managed)
-   · Portefølje    → forvalterens dashbord (AdminDashboard) m/ forvalter-sidemeny
-   Fasit: portal/OwnerDashboard.tsx + OwnerLayout.tsx i produktrepoet.
-   Levende: sak → håndtert → alt i orden → husleie mottatt → ny melding.
-   Kun opacity/transform. Looper rolig når vinduet er synlig.
+   HeroPortal — eierportalen i én ferdig, stille tilstand.
+   Rammeløst: ingen nettleser-chrome, ingen trafikklys. Appen bærer seg selv
+   (sidemeny + innhold). Kuratert: færre elementer, større skala, én historie:
+   sak venter → håndtert → alt i orden → husleie mottatt → ny melding.
 --------------------------------------------------------------------------- */
 
-const INK_HERO = 'linear-gradient(150deg,#2E2547 0%,#1A1612 58%,#171310 100%)';
-
-const NAV_EIER = [
+const NAV = [
   [LayoutDashboard, 'Oversikt', true],
   [Building2, 'Boligen min', false],
   [Users, 'Leietakere', false],
@@ -35,22 +25,7 @@ const NAV_EIER = [
   [Settings, 'Innstillinger', false],
 ];
 
-const NAV_FORVALTER = [
-  [LayoutGrid, 'Oversikt', true],
-  [Inbox, 'Innboks', false],
-  [CalendarDays, 'Kalender', false],
-  [Clock, 'Operasjonssentral', false],
-  [Building2, 'Eiendommer', false],
-  [Salg, 'Salg', false],
-  [ClipboardList, 'Saker', false],
-  [BookOpen, 'Driftshåndbok', false],
-  [FileText, 'Kontrakter', false],
-  [Wallet, 'Økonomi', false],
-  [Wrench, 'Leverandører', false],
-  [Users, 'Brukere', false],
-];
-
-/* Alltid komplett: hver fase er et ferdig bilde. Ingen tom starttilstand. */
+/* Alltid komplett: hver fase er et ferdig bilde. */
 const TRINN = [
   { navn: 'sak', ms: 4200 },
   { navn: 'booket', ms: 3600 },
@@ -60,30 +35,10 @@ const TRINN = [
   { navn: 'slutt', ms: 3000 },
 ];
 
-function Ring({ pct = 100, size = 40, stroke = 4 }) {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      <circle cx={size / 2} cy={size / 2} r={r} stroke="#ECE8E0" strokeWidth={stroke} fill="none" />
-      <circle cx={size / 2} cy={size / 2} r={r} stroke="#15803d" strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
-    </svg>
-  );
-}
-
-function Hurtig({ Ikon, l }) {
-  return (
-    <span className="inline-flex h-[38px] shrink-0 items-center gap-2 rounded-full border border-[#E5E7EB] bg-white pl-2 pr-4">
-      <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[#F1EAFB]"><Ikon className="h-[13px] w-[13px] text-[#6D4FB0]" strokeWidth={1.7} /></span>
-      <span className="whitespace-nowrap text-[12.5px] font-semibold text-[#111827]">{l}</span>
-    </span>
-  );
-}
-
 function Toast({ vis, Ikon, farge, bg, t, s }) {
   return (
     <div
-      className="pointer-events-none absolute right-5 top-5 z-20 flex w-[300px] items-center gap-3 rounded-[12px] bg-white p-3.5 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.22),0_0_0_1px_rgba(0,0,0,0.06)] sm:right-8 sm:top-7"
+      className="pointer-events-none absolute right-6 top-6 z-20 flex w-[300px] items-center gap-3 rounded-[12px] bg-white p-3.5 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.22),0_0_0_1px_rgba(0,0,0,0.06)] sm:right-8 sm:top-8"
       style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-10px) scale(0.98)', transition: `opacity 520ms ${EASE}, transform 520ms ${EASE}` }}
       aria-hidden={!vis}
     >
@@ -96,7 +51,6 @@ function Toast({ vis, Ikon, farge, bg, t, s }) {
   );
 }
 
-/* Lys flis — hvit, hårlinje. Rolig nok for en hero; strukturen er appens. */
 function Flis({ className = '', children }) {
   return (
     <div className={`relative overflow-hidden rounded-[14px] border border-[#E5E7EB] bg-white p-5 ${className}`}>
@@ -105,20 +59,20 @@ function Flis({ className = '', children }) {
   );
 }
 
-const Under = ({ children }) => <p className="text-[11px] font-medium text-[#6B7280]">{children}</p>;
+const Under = ({ children }) => <p className="text-[11.5px] font-medium text-[#6B7280]">{children}</p>;
 
 function Inntekt() {
   return (
     <Flis>
       <Under>Månedlig leieinntekt</Under>
-      <p className="mt-2 text-[40px] font-bold leading-[0.95] tracking-[-0.035em] text-[#111827] tabular-nums" style={heading}>18 500 <span className="text-[16px] font-normal text-[#9CA3AF]">kr</span></p>
-      <div className="mt-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-[#F4F2EE] py-1 pl-2 pr-2.5 text-[11.5px] text-[#52504B]"><TrendingUp className="h-3.5 w-3.5 text-[#6D4FB0]" strokeWidth={2} /> 222 000 kr estimert i år</span></div>
+      <p className="mt-2 text-[42px] font-bold leading-[0.95] tracking-[-0.035em] text-[#111827]" style={heading}>{tall(18500)} <span className="text-[16px] font-normal text-[#9CA3AF]">kr</span></p>
+      <div className="mt-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-[#F4F2EE] py-1 pl-2 pr-2.5 text-[11.5px] text-[#52504B]"><TrendingUp className="h-3.5 w-3.5 text-[#6D4FB0]" strokeWidth={2} /> {tall(222000)} kr estimert i år</span></div>
       <div className="mt-auto pt-5"><span className="inline-flex h-9 items-center gap-2 rounded-[9px] bg-[#111827] px-3.5 text-[12.5px] font-semibold text-white">Se full økonomi <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} /></span></div>
     </Flis>
   );
 }
 
-function Leietaker({ betalt, managed }) {
+function Leietaker({ betalt }) {
   return (
     <Flis className="hidden sm:block">
       <Under>Din leietaker</Under>
@@ -133,39 +87,19 @@ function Leietaker({ betalt, managed }) {
         </span>
       </div>
       <div className="mt-3 flex gap-6 border-t border-[#F3F4F6] pt-3">
-        <div><p className="text-[10px] text-[#9CA3AF]">Utleid siden</p><p className="mt-0.5 text-[12.5px] font-semibold text-[#111827]">Januar 2025</p></div>
-        <div><p className="text-[10px] text-[#9CA3AF]">Leieperiode</p><p className="mt-0.5 text-[12.5px] font-semibold text-[#111827]">Løpende</p></div>
+        <div><p className="text-[10.5px] text-[#9CA3AF]">Utleid siden</p><p className="mt-0.5 text-[12.5px] font-semibold text-[#111827]">Januar 2025</p></div>
+        <div><p className="text-[10.5px] text-[#9CA3AF]">Leieperiode</p><p className="mt-0.5 text-[12.5px] font-semibold text-[#111827]">Løpende</p></div>
       </div>
       <div className="mt-auto flex gap-2 pt-4">
-        {!managed && <span className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-[9px] bg-[#111827] text-[12px] font-semibold text-white"><MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} /> Send melding</span>}
-        <span className={`inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-[9px] text-[12px] font-semibold ${managed ? 'bg-[#111827] text-white' : 'border border-[#E5E7EB] bg-white text-[#111827]'}`}><FileSignature className="h-3.5 w-3.5" strokeWidth={1.8} /> Se kontrakt</span>
+        <span className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-[9px] bg-[#111827] text-[12px] font-semibold text-white"><MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} /> Send melding</span>
+        <span className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-[9px] border border-[#E5E7EB] bg-white text-[12px] font-semibold text-[#111827]"><FileSignature className="h-3.5 w-3.5" strokeWidth={1.8} /> Se kontrakt</span>
       </div>
     </Flis>
   );
 }
 
-function Forvalter() {
-  return (
-    <Flis className="hidden lg:block">
-      <Under>Din forvalter</Under>
-      <div className="mt-3 flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#111827] text-[13px] font-bold text-white" style={heading}>IH</span>
-        <span className="min-w-0">
-          <span className="block truncate text-[16px] font-bold text-[#111827]" style={heading}>Ingrid Haugen</span>
-          <span className="mt-0.5 inline-flex items-center gap-1.5 text-[11.5px] text-[#157347]"><ShieldCheck className="h-3.5 w-3.5" strokeWidth={2} /> Forvaltet av DigiHome</span>
-        </span>
-      </div>
-      <div className="mt-3 space-y-1.5 border-t border-[#F3F4F6] pt-3">
-        <p className="flex items-center gap-2 text-[12px] text-[#52504B]"><Phone className="h-3.5 w-3.5 text-[#9CA3AF]" strokeWidth={1.9} /> 55 00 00 00</p>
-        <p className="flex items-center gap-2 text-[12px] text-[#52504B]"><Mail className="h-3.5 w-3.5 text-[#9CA3AF]" strokeWidth={1.9} /> ingrid@digihome.no</p>
-      </div>
-      <div className="mt-auto pt-4"><span className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-[9px] border border-[#E5E7EB] bg-white text-[12px] font-semibold text-[#111827]"><MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} /> Send melding</span></div>
-    </Flis>
-  );
-}
-
-/* Oppmerksomhetsrad — tone og innhold etter modus */
-function Rad({ tone, Ikon, eyebrow, t, s, knapper }) {
+/* Oppmerksomhetsrad — tone og innhold etter tilstand */
+function Rad({ tone, Ikon, etikett, t, s, knapper }) {
   const c = {
     warning: { bg: '#fffbeb', ic: '#b45309', icbg: '#f59e0b1a', bd: '#f59e0b33' },
     calm: { bg: '#f0fdf4', ic: '#15803d', icbg: '#15803d14', bd: '#15803d26' },
@@ -175,169 +109,96 @@ function Rad({ tone, Ikon, eyebrow, t, s, knapper }) {
     <div className="flex items-center gap-4 rounded-[14px] border p-4" style={{ background: c.bg, borderColor: c.bd }}>
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px]" style={{ background: c.icbg }}><Ikon className="h-5 w-5" style={{ color: c.ic }} strokeWidth={1.7} /></span>
       <span className="min-w-0 flex-1">
-        {eyebrow && <span className="block text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: c.ic }}>{eyebrow}</span>}
+        {etikett && <span className="block text-[11px] font-semibold" style={{ color: c.ic }}>{etikett}</span>}
         <span className="flex items-center gap-1.5 truncate text-[14.5px] font-semibold text-[#111827]">{t}</span>
         <span className="block truncate text-[12px] text-[#6B7280]">{s}</span>
       </span>
       {knapper ? (
         <span className="hidden shrink-0 gap-2 sm:flex">
-          <span className="inline-flex h-9 items-center rounded-[12px] border border-[#e5e2dd] px-4 text-[13px] font-medium text-[#6B7280]">Avslå</span>
-          <span className="inline-flex h-9 items-center rounded-[12px] bg-[#111827] px-5 text-[13px] font-semibold text-white">Godkjenn</span>
+          <span className="inline-flex h-9 items-center rounded-[10px] border border-[#e5e2dd] px-4 text-[13px] font-medium text-[#6B7280]">Avslå</span>
+          <span className="inline-flex h-9 items-center rounded-[10px] bg-[#111827] px-5 text-[13px] font-semibold text-white">Godkjenn</span>
         </span>
       ) : <ChevronRight className="h-5 w-5 shrink-0 text-[#9CA3AF]" strokeWidth={1.8} />}
     </div>
   );
 }
 
-/* ── Eierportalen (Selvbetjent / Forvaltning) ── */
-function Eierportal({ managed, er, navn }) {
-  const harSak = er('sak') && !er('orden');
-  const idx = er('orden') ? 2 : er('booket') ? 1 : er('sak') ? 0 : 2;
-  return (
-    <div className="relative">
-      <Toast vis={navn === 'betalt'} Ikon={Check} farge="#15803d" bg="#effaf0" t="Husleie mottatt · 18 500 kr" s="Fra Jonas Berg · i dag 08:02 · KID" />
-      <Toast vis={navn === 'melding'} Ikon={Bell} farge="#6D4FB0" bg="#F1EAFB" t="Ny melding fra Jonas" s="«Takk for rask hjelp med varmtvannet!»" />
-
-      {/* Hilsen */}
-      <div className="flex items-center gap-4">
-        <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[#111827] text-[17px] font-bold text-white ring-2 ring-[#E5E7EB]" style={heading}>KN</span>
-        <div>
-          <p className="text-[12.5px] text-[#6B7280]">God morgen</p>
-          <p className="text-[34px] font-bold leading-[0.95] tracking-[-0.04em] text-[#111827] sm:text-[38px]" style={heading}>Kari <span className="inline-block">👋</span></p>
-        </div>
-      </div>
-      <div className="mt-2.5 flex flex-wrap items-center gap-2.5 sm:ml-[68px] sm:-mt-0.5">
-        <p className="text-[14px] text-[#6B7280]">
-          Marken 8 er utleid · 18 500 kr/mnd · <Bytt vis={harSak} a="Alt i orden" b={managed ? <span>forvalter følger opp 1 sak</span> : <span className="text-[#b45309]">1 sak venter</span>} />
-        </p>
-        <Stakk idx={managed ? 1 : 0}>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F1EAFB] px-2.5 py-[3px] text-[11px] font-semibold text-[#6D4FB0]"><Briefcase className="h-3 w-3" strokeWidth={2} /> Selvforvaltning</span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#effaf0] px-2.5 py-[3px] text-[11px] font-semibold text-[#157347]"><ShieldCheck className="h-3 w-3" strokeWidth={2} /> Forvaltet av DigiHome</span>
-        </Stakk>
-      </div>
-
-      {/* SingleHero */}
-      <Stakk idx={managed ? 1 : 0} className="mt-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.4fr_1fr]"><Inntekt /><Leietaker betalt={er('betalt')} managed={false} /></div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.4fr_1fr] lg:grid-cols-[1.35fr_1fr_1fr]"><Inntekt /><Leietaker betalt={er('betalt')} managed /><Forvalter /></div>
-      </Stakk>
-
-      {/* Hurtigvalg */}
-      <Stakk idx={managed ? 1 : 0} className="mt-4">
-        <div className="flex gap-2.5 overflow-hidden">{[[MessageSquare, 'Send melding'], [FileSignature, 'Se kontrakt'], [Wallet, 'Aktiver depositum'], [Wrench, 'Meld en sak'], [DollarSign, 'Se økonomi']].map(([I, l]) => <Hurtig key={l} Ikon={I} l={l} />)}</div>
-        <div className="flex gap-2.5 overflow-hidden">{[[MessageSquare, 'Send melding'], [FileSignature, 'Se kontrakt'], [DollarSign, 'Se avregning'], [Wrench, 'Meld en sak'], [ClipboardList, 'Dokumenter']].map(([I, l]) => <Hurtig key={l} Ikon={I} l={l} />)}</div>
-      </Stakk>
-
-      {/* Trenger din oppmerksomhet */}
-      <div className="mt-7 flex items-center gap-2.5">
-        <p className="text-[18px] font-bold tracking-[-0.025em] text-[#111827]" style={heading}>Trenger din oppmerksomhet</p>
-        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#6D4FB0] px-1.5 text-[11px] font-bold text-white tabular-nums" style={{ opacity: harSak && !managed ? 1 : 0, transform: harSak && !managed ? 'none' : 'scale(0.6)', transition: `opacity 400ms ${EASE}, transform 400ms ${EASE}` }}>1</span>
-      </div>
-      <Stakk idx={idx} className="mt-4">
-        {managed
-          ? <Rad tone="calm" Ikon={ShieldCheck} eyebrow="Følges opp av forvalter" t="Forvalteren følger opp 1 sak for deg" s="Varmtvannsbereder lekker · du trenger ikke gjøre noe — vi holder deg oppdatert." />
-          : <Rad tone="warning" Ikon={Wrench} eyebrow="Godkjenning kreves" t="Rørlegger AS — 3 450 kr" s="Varmtvannsbereder lekker · foreslått av DigiHome" knapper />}
-        <Rad tone="calm" Ikon={CheckCircle2} eyebrow={managed ? 'Håndtert av forvalter' : 'Godkjent · håndteres'} t="Rørlegger AS booket — torsdag kl. 09:00" s="Leietaker er varslet. Du trenger ikke gjøre noe mer." />
-        <Rad tone="ink" Ikon={CheckCircle2} t={<>Alt er i skjønneste orden <Sparkles className="h-4 w-4 text-[#6D4FB0]" /></>} s="Ingenting krever handling akkurat nå." />
-      </Stakk>
-
-    </div>
-  );
-}
-
-/* ── Sidemeny — eier eller forvalter ── */
-function Sidemeny({ portefolje, meldinger }) {
-  const nav = portefolje ? NAV_FORVALTER : NAV_EIER;
-  return (
-    <aside className="hidden w-[212px] shrink-0 flex-col border-r border-[#2A2233] bg-[#1B1423] px-4 pb-5 pt-6 lg:flex">
-      <div className="flex items-center justify-between px-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/digihome-logo-white.svg" alt="" className="h-[18px] w-auto" />
-        <span className="h-[6px] w-[6px] rounded-full bg-[#8146C4]" />
-      </div>
-      <Stakk idx={portefolje ? 1 : 0} className="mt-8">
-        {[NAV_EIER, NAV_FORVALTER].map((liste, li) => (
-          <nav key={li} className={li === 1 ? 'space-y-[1px]' : 'space-y-[3px]'}>
-            {liste.map(([Ikon, l, aktiv]) => {
-              const badge = l === 'Meldinger' && meldinger && !portefolje;
-              const kompakt = li === 1;
-              return (
-                <div key={l} className={`flex items-center gap-3 rounded-[12px] px-3 font-medium transition-colors duration-500 ${kompakt ? 'h-[33px] text-[12.5px]' : 'h-[40px] text-[13.5px]'} ${aktiv ? 'bg-white/[0.08] text-[#F3F1F7]' : 'text-[#9A94A8]'}`}>
-                  <Ikon className={kompakt ? 'h-[15px] w-[15px]' : 'h-[17px] w-[17px]'} strokeWidth={aktiv ? 2 : 1.7} />
-                  <span className="flex-1 truncate">{l}</span>
-                  {!kompakt && <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#8146C4] px-1.5 text-[10.5px] font-bold text-white" style={{ opacity: badge ? 1 : 0, transform: badge ? 'none' : 'scale(0.6)', transition: `opacity 400ms ${EASE}, transform 400ms ${EASE}` }}>1</span>}
-                </div>
-              );
-            })}
-          </nav>
-        ))}
-      </Stakk>
-      <div className="mt-auto">
-        {!portefolje && (
-          <div className="mb-4 inline-flex h-9 items-center gap-2 rounded-full border border-[#2A2733] bg-[#1B1822] pl-3 pr-3.5 text-[12px] font-medium text-[#C9A6F5]">
-            <HelpCircle className="h-[15px] w-[15px]" strokeWidth={2} /> Hjelp
-          </div>
-        )}
-        {portefolje && (
-          <div className="mb-3 space-y-[1px] border-t border-[#2A2233] pt-3">
-            {[[Landmark, 'Organisasjon'], [ShieldCheck, 'Superadmin']].map(([I, l]) => (
-              <div key={l} className="flex h-[30px] items-center gap-3 rounded-[10px] px-3 text-[12px] font-medium text-[#7C7686]"><I className="h-[14px] w-[14px]" strokeWidth={1.7} /> {l}</div>
-            ))}
-          </div>
-        )}
-        <div className="flex items-center gap-3 border-t border-[#2A2233] pt-4">
-          <Stakk idx={portefolje ? 1 : 0}>
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#D297FF]/20 text-[12px] font-bold text-[#E7D6FF]" style={heading}>KN</span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://randomuser.me/api/portraits/men/85.jpg" alt="" loading="lazy" className="h-9 w-9 rounded-full object-cover" />
-          </Stakk>
-          <span className="min-w-0 flex-1">
-            <Stakk idx={portefolje ? 1 : 0}>
-              <span><span className="block truncate text-[13px] font-semibold text-[#F3F1F7]">Kari Nordvik</span><span className="block truncate text-[11px] text-[#7C7686]">Huseier</span></span>
-              <span><span className="block truncate text-[13px] font-semibold text-[#F3F1F7]">Martin Kviteberg</span><span className="block truncate text-[11px] text-[#7C7686]">Forvalter</span></span>
-            </Stakk>
-          </span>
-          <ChevronDown className="h-4 w-4 text-[#7C7686]" />
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-export default function HeroPortal({ nivaa = 0, setNivaa }) {
+export default function HeroPortal() {
   const rot = useRef(null);
   const synlig = useSynlig(rot, 0.2);
   const { er, navn } = useKoreografi(TRINN, synlig);
-  const managed = nivaa === 1;
-  const portefolje = nivaa === 2;
   const desktop = useMedia('(min-width: 1024px)');
-  const kontekst = ['Eierportal · Kari Nordvik', 'Eierportal · Kari Nordvik · forvaltet', 'Forvalterflate · DigiHome Forvaltning'];
+  const harSak = er('sak') && !er('orden');
+  const idx = er('orden') ? 2 : er('booket') ? 1 : 0;
 
   return (
-    <div ref={rot} className="relative" data-testid="v3-hero-portal" data-nivaa={nivaa}>
-      <div className="relative isolate overflow-hidden rounded-[12px] border border-white/[0.12] bg-[#F7F5F1] shadow-[0_0_0_1px_rgba(0,0,0,0.6),0_60px_120px_-40px_rgba(0,0,0,0.9)]">
-        {/* Topplinje — kontekst + velger. Velgeren hører til vinduet. */}
-        <div className="flex h-[46px] items-center justify-between gap-4 border-b border-white/[0.08] bg-[#141416] px-3 sm:px-4">
-          <div className="flex min-w-0 items-center gap-2.5 text-[12.5px] text-white/45">
-            <span className="flex gap-1.5" aria-hidden="true"><span className="h-2.5 w-2.5 rounded-full bg-white/[0.12]" /><span className="h-2.5 w-2.5 rounded-full bg-white/[0.12]" /><span className="h-2.5 w-2.5 rounded-full bg-white/[0.12]" /></span>
-            <span className="hidden truncate sm:block"><Stakk idx={nivaa}>{kontekst.map((k) => <span key={k} className="block">{k}</span>)}</Stakk></span>
-          </div>
-          {setNivaa && <NivaaVelger nivaa={nivaa} onChange={setNivaa} size="sm" />}
-        </div>
-
-        <div className="relative" aria-hidden="true">
-          <div className="flex items-stretch" style={{ zoom: desktop ? 0.82 : 0.9 }}>
-            <Sidemeny portefolje={portefolje} meldinger={er('melding')} />
-            <div className="relative min-w-0 flex-1">
-              {/* Eierportal (selv / forvaltning) */}
-              <div className="px-5 pb-8 pt-6 sm:px-8 sm:pt-7 lg:px-10" style={{ opacity: portefolje ? 0 : 1, transform: portefolje ? 'translateY(8px)' : 'none', transition: `opacity 480ms ${EASE}, transform 480ms ${EASE}` }}>
-                <Eierportal managed={managed} er={er} navn={navn} />
+    <div ref={rot} className="relative" data-testid="v3-hero-portal">
+      {/* Rammen må lese på både mørk (topp) og lys (bunn) bakgrunn — nøytral gråfiolett hårlinje. */}
+      <div className="relative isolate overflow-hidden rounded-[16px] bg-[#F7F5F1] shadow-[0_0_0_1px_rgba(120,110,135,0.38),0_60px_140px_-50px_rgba(15,10,25,0.55)]">
+        {/* Hårfin topp-highlight — gir kanten dybde mot det mørke */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-30 h-px bg-white/[0.14]" />
+        <div className="relative flex items-stretch" style={{ zoom: desktop ? 0.94 : 0.9 }} aria-hidden="true">
+          {/* Sidemeny — tonet til sidens svarte, så vinduet vokser ut av canvasen */}
+          <aside className="hidden w-[224px] shrink-0 flex-col border-r border-white/[0.08] bg-[#121016] px-4 pb-5 pt-6 lg:flex">
+            <div className="flex items-center justify-between px-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/digihome-logo-white.svg" alt="" className="h-[18px] w-auto" />
+              <span className="h-[6px] w-[6px] rounded-full bg-[#D496FF]" />
+            </div>
+            <nav className="mt-9 space-y-[3px]">
+              {NAV.map(([Ikon, l, aktiv]) => {
+                const badge = l === 'Meldinger' && er('melding');
+                return (
+                  <div key={l} className={`flex h-[40px] items-center gap-3 rounded-[10px] px-3 text-[13.5px] font-medium transition-colors duration-500 ${aktiv ? 'bg-white/[0.08] text-white' : 'text-white/45'}`}>
+                    <Ikon className="h-[17px] w-[17px]" strokeWidth={aktiv ? 2 : 1.7} />
+                    <span className="flex-1">{l}</span>
+                    <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#D496FF] px-1.5 text-[10.5px] font-bold text-[#0D0B0F]" style={{ opacity: badge ? 1 : 0, transform: badge ? 'none' : 'scale(0.6)', transition: `opacity 400ms ${EASE}, transform 400ms ${EASE}` }}>1</span>
+                  </div>
+                );
+              })}
+            </nav>
+            <div className="mt-auto">
+              <div className="mb-4 inline-flex h-9 items-center gap-2 rounded-full border border-white/[0.08] pl-3 pr-3.5 text-[12px] font-medium text-white/60">
+                <HelpCircle className="h-[15px] w-[15px]" strokeWidth={2} /> Hjelp
               </div>
-              {/* Porteføljedashbord (forvalter) — appens ekte dashbord */}
-              <div className="absolute inset-0 overflow-hidden bg-[#FAFAF8]" style={{ opacity: portefolje ? 1 : 0, transform: portefolje ? 'none' : 'translateY(8px)', transition: `opacity 480ms ${EASE}, transform 480ms ${EASE}`, pointerEvents: 'none' }}>
-                <div style={{ zoom: desktop ? 1.3 : 1 }}><FlateOversikt /></div>
+              <div className="flex items-center gap-3 border-t border-white/[0.08] pt-4">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#D496FF]/20 text-[12px] font-bold text-[#E7D6FF]" style={heading}>KN</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold text-white">Kari Nordvik</span>
+                  <span className="block truncate text-[11px] text-white/40">Huseier</span>
+                </span>
+                <ChevronDown className="h-4 w-4 text-white/40" />
               </div>
             </div>
+          </aside>
+
+          {/* Innhold — kuratert oversikt */}
+          <div className="relative min-w-0 flex-1 px-6 pb-9 pt-7 sm:px-9 sm:pt-8 lg:px-11 lg:pt-9">
+            <Toast vis={navn === 'betalt'} Ikon={Check} farge="#15803d" bg="#effaf0" t={`Husleie mottatt · ${tall(18500)} kr`} s="Fra Jonas Berg · i dag 08:02 · KID" />
+            <Toast vis={navn === 'melding'} Ikon={Bell} farge="#6D4FB0" bg="#F1EAFB" t="Ny melding fra Jonas" s="«Takk for rask hjelp med varmtvannet!»" />
+
+            <div className="flex items-center gap-4">
+              <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[#111827] text-[17px] font-bold text-white ring-2 ring-[#E5E7EB]" style={heading}>KN</span>
+              <div>
+                <p className="text-[12.5px] text-[#6B7280]">God morgen</p>
+                <p className="text-[34px] font-bold leading-[0.95] tracking-[-0.04em] text-[#111827] sm:text-[38px]" style={heading}>Kari <span className="inline-block">👋</span></p>
+              </div>
+            </div>
+            <p className="mt-3 text-[14px] text-[#6B7280] sm:ml-[68px] sm:-mt-0.5">
+              Marken 8 er utleid · {tall(18500)} kr/mnd · <Bytt vis={harSak} a="Alt i orden" b={<span className="text-[#b45309]">1 sak venter</span>} />
+            </p>
+
+            <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-[1.4fr_1fr]"><Inntekt /><Leietaker betalt={er('betalt')} /></div>
+
+            <div className="mt-8 flex items-center gap-2.5">
+              <p className="text-[18px] font-bold tracking-[-0.025em] text-[#111827]" style={heading}>Trenger din oppmerksomhet</p>
+              <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#6D4FB0] px-1.5 text-[11px] font-bold text-white" style={{ opacity: harSak ? 1 : 0, transform: harSak ? 'none' : 'scale(0.6)', transition: `opacity 400ms ${EASE}, transform 400ms ${EASE}` }}>1</span>
+            </div>
+            <Stakk idx={idx} className="mt-4">
+              <Rad tone="warning" Ikon={Wrench} etikett="Godkjenning kreves" t={`Rørlegger AS — ${tall(3450)} kr`} s="Varmtvannsbereder lekker · foreslått av DigiHome" knapper />
+              <Rad tone="calm" Ikon={CheckCircle2} etikett="Godkjent · håndteres" t="Rørlegger AS booket — torsdag kl. 09:00" s="Leietaker er varslet. Du trenger ikke gjøre noe mer." />
+              <Rad tone="ink" Ikon={CheckCircle2} t={<>Alt er i skjønneste orden <Sparkles className="h-4 w-4 text-[#6D4FB0]" /></>} s="Ingenting krever handling akkurat nå." />
+            </Stakk>
           </div>
         </div>
       </div>

@@ -7502,3 +7502,35 @@ agent_communication:
 agent_communication:
     -agent: "main"
     -message: "V3 designresett shippet paa /v3 (ikke brukerbekreftet). Root / fortsatt uroert. Frontend-testagent ikke kjoert (krever tillatelse)."
+
+  - task: "Forside V3 — pass 4: hybrid light-first (mørk hero + lys kropp), segmentvelger fjernet fra root, For hvem m/ produkt-widgets, fikser"
+    implemented: true
+    working: true
+    file: "/app/components/forside/v3/{ForsideV3,HeroPortal,Reisen,Bento,Seksjoner,motion,Nav}.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Bruker laaste retning: 'light-first brand, dark som kinematisk virkemiddel' — ikke dark-mode-nettside. Rytme: Nav+Hero moerk (#0D0B0F, varm/lilla undertone) -> HARD kant (ingen gradient) -> Statement, Reisen, Bento lys (#FAF8F4) -> Bergen-baand moerk full bredde -> For hvem, Trygghet lys -> CTA+footer moerk. Produktvinduet staar over kanten moerk/lys (negativ bunnmarg -88/-140/-180px, wrapper pt tilsvarende). Hero: venstrestilt to linjer (brukerens favoritt beholdt), rammeloest vindu uten trafikklys/toppbar, zoom 0.9, hurtigpiller + 'Selvforvaltning'-chip fjernet (segmentspraak bort fra root), noeytral graafiolett haarlinje som leser paa begge bakgrunner. Lilla aksent KUN punktum i H1 + '?' i CTA (fjernet fra alle H2). Reisen: tekstkolonne svakt lilla (#F4EFFA), 'Steg x av 5' fjernet, CTA rett under tekst, 4fr/8fr. For hvem: tre editorial kolonner m/ haarlinje + ett hvitt produkt-widget hver (Privat: boligkort m/ husleie/kontrakt/KPI; Forvaltning: DF haandtert-liste + '0 oppgaver til deg'; Bedrift: KPI 48/97%/3 + portefoeljerader) og spesifikke lenker (/privat, /forvaltning, /bedrift — alle ruter finnes). FIKSER: FINN-logo ble hvit boks (brightness-0 invert paa PNG m/ fylt bakgrunn) -> tekst-ordmerker for alle; hero-maske graatonet 'Trenger din oppmerksomhet' -> maske fjernet helt; tusenskille via tall() m/ U+00A0 (U+202F mangler i Right Grotesk -> '18500'); versal-etiketter i mockups -> setningsform; tabular-nums fjernet fra store tall. Knapp-varianter lys/lysSekundar, Lenke mork-prop, Etikett lys som standard. Screenshot-verifisert 1920 (hero, kant, statement, reisen, bento, bergen, for hvem, trygghet, cta+footer, nav-nedtrekk) + 390 (hero, kant, reisen, for hvem). sw=viewport begge. Ingen konsollfeil."
+
+agent_communication:
+    -agent: "main"
+    -message: "V3 hybrid (moerk hero + lys kropp) shippet paa /v3 — ikke brukerbekreftet. Root / fortsatt uroert. Frontend-testagent ikke kjoert (krever tillatelse). Ekte produktskjermbilder fortsatt ikke levert av bruker; mockups er haandbygde."
+
+  - task: "Forside V3 — pass 5: adaptiv nav (tone følger seksjon), Autopilot-seksjon «Mens du sover», footer v3-variant, mobilmeny-fiks, a11y/polish"
+    implemented: true
+    working: true
+    file: "/app/components/forside/v3/{Nav,Autopilot,ForsideV3,Reisen,Bento,HeroPortal}.js, /app/components/dh/Footer.tsx (ny valgfri prop variant='v3', standard uendret), /app/app/v3/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Bruker: 'løft til verdensklasse' x2 + 'forbedre absolutt alt'. (1) NAV: følger tonen under seg via [data-tone=mork|lys] på seksjonswrappere (rAF-throttlet scroll, siste seksjon m/ topp <= 32px vinner). Lys tone = #FAF8F4/88 glass, ink-logo (/digihome-hero-logo.svg), ink-CTA (Knapp lys), lyse nedtrekkspaneler. data-tone-nav på header for testing. (2) BUGFIX mobilmeny: arket lå inne i <header> m/ backdrop-blur -> backdrop-filter gjør header til containing block for fixed -> høyde 0 (eksisterende feil). Flyttet arket ut av header (fragment). Verifisert h=780, lenker lukker. (3) NY seksjon Autopilot.js 'Mens du sover.' (mørk): nattlogg m/ 5 hendelser (interessent-svar, kandidat, KID-match, rørlegger bekreftet, morgenrapport), stagger-inn, motion-safe ping-punkt. Ligger i mørkt kapittel sammen m/ Bergen-båndet: Hero(mørk) -> Statement/Reisen/Bento(lys) -> Autopilot+Bergen(mørk) -> ForHvem/Trygghet(lys) -> CTA+footer(mørk). (4) Footer.tsx: variant='v3' -> bg #0D0B0F, 1280-container, setningsform-etiketter, medium display-tittel. Andre sider uendret. (5) Hero: tillitslinje 'Bygget og brukt daglig av DigiHome Forvaltning på egen portefølje i Bergen.', topp-highlight på vindu, zoom 0.94, myk scroll til ankere (kun uten reduced-motion, ryddes ved unmount). (6) Reisen: tastatur ←/→/Home/End på faner m/ roving tabindex, aria-controls/labelledby, tekstkolonne #F6F3FB. Verifisert ArrowRight->02, End->05. (7) Bento: kommende måneder som konturerte stolper, hover-kant på celler. Screenshot-verifisert 1920 + 390. Ingen konsollfeil. NB: tidligere 'tone-feil' i test var testartefakt (scrollIntoView før layout ferdig) — tonen er korrekt."
+
+agent_communication:
+    -agent: "main"
+    -message: "V3 pass 5 shippet på /v3 — ikke brukerbekreftet. Root / urørt. Frontend-testagent ikke kjørt (krever tillatelse). Footer.tsx har fått valgfri variant-prop; standardrendering på alle andre sider er uendret."

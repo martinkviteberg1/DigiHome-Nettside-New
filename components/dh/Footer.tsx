@@ -71,7 +71,8 @@ const cols = [
   { title: 'Ressurser', links: [{ l: 'Guider for utleiere', h: '/guider' }, { l: 'Leiemarkedsrapport', h: '/leiemarkedet' }, { l: 'Om oss', h: '/om-oss' }, { l: 'Kontakt', h: '/kontakt' }, { l: 'Personvern', h: '/personvern' }] },
 ];
 
-export default function Footer({ org }: { org?: { company_name?: string; org_number?: string; company_address?: string; company_email?: string; company_phone?: string } | null }) {
+export default function Footer({ org, variant }: { org?: { company_name?: string; org_number?: string; company_address?: string; company_email?: string; company_phone?: string } | null; variant?: 'v3' }) {
+  const v3 = variant === 'v3';
   const fmtOrg = (n?: string) => (n || '').replace(/\D/g, '').replace(/(\d{3})(?=\d)/g, '$1 ').trim();
   const name = org?.company_name || 'Digihome AS';
   const orgNr = org?.org_number ? fmtOrg(org.org_number) : '835 595 242';
@@ -79,9 +80,9 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
   const phone = org?.company_phone || '+47 909 58 313';
   const addr = org?.company_address || 'Kokstadvegen 46, 5257 Kokstad';
   return (
-    <footer className="bg-[#0B0A09] text-white">
+    <footer className={`${v3 ? 'bg-[#0D0B0F]' : 'bg-[#0B0A09]'} text-white`} data-testid={v3 ? 'footer-v3' : undefined}>
       <div className="relative border-t border-white/[0.08]">
-        <div className="relative mx-auto max-w-[1400px] px-6 sm:px-10 lg:px-16">
+        <div className={`relative mx-auto ${v3 ? 'max-w-[1280px] px-6 sm:px-8' : 'max-w-[1400px] px-6 sm:px-10 lg:px-16'}`}>
         <div className="py-16 grid gap-12 sm:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
             <img src="/logo-light.svg" alt="DigiHome" className="h-[26px] w-auto" />
@@ -106,7 +107,7 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
           </div>
           {cols.map((c: any) => (
             <div key={c.title}>
-              <h2 className="mb-5 text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">{c.title}</h2>
+              <h2 className={v3 ? 'mb-5 text-[13px] font-medium text-white/45' : 'mb-5 text-[11px] font-bold uppercase tracking-[0.14em] text-white/40'}>{c.title}</h2>
               <ul className="space-y-3">{c.links.map((l: any) => (<li key={l.l}><Link href={l.h} className="inline-block py-1 -my-1 text-[13.5px] text-white/60 hover:text-white transition-colors duration-200">{l.l}</Link></li>))}</ul>
             </div>
           ))}
@@ -114,7 +115,7 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
         {/* Nyhetsbrev */}
         <div className="border-t border-white/[0.06] py-12 grid gap-8 lg:grid-cols-2 lg:items-center">
           <div>
-            <h2 className="text-[22px] sm:text-[26px] font-bold tracking-[-0.02em] text-white" style={{ fontFamily: 'var(--font-heading)' }}>Innsikt om leiemarkedet, rett i innboksen</h2>
+            <h2 className={v3 ? 'text-[22px] sm:text-[26px] font-medium tracking-[-0.02em] text-white' : 'text-[22px] sm:text-[26px] font-bold tracking-[-0.02em] text-white'} style={v3 ? undefined : { fontFamily: 'var(--font-heading)' }}>Innsikt om leiemarkedet, rett i innboksen</h2>
             <p className="text-[14px] text-white/50 mt-2 max-w-[52ch] leading-relaxed">Markedsdata, skattetips og guider for boligeiere i Bergen — kort og konkret.</p>
           </div>
           <NewsletterSignup />

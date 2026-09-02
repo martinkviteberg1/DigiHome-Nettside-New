@@ -4,23 +4,27 @@ import React, { useEffect, useState } from 'react';
 import { track } from '@/lib/analytics';
 import Nav from './Nav';
 import HeroPortal from './HeroPortal';
-import Reisen, { NIVAAER } from './Reisen';
+import Reisen from './Reisen';
 import Bento from './Bento';
-import { Statement, Bilde, Nivaa, Trygghet, SluttCTA } from './Seksjoner';
-import { EASE, display, Knapp, Lenke } from './motion';
+import Autopilot from './Autopilot';
+import { Statement, Bilde, ForHvem, Trygghet, SluttCTA } from './Seksjoner';
+import { EASE, display, Knapp, Lenke, T } from './motion';
 
 /* ---------------------------------------------------------------------------
-   ForsideV3 — «Utleie på autopilot», 2026. Mørk og kinematisk.
+   ForsideV3 — «Utleie på autopilot», 2026.
 
-   Nær svart canvas, medium vekt, én setning, én aksent. Produktet vises
-   alltid ferdig — aldri halvbygd — og forsvinner inn i siden (maske, ikke
-   overlegg). Én tilstand (grad av autopilot) styrer heroens vindu, reisens
-   «hvem gjør det», nivåkortene og CTAene.
+   Light-first brand, mørk som kinematisk virkemiddel. Rytme:
+     Nav + Hero (mørk) → hard kant → Produktintro, Reisen, Bento (lys)
+     → Bergen-bånd (mørk, full bredde) → For hvem, Trygghet (lys)
+     → CTA + footer (mørk).
 
-   Hero → Reisen → Statement → Bilde → Bento → Nivå → Trygghet → CTA.
+   Overgangen mørk→lys er ren — ingen gradient som skjuler kanten. Produkt-
+   vinduet står over kanten, så den lyse portalen kommer «ut av mørket».
+   Én aksent (lilla) — kun punktum i H1 og «?» i CTA.
+   Ingen segmentvalg på root — målgruppene lever i nav + undersider.
 --------------------------------------------------------------------------- */
 
-function MobilCTA({ nivaa, onKlikk }) {
+function MobilCTA({ onKlikk }) {
   const [vis, setVis] = useState(false);
   useEffect(() => {
     const f = () => {
@@ -32,16 +36,15 @@ function MobilCTA({ nivaa, onKlikk }) {
     window.addEventListener('scroll', f, { passive: true });
     return () => window.removeEventListener('scroll', f);
   }, []);
-  const n = NIVAAER[nivaa];
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0A0A0B]/92 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0D0B0F]/92 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md lg:hidden"
       style={{ transform: vis ? 'none' : 'translateY(110%)', transition: `transform 380ms ${EASE}` }}
       aria-hidden={!vis}
       data-testid="v3-mobil-cta"
     >
       <div className="flex gap-2">
-        <Knapp href={n.href} className="flex-1" onClick={() => onKlikk('mobil-sticky')}>{n.cta}</Knapp>
+        <Knapp href="/bli-utleier/start" className="flex-1" onClick={() => onKlikk('mobil-sticky')}>Kom i gang</Knapp>
         <Knapp href="/book-mote" variant="sekundar" className="flex-1">Book en prat</Knapp>
       </div>
     </div>
@@ -49,52 +52,80 @@ function MobilCTA({ nivaa, onKlikk }) {
 }
 
 export default function ForsideV3() {
-  const [nivaa, setNivaa] = useState(0);
-  const klikk = (hvor) => { try { track('forside_cta', { hvor, versjon: 'v3', nivaa: NIVAAER[nivaa].id }); } catch (e) { /* ok */ } };
+  const klikk = (hvor) => { try { track('forside_cta', { hvor, versjon: 'v3' }); } catch (e) { /* ok */ } };
+
+  /* Myk scroll til ankere (#reisen, #produkt, #for-hvem) — kun på denne siden,
+     og kun når brukeren ikke har bedt om redusert bevegelse. */
+  useEffect(() => {
+    let redusert = false;
+    try { redusert = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* ok */ }
+    if (redusert) return undefined;
+    const html = document.documentElement;
+    const prev = html.style.scrollBehavior;
+    html.style.scrollBehavior = 'smooth';
+    return () => { html.style.scrollBehavior = prev; };
+  }, []);
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#0A0A0B] text-white antialiased" data-testid="forside-v3">
+    <div className="min-h-screen overflow-x-clip bg-[#FAF8F4] text-[#0F0E10] antialiased" data-testid="forside-v3">
       <Nav onCta={klikk} />
 
       <main>
-        {/* ── Hero ── */}
-        <section className="relative" data-testid="v3-hero">
-          {/* Kinematisk lys — ett svakt, varmt lys ovenfra. Ikke glow på elementer. */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[900px]" style={{ background: 'radial-gradient(60% 45% at 50% -8%, rgba(207,151,252,0.13) 0%, rgba(207,151,252,0.04) 45%, transparent 75%)' }} />
+        {/* ── Hero — mørk, med varm undertone ── */}
+        <section className="relative bg-[#0D0B0F] text-white" data-tone="mork" data-testid="v3-hero">
+          {/* Ett svakt, varmt scenelys ovenfra. Ikke glow på elementer. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[720px]" style={{ background: 'radial-gradient(60% 46% at 50% -8%, rgba(212,150,255,0.13) 0%, rgba(212,150,255,0.04) 45%, transparent 74%)' }} />
+
           <div className="relative mx-auto w-full max-w-[1280px] px-6 pt-24 sm:px-8 sm:pt-32 lg:pt-40">
-            <h1 className="dh-cover-inn max-w-[12ch] text-[44px] text-white sm:text-[60px] lg:text-[76px]" style={display}>
-              Utleie på autopilot<span className="text-[#CF97FC]">.</span>
+            <h1 className="dh-cover-inn max-w-[12ch] text-[44px] text-white sm:text-[60px] lg:text-[76px]" style={display} data-testid="v3-h1">
+              Utleie på autopilot<span style={{ color: T.lilla }}>.</span>
             </h1>
             <p className="dh-cover-inn mt-6 max-w-[54ch] text-[18px] leading-[1.5] text-white/60 sm:text-[20px]" style={{ animationDelay: '.08s' }}>
               Alt fra annonse til innbetaling går av seg selv.<br className="hidden sm:block" /> Du bestemmer hvor mye du vil være med.
             </p>
             <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-5" style={{ animationDelay: '.14s' }}>
               <Knapp href="/bli-utleier/start" onClick={() => klikk('hero')} data-testid="v3-hero-cta">Kom i gang</Knapp>
-              <Lenke href="#reisen" data-testid="v3-hero-sekundaer">Se hvordan det virker</Lenke>
+              <Lenke mork href="#reisen" data-testid="v3-hero-sekundaer">Se hvordan det virker</Lenke>
             </div>
+            {/* Én sann tillitslinje. Ingen tall vi ikke kan dokumentere. */}
+            <p className="dh-cover-inn mt-7 text-[13.5px] text-white/40" style={{ animationDelay: '.2s' }} data-testid="v3-hero-tillit">
+              Bygget og brukt daglig av DigiHome Forvaltning på egen portefølje i Bergen.
+            </p>
           </div>
 
-          {/* Produktet — komplett skjermbilde i skala, maskert inn i siden */}
-          <div className="dh-cover-inn relative mx-auto mt-16 w-full max-w-[1280px] px-6 sm:mt-20 sm:px-8" style={{ animationDelay: '.22s' }}>
-            <div
-              className="relative max-h-[560px] overflow-hidden sm:max-h-[640px] lg:max-h-[700px]"
-              style={{ WebkitMaskImage: 'linear-gradient(180deg, #000 0%, #000 62%, transparent 100%)', maskImage: 'linear-gradient(180deg, #000 0%, #000 62%, transparent 100%)' }}
-            >
-              <HeroPortal nivaa={nivaa} setNivaa={setNivaa} />
-            </div>
+          {/* Produktet — står over kanten mellom mørkt og lyst (negativ bunnmarg).
+              Ingen maske: innholdet er alltid fullt lesbart. */}
+          <div className="dh-cover-inn relative z-10 mx-auto -mb-[88px] mt-16 w-full max-w-[1280px] px-4 sm:-mb-[140px] sm:mt-20 sm:px-8 lg:-mb-[180px]" style={{ animationDelay: '.22s' }} data-testid="v3-hero-produkt">
+            <HeroPortal />
           </div>
         </section>
 
-        <Reisen nivaa={nivaa} setNivaa={setNivaa} />
-        <Statement />
-        <Bilde />
-        <Bento />
-        <Nivaa nivaa={nivaa} setNivaa={setNivaa} />
-        <Trygghet />
-        <SluttCTA nivaa={nivaa} onKlikk={klikk} />
+        {/* ── Lys del 1 — hard kant fra mørkt. pt = overlapp fra produktvinduet. ── */}
+        <div className="bg-[#FAF8F4] pt-[88px] sm:pt-[140px] lg:pt-[180px]" data-tone="lys" data-testid="v3-lys-1">
+          <Statement />
+          <Reisen />
+          <Bento />
+        </div>
+
+        {/* ── Mørkt kapittel — autopiloten + Bergen-bånd. Rytmebrudd. ── */}
+        <div data-tone="mork">
+          <Autopilot />
+          <Bilde />
+        </div>
+
+        {/* ── Lys del 2 ── */}
+        <div className="bg-[#FAF8F4]" data-tone="lys" data-testid="v3-lys-2">
+          <ForHvem />
+          <Trygghet />
+        </div>
+
+        {/* ── CTA — mørk, går rett i footer ── */}
+        <div data-tone="mork">
+          <SluttCTA onKlikk={klikk} />
+        </div>
       </main>
 
-      <MobilCTA nivaa={nivaa} onKlikk={klikk} />
+      <MobilCTA onKlikk={klikk} />
     </div>
   );
 }

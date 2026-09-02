@@ -15,7 +15,7 @@ export default function V3Page() {
   return (
     <div>
       <ForsideV3 />
-      <Footer />
+      <Footer variant="v3" />
     </div>
   );
 }
