@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import {
   LayoutDashboard, Building2, Users, MessageSquare, FileText, DollarSign, Settings,
-  ArrowRight, TrendingUp, FileSignature, Wrench, CheckCircle2, Sparkles,
+  ArrowRight, TrendingUp, Wrench, CheckCircle2,
   ChevronRight, Check, Bell, HelpCircle, ChevronDown,
 } from 'lucide-react';
 import { heading, EASE, useKoreografi, useSynlig, useMedia, Bytt, Stakk, tall } from './motion';
@@ -67,34 +67,47 @@ function Inntekt() {
       <Under>Månedlig leieinntekt</Under>
       <p className="mt-2 text-[42px] font-bold leading-[0.95] tracking-[-0.035em] text-[#111827]" style={heading}>{tall(18500)} <span className="text-[16px] font-normal text-[#9CA3AF]">kr</span></p>
       <div className="mt-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-[#F4F2EE] py-1 pl-2 pr-2.5 text-[11.5px] text-[#52504B]"><TrendingUp className="h-3.5 w-3.5 text-[#6D4FB0]" strokeWidth={2} /> {tall(222000)} kr estimert i år</span></div>
-      <div className="mt-auto pt-5"><span className="inline-flex h-9 items-center gap-2 rounded-[9px] bg-[#111827] px-3.5 text-[12.5px] font-semibold text-white">Se full økonomi <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} /></span></div>
+      {/* 12 måneder: betalt = fylt, kommende = kontur */}
+      <div className="mt-4 flex h-[26px] items-end gap-[5px]">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <span key={i} className="flex-1 rounded-[2px]" style={{ height: '100%', background: i < 3 ? '#111827' : 'transparent', boxShadow: i < 3 ? 'none' : 'inset 0 0 0 1px #DDD8CF' }} />
+        ))}
+      </div>
+      <div className="mt-auto pt-4"><span className="inline-flex h-9 items-center gap-2 rounded-[9px] bg-[#111827] px-3.5 text-[12.5px] font-semibold text-white">Se full økonomi <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} /></span></div>
     </Flis>
   );
 }
 
-function Leietaker({ betalt }) {
+/* Boligkortet — hjemmet er hovedpersonen, ikke dashbordet. */
+function Bolig({ betalt }) {
   return (
-    <Flis className="hidden sm:block">
-      <Under>Din leietaker</Under>
-      <div className="mt-3 flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F1EAFB] text-[13px] font-bold text-[#6D4FB0]" style={heading}>JB</span>
-        <span className="min-w-0">
-          <span className="block truncate text-[16px] font-bold text-[#111827]" style={heading}>Jonas Berg</span>
-          <span className="mt-0.5 inline-flex items-center gap-1.5 text-[11.5px] text-[#6B7280]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
-            <Bytt vis={betalt} a="Aktiv leieavtale" b="Mars betalt · 1. mars" />
+    <div className="relative hidden overflow-hidden rounded-[14px] border border-[#E5E7EB] bg-white sm:flex sm:flex-col">
+      <div className="relative h-[96px] shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/v3/hjem-kjokken.webp" alt="" className="h-full w-full object-cover" style={{ objectPosition: '50% 55%' }} />
+        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/92 px-2.5 py-1 text-[11px] font-semibold text-[#15803d] backdrop-blur-sm"><span className="h-1.5 w-1.5 rounded-full bg-[#22c55e]" /> Utleid</span>
+      </div>
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-[16px] font-bold text-[#111827]" style={heading}>Marken 8</p>
+            <p className="mt-0.5 truncate text-[11.5px] text-[#6B7280]">5017 Bergen · 3-roms · 74 m² · 2. etg.</p>
+          </div>
+          <p className="shrink-0 text-[14.5px] font-bold text-[#111827]" style={heading}>{tall(18500)} <span className="text-[11px] font-normal text-[#9CA3AF]">kr/mnd</span></p>
+        </div>
+        <div className="mt-auto flex items-center gap-2.5 border-t border-[#F3F4F6] pt-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F1EAFB] text-[11px] font-bold text-[#6D4FB0]" style={heading}>JB</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[12.5px] font-semibold text-[#111827]">Jonas Berg</span>
+            <span className="flex items-center gap-1.5 text-[11px] text-[#6B7280]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
+              <Bytt vis={betalt} a="Leietaker siden januar 2025 · løpende" b="Mars betalt · 1. mars · KID" />
+            </span>
           </span>
-        </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-[#9CA3AF]" strokeWidth={1.8} />
+        </div>
       </div>
-      <div className="mt-3 flex gap-6 border-t border-[#F3F4F6] pt-3">
-        <div><p className="text-[10.5px] text-[#9CA3AF]">Utleid siden</p><p className="mt-0.5 text-[12.5px] font-semibold text-[#111827]">Januar 2025</p></div>
-        <div><p className="text-[10.5px] text-[#9CA3AF]">Leieperiode</p><p className="mt-0.5 text-[12.5px] font-semibold text-[#111827]">Løpende</p></div>
-      </div>
-      <div className="mt-auto flex gap-2 pt-4">
-        <span className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-[9px] bg-[#111827] text-[12px] font-semibold text-white"><MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} /> Send melding</span>
-        <span className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-[9px] border border-[#E5E7EB] bg-white text-[12px] font-semibold text-[#111827]"><FileSignature className="h-3.5 w-3.5" strokeWidth={1.8} /> Se kontrakt</span>
-      </div>
-    </Flis>
+    </div>
   );
 }
 
@@ -185,10 +198,10 @@ export default function HeroPortal() {
               </div>
             </div>
             <p className="mt-3 text-[14px] text-[#6B7280] sm:ml-[68px] sm:-mt-0.5">
-              Marken 8 er utleid · {tall(18500)} kr/mnd · <Bytt vis={harSak} a="Alt i orden" b={<span className="text-[#b45309]">1 sak venter</span>} />
+              1 bolig · 1 leietaker · <Bytt vis={harSak} a="Alt i orden" b={<span className="text-[#b45309]">1 sak venter</span>} />
             </p>
 
-            <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-[1.4fr_1fr]"><Inntekt /><Leietaker betalt={er('betalt')} /></div>
+            <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2"><Inntekt /><Bolig betalt={er('betalt')} /></div>
 
             <div className="mt-8 flex items-center gap-2.5">
               <p className="text-[18px] font-bold tracking-[-0.025em] text-[#111827]" style={heading}>Trenger din oppmerksomhet</p>
@@ -197,7 +210,7 @@ export default function HeroPortal() {
             <Stakk idx={idx} className="mt-4">
               <Rad tone="warning" Ikon={Wrench} etikett="Godkjenning kreves" t={`Rørlegger AS — ${tall(3450)} kr`} s="Varmtvannsbereder lekker · foreslått av DigiHome" knapper />
               <Rad tone="calm" Ikon={CheckCircle2} etikett="Godkjent · håndteres" t="Rørlegger AS booket — torsdag kl. 09:00" s="Leietaker er varslet. Du trenger ikke gjøre noe mer." />
-              <Rad tone="ink" Ikon={CheckCircle2} t={<>Alt er i skjønneste orden <Sparkles className="h-4 w-4 text-[#6D4FB0]" /></>} s="Ingenting krever handling akkurat nå." />
+              <Rad tone="ink" Ikon={CheckCircle2} t="Alt i orden" s="Ingenting krever handling akkurat nå." />
             </Stakk>
           </div>
         </div>

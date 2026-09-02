@@ -3,9 +3,9 @@
 import React, { useRef } from 'react';
 import {
   Check, ChevronRight, MessageSquare, Wrench, Home, Building2, Wallet, FileText,
-  ShieldCheck, Sparkles, Star, CalendarDays, Send, Download,
+  ShieldCheck, CalendarDays, Send, Download,
 } from 'lucide-react';
-import { heading, EASE, display, Avsloer, useSynlig, Inn, Etikett, tall } from './motion';
+import { heading, EASE, display, Avsloer, useSynlig, Inn, tall } from './motion';
 
 /* ---------------------------------------------------------------------------
    Bento — «Alt på ett sted.» (lys) Fem celler med EKTE produktutsnitt i stor
@@ -134,12 +134,12 @@ function Saker({ inne }) {
       </div>
       <p className="mt-0.5 text-[11px] text-[#8d877d]">Meldt av leietaker · tirsdag 21:14 · Bad</p>
       <div className="mt-3 rounded-[14px] border border-[#E8E5DF] bg-white p-3.5">
-        <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[#6D4FB0]"><Sparkles className="h-3 w-3" /> Foreslått av DigiHome</p>
+        <p className="text-[11px] font-semibold text-[#6D4FB0]">Foreslått leverandør</p>
         <div className="mt-2.5 flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-[11px] bg-[#F3F0EA]"><Wrench className="h-[17px] w-[17px] text-[#57534e]" strokeWidth={1.7} /></span>
           <span className="min-w-0 flex-1">
             <span className="block text-[13px] font-bold text-[#111827]" style={heading}>Rørlegger AS</span>
-            <span className="flex items-center gap-1 text-[10.5px] text-[#8d877d]"><Star className="h-3 w-3 fill-[#f59e0b] text-[#f59e0b]" /> 4,8 · 27 oppdrag · {tall(3450)} kr</span>
+            <span className="flex items-center gap-1 text-[10.5px] text-[#8d877d]">Fast leverandør · Bergen · {tall(3450)} kr</span>
           </span>
           <span className="inline-grid"><span className="col-start-1 row-start-1 rounded-full px-3 py-[6px] text-[11px] font-semibold text-[#0A0A0A] ring-1 ring-black/[0.12]" style={{ opacity: inne ? 0 : 1, transition: `opacity 400ms ${EASE} 700ms` }}>Godkjenn</span><span className="col-start-1 row-start-1 rounded-full bg-[#111827] px-3 py-[6px] text-center text-[11px] font-semibold text-white" style={{ opacity: inne ? 1 : 0, transition: `opacity 400ms ${EASE} 700ms` }}>Godkjent</span></span>
         </div>
@@ -178,7 +178,7 @@ function Telefon({ inne = true }) {
           <div className="mt-1.5 overflow-hidden rounded-[14px] border border-[#eee9e0] bg-white">
             <div className="relative h-[84px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/interior-kitchen.webp" alt="" loading="lazy" className="h-full w-full object-cover" />
+              <img src="/v3/hjem-kjokken-thumb.webp" alt="" loading="lazy" className="h-full w-full object-cover" />
               <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-white/90 px-1.5 py-[3px] text-[7px] font-bold text-[#0f9d6e]"><span className="h-[4px] w-[4px] rounded-full bg-[#0f9d6e]" /> Aktiv leieavtale</span>
             </div>
             <div className="flex items-center justify-between p-2.5">
@@ -212,8 +212,7 @@ export default function Bento() {
         <Avsloer>
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-end">
             <div>
-              <Etikett>Alt på ett sted</Etikett>
-              <h2 className="mt-3 max-w-[12ch] text-[34px] text-[#0F0E10] sm:text-[44px] lg:text-[52px]" style={display}>Ikke fem verktøy. Ett.</h2>
+              <h2 className="max-w-[14ch] text-[34px] text-[#0F0E10] sm:text-[44px] lg:text-[52px]" style={display}>Hele utleien på ett sted.</h2>
             </div>
             <p className="max-w-[46ch] text-[16px] leading-[1.55] text-[#0F0E10]/60 sm:text-[17px] lg:pb-2">
               Meldinger, dokumenter, økonomi og saker bor i samme system — for deg,

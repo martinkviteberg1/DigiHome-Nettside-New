@@ -27,7 +27,8 @@ function Logg() {
     <div ref={ref} className="overflow-hidden rounded-[16px] border border-white/[0.08] bg-[#141118] shadow-[0_60px_120px_-60px_rgba(0,0,0,0.9)]" data-testid="v3-autopilot-logg" aria-hidden="true">
       <div className="flex items-center justify-between gap-4 border-b border-white/[0.08] px-6 py-4">
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-white" style={heading}>M8</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/v3/hjem-kjokken-thumb.webp" alt="" className="h-9 w-9 rounded-[9px] object-cover ring-1 ring-white/10" />
           <span>
             <span className="block text-[14px] font-medium text-white">I natt · Marken 8</span>
             <span className="block text-[12px] text-white/45">Tirsdag 22:00 → onsdag 07:30</span>

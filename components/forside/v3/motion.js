@@ -37,9 +37,10 @@ export function Etikett({ children, className = '', mork = false }) {
   return <p className={`text-[13px] font-medium ${mork ? 'text-white/45' : 'text-[#8A867F]'} ${className}`}>{children}</p>;
 }
 
-/* Display-typografi V3 — Diatype Medium, rolig tracking.
-   Right Grotesk Bold brukes kun inne i produktmockene, slik appen selv gjør. */
-export const display = { fontFamily: 'var(--font-body), sans-serif', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.06, textWrap: 'balance' };
+/* Display-typografi V3 — PP Right Grotesk Regular (brandets egen font, samme som i
+   produktet). Regular, ikke Bold: identitet uten den tette, fete følelsen.
+   Diatype Medium brukes til celle-titler og UI. */
+export const display = { fontFamily: 'var(--font-heading), sans-serif', fontWeight: 400, letterSpacing: '-0.02em', lineHeight: 1.02, textWrap: 'balance' };
 
 /* Knapper V3 — små, rolige. 40 px, radius 10.
    primar/sekundar på mørk flate · lys/lysSekundar på lys flate. */

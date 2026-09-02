@@ -80,7 +80,7 @@ export default function ForsideV3() {
             {/* Editorial to-kolonne på lg: overskrift venstre, budskap + handling høyre,
                 bunnjustert mot overskriften. Fyller bredden uten å røre overskriften. */}
             <div className="lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-16">
-              <h1 className="dh-cover-inn max-w-[12ch] text-[44px] text-white sm:text-[60px] lg:text-[76px]" style={display} data-testid="v3-h1">
+              <h1 className="dh-cover-inn max-w-[12ch] text-[46px] text-white sm:text-[62px] lg:text-[84px]" style={display} data-testid="v3-h1">
                 Utleie på autopilot<span style={{ color: T.lilla }}>.</span>
               </h1>
               <div className="mt-6 lg:mt-0 lg:pb-3">

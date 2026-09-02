@@ -7550,3 +7550,19 @@ agent_communication:
 agent_communication:
     -agent: "main"
     -message: "V3 pass 6 shippet på /v3 — ikke brukerbekreftet. Root / urørt. Frontend-testagent ikke kjørt (krever tillatelse)."
+
+  - task: "Forside V3 — pass 7: proptech, ikke Linear / ikke AI-slop. Right Grotesk display, ekte foto, boligkort, Bergen-pins, de-slop av copy og mockups"
+    implemented: true
+    working: true
+    file: "/app/components/forside/v3/{motion,ForsideV3,HeroPortal,Seksjoner,Bento,Autopilot}.js, /app/public/v3/*.webp (5 nye assets, lastet opp til objektlagring)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Bruker: 'mer proptech, mindre Linear, tenk selv' + 'ikke AI slop, tenk på alt'. (1) TYPOGRAFI: display byttet fra Diatype Medium (Linear-look) til PP Right Grotesk Regular (brandets egen produktfont), tracking -0.02em, lh 1.02; H1 84px lg. (2) FOTO: vision_expert (2 kall) -> 4 ekte nordiske foto valgt, 2 renders forkastet. Optimalisert m/ sharp til webp i /app/public/v3: hjem-spisestue (produktintro), hjem-kjokken (+thumb, 'Marken 8' gjennomgaaende), bergen-hus (Fjellsiden i snoe, beskaaret uten Bryggen-skilt), bygaard. Lastet opp via scripts/upload_public_to_storage.mjs --only v3/ (5/5 ok) fordi prod-standalone ikke inkluderer /public. (3) HERO-PORTAL: Leietaker-flis -> Boligkort m/ foto, adresse, m2, status, leietaker; Inntekt m/ 12-mnd innbetalingsrad; meta-linje '1 bolig · 1 leietaker · Alt i orden/1 sak venter' (fjernet duplikat av boligkortet). (4) STATEMENT: stort interioerfoto m/ svevende boligkort (produkt i kontekst) + tekst hoeyre. (5) BERGEN: omraadepins (Sentrum, Nordnes, Sandviken, Moehlenpris, Aarstad — dekorative, ekte bydeler), etikett 'Bergen · omraader vi kjenner', lenke /utleie. (6) FOR HVEM: widgets m/ oppdiktede tall (48/97%/3) FJERNET -> ett ekte foto (260px) + tittel + tekst + lenke per maalgruppe. H2 'For deg som har én bolig. Og for deg som har hundre.' (7) TRYGGHET: ikon-pilarer -> ren dl (4 punkter, ingen ikoner), H2 'Kontrollen er bygget inn.' (8) DE-SLOP: Sparkles-ikoner fjernet (hero 'Alt i orden', Bento 'Foreslaatt leverandoer'), fake rating '4,8 · 27 oppdrag' -> 'Fast leverandoer · Bergen', treords-slagord ('Trygt. Norsk. Etter boka.', 'Ikke fem verktoey. Ett.') erstattet, Etikett fjernet fra Bento/ForHvem/Trygghet for variasjon. Bento H2 'Hele utleien paa ett sted.' Screenshot-verifisert 1920 + 390, sw=viewport, ingen konsollfeil."
+
+agent_communication:
+    -agent: "main"
+    -message: "V3 pass 7 (proptech/de-slop) shippet paa /v3 — ikke brukerbekreftet. Root / uroert. Frontend-testagent ikke kjoert (krever tillatelse). Nye assets i /app/public/v3 er lastet opp til objektlagring."
