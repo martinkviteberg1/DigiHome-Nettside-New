@@ -161,25 +161,45 @@ export default function Reisen({ nivaa, setNivaa }) {
         </Avsloer>
 
         {/* Kapitler + sticky panel */}
-        <div className="mt-14 grid grid-cols-1 gap-10 lg:mt-20 lg:grid-cols-[0.38fr_0.62fr] lg:gap-16">
-          <div className="lg:-my-[10vh]">
+        <div className="mt-14 grid grid-cols-1 gap-10 lg:mt-20 lg:grid-cols-[0.36fr_0.64fr] lg:gap-16">
+          <div className="relative lg:-my-[10vh] lg:pl-9">
+            {/* Fremdriftsskinne (desktop) */}
+            <div aria-hidden="true" className="absolute bottom-[10vh] left-[7px] top-[10vh] hidden w-px bg-[#E6E1D9] lg:block" />
             {STEG.map((s, i) => (
               <div
                 key={s.nr}
                 ref={(el) => { kapitler.current[i] = el; }}
                 data-kap={i}
                 data-testid={`v3-kapittel-${s.nr}`}
-                className={`flex flex-col justify-center border-t border-[#ECE8E0] py-10 first:border-t-0 lg:min-h-[68vh] lg:border-t-0 lg:py-0 ${i === 0 ? 'lg:pt-[10vh]' : ''} ${i === STEG.length - 1 ? 'lg:pb-[10vh]' : ''}`}
+                className={`relative flex flex-col justify-center border-t border-[#ECE8E0] py-10 first:border-t-0 lg:min-h-[68vh] lg:border-t-0 lg:py-0 ${i === 0 ? 'lg:pt-[10vh]' : ''} ${i === STEG.length - 1 ? 'lg:pb-[10vh]' : ''}`}
               >
-                <div className="transition-opacity duration-500" style={{ opacity: desktop ? (aktiv === i ? 1 : 0.32) : 1 }}>
-                  <p className="flex items-center gap-3 text-[13px] font-bold tabular-nums text-[#a49e93]" style={heading}>
+                {/* Punkt på skinnen */}
+                <button
+                  type="button"
+                  aria-label={`Gå til steg ${Number(s.nr)}: ${s.t}`}
+                  onClick={() => { try { kapitler.current[i].scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* ok */ } }}
+                  className="absolute -left-9 top-1/2 hidden h-[15px] w-[15px] -translate-y-1/2 items-center justify-center rounded-full bg-[#FBFAF7] lg:flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] focus-visible:ring-offset-2"
+                  style={{ marginTop: i === 0 ? '5vh' : i === STEG.length - 1 ? '-5vh' : 0 }}
+                >
+                  <span className="block rounded-full transition-[width,height,background-color] duration-500" style={{ width: aktiv === i ? 11 : 7, height: aktiv === i ? 11 : 7, background: aktiv === i ? '#0A0A0A' : i < aktiv ? '#8d877d' : '#D6CFC4' }} />
+                </button>
+                <div
+                  role="button"
+                  tabIndex={-1}
+                  onClick={() => { if (desktop) { try { kapitler.current[i].scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* ok */ } } }}
+                  className="relative transition-opacity duration-500 lg:cursor-pointer"
+                  style={{ opacity: desktop ? (aktiv === i ? 1 : 0.3) : 1 }}
+                >
+                  {/* Stort, svakt siffer bak tittelen — editorial rytme */}
+                  <span aria-hidden="true" className="pointer-events-none absolute -left-3 -top-12 select-none text-[132px] font-bold leading-none tracking-[-0.06em] text-[#0A0A0A]/[0.045]" style={heading}>{s.nr}</span>
+                  <p className="relative flex items-center gap-3 text-[13px] font-bold tabular-nums text-[#a49e93]" style={heading}>
                     <span>{s.nr}</span>
                     <span className="h-px w-8 bg-[#D6CFC4]" />
                     <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#a49e93]">Steg {Number(s.nr)} av 5</span>
                   </p>
-                  <h3 className="e-display mt-4 text-[28px] sm:text-[34px]">{s.t}</h3>
-                  <p className="mt-4 max-w-[40ch] text-[15.5px] leading-[1.65] text-[#6F6A60]">{s.b}</p>
-                  <div className="mt-6 flex items-center gap-3">
+                  <h3 className="e-display relative mt-4 text-[30px] sm:text-[38px]">{s.t}</h3>
+                  <p className="relative mt-4 max-w-[38ch] text-[16px] leading-[1.65] text-[#6F6A60]">{s.b}</p>
+                  <div className="relative mt-6 flex items-center gap-3">
                     <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#a49e93]">Hvem gjør det</span>
                     <Stakk idx={nivaa} className="h-[30px]">
                       {s.hvem.map((v, k) => <span key={k} className="block"><Hvem v={v} /></span>)}

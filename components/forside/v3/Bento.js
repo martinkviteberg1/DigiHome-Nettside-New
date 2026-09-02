@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   Check, ChevronRight, MessageSquare, Wrench, Home, Building2, Wallet, FileText,
   ShieldCheck, Sparkles, Star, CalendarDays, Send, Download,
 } from 'lucide-react';
-import { heading, Avsloer } from './motion';
+import { heading, EASE, Avsloer, useSynlig, Inn } from './motion';
 
 /* ---------------------------------------------------------------------------
    Bento — «Alt på ett sted.» Fem celler med EKTE produktutsnitt i stor skala.
@@ -13,14 +13,16 @@ import { heading, Avsloer } from './motion';
 --------------------------------------------------------------------------- */
 
 function Celle({ t, b, className = '', children, testid }) {
+  const ref = useRef(null);
+  const inne = useSynlig(ref, 0.35);
   return (
-    <div className={`group relative flex flex-col overflow-hidden rounded-[26px] bg-white ring-1 ring-black/[0.06] shadow-[0_1px_2px_rgba(23,18,12,0.04)] transition-[transform,box-shadow] duration-300 hover:-translate-y-[2px] hover:shadow-[0_28px_64px_-34px_rgba(23,18,12,0.24)] ${className}`} data-testid={testid}>
+    <div ref={ref} className={`group relative flex flex-col overflow-hidden rounded-[26px] bg-white ring-1 ring-black/[0.06] shadow-[0_1px_2px_rgba(23,18,12,0.04)] transition-[transform,box-shadow] duration-300 hover:-translate-y-[2px] hover:shadow-[0_28px_64px_-34px_rgba(23,18,12,0.24)] ${className}`} data-testid={testid}>
       <div className="px-7 pt-7">
-        <p className="text-[19px] font-bold tracking-[-0.02em] text-[#0A0A0A]" style={heading}>{t}</p>
-        <p className="mt-1.5 text-[14px] leading-[1.55] text-[#6F6A60]">{b}</p>
+        <p className="text-[21px] font-bold tracking-[-0.022em] text-[#0A0A0A]" style={heading}>{t}</p>
+        <p className="mt-1.5 text-[14.5px] leading-[1.55] text-[#6F6A60]">{b}</p>
       </div>
       <div className="relative mt-6 flex-1 overflow-hidden" aria-hidden="true">
-        {children}
+        {typeof children === 'function' ? children(inne) : children}
       </div>
     </div>
   );
@@ -35,14 +37,14 @@ function Flate({ className = '', children }) {
 
 /* ── Økonomi ── */
 const MND = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des'];
-function Okonomi() {
+function Okonomi({ inne }) {
   return (
     <Flate className="h-[250px]">
       <div className="flex items-start justify-between gap-6">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a49e93]">Utbetalt i år</p>
           <p className="mt-1.5 text-[34px] font-bold leading-none tracking-[-0.035em] text-[#111827] tabular-nums" style={heading}>55 500 <span className="text-[14px] font-normal text-[#a49e93]">kr</span></p>
-          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#effaf0] px-2.5 py-1 text-[11.5px] font-semibold text-[#157347]"><Check className="h-3 w-3" strokeWidth={3} /> 3 av 3 måneder betalt i tide</p>
+          <Inn vis={inne} delay={700} dy={6}><p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#effaf0] px-2.5 py-1 text-[11.5px] font-semibold text-[#157347]"><Check className="h-3 w-3" strokeWidth={3} /> 3 av 3 måneder betalt i tide</p></Inn>
         </div>
         <div className="flex h-[92px] flex-1 items-end gap-[6px] pt-1">
           {MND.map((m, i) => {
@@ -50,7 +52,7 @@ function Okonomi() {
             const h = betalt ? 100 : 100;
             return (
               <div key={m} className="flex flex-1 flex-col items-center gap-1.5">
-                <span className="w-full rounded-[4px]" style={{ height: `${h * 0.72}px`, background: betalt ? '#111827' : '#E9E4DB' }} />
+                <span className="w-full origin-bottom rounded-[4px]" style={{ height: `${h * 0.72}px`, background: betalt ? '#111827' : '#E9E4DB', transform: betalt && !inne ? 'scaleY(0.06)' : 'none', transition: `transform 900ms ${EASE} ${i * 140}ms` }} />
                 <span className="text-[8.5px] font-semibold text-[#a49e93]">{m}</span>
               </div>
             );
@@ -75,7 +77,7 @@ function Okonomi() {
 }
 
 /* ── Meldinger ── */
-function Meldinger() {
+function Meldinger({ inne }) {
   return (
     <Flate className="h-[250px]">
       <div className="flex items-center gap-2.5 border-b border-black/[0.05] pb-3">
@@ -83,9 +85,9 @@ function Meldinger() {
         <span><span className="block text-[13px] font-bold text-[#111827]" style={heading}>Jonas Berg</span><span className="block text-[10.5px] text-[#8d877d]">Leietaker · Marken 8</span></span>
       </div>
       <div className="mt-3 space-y-2">
-        <div className="max-w-[86%] rounded-[14px] rounded-bl-[5px] bg-white px-3.5 py-2.5 text-[12.5px] leading-[1.45] text-[#111827] ring-1 ring-black/[0.05]">Hei! Varmtvannet er borte 😬</div>
-        <div className="ml-auto max-w-[90%] rounded-[14px] rounded-br-[5px] bg-[#111827] px-3.5 py-2.5 text-[12.5px] leading-[1.45] text-white">Takk for beskjed — sak er opprettet. Rørlegger kommer torsdag kl. 09:00.</div>
-        <div className="max-w-[60%] rounded-[14px] rounded-bl-[5px] bg-white px-3.5 py-2.5 text-[12.5px] text-[#111827] ring-1 ring-black/[0.05]">Perfekt, takk! 🙏</div>
+        <Inn vis={inne} delay={100} dy={8}><div className="max-w-[86%] rounded-[14px] rounded-bl-[5px] bg-white px-3.5 py-2.5 text-[12.5px] leading-[1.45] text-[#111827] ring-1 ring-black/[0.05]">Hei! Varmtvannet er borte 😬</div></Inn>
+        <Inn vis={inne} delay={700} dy={8}><div className="ml-auto max-w-[90%] rounded-[14px] rounded-br-[5px] bg-[#111827] px-3.5 py-2.5 text-[12.5px] leading-[1.45] text-white">Takk for beskjed — sak er opprettet. Rørlegger kommer torsdag kl. 09:00.</div></Inn>
+        <Inn vis={inne} delay={1400} dy={8}><div className="max-w-[60%] rounded-[14px] rounded-bl-[5px] bg-white px-3.5 py-2.5 text-[12.5px] text-[#111827] ring-1 ring-black/[0.05]">Perfekt, takk! 🙏</div></Inn>
       </div>
       <div className="mt-3 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 ring-1 ring-black/[0.06]">
         <span className="flex-1 text-[12px] text-[#a49e93]">Skriv en melding…</span>
@@ -96,7 +98,7 @@ function Meldinger() {
 }
 
 /* ── Dokumenter ── */
-function Dokumenter() {
+function Dokumenter({ inne }) {
   return (
     <Flate className="h-[250px]">
       <div className="overflow-hidden rounded-[14px] bg-white ring-1 ring-black/[0.05]">
@@ -110,7 +112,7 @@ function Dokumenter() {
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#F7F5F1]"><FileText className="h-4 w-4 text-[#57534e]" strokeWidth={1.7} /></span>
             <span className="min-w-0 flex-1"><span className="block truncate text-[12.5px] font-semibold text-[#111827]">{t}</span><span className="block truncate text-[10.5px] text-[#8d877d]">{s}</span></span>
             {sign
-              ? <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#effaf0] px-2 py-[3px] text-[10px] font-bold text-[#157347]"><ShieldCheck className="h-3 w-3" strokeWidth={2.2} /> BankID</span>
+              ? <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#effaf0] px-2 py-[3px] text-[10px] font-bold text-[#157347]" style={{ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'scale(0.7)', transition: `opacity 500ms ${EASE} ${300 + i * 220}ms, transform 500ms ${EASE} ${300 + i * 220}ms` }}><ShieldCheck className="h-3 w-3" strokeWidth={2.2} /> BankID</span>
               : <Download className="h-4 w-4 shrink-0 text-[#a49e93]" strokeWidth={1.7} />}
           </div>
         ))}
@@ -120,12 +122,12 @@ function Dokumenter() {
 }
 
 /* ── Saker & leverandører ── */
-function Saker() {
+function Saker({ inne }) {
   return (
     <Flate className="h-[250px]">
       <div className="flex items-center justify-between">
         <p className="text-[13px] font-bold text-[#111827]" style={heading}>Varmtvannsbereder lekker</p>
-        <span className="inline-flex items-center gap-1 rounded-full bg-[#effaf0] px-2 py-[3px] text-[10px] font-bold text-[#157347]"><Check className="h-3 w-3" strokeWidth={3} /> Håndtert</span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-[#effaf0] px-2 py-[3px] text-[10px] font-bold text-[#157347]" style={{ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'scale(0.7)', transition: `opacity 500ms ${EASE} 1500ms, transform 500ms ${EASE} 1500ms` }}><Check className="h-3 w-3" strokeWidth={3} /> Håndtert</span>
       </div>
       <p className="mt-0.5 text-[11px] text-[#8d877d]">Meldt av leietaker · tirsdag 21:14 · Bad</p>
       <div className="mt-3 rounded-[14px] bg-white p-3.5 ring-1 ring-black/[0.05]">
@@ -136,18 +138,18 @@ function Saker() {
             <span className="block text-[13px] font-bold text-[#111827]" style={heading}>Rørlegger AS</span>
             <span className="flex items-center gap-1 text-[10.5px] text-[#8d877d]"><Star className="h-3 w-3 fill-[#f59e0b] text-[#f59e0b]" /> 4,8 · 27 oppdrag · 3 450 kr</span>
           </span>
-          <span className="rounded-full bg-[#111827] px-3 py-[6px] text-[11px] font-semibold text-white">Godkjent</span>
+          <span className="inline-grid"><span className="col-start-1 row-start-1 rounded-full px-3 py-[6px] text-[11px] font-semibold text-[#0A0A0A] ring-1 ring-black/[0.12]" style={{ opacity: inne ? 0 : 1, transition: `opacity 400ms ${EASE} 700ms` }}>Godkjenn</span><span className="col-start-1 row-start-1 rounded-full bg-[#111827] px-3 py-[6px] text-center text-[11px] font-semibold text-white" style={{ opacity: inne ? 1 : 0, transition: `opacity 400ms ${EASE} 700ms` }}>Godkjent</span></span>
         </div>
-        <div className="mt-3 flex items-center gap-2 border-t border-black/[0.05] pt-3 text-[11.5px] text-[#57534e]">
+        <Inn vis={inne} delay={1100} dy={6}><div className="mt-3 flex items-center gap-2 border-t border-black/[0.05] pt-3 text-[11.5px] text-[#57534e]">
           <CalendarDays className="h-3.5 w-3.5 text-[#6D4FB0]" /> Booket torsdag 09:00 · leietaker varslet
-        </div>
+        </div></Inn>
       </div>
     </Flate>
   );
 }
 
 /* ── Leietaker-appen ── */
-function Telefon() {
+function Telefon({ inne = true }) {
   return (
     <div className="mx-auto w-[236px] rounded-[34px] bg-[#0a0a0a] p-[6px] shadow-[0_44px_96px_-32px_rgba(23,18,12,0.42),0_0_0_1px_rgba(0,0,0,0.1)]" style={{ transform: 'translateY(6px)' }}>
       <div className="relative overflow-hidden rounded-[28px] bg-[#F7F5F1]">
@@ -165,7 +167,7 @@ function Telefon() {
             <div className="pointer-events-none absolute -right-5 -top-8 h-20 w-20 rounded-full" style={{ background: 'radial-gradient(circle,rgba(207,151,252,0.38),transparent 70%)' }} />
             <div className="flex items-center justify-between">
               <p className="text-[7.5px] font-bold uppercase tracking-[0.14em] text-[#D9B4FF]/85">Neste husleie</p>
-              <span className="flex items-center gap-[3px] rounded-full bg-white/[0.1] px-1.5 py-[2px] text-[7px] font-semibold text-[#7fe0b2]"><Check className="h-[7px] w-[7px]" strokeWidth={3} /> Mars betalt</span>
+              <span className="flex items-center gap-[3px] rounded-full bg-white/[0.1] px-1.5 py-[2px] text-[7px] font-semibold text-[#7fe0b2]" style={{ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'scale(0.7)', transition: `opacity 500ms ${EASE} 900ms, transform 500ms ${EASE} 900ms` }}><Check className="h-[7px] w-[7px]" strokeWidth={3} /> Mars betalt</span>
             </div>
             <p className="mt-1.5 text-[20px] font-bold leading-none tracking-[-0.02em] text-white tabular-nums" style={heading}>18 500 <span className="text-[9px] font-medium text-white/40">kr</span></p>
             <p className="mt-1.5 text-[7.5px] text-white/55">Trekkes automatisk 1. april · KID</p>
@@ -219,11 +221,11 @@ export default function Bento() {
         </Avsloer>
 
         <div className="mt-12 grid gap-4 sm:mt-16 lg:grid-cols-3 lg:gap-5">
-          <Avsloer className="lg:col-span-2"><Celle t="Økonomi som stemmer" b="Husleie, KID og oppgjør — betalt i tide, hver måned. Eksporter til regnskapet med ett klikk." className="h-full" testid="v3-celle-okonomi"><Okonomi /></Celle></Avsloer>
-          <Avsloer delay={90}><Celle t="Én samtale" b="Leietaker, eier og forvalter i samme tråd. Saker opprettes rett fra meldingen." className="h-full" testid="v3-celle-meldinger"><Meldinger /></Celle></Avsloer>
-          <Avsloer><Celle t="Dokumenter med bevis" b="Kontrakt, depositum og protokoll — signert med BankID og lagret der de hører hjemme." className="h-full" testid="v3-celle-dokumenter"><Dokumenter /></Celle></Avsloer>
-          <Avsloer delay={90}><Celle t="Saker som løser seg" b="Leverandør foreslås, godkjennes og bookes. Du blir varslet — ikke belastet." className="h-full" testid="v3-celle-saker"><Saker /></Celle></Avsloer>
-          <Avsloer delay={180}><Celle t="Leietakeren har sin egen app" b="Husleie, meldinger og saker i lomma. Fornøyde leietakere blir lenger." className="h-full" testid="v3-celle-app"><div className="h-[250px] overflow-hidden px-5"><Telefon /></div></Celle></Avsloer>
+          <Avsloer className="lg:col-span-2"><Celle t="Økonomi som stemmer" b="Husleie, KID og oppgjør — betalt i tide, hver måned. Eksporter til regnskapet med ett klikk." className="h-full" testid="v3-celle-okonomi">{(inne) => <Okonomi inne={inne} />}</Celle></Avsloer>
+          <Avsloer delay={90}><Celle t="Én samtale" b="Leietaker, eier og forvalter i samme tråd. Saker opprettes rett fra meldingen." className="h-full" testid="v3-celle-meldinger">{(inne) => <Meldinger inne={inne} />}</Celle></Avsloer>
+          <Avsloer><Celle t="Dokumenter med bevis" b="Kontrakt, depositum og protokoll — signert med BankID og lagret der de hører hjemme." className="h-full" testid="v3-celle-dokumenter">{(inne) => <Dokumenter inne={inne} />}</Celle></Avsloer>
+          <Avsloer delay={90}><Celle t="Saker som løser seg" b="Leverandør foreslås, godkjennes og bookes. Du blir varslet — ikke belastet." className="h-full" testid="v3-celle-saker">{(inne) => <Saker inne={inne} />}</Celle></Avsloer>
+          <Avsloer delay={180}><Celle t="Leietakeren har sin egen app" b="Husleie, meldinger og saker i lomma. Fornøyde leietakere blir lenger." className="h-full" testid="v3-celle-app">{(inne) => <div className="h-[250px] overflow-hidden px-5"><Telefon inne={inne} /></div>}</Celle></Avsloer>
         </div>
       </div>
     </section>

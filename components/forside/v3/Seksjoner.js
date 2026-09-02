@@ -25,12 +25,35 @@ export function Statement() {
               mange har for få timer. DigiHome er bygget for begge: systemet gjør
               det repetitive, du tar avgjørelsene — eller lar oss ta dem.
             </p>
-            <p className="mt-8 border-t border-[#E6E1D9] pt-6 text-[14.5px] leading-[1.65] text-[#8d877d]">
-              Vi er selv forvaltere. DigiHome Forvaltning driver hele sin portefølje
-              i Bergen på dette systemet — hver dag.
-            </p>
           </Avsloer>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Bilde — det ene puste-øyeblikket med foto. Sant, lokalt, varmt. ── */
+export function Bilde() {
+  return (
+    <section data-testid="v3-bilde">
+      <div className="mx-auto w-full max-w-[1320px] px-6 sm:px-10">
+        <Avsloer>
+          <figure className="relative overflow-hidden rounded-[24px] sm:rounded-[28px]">
+            <div className="relative h-[380px] sm:h-[520px] lg:h-[600px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/bergen-aerial.webp" alt="Bergen sett fra Fløyen — byen der DigiHome forvalter sin egen portefølje" loading="lazy" className="h-full w-full object-cover" style={{ objectPosition: '50% 60%' }} />
+              <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(11,10,9,0) 28%, rgba(11,10,9,0.34) 58%, rgba(11,10,9,0.82) 100%)' }} />
+            </div>
+            <figcaption className="absolute inset-x-0 bottom-0 flex flex-col gap-4 p-7 text-white sm:flex-row sm:items-end sm:justify-between sm:p-10">
+              <div className="max-w-[40ch]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">Bergen</p>
+                <p className="mt-2 text-[22px] font-bold leading-[1.1] tracking-[-0.025em] sm:text-[30px]" style={heading}>Vi er selv forvaltere.</p>
+                <p className="mt-2 text-[14.5px] leading-[1.6] text-white/75 sm:text-[15.5px]">DigiHome Forvaltning driver hele sin portefølje i Bergen på dette systemet — hver dag. Det du ser på denne siden, bruker vi selv.</p>
+              </div>
+              <Link href="/om-oss" className="group inline-flex shrink-0 items-center gap-2 text-[14px] font-semibold text-white">Om oss <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" /></Link>
+            </figcaption>
+          </figure>
+        </Avsloer>
       </div>
     </section>
   );
@@ -176,7 +199,17 @@ export function Trygghet() {
           <div className="mt-20 flex flex-col gap-5 border-t border-[#ECE8E0] pt-8 lg:flex-row lg:items-center lg:justify-between">
             <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#a49e93]">Snakker med det du allerede bruker</p>
             <ul className="flex flex-wrap items-center gap-x-7 gap-y-3">
-              {INTEGRASJONER.map((n) => <li key={n} className="text-[15px] font-bold tracking-[-0.01em] text-[#9b948a]" style={heading}>{n}</li>)}
+              {INTEGRASJONER.map((n) => {
+                const logo = n === 'FINN' ? '/finn-logo.png' : n === 'BankID' ? '/bankid-logo.png' : null;
+                return (
+                  <li key={n} className="flex items-center">
+                    {logo
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={logo} alt={n} loading="lazy" className="h-[18px] w-auto opacity-60 grayscale" />
+                      : <span className="text-[15px] font-bold tracking-[-0.01em] text-[#9b948a]" style={heading}>{n}</span>}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </Avsloer>
@@ -186,7 +219,8 @@ export function Trygghet() {
 }
 
 /* ── Slutt-CTA ── */
-export function SluttCTA({ onKlikk }) {
+export function SluttCTA({ nivaa = 0, onKlikk }) {
+  const n = NIVAAER[nivaa];
   return (
     <section className="relative overflow-hidden border-t border-[#ECE8E0]" data-testid="v3-cta">
       <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[900px] -translate-x-1/2 rounded-full" style={{ background: 'radial-gradient(circle, rgba(155,91,214,0.10) 0%, transparent 62%)' }} />
@@ -195,8 +229,8 @@ export function SluttCTA({ onKlikk }) {
           <h2 className="e-display mx-auto max-w-[14ch] text-[44px] sm:text-[64px] lg:text-[84px]">Klar for utleie på autopilot<span className="text-[#cf97fc]">?</span></h2>
           <p className="mx-auto mt-6 max-w-[40ch] text-[16px] leading-[1.65] text-[#6F6A60] sm:text-[18px]">Kom i gang på minuttet — eller book en prat, så finner vi riktig grad av autopilot for deg.</p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/bli-utleier/start" prefetch onClick={() => onKlikk && onKlikk('bunn')} data-testid="v3-bunn-cta" className="e-btn e-btn-dark group !rounded-full shadow-[0_14px_30px_-14px_rgba(17,17,17,0.32)]">
-              Kom i gang <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+            <Link href={n.href} prefetch onClick={() => onKlikk && onKlikk('bunn')} data-testid="v3-bunn-cta" className="e-btn e-btn-dark group !rounded-full shadow-[0_14px_30px_-14px_rgba(17,17,17,0.32)]">
+              {n.cta} <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
             <Link href="/book-mote" prefetch className="e-btn e-btn-ghost !rounded-full !bg-white" data-testid="v3-bunn-book">Book en prat</Link>
           </div>

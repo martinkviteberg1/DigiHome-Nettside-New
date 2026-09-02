@@ -663,6 +663,9 @@ function FlateOkonomi() {
   );
 }
 
+/* Navngitt eksport — porteføljedashbordet gjenbrukes i forside-V3 (HeroPortal, nivå Portefølje) */
+export { FlateOversikt };
+
 /* ── Selve vinduet ── */
 export default function VinduRamme() {
   const [apen, setApen] = useState(false);

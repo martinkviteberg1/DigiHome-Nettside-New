@@ -2,98 +2,68 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Menu, X } from 'lucide-react';
-import { site } from '@/lib/site';
+import { ArrowRight } from 'lucide-react';
 import { track } from '@/lib/analytics';
+import Nav from './Nav';
 import HeroPortal from './HeroPortal';
-import Reisen from './Reisen';
+import Reisen, { NivaaVelger, NIVAAER } from './Reisen';
 import Bento from './Bento';
-import { Statement, Nivaa, Trygghet, SluttCTA } from './Seksjoner';
+import { Statement, Bilde, Nivaa, Trygghet, SluttCTA } from './Seksjoner';
+import { EASE, Stakk } from './motion';
 
 /* ---------------------------------------------------------------------------
    ForsideV3 — «Utleie på autopilot», 2026.
 
-   Én ryggrad: fra annonse til innbetaling. Heroen snakker til følelsen alle
-   tre kjøpere deler (arbeidet forsvinner, oversikten blir), kroppen beviser
-   med ekte produkt, og valget (Selvbetjent · Forvaltning · Portefølje) skjer
-   én gang — sent og tydelig.
+   Én ryggrad: fra annonse til innbetaling. Én tilstand (grad av autopilot:
+   Selvbetjent · Forvaltning · Portefølje) styrer heroens produktvindu, reisens
+   «hvem gjør det», nivåkortene og CTAene. Heroen snakker til følelsen alle tre
+   kjøpere deler, kroppen beviser med ekte produkt, valget skjer én gang.
 
-   Sju bevegelser: Hero → Reisen → Statement → Bento → Nivå → Trygghet → CTA.
+   Hero → Reisen → Statement → Bilde → Bento → Nivå → Trygghet → CTA.
    Ingen priser. Ingen påstander vi ikke kan stå inne for.
 --------------------------------------------------------------------------- */
 
-const NAV = [
-  { href: '#produkt', label: 'Produkt' },
-  { href: '#reisen', label: 'Slik virker det' },
-  { href: '/bedrift', label: 'For bedrifter' },
-  { href: '/priser', label: 'Priser' },
-  { href: '/om-oss', label: 'Om oss' },
-];
-
-function NavLenke({ n, className, onClick }) {
-  const cls = `rounded-full px-3.5 py-2 text-[13.5px] font-medium text-[#1f1f1f]/70 transition-colors hover:bg-[#0a0a0a]/[0.045] hover:text-[#0a0a0a] ${className || ''}`;
-  return n.href.startsWith('#')
-    ? <a href={n.href} className={cls} onClick={onClick}>{n.label}</a>
-    : <Link href={n.href} className={cls} onClick={onClick}>{n.label}</Link>;
-}
-
-export default function ForsideV3() {
-  const [scrolled, setScrolled] = useState(false);
-  const [meny, setMeny] = useState(false);
-  const [nivaa, setNivaa] = useState(0);
-
+/* Sticky mobil-CTA — dukker opp etter heroen, forsvinner ved footer */
+function MobilCTA({ nivaa, onKlikk }) {
+  const [vis, setVis] = useState(false);
   useEffect(() => {
-    const f = () => setScrolled(window.scrollY > 8);
+    const f = () => {
+      const y = window.scrollY;
+      const rest = document.documentElement.scrollHeight - y - window.innerHeight;
+      setVis(y > 900 && rest > 720);
+    };
     f();
     window.addEventListener('scroll', f, { passive: true });
     return () => window.removeEventListener('scroll', f);
   }, []);
+  const n = NIVAAER[nivaa];
+  return (
+    <div
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#ECE8E0] bg-[#FBFAF7]/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md lg:hidden"
+      style={{ transform: vis ? 'none' : 'translateY(110%)', transition: `transform 380ms ${EASE}` }}
+      aria-hidden={!vis}
+      data-testid="v3-mobil-cta"
+    >
+      <div className="flex gap-2">
+        <Link href={n.href} prefetch onClick={() => onKlikk('mobil-sticky')} className="e-btn e-btn-dark e-btn-sm flex-1 !rounded-full">{n.cta} <ArrowRight className="h-4 w-4" /></Link>
+        <Link href="/book-mote" prefetch className="e-btn e-btn-ghost e-btn-sm flex-1 !rounded-full !bg-white">Book en prat</Link>
+      </div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    if (!meny) return undefined;
-    const f = (e) => { if (e.key === 'Escape') setMeny(false); };
-    window.addEventListener('keydown', f);
-    return () => window.removeEventListener('keydown', f);
-  }, [meny]);
-
-  const klikk = (hvor) => { try { track('forside_cta', { hvor, versjon: 'v3' }); } catch (e) { /* ok */ } };
+export default function ForsideV3() {
+  const [nivaa, setNivaa] = useState(0);
+  const klikk = (hvor) => { try { track('forside_cta', { hvor, versjon: 'v3', nivaa: NIVAAER[nivaa].id }); } catch (e) { /* ok */ } };
 
   return (
     <div className="min-h-screen overflow-x-clip bg-[#FBFAF7] text-[#0A0A0A]" data-testid="forside-v3">
-      {/* ── Navbar ── */}
-      <header className={`sticky top-0 z-50 transition-[background-color,border-color,box-shadow] duration-300 ${scrolled || meny ? 'border-b border-[#ECE8E0] bg-[#FBFAF7]/92 backdrop-blur-md' : 'border-b border-transparent bg-transparent'}`}>
-        <div className="mx-auto flex h-[68px] w-full max-w-[1320px] items-center justify-between gap-4 px-6 sm:px-10">
-          <Link href="/" className="flex shrink-0 items-center" data-testid="v3-logo" onClick={() => setMeny(false)}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[22px] w-auto" />
-          </Link>
-          <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Hovedmeny">
-            {NAV.map((n) => <NavLenke key={n.href} n={n} />)}
-          </nav>
-          <div className="flex shrink-0 items-center gap-2">
-            <a href={site.loginUrl} className="hidden rounded-full px-3.5 py-2 text-[13.5px] font-medium text-[#1f1f1f]/70 transition-colors hover:text-[#0a0a0a] sm:block">Logg inn</a>
-            <Link href="/bli-utleier/start" prefetch onClick={() => klikk('nav')} data-testid="v3-nav-cta" className="e-btn e-btn-dark !h-[40px] !rounded-full !px-4 !text-[13.5px] shadow-[0_4px_12px_rgba(17,17,17,0.14)]">
-              Kom i gang <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-            <button type="button" onClick={() => setMeny((v) => !v)} aria-expanded={meny} aria-label={meny ? 'Lukk meny' : 'Åpne meny'} data-testid="v3-meny-knapp"
-              className="flex h-[40px] w-[40px] items-center justify-center rounded-full text-[#0a0a0a] transition-colors hover:bg-[#0a0a0a]/[0.045] lg:hidden">
-              {meny ? <X className="h-5 w-5" strokeWidth={1.8} /> : <Menu className="h-5 w-5" strokeWidth={1.8} />}
-            </button>
-          </div>
-        </div>
-        {/* Mobilmeny */}
-        <div className={`overflow-hidden lg:hidden ${meny ? 'max-h-[420px]' : 'max-h-0'}`} style={{ transition: 'max-height 380ms cubic-bezier(0.22,1,0.36,1)' }} data-testid="v3-mobilmeny">
-          <nav className="mx-auto flex w-full max-w-[1320px] flex-col gap-1 px-4 pb-5 pt-1 sm:px-8" aria-label="Mobilmeny">
-            {NAV.map((n) => <NavLenke key={n.href} n={n} onClick={() => setMeny(false)} className="!px-4 !py-3 !text-[16px] !text-[#0a0a0a]" />)}
-            <a href={site.loginUrl} className="rounded-full px-4 py-3 text-[16px] font-medium text-[#1f1f1f]/70 sm:hidden">Logg inn</a>
-          </nav>
-        </div>
-      </header>
+      <Nav onCta={klikk} />
 
       <main>
-        {/* ── Hero — løftet + produktet i full bredde ── */}
+        {/* ── Hero — løftet + produktet i full bredde, i tre grader ── */}
         <section className="relative" data-testid="v3-hero">
-          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[300px] h-[720px] w-[1400px] -translate-x-1/2 rounded-full" style={{ background: 'radial-gradient(ellipse at center, rgba(155,91,214,0.11) 0%, rgba(155,91,214,0.05) 38%, transparent 66%)' }} />
+          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[340px] h-[760px] w-[1400px] -translate-x-1/2 rounded-full" style={{ background: 'radial-gradient(ellipse at center, rgba(155,91,214,0.11) 0%, rgba(155,91,214,0.05) 38%, transparent 66%)' }} />
           <div className="relative mx-auto w-full max-w-[1320px] px-6 pt-16 sm:px-10 sm:pt-24 lg:pt-28">
             <div className="mx-auto max-w-[1000px] text-center">
               <p className="e-label dh-cover-inn !text-[#7c7466]">Norsk plattform for utleie og forvaltning</p>
@@ -110,25 +80,41 @@ export default function ForsideV3() {
                 </Link>
                 <a href="#reisen" data-testid="v3-hero-sekundaer" className="e-btn e-btn-ghost !rounded-full !bg-white">Se hvordan det virker</a>
               </div>
-              <ul className="dh-cover-inn mt-9 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-[#b3aca1]" style={{ animationDelay: '.26s' }}>
+              <ul className="dh-cover-inn mt-9 hidden flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-[#b3aca1] sm:flex" style={{ animationDelay: '.26s' }}>
                 {['BankID-signering', 'Publisering til FINN', 'Husleie med KID', 'Saker og leverandører'].map((t, i) => (
                   <li key={t} className="flex items-center gap-3">{i > 0 && <span aria-hidden="true" className="h-[3px] w-[3px] rounded-full bg-[#D6CFC4]" />}{t}</li>
                 ))}
               </ul>
             </div>
-            <div className="dh-cover-inn mt-14 sm:mt-20" style={{ animationDelay: '.3s' }}>
-              <HeroPortal />
+
+            {/* Velger: samme produkt, tre grader — vinduet morfer */}
+            <div className="dh-cover-inn mt-14 flex flex-col items-center gap-3 sm:mt-20" style={{ animationDelay: '.3s' }}>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#a49e93]">Se produktet som</p>
+              <NivaaVelger nivaa={nivaa} onChange={setNivaa} />
+              <div className="h-[22px] text-center text-[14px] text-[#6F6A60]" aria-live="polite">
+                <Stakk idx={nivaa}>
+                  <span className="block">Én bolig. Du godkjenner — systemet gjør resten.</span>
+                  <span className="block">Samme portal. Forvalteren tar sakene, du ser alt.</span>
+                  <span className="block">Forvalterens flate: hele porteføljen, alle saker, ett system.</span>
+                </Stakk>
+              </div>
+            </div>
+            <div className="dh-cover-inn mt-8" style={{ animationDelay: '.36s' }}>
+              <HeroPortal nivaa={nivaa} />
             </div>
           </div>
         </section>
 
         <Reisen nivaa={nivaa} setNivaa={setNivaa} />
         <Statement />
+        <Bilde />
         <Bento />
         <Nivaa nivaa={nivaa} setNivaa={setNivaa} />
         <Trygghet />
-        <SluttCTA onKlikk={klikk} />
+        <SluttCTA nivaa={nivaa} onKlikk={klikk} />
       </main>
+
+      <MobilCTA nivaa={nivaa} onKlikk={klikk} />
     </div>
   );
 }
