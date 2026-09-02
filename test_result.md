@@ -7470,3 +7470,19 @@ agent_communication:
     -agent: "main"
     -message: "KUN FRONTEND: StegDemo (seksjon 2) loeftet til verdensklasse — retning B (koreografer eksisterende flater). Full omskriving av /app/components/forside/StegDemo.js: tidslinje-state-machine (useKoreografi), IntersectionObserver (spiller kun naar synlig), kun opacity/transform, prefers-reduced-motion -> statisk sluttbilde, rolig loop per steg. Koreografi: 01 interessenter tikker inn + Maria lander live oeverst + teller 11->12; 02 sjekker hukes av -> score teller opp (raF) -> listen sorterer seg selv (translateY-stack) -> Anbefalt-badge + Rangert av AI-chip; 03 BankID-knapp trykkes -> Venter flipper til Signert -> Aktiv leieavtale-chip; 04 Innbetaling mottatt-toast glir inn -> mars-raden flipper til betalt; 05 ny sak lander -> DigiHome foreslaar roerlegger -> Under arbeid. Panelhoyde maalt uniform 430px paa alle 5 steg (ingen hopp). Screenshot-verifisert alle steg desktop 1920 + mobil 390 (sw=390, ingen overflow). Frontend-testagent ikke kjoert (krever brukertillatelse)."
 
+
+  - task: "Forside V3 (verdensklasse 2026) paa /v3 — ny root-side nesten fra scratch"
+    implemented: true
+    working: true
+    file: "/app/app/v3/page.js, /app/components/forside/v3/{ForsideV3,HeroPortal,Reisen,Bento,Seksjoner,motion}.js, /app/components/forside/StegDemo.js (kun nye navngitte eksporter av Flate*)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Bruker ba om root-side 'nesten fra scratch, verdensklasse 2026' som treffer tre kjoepere (privat selvforvalt, privat full forvaltning, bedrift/portefoelje) gjennom konseptet Utleie paa autopilot. Budskapsarkitektur: heroen snakker universelt (underlinje A), kroppen beviser med ekte produkt, segmentering skjer EN gang (Selvbetjent/Forvaltning/Portefoelje). Bygget paa /v3 (noindex) for side-om-side; / er uendret. Komposisjon: Navbar (m/ mobilmeny) -> Hero (display 108-120px sentrert + HeroPortal: eierportal-replika i full bredde 1320px, fasit portal/OwnerDashboard.tsx+OwnerLayout.tsx fra produktrepo newsan-branch, levende koreografi sak->godkjent->alt i orden->husleie mottatt->ny melding) -> Reisen (scroll-drevne kapitler 01-05 m/ sticky panel, gjenbruker StegDemo-flatene; nivaavelger endrer 'hvem gjoer det'-chips + CTA) -> Statement -> Bento (5 celler m/ ekte UI-utsnitt) -> Nivaa (3 kort, egne CTAer: Kom i gang / Faa vurdering / Book en demo) -> Trygghet (4 pilarer + kun dokumenterte integrasjoner) -> CTA -> Footer. Fikset hydreringsfeil (div i p). Screenshot-verifisert desktop 1920 alle seksjoner + mobil 390 (sw=390, ingen overflow). Ingen priser. Ingen udokumenterte paastander (Vipps/Tripletex fjernet fra integrasjonslisten; Lea Bank/Keyhole/Channex bekreftet i backend/integrations)."
+
+agent_communication:
+    -agent: "main"
+    -message: "Forside V3 shippet paa /v3 (ikke brukerbekreftet). Root / er uroert til bruker godkjenner. Frontend-testagent ikke kjoert (krever brukertillatelse). Referanseklone av produktrepo ligger i /tmp/dh-ref (ikke varig; token skrubbet fra remote)."

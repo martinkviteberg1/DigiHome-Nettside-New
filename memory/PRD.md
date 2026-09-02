@@ -810,3 +810,12 @@ Google Ads-styring via native REST API).
 - Kun to visninger igjen: TABELL (standard — `visning` default 'tabell') og TAVLE (pipeline). Toggle har 2 ikoner (Table2 først, Columns3).
 - `splitt`-modus er død (const splitt = false) — valgt lead åpner ALLTID som høyre-ark (SalgsSkuffEnkel), utvid lar arket vokse til arbeidsrom.
 - Fjernet: liste-JSX, radar-visning-liste-toggle, radar-leadliste, splitt-inline-skuff, mx-auto-maksbredde-betingelser i toppområdet.
+
+## 2026-09-02: Forside V3 — «Utleie på autopilot» (verdensklasse 2026) på /v3
+- Brukerkrav: root nesten fra scratch, verdensklasse moderne 2026-layout/UI/UX, må treffe tre kjøpere (privat selvforvalt, privat full forvaltning, bedrift/portefølje) via konseptet «Utleie på autopilot».
+- Budskapsarkitektur (godkjent retning, agenten fikk frie tøyler): autopilot er en GRAD, ikke en ting. Heroen universell (underlinje A: «Alt fra annonse til innbetaling går av seg selv. Du bestemmer hvor mye du vil være med.»), kroppen beviser med ekte produkt, segmentering skjer én gang: Selvbetjent (Kom i gang → /bli-utleier/start) · Forvaltning (Få vurdering → /forvaltning) · Portefølje (Book en demo → /book-mote).
+- Struktur: Hero (display + eierportal-replika i full bredde, levende) → Reisen (scroll-drevet 01–05, sticky panel, nivåvelger endrer «hvem gjør det») → Statement → Bento (ekte UI-utsnitt) → Nivå (3 kort) → Trygghet (4 pilarer + dokumenterte integrasjoner) → CTA → Footer.
+- Filer: app/v3/page.js (noindex), components/forside/v3/*. StegDemo.js fikk navngitte eksporter av flatene. / er uendret inntil bruker godkjenner → deretter bytt page.js til ForsideV3.
+- Produktfasit hentet fra GitHub-repo martinkviteberg1/DigiHome (branch newsan) klonet til /tmp/dh-ref (ikke varig). Bekreftede integrasjoner i backend/integrations: finn, posten_signering (BankID), keyhole, lea_bank, poweroffice, fiken, channex (Airbnb/Booking), eiendomsverdi, infotorg. IKKE dokumentert: Vipps, Tripletex → fjernet fra forsiden.
+- Status: shippet på /v3, screenshot-verifisert desktop+mobil, IKKE brukerbekreftet. Frontend-testagent ikke kjørt.
+- Neste: brukerens visuelle aksept → evt. justeringer → bytte / til V3 → frontend-test (etter tillatelse).

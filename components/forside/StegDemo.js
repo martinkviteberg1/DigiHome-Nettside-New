@@ -578,6 +578,9 @@ function FlateDrift({ kjorer }) {
 
 const FLATER = [FlateFinn, FlateVelg, FlateSigner, FlateBetalt, FlateDrift];
 
+/* Navngitte eksporter — gjenbrukes som kapitler i forside-V3 (Reisen) */
+export { FlateFinn, FlateVelg, FlateSigner, FlateBetalt, FlateDrift };
+
 export default function StegDemo() {
   const [aktiv, setAktiv] = useState(0);
   const Flate = FLATER[aktiv];
