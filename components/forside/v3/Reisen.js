@@ -103,7 +103,7 @@ export default function Reisen() {
           <div ref={rot} id="v3-reise-panel" role="tabpanel" aria-labelledby={`v3-fane-${STEG[aktiv].nr}`} className="overflow-hidden rounded-[16px] border border-[#0F0E10]/[0.08] bg-white shadow-[0_40px_80px_-60px_rgba(30,20,40,0.35)]" data-testid="v3-reise-panel">
             <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]">
               {/* Tekst — svakt lilla flate */}
-              <div className="flex min-w-0 flex-col bg-[#F6F3FB] p-7 sm:p-9 lg:p-10">
+              <div className="flex min-w-0 flex-col bg-[#F6F3FB] p-7 sm:p-9 lg:justify-center lg:p-10">
                 <Stakk idx={aktiv}>
                   {STEG.map((st) => (
                     <div key={st.nr}>

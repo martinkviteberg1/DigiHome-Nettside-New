@@ -77,20 +77,26 @@ export default function ForsideV3() {
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[720px]" style={{ background: 'radial-gradient(60% 46% at 50% -8%, rgba(212,150,255,0.13) 0%, rgba(212,150,255,0.04) 45%, transparent 74%)' }} />
 
           <div className="relative mx-auto w-full max-w-[1280px] px-6 pt-24 sm:px-8 sm:pt-32 lg:pt-40">
-            <h1 className="dh-cover-inn max-w-[12ch] text-[44px] text-white sm:text-[60px] lg:text-[76px]" style={display} data-testid="v3-h1">
-              Utleie på autopilot<span style={{ color: T.lilla }}>.</span>
-            </h1>
-            <p className="dh-cover-inn mt-6 max-w-[54ch] text-[18px] leading-[1.5] text-white/60 sm:text-[20px]" style={{ animationDelay: '.08s' }}>
-              Alt fra annonse til innbetaling går av seg selv.<br className="hidden sm:block" /> Du bestemmer hvor mye du vil være med.
-            </p>
-            <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-5" style={{ animationDelay: '.14s' }}>
-              <Knapp href="/bli-utleier/start" onClick={() => klikk('hero')} data-testid="v3-hero-cta">Kom i gang</Knapp>
-              <Lenke mork href="#reisen" data-testid="v3-hero-sekundaer">Se hvordan det virker</Lenke>
+            {/* Editorial to-kolonne på lg: overskrift venstre, budskap + handling høyre,
+                bunnjustert mot overskriften. Fyller bredden uten å røre overskriften. */}
+            <div className="lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-16">
+              <h1 className="dh-cover-inn max-w-[12ch] text-[44px] text-white sm:text-[60px] lg:text-[76px]" style={display} data-testid="v3-h1">
+                Utleie på autopilot<span style={{ color: T.lilla }}>.</span>
+              </h1>
+              <div className="mt-6 lg:mt-0 lg:pb-3">
+                <p className="dh-cover-inn max-w-[54ch] text-[18px] leading-[1.5] text-white/60 sm:text-[20px] lg:max-w-[38ch]" style={{ animationDelay: '.08s' }}>
+                  Alt fra annonse til innbetaling går av seg selv. Du bestemmer hvor mye du vil være med.
+                </p>
+                <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-5 lg:mt-7" style={{ animationDelay: '.14s' }}>
+                  <Knapp href="/bli-utleier/start" onClick={() => klikk('hero')} data-testid="v3-hero-cta">Kom i gang</Knapp>
+                  <Lenke mork href="#reisen" data-testid="v3-hero-sekundaer">Se hvordan det virker</Lenke>
+                </div>
+                {/* Én sann tillitslinje. Ingen tall vi ikke kan dokumentere. */}
+                <p className="dh-cover-inn mt-7 text-[13.5px] text-white/40 lg:mt-6" style={{ animationDelay: '.2s' }} data-testid="v3-hero-tillit">
+                  Bygget og brukt daglig av DigiHome Forvaltning på egen portefølje i Bergen.
+                </p>
+              </div>
             </div>
-            {/* Én sann tillitslinje. Ingen tall vi ikke kan dokumentere. */}
-            <p className="dh-cover-inn mt-7 text-[13.5px] text-white/40" style={{ animationDelay: '.2s' }} data-testid="v3-hero-tillit">
-              Bygget og brukt daglig av DigiHome Forvaltning på egen portefølje i Bergen.
-            </p>
           </div>
 
           {/* Produktet — står over kanten mellom mørkt og lyst (negativ bunnmarg).

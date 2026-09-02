@@ -7534,3 +7534,19 @@ agent_communication:
 agent_communication:
     -agent: "main"
     -message: "V3 pass 5 shippet på /v3 — ikke brukerbekreftet. Root / urørt. Frontend-testagent ikke kjørt (krever tillatelse). Footer.tsx har fått valgfri variant-prop; standardrendering på alle andre sider er uendret."
+
+  - task: "Forside V3 — pass 6: editorial to-kolonne-hero, tette krysstoninger (ingen spøkelsestilstand), Reisen-sentrering, taktil knapp"
+    implemented: true
+    working: true
+    file: "/app/components/forside/v3/{ForsideV3,motion,Reisen}.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "KUN FRONTEND. Helsidesjekk ved 1440 avdekket: (a) Stakk/Bytt hadde ~200 ms tomt vindu (ut 180 + inn-forsinkelse 200) — skjermbilde fanget 'Trenger din oppmerksomhet' som spøkelsesrad. Strammet til ut 140 ms / inn fra 140 ms (260 ms). (b) Hero: høyre halvdel tom ved 1440/1920. Løsning uten å røre den venstrestilte to-linjers H1 brukeren liker: lg-grid 7fr/5fr, undertekst + CTA + tillitslinje i høyre kolonne bunnjustert mot H1 (items-end). Under lg stables som før. (c) Reisen tekstkolonne lg:justify-center. (d) Knapp active:scale-[0.98]. Verifisert: hero 1440 + 1920 + 390, Reisen 1920. Footer-varianten påvirker ikke /: root-footer h2 fortsatt uppercase (verifisert computed style), /, /privat, /bedrift, /forvaltning, /priser alle 200."
+
+agent_communication:
+    -agent: "main"
+    -message: "V3 pass 6 shippet på /v3 — ikke brukerbekreftet. Root / urørt. Frontend-testagent ikke kjørt (krever tillatelse)."

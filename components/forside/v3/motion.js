@@ -51,7 +51,7 @@ const KNAPP = {
 };
 export function Knapp({ href, variant = 'primar', size = 'md', className = '', children, ...rest }) {
   const h = size === 'sm' ? 'h-8 px-3 text-[13px] rounded-[8px]' : 'h-10 px-4 text-[14px] rounded-[10px]';
-  const cls = `inline-flex items-center justify-center gap-2 font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D496FF]/70 ${h} ${KNAPP[variant]} ${className}`;
+  const cls = `inline-flex items-center justify-center gap-2 font-medium transition-[color,background-color,border-color,transform] duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D496FF]/70 ${h} ${KNAPP[variant]} ${className}`;
   if (href && href.startsWith('#')) return <a href={href} className={cls} {...rest}>{children}</a>;
   if (href) return <Link href={href} prefetch className={cls} {...rest}>{children}</Link>;
   return <button type="button" className={cls} {...rest}>{children}</button>;
@@ -158,10 +158,11 @@ export function Inn({ vis, delay = 0, dy = 10, className = '', style = {}, child
   );
 }
 
-/* Krysstoning mellom to tilstander — sekvensiell, grid-stack så bredden er stabil */
+/* Krysstoning mellom to tilstander — sekvensiell og TETT: ut 140 ms, inn
+   starter ved 140 ms. Aldri et tomt vindu (ser ut som en bug i skjermbilder). */
 export function Bytt({ vis, a, b, className = '' }) {
-  const ut = `opacity 180ms ${EASE}, transform 180ms ${EASE}`;
-  const inn = `opacity 320ms ${EASE} 200ms, transform 320ms ${EASE} 200ms`;
+  const ut = `opacity 140ms ${EASE}, transform 140ms ${EASE}`;
+  const inn = `opacity 260ms ${EASE} 140ms, transform 260ms ${EASE} 140ms`;
   return (
     <span className={`inline-grid ${className}`}>
       <span className="col-start-1 row-start-1" style={{ opacity: vis ? 0 : 1, transform: vis ? 'translateY(-3px)' : 'none', transition: vis ? ut : inn }}>{a}</span>
@@ -170,8 +171,9 @@ export function Bytt({ vis, a, b, className = '' }) {
   );
 }
 
-/* Krysstoning mellom flere tilstander (stack) — sekvensiell: ut først, så inn.
-   Ingen overlappende tekst midt i overgangen. */
+/* Krysstoning mellom flere tilstander (stack) — sekvensiell og tett: ut først
+   (140 ms), så inn (starter ved 140 ms). Ingen overlappende tekst, og ingen
+   tom mellomtilstand lang nok til å fanges i et skjermbilde. */
 export function Stakk({ idx, className = '', children }) {
   const barn = React.Children.toArray(children);
   return (
@@ -186,8 +188,8 @@ export function Stakk({ idx, className = '', children }) {
               opacity: aktiv ? 1 : 0,
               transform: aktiv ? 'none' : 'translateY(4px)',
               transition: aktiv
-                ? `opacity 320ms ${EASE} 200ms, transform 320ms ${EASE} 200ms`
-                : `opacity 180ms ${EASE}, transform 180ms ${EASE}`,
+                ? `opacity 260ms ${EASE} 140ms, transform 260ms ${EASE} 140ms`
+                : `opacity 140ms ${EASE}, transform 140ms ${EASE}`,
               pointerEvents: aktiv ? 'auto' : 'none',
             }}
             aria-hidden={!aktiv}
