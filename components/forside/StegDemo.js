@@ -31,12 +31,17 @@ const P = (kjønn, n) => `https://randomuser.me/api/portraits/${kjønn}/${n}.jpg
 
 /* ── Koreografi-verktøy ── */
 
+/* Statisk modus (forside-V3): flatene viser sluttbildet umiddelbart — alltid
+   komplett, aldri halvbygd. Standard false → ingen endring for eksisterende bruk. */
+export const StatiskContext = React.createContext(false);
+
 function useRedusert() {
+  const statisk = React.useContext(StatiskContext);
   const [r, setR] = useState(false);
   useEffect(() => {
     try { setR(window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { /* ok */ }
   }, []);
-  return r;
+  return r || statisk;
 }
 
 /* Tidslinje-state-machine — som tour-demoene. Looper rolig. */

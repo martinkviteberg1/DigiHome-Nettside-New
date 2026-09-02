@@ -9,6 +9,7 @@ import {
   BookOpen, Landmark, LayoutGrid,
 } from 'lucide-react';
 import { FlateOversikt } from '@/components/forside/HeroVindu';
+import { NivaaVelger } from './Reisen';
 import { heading, EASE, useKoreografi, useSynlig, useMedia, Bytt, Stakk } from './motion';
 
 /* ---------------------------------------------------------------------------
@@ -49,14 +50,14 @@ const NAV_FORVALTER = [
   [Users, 'Brukere', false],
 ];
 
+/* Alltid komplett: hver fase er et ferdig bilde. Ingen tom starttilstand. */
 const TRINN = [
-  { navn: 'start', ms: 1600 },
-  { navn: 'sak', ms: 3400 },
-  { navn: 'booket', ms: 3000 },
-  { navn: 'orden', ms: 2400 },
-  { navn: 'betalt', ms: 3600 },
-  { navn: 'melding', ms: 3600 },
-  { navn: 'slutt', ms: 2400 },
+  { navn: 'sak', ms: 4200 },
+  { navn: 'booket', ms: 3600 },
+  { navn: 'orden', ms: 2800 },
+  { navn: 'betalt', ms: 4000 },
+  { navn: 'melding', ms: 4000 },
+  { navn: 'slutt', ms: 3000 },
 ];
 
 function Ring({ pct = 100, size = 40, stroke = 4 }) {
@@ -72,9 +73,9 @@ function Ring({ pct = 100, size = 40, stroke = 4 }) {
 
 function Hurtig({ Ikon, l }) {
   return (
-    <span className="inline-flex h-[44px] shrink-0 items-center gap-2.5 rounded-full border border-[#E5E7EB] bg-white pl-2.5 pr-5">
-      <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[#F1EAFB]"><Ikon className="h-[15px] w-[15px] text-[#6D4FB0]" strokeWidth={1.7} /></span>
-      <span className="whitespace-nowrap text-[13px] font-semibold text-[#111827]">{l}</span>
+    <span className="inline-flex h-[38px] shrink-0 items-center gap-2 rounded-full border border-[#E5E7EB] bg-white pl-2 pr-4">
+      <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[#F1EAFB]"><Ikon className="h-[13px] w-[13px] text-[#6D4FB0]" strokeWidth={1.7} /></span>
+      <span className="whitespace-nowrap text-[12.5px] font-semibold text-[#111827]">{l}</span>
     </span>
   );
 }
@@ -95,22 +96,24 @@ function Toast({ vis, Ikon, farge, bg, t, s }) {
   );
 }
 
-/* Mørk flis (INK_HERO) — delt av inntekt, leietaker og forvalter */
+/* Lys flis — hvit, hårlinje. Rolig nok for en hero; strukturen er appens. */
 function Flis({ className = '', children }) {
   return (
-    <div className={`relative overflow-hidden rounded-[16px] p-5 sm:p-6 ${className}`} style={{ background: INK_HERO }}>
+    <div className={`relative overflow-hidden rounded-[14px] border border-[#E5E7EB] bg-white p-5 ${className}`}>
       <div className="relative flex h-full flex-col">{children}</div>
     </div>
   );
 }
 
+const Under = ({ children }) => <p className="text-[11px] font-medium text-[#6B7280]">{children}</p>;
+
 function Inntekt() {
   return (
     <Flis>
-      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">Månedlig leieinntekt</p>
-      <p className="mt-3 text-[44px] font-bold leading-[0.9] tracking-[-0.04em] text-white tabular-nums sm:text-[54px]" style={heading}>18 500 <span className="text-[20px] font-normal text-white/45">kr</span></p>
-      <div className="mt-4"><span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.07] py-1 pl-2 pr-3 text-[12px] text-white/70"><TrendingUp className="h-3.5 w-3.5 text-[#CBA6F7]" strokeWidth={2} /> 222 000 kr estimert i år</span></div>
-      <div className="mt-auto pt-6"><span className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[13px] font-semibold text-[#111827]">Se full økonomi <ArrowRight className="h-4 w-4" strokeWidth={2} /></span></div>
+      <Under>Månedlig leieinntekt</Under>
+      <p className="mt-2 text-[40px] font-bold leading-[0.95] tracking-[-0.035em] text-[#111827] tabular-nums" style={heading}>18 500 <span className="text-[16px] font-normal text-[#9CA3AF]">kr</span></p>
+      <div className="mt-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-[#F4F2EE] py-1 pl-2 pr-2.5 text-[11.5px] text-[#52504B]"><TrendingUp className="h-3.5 w-3.5 text-[#6D4FB0]" strokeWidth={2} /> 222 000 kr estimert i år</span></div>
+      <div className="mt-auto pt-5"><span className="inline-flex h-9 items-center gap-2 rounded-[9px] bg-[#111827] px-3.5 text-[12.5px] font-semibold text-white">Se full økonomi <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} /></span></div>
     </Flis>
   );
 }
@@ -118,24 +121,24 @@ function Inntekt() {
 function Leietaker({ betalt, managed }) {
   return (
     <Flis className="hidden sm:block">
-      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">Din leietaker</p>
-      <div className="mt-4 flex items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#CF97FC]/[0.18] text-[14px] font-bold text-[#E7D6FF]" style={heading}>JB</span>
+      <Under>Din leietaker</Under>
+      <div className="mt-3 flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F1EAFB] text-[13px] font-bold text-[#6D4FB0]" style={heading}>JB</span>
         <span className="min-w-0">
-          <span className="block truncate text-[17px] font-bold text-white" style={heading}>Jonas Berg</span>
-          <span className="mt-0.5 inline-flex items-center gap-1.5 text-[11.5px] text-[#CBA6F7]">
+          <span className="block truncate text-[16px] font-bold text-[#111827]" style={heading}>Jonas Berg</span>
+          <span className="mt-0.5 inline-flex items-center gap-1.5 text-[11.5px] text-[#6B7280]">
             <span className="h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
             <Bytt vis={betalt} a="Aktiv leieavtale" b="Mars betalt · 1. mars" />
           </span>
         </span>
       </div>
-      <div className="mt-4 flex gap-6 border-t border-white/10 pt-4">
-        <div><p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-white/40">Utleid siden</p><p className="mt-1 text-[13px] font-semibold text-white">Januar 2025</p></div>
-        <div><p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-white/40">Leieperiode</p><p className="mt-1 text-[13px] font-semibold text-white">Løpende</p></div>
+      <div className="mt-3 flex gap-6 border-t border-[#F3F4F6] pt-3">
+        <div><p className="text-[10px] text-[#9CA3AF]">Utleid siden</p><p className="mt-0.5 text-[12.5px] font-semibold text-[#111827]">Januar 2025</p></div>
+        <div><p className="text-[10px] text-[#9CA3AF]">Leieperiode</p><p className="mt-0.5 text-[12.5px] font-semibold text-[#111827]">Løpende</p></div>
       </div>
-      <div className="mt-auto flex gap-2 pt-5">
-        {!managed && <span className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-white text-[12px] font-semibold text-[#111827]"><MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} /> Send melding</span>}
-        <span className={`inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full text-[12px] font-semibold ${managed ? 'bg-white text-[#111827]' : 'bg-white/[0.08] text-white ring-1 ring-white/15'}`}><FileSignature className="h-3.5 w-3.5" strokeWidth={1.8} /> Se kontrakt</span>
+      <div className="mt-auto flex gap-2 pt-4">
+        {!managed && <span className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-[9px] bg-[#111827] text-[12px] font-semibold text-white"><MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} /> Send melding</span>}
+        <span className={`inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-[9px] text-[12px] font-semibold ${managed ? 'bg-[#111827] text-white' : 'border border-[#E5E7EB] bg-white text-[#111827]'}`}><FileSignature className="h-3.5 w-3.5" strokeWidth={1.8} /> Se kontrakt</span>
       </div>
     </Flis>
   );
@@ -144,19 +147,19 @@ function Leietaker({ betalt, managed }) {
 function Forvalter() {
   return (
     <Flis className="hidden lg:block">
-      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">Din forvalter</p>
-      <div className="mt-4 flex items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#CF97FC]/[0.18] text-[14px] font-bold text-[#E7D6FF] ring-2 ring-white/10" style={heading}>IH</span>
+      <Under>Din forvalter</Under>
+      <div className="mt-3 flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#111827] text-[13px] font-bold text-white" style={heading}>IH</span>
         <span className="min-w-0">
-          <span className="block truncate text-[17px] font-bold text-white" style={heading}>Ingrid Haugen</span>
-          <span className="mt-0.5 inline-flex items-center gap-1.5 text-[11.5px] text-[#CBA6F7]"><ShieldCheck className="h-3.5 w-3.5" strokeWidth={2} /> Din forvalter</span>
+          <span className="block truncate text-[16px] font-bold text-[#111827]" style={heading}>Ingrid Haugen</span>
+          <span className="mt-0.5 inline-flex items-center gap-1.5 text-[11.5px] text-[#157347]"><ShieldCheck className="h-3.5 w-3.5" strokeWidth={2} /> Forvaltet av DigiHome</span>
         </span>
       </div>
-      <div className="mt-4 space-y-2 border-t border-white/10 pt-4">
-        <p className="flex items-center gap-2 text-[12px] text-white/70"><Phone className="h-3.5 w-3.5 text-[#CBA6F7]" strokeWidth={1.9} /> 55 00 00 00</p>
-        <p className="flex items-center gap-2 text-[12px] text-white/70"><Mail className="h-3.5 w-3.5 text-[#CBA6F7]" strokeWidth={1.9} /> ingrid@digihome.no</p>
+      <div className="mt-3 space-y-1.5 border-t border-[#F3F4F6] pt-3">
+        <p className="flex items-center gap-2 text-[12px] text-[#52504B]"><Phone className="h-3.5 w-3.5 text-[#9CA3AF]" strokeWidth={1.9} /> 55 00 00 00</p>
+        <p className="flex items-center gap-2 text-[12px] text-[#52504B]"><Mail className="h-3.5 w-3.5 text-[#9CA3AF]" strokeWidth={1.9} /> ingrid@digihome.no</p>
       </div>
-      <div className="mt-auto pt-5"><span className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-white/[0.08] text-[12px] font-semibold text-white ring-1 ring-white/15"><MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} /> Send melding</span></div>
+      <div className="mt-auto pt-4"><span className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-[9px] border border-[#E5E7EB] bg-white text-[12px] font-semibold text-[#111827]"><MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} /> Send melding</span></div>
     </Flis>
   );
 }
@@ -226,8 +229,8 @@ function Eierportal({ managed, er, navn }) {
       </Stakk>
 
       {/* Trenger din oppmerksomhet */}
-      <div className="mt-8 flex items-center gap-2.5">
-        <p className="text-[20px] font-bold tracking-[-0.025em] text-[#111827]" style={heading}>Trenger din oppmerksomhet</p>
+      <div className="mt-7 flex items-center gap-2.5">
+        <p className="text-[18px] font-bold tracking-[-0.025em] text-[#111827]" style={heading}>Trenger din oppmerksomhet</p>
         <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#6D4FB0] px-1.5 text-[11px] font-bold text-white tabular-nums" style={{ opacity: harSak && !managed ? 1 : 0, transform: harSak && !managed ? 'none' : 'scale(0.6)', transition: `opacity 400ms ${EASE}, transform 400ms ${EASE}` }}>1</span>
       </div>
       <Stakk idx={idx} className="mt-4">
@@ -238,27 +241,6 @@ function Eierportal({ managed, er, navn }) {
         <Rad tone="ink" Ikon={CheckCircle2} t={<>Alt er i skjønneste orden <Sparkles className="h-4 w-4 text-[#6D4FB0]" /></>} s="Ingenting krever handling akkurat nå." />
       </Stakk>
 
-      {/* Din bolig — kuttes av bunnkanten */}
-      <div className="mt-8 flex items-center justify-between">
-        <p className="text-[20px] font-bold tracking-[-0.025em] text-[#111827]" style={heading}>Din bolig</p>
-        <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#6D4FB0]">Se detaljer <ArrowUpRight className="h-3.5 w-3.5" /></span>
-      </div>
-      <div className="mt-4 flex overflow-hidden rounded-[14px] border border-[#E5E7EB] bg-white">
-        <div className="relative h-[150px] w-[240px] shrink-0 overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/interior-kitchen.webp" alt="" loading="lazy" className="h-full w-full object-cover" />
-          <span className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10.5px] font-semibold backdrop-blur-md" style={{ color: '#157347', background: '#effaf0e6' }}>Utleid</span>
-        </div>
-        <div className="flex flex-1 flex-col justify-center p-6">
-          <p className="flex items-center gap-1.5 text-[12px] text-[#6B7280]"><MapPin className="h-3.5 w-3.5 text-[#9CA3AF]" strokeWidth={1.6} /> Bergen</p>
-          <p className="text-[21px] font-bold tracking-[-0.02em] text-[#111827]" style={heading}>Marken 8</p>
-          <p className="text-[13px] text-[#6B7280]">Marken 8, 5017 Bergen · 3-roms · 74 m²</p>
-          <div className="mt-4 flex items-center gap-6">
-            <span className="flex items-center gap-2.5"><Ring pct={100} /><span><span className="block text-[13px] font-semibold text-[#111827]">1 av 1 enhet</span><span className="block text-[11px] text-[#9CA3AF]">utleid</span></span></span>
-            <span className="border-l border-[#F3F4F6] pl-6"><span className="block text-[21px] font-bold tracking-[-0.02em] text-[#111827] tabular-nums" style={heading}>18 500</span><span className="block text-[11px] text-[#6B7280]">kr/mnd</span></span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -322,31 +304,39 @@ function Sidemeny({ portefolje, meldinger }) {
   );
 }
 
-export default function HeroPortal({ nivaa = 0 }) {
+export default function HeroPortal({ nivaa = 0, setNivaa }) {
   const rot = useRef(null);
   const synlig = useSynlig(rot, 0.2);
   const { er, navn } = useKoreografi(TRINN, synlig);
   const managed = nivaa === 1;
   const portefolje = nivaa === 2;
   const desktop = useMedia('(min-width: 1024px)');
+  const kontekst = ['Eierportal · Kari Nordvik', 'Eierportal · Kari Nordvik · forvaltet', 'Forvalterflate · DigiHome Forvaltning'];
 
   return (
     <div ref={rot} className="relative" data-testid="v3-hero-portal" data-nivaa={nivaa}>
-      <div className="relative isolate h-[820px] overflow-hidden rounded-[12px] border border-[#E5E2DC] bg-[#F7F5F1] shadow-[0_1px_2px_rgba(0,0,0,0.03),0_24px_48px_-32px_rgba(0,0,0,0.14)]" aria-hidden="true">
-        <div className="flex h-full items-stretch" style={{ zoom: desktop ? 0.8 : 0.9 }}>
-          <Sidemeny portefolje={portefolje} meldinger={er('melding')} />
+      <div className="relative isolate overflow-hidden rounded-[12px] border border-white/[0.12] bg-[#F7F5F1] shadow-[0_0_0_1px_rgba(0,0,0,0.6),0_60px_120px_-40px_rgba(0,0,0,0.9)]">
+        {/* Topplinje — kontekst + velger. Velgeren hører til vinduet. */}
+        <div className="flex h-[46px] items-center justify-between gap-4 border-b border-white/[0.08] bg-[#141416] px-3 sm:px-4">
+          <div className="flex min-w-0 items-center gap-2.5 text-[12.5px] text-white/45">
+            <span className="flex gap-1.5" aria-hidden="true"><span className="h-2.5 w-2.5 rounded-full bg-white/[0.12]" /><span className="h-2.5 w-2.5 rounded-full bg-white/[0.12]" /><span className="h-2.5 w-2.5 rounded-full bg-white/[0.12]" /></span>
+            <span className="hidden truncate sm:block"><Stakk idx={nivaa}>{kontekst.map((k) => <span key={k} className="block">{k}</span>)}</Stakk></span>
+          </div>
+          {setNivaa && <NivaaVelger nivaa={nivaa} onChange={setNivaa} size="sm" />}
+        </div>
 
-          {/* Innhold */}
-          <div className="relative min-w-0 flex-1">
-
-            {/* Eierportal (selv / forvaltning) */}
-            <div className="absolute inset-0 px-5 pt-6 sm:px-9 sm:pt-8 lg:px-11 lg:pt-9" style={{ opacity: portefolje ? 0 : 1, transform: portefolje ? 'translateY(10px)' : 'none', transition: `opacity 560ms ${EASE}, transform 560ms ${EASE}` }}>
-              <Eierportal managed={managed} er={er} navn={navn} />
-            </div>
-
-            {/* Porteføljedashbord (forvalter) — appens ekte dashbord, skalert opp til lesbar størrelse */}
-            <div className="absolute inset-0 bg-[#FAFAF8]" style={{ opacity: portefolje ? 1 : 0, transform: portefolje ? 'none' : 'translateY(10px)', transition: `opacity 560ms ${EASE}, transform 560ms ${EASE}` }}>
-              <div style={{ zoom: desktop ? 1.36 : 1 }}><FlateOversikt /></div>
+        <div className="relative" aria-hidden="true">
+          <div className="flex items-stretch" style={{ zoom: desktop ? 0.82 : 0.9 }}>
+            <Sidemeny portefolje={portefolje} meldinger={er('melding')} />
+            <div className="relative min-w-0 flex-1">
+              {/* Eierportal (selv / forvaltning) */}
+              <div className="px-5 pb-8 pt-6 sm:px-8 sm:pt-7 lg:px-10" style={{ opacity: portefolje ? 0 : 1, transform: portefolje ? 'translateY(8px)' : 'none', transition: `opacity 480ms ${EASE}, transform 480ms ${EASE}` }}>
+                <Eierportal managed={managed} er={er} navn={navn} />
+              </div>
+              {/* Porteføljedashbord (forvalter) — appens ekte dashbord */}
+              <div className="absolute inset-0 overflow-hidden bg-[#FAFAF8]" style={{ opacity: portefolje ? 1 : 0, transform: portefolje ? 'none' : 'translateY(8px)', transition: `opacity 480ms ${EASE}, transform 480ms ${EASE}`, pointerEvents: 'none' }}>
+                <div style={{ zoom: desktop ? 1.3 : 1 }}><FlateOversikt /></div>
+              </div>
             </div>
           </div>
         </div>

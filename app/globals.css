@@ -992,3 +992,6 @@ html.dh-tour-snap.dh-tour-flyt { scroll-snap-type: none; }
 @media (prefers-reduced-motion: reduce) {
   .dh-cover-inn { animation: none; opacity: 1; }
 }
+
+/* Forside V3: fremdrift i aktiv fane (Reisen). Kun transform. */
+@keyframes v3fane { from { transform: translateX(-100%); } to { transform: translateX(0); } }

@@ -13,24 +13,18 @@ import { ArrowRight } from 'lucide-react';
 export const heading = { fontFamily: 'var(--font-heading), sans-serif' };
 export const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
-/* Designtokens V3 — hvit canvas, ink, hårlinjer. Lilla kun som punktum/aktiv chip. */
+/* Designtokens V3 — mørk, kinematisk (Linear-klasse). Én aksent: lilla. */
 export const T = {
-  ink: '#0A0A0A',
-  ink2: '#3A3733',
-  sek: '#52504B',
-  ter: '#8A867F',
-  hair: '#E8E5DF',
-  hair2: '#DDD9D1',
-  band: '#F4F2EE',
-  flate: '#F7F5F1',
+  bg: '#0A0A0B',
+  flate: '#111113',
+  flate2: '#16161A',
   lilla: '#CF97FC',
-  lillaSoft: '#F1EAFB',
-  lillaText: '#6D4FB0',
+  lillaText: '#D9B4FF',
 };
 
 /* Etikett — 13 px, medium, setningsform. Aldri versaler. */
-export function Etikett({ children, className = '', mork = false }) {
-  return <p className={`text-[13px] font-medium ${mork ? 'text-white/55' : 'text-[#8A867F]'} ${className}`}>{children}</p>;
+export function Etikett({ children, className = '', mork = true }) {
+  return <p className={`text-[13px] font-medium ${mork ? 'text-white/45' : 'text-[#8A867F]'} ${className}`}>{children}</p>;
 }
 
 /* Display-typografi V3 — Diatype Medium (Inter Display-følelse), rolig tracking.
@@ -39,13 +33,13 @@ export const display = { fontFamily: 'var(--font-body), sans-serif', fontWeight:
 
 /* Knapper V3 — små, rolige. 40 px, radius 10. */
 const KNAPP = {
-  primar: 'bg-[#0A0A0A] text-white hover:bg-[#232323]',
-  sekundar: 'border border-[#DDD9D1] bg-white text-[#0A0A0A] hover:border-[#0A0A0A]',
-  lys: 'bg-white text-[#0A0A0A] hover:bg-[#F1EFEA]',
+  primar: 'bg-white text-[#0A0A0B] hover:bg-[#E9E6E0]',
+  sekundar: 'border border-white/15 bg-white/[0.03] text-white hover:border-white/40 hover:bg-white/[0.06]',
+  lys: 'bg-[#0A0A0B] text-white hover:bg-[#232326]',
 };
 export function Knapp({ href, variant = 'primar', size = 'md', className = '', children, ...rest }) {
   const h = size === 'sm' ? 'h-8 px-3 text-[13px] rounded-[8px]' : 'h-10 px-4 text-[14px] rounded-[10px]';
-  const cls = `inline-flex items-center justify-center gap-2 font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] focus-visible:ring-offset-2 ${h} ${KNAPP[variant]} ${className}`;
+  const cls = `inline-flex items-center justify-center gap-2 font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0B] ${h} ${KNAPP[variant]} ${className}`;
   if (href && href.startsWith('#')) return <a href={href} className={cls} {...rest}>{children}</a>;
   if (href) return <Link href={href} prefetch className={cls} {...rest}>{children}</Link>;
   return <button type="button" className={cls} {...rest}>{children}</button>;
@@ -53,7 +47,7 @@ export function Knapp({ href, variant = 'primar', size = 'md', className = '', c
 
 /* Tekstlenke med pil */
 export function Lenke({ href, className = '', children, ...rest }) {
-  const cls = `group inline-flex items-center gap-1.5 text-[14px] font-medium text-[#0A0A0A] transition-colors hover:text-[#52504B] ${className}`;
+  const cls = `group inline-flex items-center gap-1.5 text-[14px] font-medium text-white transition-colors hover:text-white/70 ${className}`;
   const pil = <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" strokeWidth={1.8} />;
   if (href.startsWith('#')) return <a href={href} className={cls} {...rest}>{children}{pil}</a>;
   return <Link href={href} className={cls} {...rest}>{children}{pil}</Link>;
@@ -151,24 +145,42 @@ export function Inn({ vis, delay = 0, dy = 10, className = '', style = {}, child
   );
 }
 
-/* Krysstoning mellom to tilstander — grid-stack så bredden er stabil */
+/* Krysstoning mellom to tilstander — sekvensiell, grid-stack så bredden er stabil */
 export function Bytt({ vis, a, b, className = '' }) {
+  const ut = `opacity 180ms ${EASE}, transform 180ms ${EASE}`;
+  const inn = `opacity 320ms ${EASE} 200ms, transform 320ms ${EASE} 200ms`;
   return (
     <span className={`inline-grid ${className}`}>
-      <span className="col-start-1 row-start-1" style={{ opacity: vis ? 0 : 1, transform: vis ? 'translateY(-4px)' : 'none', transition: `opacity 450ms ${EASE}, transform 450ms ${EASE}` }}>{a}</span>
-      <span className="col-start-1 row-start-1" style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(4px)', transition: `opacity 450ms ${EASE}, transform 450ms ${EASE}` }} aria-hidden={!vis}>{b}</span>
+      <span className="col-start-1 row-start-1" style={{ opacity: vis ? 0 : 1, transform: vis ? 'translateY(-3px)' : 'none', transition: vis ? ut : inn }}>{a}</span>
+      <span className="col-start-1 row-start-1" style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(3px)', transition: vis ? inn : ut }} aria-hidden={!vis}>{b}</span>
     </span>
   );
 }
 
-/* Krysstoning mellom flere tilstander (stack) */
+/* Krysstoning mellom flere tilstander (stack) — sekvensiell: ut først, så inn.
+   Ingen overlappende tekst midt i overgangen. */
 export function Stakk({ idx, className = '', children }) {
   const barn = React.Children.toArray(children);
   return (
-    <div className={`grid ${className}`}>
-      {barn.map((b, i) => (
-        <div key={i} className="col-start-1 row-start-1" style={{ opacity: idx === i ? 1 : 0, transform: idx === i ? 'none' : 'translateY(6px)', transition: `opacity 520ms ${EASE}, transform 520ms ${EASE}`, pointerEvents: idx === i ? 'auto' : 'none' }} aria-hidden={idx !== i}>{b}</div>
-      ))}
+    <div className={`grid grid-cols-[minmax(0,1fr)] ${className}`}>
+      {barn.map((b, i) => {
+        const aktiv = idx === i;
+        return (
+          <div
+            key={i}
+            className="col-start-1 row-start-1 min-w-0"
+            style={{
+              opacity: aktiv ? 1 : 0,
+              transform: aktiv ? 'none' : 'translateY(4px)',
+              transition: aktiv
+                ? `opacity 320ms ${EASE} 200ms, transform 320ms ${EASE} 200ms`
+                : `opacity 180ms ${EASE}, transform 180ms ${EASE}`,
+              pointerEvents: aktiv ? 'auto' : 'none',
+            }}
+            aria-hidden={!aktiv}
+          >{b}</div>
+        );
+      })}
     </div>
   );
 }

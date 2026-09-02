@@ -16,10 +16,10 @@ function Celle({ t, b, className = '', children, testid }) {
   const ref = useRef(null);
   const inne = useSynlig(ref, 0.35);
   return (
-    <div ref={ref} className={`group relative flex flex-col overflow-hidden rounded-[16px] border border-[#E8E5DF] bg-white ${className}`} data-testid={testid}>
+    <div ref={ref} className={`group relative flex flex-col overflow-hidden rounded-[14px] border border-white/[0.08] bg-[#111113] ${className}`} data-testid={testid}>
       <div className="px-6 pt-6">
-        <p className="text-[19px] font-medium tracking-[-0.02em] text-[#0A0A0A]">{t}</p>
-        <p className="mt-1.5 text-[14.5px] leading-[1.55] text-[#52504B]">{b}</p>
+        <p className="text-[19px] font-medium tracking-[-0.02em] text-white">{t}</p>
+        <p className="mt-1.5 text-[14.5px] leading-[1.55] text-white/55">{b}</p>
       </div>
       <div className="relative mt-6 flex-1 overflow-hidden" aria-hidden="true">
         {typeof children === 'function' ? children(inne) : children}
@@ -31,7 +31,7 @@ function Celle({ t, b, className = '', children, testid }) {
 /* Utsnitt-ramme: lys produktflate som kuttes av cellekanten */
 function Flate({ className = '', children }) {
   return (
-    <div className={`mx-5 rounded-t-[12px] border border-b-0 border-[#E8E5DF] bg-[#F7F5F1] p-5 ${className}`}>{children}</div>
+    <div className={`mx-5 rounded-t-[12px] border border-b-0 border-white/[0.06] bg-[#F7F5F1] p-5 ${className}`}>{children}</div>
   );
 }
 
@@ -43,7 +43,7 @@ function Okonomi({ inne }) {
       <div className="flex items-start justify-between gap-6">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a49e93]">Utbetalt i år</p>
-          <p className="mt-1.5 text-[34px] font-bold leading-none tracking-[-0.035em] text-[#111827] tabular-nums" style={heading}>55 500 <span className="text-[14px] font-normal text-[#a49e93]">kr</span></p>
+          <p className="mt-1.5 text-[34px] font-bold leading-none tracking-[-0.035em] text-[#111827] tabular-nums" style={heading}>55 500 <span className="text-[14px] font-normal text-[#a49e93]">kr</span></p>
           <Inn vis={inne} delay={700} dy={6}><p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#effaf0] px-2.5 py-1 text-[11.5px] font-semibold text-[#157347]"><Check className="h-3 w-3" strokeWidth={3} /> 3 av 3 måneder betalt i tide</p></Inn>
         </div>
         <div className="flex h-[92px] flex-1 items-end gap-[6px] pt-1">
@@ -61,9 +61,9 @@ function Okonomi({ inne }) {
       </div>
       <div className="mt-5 overflow-hidden rounded-[14px] bg-white border border-[#E8E5DF]">
         {[
-          ['Mars', 'Betalt 1. mars · KID', '18 500 kr'],
-          ['Februar', 'Betalt 1. februar · KID', '18 500 kr'],
-          ['Januar', 'Betalt 2. januar · KID', '18 500 kr'],
+          ['Mars', 'Betalt 1. mars · KID', '18 500 kr'],
+          ['Februar', 'Betalt 1. februar · KID', '18 500 kr'],
+          ['Januar', 'Betalt 2. januar · KID', '18 500 kr'],
         ].map(([m, s, v], i) => (
           <div key={m} className={`flex items-center gap-3 px-4 py-2.5 ${i > 0 ? 'border-t border-black/[0.04]' : ''}`}>
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#effaf0]"><Check className="h-3 w-3 text-[#157347]" strokeWidth={3} /></span>
@@ -169,7 +169,7 @@ function Telefon({ inne = true }) {
               <p className="text-[7.5px] font-bold uppercase tracking-[0.14em] text-[#D9B4FF]/85">Neste husleie</p>
               <span className="flex items-center gap-[3px] rounded-full bg-white/[0.1] px-1.5 py-[2px] text-[7px] font-semibold text-[#7fe0b2]" style={{ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'scale(0.7)', transition: `opacity 500ms ${EASE} 900ms, transform 500ms ${EASE} 900ms` }}><Check className="h-[7px] w-[7px]" strokeWidth={3} /> Mars betalt</span>
             </div>
-            <p className="mt-1.5 text-[20px] font-bold leading-none tracking-[-0.02em] text-white tabular-nums" style={heading}>18 500 <span className="text-[9px] font-medium text-white/40">kr</span></p>
+            <p className="mt-1.5 text-[20px] font-bold leading-none tracking-[-0.02em] text-white tabular-nums" style={heading}>18 500 <span className="text-[9px] font-medium text-white/40">kr</span></p>
             <p className="mt-1.5 text-[7.5px] text-white/55">Trekkes automatisk 1. april · KID</p>
           </div>
           <p className="mt-3 text-[8px] font-bold uppercase tracking-[0.14em] text-[#b3aa9e]">Min bolig</p>
@@ -206,21 +206,21 @@ function Telefon({ inne = true }) {
 export default function Bento() {
   return (
     <section id="produkt" className="scroll-mt-20" data-testid="v3-bento">
-      <div className="mx-auto w-full max-w-[1280px] px-6 py-20 sm:px-8 sm:py-28">
+      <div className="mx-auto w-full max-w-[1280px] px-6 py-24 sm:px-8 sm:py-32">
         <Avsloer>
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-end">
             <div>
               <Etikett>Alt på ett sted</Etikett>
-              <h2 className="mt-3 max-w-[12ch] text-[34px] sm:text-[44px] lg:text-[52px]" style={display}>Ikke fem verktøy. Ett<span className="text-[#cf97fc]">.</span></h2>
+              <h2 className="mt-3 max-w-[12ch] text-[34px] text-white sm:text-[44px] lg:text-[52px]" style={display}>Ikke fem verktøy. Ett<span className="text-[#CF97FC]">.</span></h2>
             </div>
-            <p className="max-w-[46ch] text-[16px] leading-[1.55] text-[#52504B] sm:text-[17px] lg:pb-2">
+            <p className="max-w-[46ch] text-[16px] leading-[1.55] text-white/55 sm:text-[17px] lg:pb-2">
               Meldinger, dokumenter, økonomi og saker bor i samme system — for deg,
               leietakeren og forvalteren. Alle ser det samme. Ingen leter i innboksen.
             </p>
           </div>
         </Avsloer>
 
-        <div className="mt-10 grid gap-4 sm:mt-12 lg:grid-cols-3">
+        <div className="mt-10 grid gap-3 sm:mt-12 lg:grid-cols-3">
           <Avsloer className="lg:col-span-2"><Celle t="Økonomi som stemmer" b="Husleie, KID og oppgjør — betalt i tide, hver måned. Eksporter til regnskapet med ett klikk." className="h-full" testid="v3-celle-okonomi">{(inne) => <Okonomi inne={inne} />}</Celle></Avsloer>
           <Avsloer delay={90}><Celle t="Én samtale" b="Leietaker, eier og forvalter i samme tråd. Saker opprettes rett fra meldingen." className="h-full" testid="v3-celle-meldinger">{(inne) => <Meldinger inne={inne} />}</Celle></Avsloer>
           <Avsloer><Celle t="Dokumenter med bevis" b="Kontrakt, depositum og protokoll — signert med BankID og lagret der de hører hjemme." className="h-full" testid="v3-celle-dokumenter">{(inne) => <Dokumenter inne={inne} />}</Celle></Avsloer>
