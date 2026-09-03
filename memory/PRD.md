@@ -856,3 +856,14 @@ Google Ads-styring via native REST API).
 - Egen mobilsekvens FASER_SMAL: foto 2,8 → stig 0,9 → Husleie ✓ → Kontrakt ✓ → (Jonas hoppes over) → Varmtvann («Rørlegger foreslått · 3 450 kr») → kompakt charcoal-panel dokket i bunn → godkjent («Rørlegger bestilt · torsdag 09:00» + Kari) → Alt i orden. Haker i stedet for rail/prikker på mobil.
 - Mobil-scene: clamp(600px, 74vh, 660px); dagen får minst 430 px.
 - Seksjon 2 (produkt desktop + mobil, komponenter, én kryss-interaksjon) er diskutert, venter på: mobil sak-skjermbilde som fasit, aksept for én interaksjon, evt. ekte komponentkode.
+
+### V4 «tenk enda bedre»-runde — shippet, ikke brukerbekreftet
+- Hoved-CTA er nå «Start med din adresse» → /bli-utleier/start (onboarding med adressesøk). Nav-CTA er fortsatt «Se DigiHome» → /omvisning. Forvaltning = stille lenke under.
+- Mobil: scenen venter på brukeren (IntersectionObserver-terskel 0,7 på < 640 px; 0,35 på desktop). Førsteskjerm = statement + stille foto.
+- «I dag · tor. 3. sep.» — ekte dato fra klientens klokke (nb-NO, satt i useEffect).
+- Hvile-drift: etter «ferdig» går fotoet fra scale 1.06 → 1.025 over 20 s (linear). Mobil 1.12 → 1.085.
+- Preload av boligfoto per flate i app/v4/page.js (<link rel=preload media=...>, fetchpriority=high), fetchpriority=high på <img>. Fontene preloades allerede av next/font.
+- Ultrawide-tak: nav og hero deler max-w-[1760px] mx-auto.
+- Lilla punktum trukket −0,06 em inn mot t-en.
+- Nytt mobilutsnitt: bygaard.webp extract(520,150,560,751) → mindre løv i toppen.
+- Utestående: seksjon 2 (produkt på desktop+mobil, samme charcoal-kort som interaksjon) venter på fasit-skjermbilde av mobil sak-visning fra brukeren.

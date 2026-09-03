@@ -105,8 +105,9 @@ export default function HeroScene() {
   const ref = useRef(null);
   const figRef = useRef(null);
   const radRef = useRef(null);
-  const synlig = useSynlig(ref, 0.35);
   const smal = useSmal();
+  /* Mobil: fotoet venter på deg. Systemet våkner først når scenen er ~70 % inne. */
+  const synlig = useSynlig(ref, smal ? 0.7 : 0.35);
   const faser = useMemo(() => (smal ? FASER_SMAL : FASER), [smal]);
   const { fase, er, ferdig, replay, kjorer } = useSekvens(faser, synlig);
   const sceneH = smal ? SCENE_H_SMAL : SCENE_H;
@@ -118,6 +119,12 @@ export default function HeroScene() {
 
   const stig = er('stig');
   const godkjent = er('godkjent');
+
+  /* Ekte dato fra brukerens klokke — kun klient, for å unngå hydreringsavvik. */
+  const [dato, setDato] = useState('');
+  useEffect(() => {
+    try { setDato(new Date().toLocaleDateString('nb-NO', { weekday: 'short', day: 'numeric', month: 'short' })); } catch (e) { /* ok */ }
+  }, []);
   const aktiv = er('rad4') && !godkjent;          // saken er åpen
   const visKort = er('kort') && !godkjent;        // godkjenningskortet er ute
 
@@ -159,17 +166,21 @@ export default function HeroScene() {
             <img
               src="/v4/bolig-hero.webp"
               alt=""
+              fetchPriority="high"
               className="block w-full object-cover will-change-transform"
               style={{
                 height: sceneH,
                 objectPosition: smal ? '50% 55%' : '50% 68%',
                 transformOrigin: `50% ${fokusY * 100}%`,
+                /* Hvile: knapt merkbar drift ut (20 s). Scenen puster uten å loope. */
                 transform: stig
-                  ? `translateY(${stigTy}%) scale(${zoomStripe})`
-                  : `scale(${kjorer || ferdig ? 1.045 : 1})`,
-                transition: stig
-                  ? `transform 1000ms ${EASE}`
-                  : 'transform 2400ms cubic-bezier(0.25, 0.1, 0.25, 1)',
+                  ? `translateY(${stigTy}%) scale(${ferdig ? zoomStripe - 0.035 : zoomStripe})`
+                  : `scale(${kjorer ? 1.045 : 1})`,
+                transition: ferdig
+                  ? 'transform 20000ms linear'
+                  : stig
+                    ? `transform 1000ms ${EASE}`
+                    : 'transform 2400ms cubic-bezier(0.25, 0.1, 0.25, 1)',
               }}
             />
           </picture>
@@ -197,7 +208,7 @@ export default function HeroScene() {
           {/* Eiendommens dag — på flaten. Typografisk ledger med rail. Footer i bunn. */}
           <div className="flex flex-1 flex-col px-6 pb-5 pt-5 sm:px-7" style={{ background: T.flate, opacity: stig ? 1 : 0, transition: `opacity 500ms ${EASE} 450ms` }} aria-hidden={!stig}>
             <div className="flex items-center justify-between gap-4 text-[14px]">
-              <p className="text-[#15130F]">I dag</p>
+              <p className="text-[#15130F]">I dag{dato && <span className="text-[#15130F]/45"> · {dato}</span>}</p>
               <p className="flex items-center gap-2 text-[#15130F]/60">
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: aktiv ? T.lilla : T.gronn, transition: 'background 400ms' }} />
                 <span className="inline-grid">
