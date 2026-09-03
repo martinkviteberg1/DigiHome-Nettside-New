@@ -93,3 +93,4 @@ credentials.json
 .env.*
 *.env
 .next/cache/webpack/server-development/1.pack.gz
+.tmp-qa/

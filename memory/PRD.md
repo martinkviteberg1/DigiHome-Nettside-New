@@ -848,3 +848,11 @@ Google Ads-styring via native REST API).
 - Faser: foto 2,0 → stig 1,0 → rad1–3 1,3 → rad4 0,7 → kort 1,8 → godkjent 1,0 → ferdig (≈7,8 s). Godkjent: raden ekspanderer med «Rørlegger AS bestilt · torsdag 09:00 · Jonas varslet» + Kari-chip; status → «Alt i orden».
 - Kortets copy: Venter på deg · 22:41 / Rørlegger AS / Torsdag 09:00 / 3 450 kr / Godkjenn / Sak opprettet automatisk · sendt til Kari.
 - Neste: seksjon 2 = produktet på desktop + mobil (beauty shot, samme sak på begge flater). Krever ekte skjermbilder fra brukeren.
+
+### V4 mobil som egen komposisjon (etter Sana-sammenligning) — shippet, ikke brukerbekreftet
+- Header 72 px på mobil (64 desktop), logo 23 px, hamburger = to 22 px-streker som blir kryss. Mobilark top-[72px].
+- Hero mobil: H1 56 px, kort ingress («Hele utleien samlet. Mye av arbeidet gjort for deg.»), én full-bredde lilla CTA, stille lenke under («Vil du slippe alt? Se forvaltning →»). Desktop: knapp + lenke på rad, lenken dempet.
+- Eget mobilfoto: /public/v4/bolig-hero-mobil.webp (560×901 portrett fra v3/bygaard.webp, fasade + balkong) via <picture> (max-width 639px). fokusY 0.62 på mobil.
+- Egen mobilsekvens FASER_SMAL: foto 2,8 → stig 0,9 → Husleie ✓ → Kontrakt ✓ → (Jonas hoppes over) → Varmtvann («Rørlegger foreslått · 3 450 kr») → kompakt charcoal-panel dokket i bunn → godkjent («Rørlegger bestilt · torsdag 09:00» + Kari) → Alt i orden. Haker i stedet for rail/prikker på mobil.
+- Mobil-scene: clamp(600px, 74vh, 660px); dagen får minst 430 px.
+- Seksjon 2 (produkt desktop + mobil, komponenter, én kryss-interaksjon) er diskutert, venter på: mobil sak-skjermbilde som fasit, aksept for én interaksjon, evt. ekte komponentkode.

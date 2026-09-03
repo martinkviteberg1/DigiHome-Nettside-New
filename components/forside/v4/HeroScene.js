@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { EASE, T, display, tall, useSekvens, useSmal, useSynlig } from './motion';
 
 /* ---------------------------------------------------------------------------
@@ -30,19 +30,34 @@ const FASER = [
   { navn: 'ferdig', ms: 0 },
 ];
 
+/* Mobil er sin egen komposisjon: lengre på fotoet, færre steg, ingen rail.
+   foto → krymp + to ferdige ting → Varmtvann → mørkt panel → Alt i orden. */
+const FASER_SMAL = [
+  { navn: 'foto', ms: 2800 },
+  { navn: 'stig', ms: 900 },
+  { navn: 'rad1', ms: 420 },
+  { navn: 'rad2', ms: 420 },
+  { navn: 'rad3', ms: 0 },
+  { navn: 'rad4', ms: 900 },
+  { navn: 'kort', ms: 1800 },
+  { navn: 'godkjent', ms: 1000 },
+  { navn: 'ferdig', ms: 0 },
+];
+
 const RADER = [
   { fase: 'rad1', tid: '08:14', t: 'Husleie registrert', s: `${tall(64500)} kr · 8 av 8` },
-  { fase: 'rad2', tid: '10:32', t: 'Leiekontrakt signert', s: 'Emma Sørensen · Nygårdsgaten 5A', skjulMobil: true },
+  { fase: 'rad2', tid: '10:32', t: 'Leiekontrakt signert', s: 'Emma Sørensen · Nygårdsgaten 5A' },
   { fase: 'rad3', tid: '17:46', t: 'Spørsmål fra Jonas løst', s: 'Besvart fra leiekontrakten', avatar: { src: '/v4/jonas.webp', alt: 'Jonas' }, skjulMobil: true },
-  { fase: 'rad4', tid: '22:41', t: 'Varmtvann', s: 'Jonas meldte 22:41 · Sak opprettet automatisk', s2: 'Rørlegger AS bestilt · torsdag 09:00 · Jonas varslet', sak: true },
+  { fase: 'rad4', tid: '22:41', t: 'Varmtvann', s: 'Jonas meldte 22:41 · Sak opprettet automatisk', sMobil: `Rørlegger foreslått · ${tall(3450)} kr`, s2: 'Rørlegger AS bestilt · torsdag 09:00 · Jonas varslet', s2Mobil: 'Rørlegger bestilt · torsdag 09:00', sak: true },
 ];
 
 const CAPTION = 150;          // px — adressefeltet som ligger over fotoet
 const SCENE_H = 'clamp(600px, 72vh, 720px)';
-const SCENE_H_SMAL = 'clamp(560px, 70vh, 640px)';
+const SCENE_H_SMAL = 'clamp(600px, 74vh, 660px)';
 const STRIPE = 0.43;          // andel foto synlig etter morph — header, ikke banner
-/* Headeren viker for dagen på lave skjermer: dagen får alltid minst 400 px. */
+/* Headeren viker for dagen på lave skjermer: dagen får alltid minst 400 px (430 på mobil). */
 const STRIPE_CSS = `min(${STRIPE * 100}%, calc(100% - 400px))`;
+const STRIPE_CSS_SMAL = `min(${STRIPE * 100}%, calc(100% - 430px))`;
 const FOKUS_Y = 0.68;         // fokuspunkt i bildet (fasade/balkong), andel av elementhøyden
 
 function Avatar({ src, alt, size = 28, className = '', style }) {
@@ -75,21 +90,31 @@ function Prikk({ tilstand }) {
   );
 }
 
+/* Mobil-markør: ferdig = hake, aktiv = lilla prikk, godkjent = grønn hake. */
+function Hake({ tilstand }) {
+  if (tilstand === 'aktiv') return <span aria-hidden="true" className="mt-[7px] block h-[7px] w-[7px] rounded-full" style={{ background: T.lilla }} />;
+  const c = tilstand === 'godkjent' ? T.gronn : 'rgba(21,19,15,0.45)';
+  return (
+    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" className="mt-[4px]" style={{ transition: 'color 400ms', color: c }}>
+      <path d="M2.5 7.5l3 3 6-6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function HeroScene() {
   const ref = useRef(null);
   const figRef = useRef(null);
   const radRef = useRef(null);
   const synlig = useSynlig(ref, 0.35);
-  const { fase, er, ferdig, replay, kjorer } = useSekvens(FASER, synlig);
   const smal = useSmal();
+  const faser = useMemo(() => (smal ? FASER_SMAL : FASER), [smal]);
+  const { fase, er, ferdig, replay, kjorer } = useSekvens(faser, synlig);
   const sceneH = smal ? SCENE_H_SMAL : SCENE_H;
 
-  /* Mobil: portrett-utsnitt av et kvadratisk foto viser mye lauv øverst.
-     Gjør bildet høyere enn scenen og vis nedre del (fasaden). */
-  const imgH = smal ? 1.35 : 1;
-  const hvileTy = smal ? -30 : 0;
-  const stigTy = ((STRIPE / 2) / imgH - FOKUS_Y) * 100;
-  const zoomStripe = smal ? 1.15 : 1.06;
+  /* Mobil får sitt eget portrett-utsnitt (bolig-hero-mobil.webp) via <picture>. */
+  const fokusY = smal ? 0.62 : FOKUS_Y;
+  const stigTy = ((STRIPE / 2) - fokusY) * 100;       // fokuspunktet lander midt i stripen
+  const zoomStripe = smal ? 1.12 : 1.06;
 
   const stig = er('stig');
   const godkjent = er('godkjent');
@@ -121,30 +146,33 @@ export default function HeroScene() {
       <div
         ref={ref}
         className="relative overflow-hidden rounded-[20px]"
-        style={{ height: sceneH, background: T.flate, boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.06)', '--stripe': STRIPE_CSS }}
+        style={{ height: sceneH, background: T.flate, boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.06)', '--stripe': smal ? STRIPE_CSS_SMAL : STRIPE_CSS }}
         role="img"
         aria-label="Animert eksempel: en dag i Nygårdsgaten 5 med DigiHome — husleie registrert, kontrakt signert, et spørsmål fra leietaker besvart fra kontrakten, og et varmtvannsproblem løst med én godkjenning fra eier."
         data-testid="v4-scene"
       >
         {/* ── Foto. Kun transform: hvile → innpust (1.045) → glir opp til fasaden i headeren ── */}
         <div className="absolute inset-x-0 top-0 overflow-hidden" style={{ height: stig ? 'var(--stripe)' : '100%', transition: `height 1000ms ${EASE}` }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/v4/bolig-hero.webp"
-            alt=""
-            className="w-full object-cover will-change-transform"
-            style={{
-              height: imgH === 1 ? sceneH : `calc(${sceneH} * ${imgH})`,
-              objectPosition: smal ? '62% 50%' : '50% 68%',
-              transformOrigin: `50% ${FOKUS_Y * 100}%`,
-              transform: stig
-                ? `translateY(${stigTy}%) scale(${zoomStripe})`
-                : `translateY(${hvileTy}%) scale(${kjorer || ferdig ? 1.045 : 1})`,
-              transition: stig
-                ? `transform 1000ms ${EASE}`
-                : 'transform 2400ms cubic-bezier(0.25, 0.1, 0.25, 1)',
-            }}
-          />
+          <picture>
+            <source media="(max-width: 639px)" srcSet="/v4/bolig-hero-mobil.webp" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/v4/bolig-hero.webp"
+              alt=""
+              className="block w-full object-cover will-change-transform"
+              style={{
+                height: sceneH,
+                objectPosition: smal ? '50% 55%' : '50% 68%',
+                transformOrigin: `50% ${fokusY * 100}%`,
+                transform: stig
+                  ? `translateY(${stigTy}%) scale(${zoomStripe})`
+                  : `scale(${kjorer || ferdig ? 1.045 : 1})`,
+                transition: stig
+                  ? `transform 1000ms ${EASE}`
+                  : 'transform 2400ms cubic-bezier(0.25, 0.1, 0.25, 1)',
+              }}
+            />
+          </picture>
           <div aria-hidden="true" className="absolute inset-0" style={{ background: 'rgba(214,190,150,0.08)', mixBlendMode: 'multiply' }} />
         </div>
 
@@ -181,7 +209,7 @@ export default function HeroScene() {
 
             <ul className="relative mt-3">
               {/* Railen tegnes nedover når systemet våkner */}
-              <span aria-hidden="true" className="absolute bottom-0 top-0 left-[7px] w-px sm:left-[51px]" style={{ background: 'rgba(21,19,15,0.14)', transformOrigin: 'top', transform: stig ? 'scaleY(1)' : 'scaleY(0)', transition: `transform 700ms ${EASE} 450ms` }} />
+              <span aria-hidden="true" className="absolute bottom-0 top-0 left-[51px] hidden w-px sm:block" style={{ background: 'rgba(21,19,15,0.14)', transformOrigin: 'top', transform: stig ? 'scaleY(1)' : 'scaleY(0)', transition: `transform 700ms ${EASE} 450ms` }} />
               {RADER.map((r) => {
                 const vis = er(r.fase);
                 const erAktiv = r.sak && aktiv;
@@ -196,20 +224,20 @@ export default function HeroScene() {
                   >
                     {/* Svak tonal stripe på den aktive saken */}
                     <span aria-hidden="true" className="absolute -inset-x-3 inset-y-0.5 rounded-[12px]" style={{ background: 'rgba(21,19,15,0.045)', opacity: erAktiv ? 1 : 0, transition: `opacity 500ms ${EASE}` }} />
-                    <div className="relative grid grid-cols-[16px_minmax(0,1fr)_auto] items-start gap-x-3 py-3 sm:grid-cols-[44px_16px_minmax(0,1fr)_auto]">
+                    <div className="relative grid grid-cols-[16px_minmax(0,1fr)_auto] items-start gap-x-3 py-2.5 sm:grid-cols-[44px_16px_minmax(0,1fr)_auto] sm:py-3">
                       <span className="hidden pt-[3px] text-[13px] tabular-nums text-[#15130F]/45 sm:block">{r.tid}</span>
-                      <span className="flex justify-center pt-[7px]"><Prikk tilstand={tilstand} /></span>
+                      <span className="flex justify-center sm:pt-[7px]">{smal ? <Hake tilstand={tilstand} /> : <Prikk tilstand={tilstand} />}</span>
                       <span className="min-w-0">
                         <span className="flex items-center gap-2 text-[15px] font-medium" style={{ color: dempet ? 'rgba(21,19,15,0.62)' : godkjent && r.sak ? 'rgba(21,19,15,0.85)' : T.ink, transition: 'color 400ms' }}>
                           {r.t}
                           {r.avatar && <Avatar src={r.avatar.src} alt={r.avatar.alt} size={20} />}
                         </span>
-                        <span className="mt-0.5 block text-[13.5px] sm:truncate" style={{ color: dempet ? 'rgba(21,19,15,0.42)' : 'rgba(21,19,15,0.62)' }}>{r.s}</span>
+                        <span className="mt-0.5 block text-[13.5px] sm:truncate" style={{ color: dempet ? 'rgba(21,19,15,0.42)' : 'rgba(21,19,15,0.62)' }}>{smal && r.sMobil ? r.sMobil : r.s}</span>
                         {/* Saken ekspanderer med resultatet når den er godkjent */}
                         {r.sak && (
                           <span className="grid" style={{ gridTemplateRows: godkjent ? '1fr' : '0fr', transition: `grid-template-rows 500ms ${EASE}` }}>
                             <span className="block min-h-0 overflow-hidden">
-                              <span className="mt-1 block text-[13.5px] text-[#15130F] sm:truncate" style={{ opacity: godkjent ? 1 : 0, transition: `opacity 400ms ${EASE} 250ms` }}>{r.s2}</span>
+                              <span className="mt-1 block text-[13.5px] text-[#15130F] sm:truncate" style={{ opacity: godkjent ? 1 : 0, transition: `opacity 400ms ${EASE} 250ms` }}>{smal && r.s2Mobil ? r.s2Mobil : r.s2}</span>
                               {/* Mobil: chippen under resultatet */}
                               <span className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-[#15130F]/60 sm:hidden" style={{ opacity: godkjent ? 1 : 0, transition: `opacity 400ms ${EASE} 300ms` }}>
                                 <Avatar src="/v4/kari.webp" alt="Kari" size={20} />
@@ -261,11 +289,11 @@ export default function HeroScene() {
         data-testid="v4-kort"
       >
         {smal ? (
-          <div className="flex items-center justify-between gap-4 p-4">
+          <div className="flex items-center justify-between gap-4 p-3.5 pl-4">
             <div className="min-w-0">
               <p className="flex items-center gap-2 text-[12px] text-white/60"><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Venter på deg</p>
-              <p className="mt-1 truncate text-[14px] font-medium">Rørlegger AS · torsdag 09:00</p>
-              <p className="text-[13px] text-white/60">{tall(3450)} kr</p>
+              <p className="mt-1 truncate text-[14px] font-medium">Rørlegger AS</p>
+              <p className="text-[13px] text-white/60">Torsdag 09:00 · {tall(3450)} kr</p>
             </div>
             <span className="inline-flex h-10 shrink-0 items-center rounded-[10px] px-4 text-[14px] font-medium" style={{ background: T.lilla, color: T.ink }}>Godkjenn</span>
           </div>
