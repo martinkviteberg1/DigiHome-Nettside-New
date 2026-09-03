@@ -24,7 +24,7 @@ export default function ForsideV4() {
           <div className="grid w-full gap-12 px-5 pb-16 pt-8 sm:px-8 sm:pt-12 lg:grid-cols-[minmax(0,6fr)_minmax(0,7fr)] lg:items-center lg:gap-14 lg:px-10 lg:pb-24 lg:pt-8 2xl:gap-20">
             <div className="max-w-[620px] lg:pl-2">
               <h1
-                className="dh-cover-inn max-w-[9ch] text-[54px] sm:text-[72px] lg:text-[clamp(72px,6vw,116px)]"
+                className="dh-cover-inn max-w-[9ch] text-[54px] sm:text-[72px] lg:text-[clamp(72px,5.6vw,108px)]"
                 style={{ ...display, color: T.ink }}
                 data-testid="v4-h1"
               >

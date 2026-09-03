@@ -840,3 +840,11 @@ Google Ads-styring via native REST API).
 - Portretter: /public/v4/jonas.webp, /public/v4/kari.webp (Unsplash, beskåret med sharp). Kun der mennesker faktisk er.
 - Hero følger nav-kantene (px-5/8/10), grid 6fr/7fr. Mobil: nav-CTA skjult, tidskolonne skjult, bildet vises med fasade-fokus (imgH 1.35, translate −30 %).
 - Status: shippet + screenshot-QA (1920/1366/390), ikke brukerbekreftet.
+
+### V4 hero v-a («alt er stille, unntatt én ting») — shippet, ikke brukerbekreftet
+- Lag 0: tonal flate (#EDEAE3) bak hele høyre panel, 1 px inset-ring. Header (foto) = min(43 %, 100 % − 400 px) så dagen alltid får ≥ 400 px.
+- Lag 1: rail (1 px) tegnes inn ved morph; hule prikker på fullførte rader (dempet tekst), lilla prikk + tonal stripe på aktiv sak, grønn når godkjent. Jonas-avatar inline i rad 3.
+- Lag 2: godkjenningskort i varm charcoal (#221F1A), off-white tekst, lilla Godkjenn, én skygge. Bryter ut 24 px over høyre kant, sentrert på Varmtvann-raden, aldri under panelbunn − 20 px (målt med refs). Mobil: kompakt kort dokket i bunnen.
+- Faser: foto 2,0 → stig 1,0 → rad1–3 1,3 → rad4 0,7 → kort 1,8 → godkjent 1,0 → ferdig (≈7,8 s). Godkjent: raden ekspanderer med «Rørlegger AS bestilt · torsdag 09:00 · Jonas varslet» + Kari-chip; status → «Alt i orden».
+- Kortets copy: Venter på deg · 22:41 / Rørlegger AS / Torsdag 09:00 / 3 450 kr / Godkjenn / Sak opprettet automatisk · sendt til Kari.
+- Neste: seksjon 2 = produktet på desktop + mobil (beauty shot, samme sak på begge flater). Krever ekte skjermbilder fra brukeren.

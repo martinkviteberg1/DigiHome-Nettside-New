@@ -18,8 +18,11 @@ export const EASE = 'cubic-bezier(0.16, 1, 0.3, 1)'; // expo-out
 
 export const T = {
   canvas: '#F3F1EC',   // stein, ikke krem — nøytral nok til å ikke lese «editorial AI»
+  flate: '#EDEAE3',    // tonal flate bak høyre panel — ett hakk mørkere enn canvas
   tint: '#EAE7E0',     // svak tone for én aktiv rad
   ink: '#15130F',
+  charcoal: '#221F1A', // varm, dyp charcoal — for det ene objektet som får være mørkt
+  offwhite: '#F4F1EA',
   lilla: '#D496FF',    // DigiHome-lilla: primærhandling, ikke bare punktumet
   lillaHover: '#C98BF7',
   gronn: '#1F9D55',
