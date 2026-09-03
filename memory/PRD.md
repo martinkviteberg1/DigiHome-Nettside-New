@@ -830,3 +830,13 @@ Google Ads-styring via native REST API).
 - Ny fra-scratch hero: «Utleie på autopilot.» Venstre budskap, høyre boligfoto (Nygårdsgaten 5) med start-zoom → morph til eiendomskort → sekvensiell aktivitetsliste → hviletilstand. Fonter: PP Right Grotesk / ABC Diatype / Instrument Serif (fontvelger nederst til venstre er midlertidig).
 - Nav (`components/forside/v4/NavV4.js`) er nå fullbredde: logo helt til venstre, Logg inn/Se DigiHome helt til høyre, kantpadding px-5/8/10. Hero beholder 1280px-container.
 - Ikke brukerbekreftet: zoom/focal point, fontvalg, seksjon under hero. Root `/` er urørt.
+
+### V4 brand-retning (etter brukerens kritikk: «for Claude/LLM-brand»)
+- Låst display-font: PP Right Grotesk (H1 ~6vw, tracking −0.035em). Serif og fontvelger fjernet fra V4.
+- DigiHome-lilla (#D496FF, mørk tekst) er primærknapp: nav-CTA, hero-CTA, «Godkjenn» i scenen. Ink-knapp finnes som variant.
+- Canvas nyansert fra krem (#F4F1EA) til stein (#F3F1EC). Nav følger.
+- Frame 1 rendyrket: «Nygårdsgaten 5 / Bergen · 8 leiligheter».
+- Frame 3 = eiendommens dag (ikke AI-logg): Husleie registrert · 64 500 kr · 8 av 8 / Leiekontrakt signert · Emma Sørensen · Nygårdsgaten 5A / Spørsmål fra Jonas løst · Besvart fra leiekontrakten (Jonas-avatar) / Varmtvann · Rørlegger foreslått → Godkjenn → Rørlegger bestilt · torsdag 09:00 · Godkjent (Kari-avatar). Footer inne i scenen: «Én godkjenning fra Kari. Resten var gjort.»
+- Portretter: /public/v4/jonas.webp, /public/v4/kari.webp (Unsplash, beskåret med sharp). Kun der mennesker faktisk er.
+- Hero følger nav-kantene (px-5/8/10), grid 6fr/7fr. Mobil: nav-CTA skjult, tidskolonne skjult, bildet vises med fasade-fokus (imgH 1.35, translate −30 %).
+- Status: shippet + screenshot-QA (1920/1366/390), ikke brukerbekreftet.

@@ -17,21 +17,21 @@ import { ArrowRight } from 'lucide-react';
 export const EASE = 'cubic-bezier(0.16, 1, 0.3, 1)'; // expo-out
 
 export const T = {
-  canvas: '#F4F1EA',   // varm, nøytral — ikke hvit, ikke svart
-  tint: '#ECE7DD',     // svak ivory-tone for én aktiv rad
+  canvas: '#F3F1EC',   // stein, ikke krem — nøytral nok til å ikke lese «editorial AI»
+  tint: '#EAE7E0',     // svak tone for én aktiv rad
   ink: '#15130F',
-  lilla: '#D496FF',    // én aksent: punktumet
+  lilla: '#D496FF',    // DigiHome-lilla: primærhandling, ikke bare punktumet
+  lillaHover: '#C98BF7',
   gronn: '#1F9D55',
-  amber: '#B45309',
 };
 
-/* Appens fonter — brukes i alt som er produkt-UI (rader, knapper, tall). */
+/* Appens fonter. PP Right Grotesk = display/overskrifter. ABC Diatype = alt UI (arver fra body). */
 export const heading = { fontFamily: 'var(--font-heading), sans-serif' };
 
-/* Nettsidens display-stemme. To kandidater — velges live i preview. */
-export const displaySerif = { fontFamily: 'var(--font-serif), Georgia, serif', fontWeight: 400, letterSpacing: '-0.012em', lineHeight: 0.96, textWrap: 'balance' };
-export const displayGrotesk = { fontFamily: 'var(--font-heading), sans-serif', fontWeight: 400, letterSpacing: '-0.025em', lineHeight: 0.98, textWrap: 'balance' };
-export const displayFor = (font) => (font === 'grotesk' ? displayGrotesk : displaySerif);
+/* Nettsidens display-stemme: stor, arkitektonisk grotesk med tight sporing. */
+export const display = { fontFamily: 'var(--font-heading), sans-serif', fontWeight: 400, letterSpacing: '-0.035em', lineHeight: 0.94, textWrap: 'balance' };
+/* Bakoverkompatibel — V4 er nå låst til grotesk. */
+export const displayFor = () => display;
 
 /* Tusenskille med ubrytelig mellomrom (U+00A0 — finnes i alle fontene). */
 export const tall = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
@@ -40,6 +40,21 @@ export function useRedusert() {
   const [r, setR] = useState(false);
   useEffect(() => { try { setR(window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { /* ok */ } }, []);
   return r;
+}
+
+/* Smal skjerm (< 640 px). SSR-default: false. */
+export function useSmal() {
+  const [s, setS] = useState(false);
+  useEffect(() => {
+    try {
+      const mq = window.matchMedia('(max-width: 639px)');
+      const f = () => setS(mq.matches);
+      f();
+      mq.addEventListener('change', f);
+      return () => mq.removeEventListener('change', f);
+    } catch (e) { return undefined; }
+  }, []);
+  return s;
 }
 
 export function useSynlig(ref, threshold = 0.4) {
@@ -82,13 +97,14 @@ export function useSekvens(faser, start) {
   return { fase: faser[i].navn, er: (n) => i >= idx[n], ferdig: i >= siste, replay, kjorer };
 }
 
-/* Knapp — 44 px / 36 px. Radius 12 / 8. */
+/* Knapp — 44 px / 36 px. Radius 12 / 8. Primær = DigiHome-lilla med mørk tekst. */
 const KNAPP = {
+  lilla: 'bg-[#D496FF] text-[#15130F] hover:bg-[#C98BF7]',
   ink: 'bg-[#15130F] text-white hover:bg-[#2A2620]',
   lys: 'bg-white text-[#15130F] hover:bg-[#F1EDE4] shadow-[0_0_0_1px_rgba(21,19,15,0.08)]',
   ghost: 'text-[#15130F] hover:bg-[#15130F]/[0.05]',
 };
-export function Knapp({ href, variant = 'ink', size = 'md', className = '', children, ...rest }) {
+export function Knapp({ href, variant = 'lilla', size = 'md', className = '', children, ...rest }) {
   const h = size === 'sm' ? 'h-9 px-3.5 text-[13.5px] rounded-[8px]' : 'h-11 px-5 text-[15px] rounded-[12px]';
   const cls = `inline-flex items-center justify-center gap-2 font-medium transition-[color,background-color,transform] duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30 ${h} ${KNAPP[variant]} ${className}`;
   if (href && href.startsWith('#')) return <a href={href} className={cls} {...rest}>{children}</a>;

@@ -43,7 +43,7 @@ export default function NavV4() {
 
   return (
     <>
-      <header className={`sticky top-0 z-50 border-b bg-[#F4F1EA]/85 backdrop-blur-md transition-colors duration-300 ${scrolled || apen ? 'border-[#15130F]/[0.08]' : 'border-transparent'}`} data-testid="v4-nav">
+      <header className={`sticky top-0 z-50 border-b bg-[#F3F1EC]/85 backdrop-blur-md transition-colors duration-300 ${scrolled || apen ? 'border-[#15130F]/[0.08]' : 'border-transparent'}`} data-testid="v4-nav">
         <div className="flex h-[64px] w-full items-center justify-between gap-6 px-5 sm:px-8 lg:px-10">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" onClick={() => setApen(false)} data-testid="v4-logo">
@@ -58,7 +58,7 @@ export default function NavV4() {
           </div>
           <div className="flex items-center gap-2">
             <a href={site.loginUrl} className={`${lenke} hidden sm:inline-flex`}>Logg inn</a>
-            <Knapp href="/omvisning" size="sm" data-testid="v4-nav-cta">Se DigiHome</Knapp>
+            <Knapp href="/omvisning" size="sm" className="hidden sm:inline-flex" data-testid="v4-nav-cta">Se DigiHome</Knapp>
             <button type="button" onClick={() => setApen((v) => !v)} aria-expanded={apen} aria-label={apen ? 'Lukk meny' : 'Åpne meny'} className="flex h-9 w-9 items-center justify-center rounded-full text-[#15130F] transition-colors hover:bg-[#15130F]/[0.05] lg:hidden" data-testid="v4-meny-knapp">
               {apen ? <X className="h-5 w-5" strokeWidth={1.8} /> : <Menu className="h-5 w-5" strokeWidth={1.8} />}
             </button>
@@ -68,7 +68,7 @@ export default function NavV4() {
 
       {/* Mobilark — utenfor header (backdrop-filter ville gjort fixed-høyden 0) */}
       <div
-        className="fixed inset-x-0 bottom-0 top-[64px] z-40 overflow-y-auto bg-[#F4F1EA] lg:hidden"
+        className="fixed inset-x-0 bottom-0 top-[64px] z-40 overflow-y-auto bg-[#F3F1EC] lg:hidden"
         style={{ opacity: apen ? 1 : 0, transform: apen ? 'none' : 'translateY(-8px)', transition: 'opacity 260ms cubic-bezier(0.22,1,0.36,1), transform 260ms cubic-bezier(0.22,1,0.36,1)', pointerEvents: apen ? 'auto' : 'none', visibility: apen ? 'visible' : 'hidden' }}
         aria-hidden={!apen}
         data-testid="v4-mobilmeny"
