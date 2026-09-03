@@ -1,7 +1,7 @@
 import './globals.css';
 import Script from 'next/script';
 import { Providers } from './providers';
-import { rightGrotesk, diatype } from './fonts';
+import { rightGrotesk, diatype, instrumentSerif } from './fonts';
 import { site } from '@/lib/site';
 import SiteAnalytics from '@/components/SiteAnalytics';
 import CallTracking from '@/components/CallTracking';
@@ -60,7 +60,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="nb" className={`${rightGrotesk.variable} ${diatype.variable}`}>
+    <html lang="nb" className={`${rightGrotesk.variable} ${diatype.variable} ${instrumentSerif.variable}`}>
       <head>
         {/* LCP: mobil-hero forhåndslastes nå av next/image (priority) med korrekt
             resized srcset via /api/media — ingen manuell full-size preload trengs. */}

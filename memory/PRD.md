@@ -825,3 +825,8 @@ Google Ads-styring via native REST API).
 - Resett (gjeldende designspråk for V3): hvit canvas · display-type = ABC Diatype Medium (Right Grotesk kun i produktmocker) · setningsform (Etikett) · ingen gradient-blobs · radius 10–16 · små knapper 40 px (Knapp/Lenke i motion.js) · hårlinjer #E8E5DF · sekundærtekst #52504B/#6B6862.
 - Nav: fullbredde 64 px (OpenAI-stil), mega-paneler, mobil fullskjerm-ark. Hero: Linear-stille (luft, H1 76 px medium, én undertekst, små knapper, produkt i 1:1 med fade). HeroPortal i tre visninger styrt av global nivå-state. Reisen: velger + stegpiller i panelets topplinje.
 - Status: shippet på /v3, screenshot-verifisert, IKKE brukerbekreftet. / uendret.
+
+## Landingsside V4 (prototype, /v4) — status
+- Ny fra-scratch hero: «Utleie på autopilot.» Venstre budskap, høyre boligfoto (Nygårdsgaten 5) med start-zoom → morph til eiendomskort → sekvensiell aktivitetsliste → hviletilstand. Fonter: PP Right Grotesk / ABC Diatype / Instrument Serif (fontvelger nederst til venstre er midlertidig).
+- Nav (`components/forside/v4/NavV4.js`) er nå fullbredde: logo helt til venstre, Logg inn/Se DigiHome helt til høyre, kantpadding px-5/8/10. Hero beholder 1280px-container.
+- Ikke brukerbekreftet: zoom/focal point, fontvalg, seksjon under hero. Root `/` er urørt.

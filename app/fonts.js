@@ -1,4 +1,5 @@
 import localFont from 'next/font/local';
+import { Instrument_Serif } from 'next/font/google';
 
 export const rightGrotesk = localFont({
   src: [
@@ -28,4 +29,14 @@ export const diatype = localFont({
   preload: true,
   fallback: ['system-ui', 'Arial', 'sans-serif'],
   adjustFontFallback: 'Arial',
+});
+
+/* Editorial serif til nettsidens display-stemme (ikke til produkt-UI).
+   Brukes forelopig kun av forside V4. */
+export const instrumentSerif = Instrument_Serif({
+  subsets: ['latin', 'latin-ext'],
+  weight: '400',
+  style: ['normal', 'italic'],
+  variable: '--font-serif',
+  display: 'swap',
 });
