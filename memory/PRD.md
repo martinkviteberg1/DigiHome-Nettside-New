@@ -867,3 +867,10 @@ Google Ads-styring via native REST API).
 - Lilla punktum trukket −0,06 em inn mot t-en.
 - Nytt mobilutsnitt: bygaard.webp extract(520,150,560,751) → mindre løv i toppen.
 - Utestående: seksjon 2 (produkt på desktop+mobil, samme charcoal-kort som interaksjon) venter på fasit-skjermbilde av mobil sak-visning fra brukeren.
+
+### V4 adressefelt i heroen — shippet, ikke brukerbekreftet
+- `components/forside/v4/AdresseFelt.js`: én pill (56 px, #FBFAF8, 1 px ring, lilla fokusring) med lilla «Start →» inne i feltet (kun pil på mobil). Erstatter CTA-knappen. Sekundærlenken «Vil du slippe alt? Se forvaltning» er fjernet — valget ligger i onboardingens steg 2.
+- Ekte forslag fra eksisterende `GET /api/address?q=` (Google Places m/Bergen-bias, Geonorge-fallback), debounce 220 ms, maks 4, forslag med husnummer prioriteres. Tastatur ↑↓ Enter Esc, ARIA combobox/listbox.
+- Valg → `GET /api/address?place_id=` → `/bli-utleier/start?address&postal&city`. Onboardingen (OwnerOnboarding2026) leser allerede disse, verifiserer, geokoder kartet og hopper til steg 2 («Hvordan vil du leie ut Nygårdsgaten 5?»). Verifisert ende-til-ende desktop + mobil. Enter uten valg = første treff; tomt felt → /bli-utleier/start uten parametere.
+- Wrapper har `relative z-20` så forslagslisten ligger over scenen (som er egen stacking context via dh-cover-inn).
+- Ingen backend-endringer.

@@ -3,7 +3,8 @@
 import React from 'react';
 import NavV4 from './NavV4';
 import HeroScene from './HeroScene';
-import { T, display, Knapp, Lenke } from './motion';
+import AdresseFelt from './AdresseFelt';
+import { T, display } from './motion';
 
 /* ---------------------------------------------------------------------------
    ForsideV4 — fra scratch. Første akt: hero.
@@ -13,7 +14,7 @@ import { T, display, Knapp, Lenke } from './motion';
    · DigiHome-lilla er primærhandling — en brand asset, ikke bare et punktum.
    · Heroen følger navens kanter (full-bleed grid), én levende flate til høyre.
    · Én idé: bolig → DigiHome driver boligen → se hvor lite du måtte gjøre.
-   · Siste akt er brukerens: hoved-CTA går rett inn i onboardingen (adresse først).
+   · Siste akt er brukerens: adressefeltet i heroen ER første steg i onboardingen.
 --------------------------------------------------------------------------- */
 
 export default function ForsideV4() {
@@ -36,10 +37,10 @@ export default function ForsideV4() {
                 <span className="sm:hidden">Hele utleien samlet. Mye av arbeidet gjort for deg.</span>
                 <span className="hidden sm:inline">Leietakere, kontrakter, husleie og drift — samlet på ett sted, og gjort underveis.</span>
               </p>
-              {/* Én handling. Den andre er en stille linje under. */}
-              <div className="dh-cover-inn mt-9 flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:gap-x-7" style={{ animationDelay: '.16s' }}>
-                <Knapp href="/bli-utleier/start" className="w-full sm:w-auto" data-testid="v4-hero-cta">Start med din adresse</Knapp>
-                <Lenke href="/forvaltning" className="!font-normal !text-[#15130F]/60 hover:!text-[#15130F]" data-testid="v4-hero-sekundaer">Vil du slippe alt? Se forvaltning</Lenke>
+              {/* Handlingen er feltet. Forvaltning vs. selvforvaltning velges i steg 2 etter adressen. */}
+              {/* relative z-20: forslagslisten skal ligge over scenen (som selv er en stacking context). */}
+              <div className="dh-cover-inn relative z-20 mt-9 w-full sm:max-w-[460px]" style={{ animationDelay: '.16s' }}>
+                <AdresseFelt />
               </div>
             </div>
             <div className="dh-cover-inn" style={{ animationDelay: '.12s' }}>
