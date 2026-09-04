@@ -22,8 +22,9 @@ import { EASE, Knapp, T, display, useSekvens, useSynlig } from './motion';
 
 const SCENE = {
   video: null,                           // f.eks. '/v4/leietaker-kveld.mp4' — eget opptak (1:1 eller beskjæres), ikke stock
-  bilde: '/v4/jonas-kveld-bred.webp',    // PLASSHOLDER til eget opptak finnes
-  pos: '58% 45%',
+  bilde: '/v4/leietaker-1x1.webp',       // 1800×1800 — lyst nordisk soverom, telefonen i hånden. PLASSHOLDER til eget opptak.
+  bildeMobil: '/v4/leietaker-4x5.webp',  // 1200×1500
+  pos: '50% 40%',
 };
 
 /* Tempo: raskt der systemet svarer, sakte der mennesker er involvert. */
@@ -72,12 +73,13 @@ function Hake({ className = '' }) {
   );
 }
 
-/* Rad som vokser inn (grid-rows 0fr → 1fr) og fader — og ut igjen når den faller ut av vinduet. */
+/* Rad som vokser inn (grid-rows 0fr → 1fr) med expo-out, og glir ut igjen når den faller ut av vinduet.
+   Inn: høyde først, så innhold (12 px opp + 1,5 % skala → hvile). Ut: innhold fader før høyden lukker. */
 function Inn({ vis, children }) {
   return (
-    <div className="grid" style={{ gridTemplateRows: vis ? '1fr' : '0fr', transition: `grid-template-rows 560ms ${EASE}` }} aria-hidden={!vis}>
+    <div className="grid" style={{ gridTemplateRows: vis ? '1fr' : '0fr', transition: `grid-template-rows ${vis ? 640 : 520}ms ${EASE} ${vis ? 0 : 80}ms` }} aria-hidden={!vis}>
       <div className="min-h-0 overflow-hidden">
-        <div style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', transition: `opacity 420ms ${EASE} ${vis ? 120 : 0}ms, transform 420ms ${EASE} ${vis ? 120 : 0}ms` }}>
+        <div style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(12px) scale(0.985)', transformOrigin: '50% 100%', transition: vis ? `opacity 520ms ${EASE} 90ms, transform 680ms ${EASE} 60ms` : `opacity 260ms ease-out, transform 320ms ease-in`, willChange: 'opacity, transform' }}>
           {children}
         </div>
       </div>
@@ -113,8 +115,8 @@ function Trad({ er }) {
               <Inn vis={vis}>
                 <div className="flex justify-end pb-3">
                   <div className="max-w-[86%]">
-                    <p className="rounded-[16px] rounded-br-[5px] px-4 py-2.5 text-[14.5px] leading-[1.42]" style={{ background: 'rgba(255,255,255,0.14)', color: T.offwhite, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>{m.t}</p>
-                    <p className="mt-1.5 text-right text-[11.5px]" style={{ color: 'rgba(244,241,234,0.62)' }}>Jonas · {m.tid}</p>
+                    <p className="rounded-[16px] rounded-br-[5px] px-4 py-2.5 text-[14.5px] leading-[1.42]" style={{ background: 'rgba(21,19,15,0.74)', color: T.offwhite, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.08), 0 10px 30px -16px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>{m.t}</p>
+                    <p className="mt-1.5 text-right text-[11.5px]" style={{ color: 'rgba(21,19,15,0.62)' }}>Jonas · {m.tid}</p>
                   </div>
                 </div>
               </Inn>
@@ -187,9 +189,9 @@ function Register({ er }) {
         const ferdig = er(s.fase);
         const venter = s.venter ? er(s.venter) && !ferdig : false;
         return (
-          <li key={i} className="flex items-baseline gap-3 py-[3px] text-[clamp(28px,2.5vw,42px)] lg:gap-4" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.12, color: aktiv ? T.ink : 'rgba(21,19,15,0.26)', transition: `color 380ms ${EASE}` }} data-testid={`v4-register-${i}`} aria-current={aktiv ? 'step' : undefined}>
-            <span aria-hidden="true" className="inline-block w-[0.9em] shrink-0" style={{ opacity: aktiv ? 1 : 0, transform: aktiv ? 'none' : 'translateX(-6px)', transition: `opacity 300ms ${EASE}, transform 380ms ${EASE}`, color: venter ? T.lilla : T.ink }}>→</span>
-            <span>{venter && s.tVenter ? s.tVenter : s.t}</span>
+          <li key={i} className="flex items-baseline gap-3 py-[3px] text-[clamp(28px,2.5vw,42px)] lg:gap-4" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.12, color: aktiv ? T.ink : 'rgba(21,19,15,0.26)', transition: `color 520ms ${EASE}`, willChange: 'color' }} data-testid={`v4-register-${i}`} aria-current={aktiv ? 'step' : undefined}>
+            <span aria-hidden="true" className="inline-block w-[0.9em] shrink-0" style={{ opacity: aktiv ? 1 : 0, transform: aktiv ? 'none' : 'translateX(-10px)', transition: `opacity 360ms ${EASE} ${aktiv ? 80 : 0}ms, transform 620ms ${EASE}`, color: venter ? T.lilla : T.ink, willChange: 'opacity, transform' }}>→</span>
+            <span className="inline-block" style={{ transform: aktiv ? 'none' : 'translateX(-4px)', transition: `transform 620ms ${EASE}` }}>{venter && s.tVenter ? s.tVenter : s.t}</span>
           </li>
         );
       })}
@@ -211,16 +213,19 @@ export default function LeietakerSeksjon() {
           {/* ── Venstre: 1:1-scene med kompakt tråd nederst ── */}
           <div className="lg:col-span-6">
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[24px] sm:aspect-square lg:rounded-[28px]" style={{ background: MORK }} data-testid="v4-leietaker-scene">
-              <div className="absolute inset-0" style={{ transform: synlig ? 'scale(1)' : 'scale(1.07)', transition: 'transform 16000ms cubic-bezier(0.2,0.6,0.2,1)' }}>
+              <div className="absolute inset-0" style={{ transform: synlig ? 'scale(1)' : 'scale(1.07)', transition: 'transform 18000ms cubic-bezier(0.2,0.6,0.2,1)', willChange: 'transform' }}>
                 {SCENE.video ? (
                   <video className="h-full w-full object-cover" style={{ objectPosition: SCENE.pos }} src={SCENE.video} poster={SCENE.bilde} autoPlay muted loop playsInline aria-hidden="true" />
                 ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={SCENE.bilde} alt="" aria-hidden="true" draggable={false} className="h-full w-full object-cover" style={{ objectPosition: SCENE.pos }} />
+                  <picture className="block h-full w-full">
+                    <source media="(min-width: 640px)" srcSet={SCENE.bilde} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={SCENE.bildeMobil} alt="" aria-hidden="true" draggable={false} className="h-full w-full object-cover" style={{ objectPosition: SCENE.pos }} />
+                  </picture>
                 )}
               </div>
-              {/* Tone: lesbar bunn, ellers urørt */}
-              <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.10) 0%, rgba(21,18,15,0.08) 40%, rgba(21,18,15,0.62) 78%, rgba(21,18,15,0.82) 100%)' }} />
+              {/* Tone: lyst bilde — bare et pust av dybde nederst, ingen mørk plate */}
+              <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0) 0%, rgba(21,18,15,0) 55%, rgba(21,18,15,0.10) 80%, rgba(21,18,15,0.22) 100%)' }} />
 
               {/* Kontekst øverst — små mørke glasspiller, lesbare på alt opptak */}
               <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 px-5 pt-5 text-[12.5px] sm:px-7 sm:pt-7" style={{ color: 'rgba(244,241,234,0.86)' }}>
