@@ -7611,9 +7611,21 @@ frontend:
         -agent: "main"
         -comment: "KUN screenshot-QA av main agent (1728/1440/1920 desktop, 390 mobil). Rekkefølge: Nav → Hero → Tillit → Produkt → Spor → Leietaker → AltSamlet → FAQ → Avslutning → Footer. Video spiller (webm på desktop, 960-mp4 på mobil), sekvens og forståelses-register kjører. Ingen backend-endringer. Frontend-testagent IKKE kjørt (krever brukertillatelse)."
 
+  - task: "V4 bedriftsside /v4/bedrift — hero «Porteføljen på autopilot.» m/ størrelsesvalg (10–50 · 50–250 · 250+) som skalerer PortefoljeScene (bygg-liste, dagens drift-ledger, rollebasert godkjenningskort «Venter på driftssjef», auto-godkjenning av Ola etter 5 s hvis urørt, Spill igjen), CTA Book en demo"
+    implemented: true
+    working: "NA"
+    file: "/app/app/v4/bedrift/page.js, /app/components/forside/v4/bedrift/{BedriftV4,PortefoljeScene}.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Kun screenshot-QA (1728 + 390): sekvens, kort, godkjenning, størrelsesbytte (replay) og mobil-header verifisert visuelt. Kun hero foreløpig — flere seksjoner kommer."
+
 test_plan:
   current_focus:
-    - "V4 landingsside (/v4) — frontend, kun med brukerens tillatelse"
+    - "V4 landingsside (/v4) + bedriftsside (/v4/bedrift) — frontend, kun med brukerens tillatelse"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"

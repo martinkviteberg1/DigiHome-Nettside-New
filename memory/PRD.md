@@ -930,3 +930,11 @@ Leietakeren heter Ida (kvinnen i videoen) i hero/produkt/leietaker; avatar /v4/i
 Assets: /public/v4/video/stue-{1920.mp4,1920.webm,960.mp4,poster.webp,poster-960.webp}, /public/v4/logo/finn-{farge,mono}.svg.
 Åpent: brukergodkjenning av alle seksjoner; frontend-testagent kun med tillatelse; logo-bruksregler (BankID/FINN) før prod;
 last opp nye /public/v4-assets til object storage før deploy; /v4/spor/*.webp er ubrukte (kan slettes).
+
+## V4 bedriftsside (/v4/bedrift) — startet 4. sep.
+Hero: «Porteføljen på autopilot.» (søster til forsiden). Adressefeltets tvilling = størrelsesvalg 10–50 · 50–250 · 250+ som
+skalerer scenen (selskap, bygg, enheter, husleie, saker) og spiller dagen fra frame 1. Scene: bygg-liste + dagens drift-ledger,
+kollega (Nora · økonomi) godkjenner et låsbytte, fasadevask 48 000 kr venter på ROLLEN driftssjef → kort → godkjent → «To
+godkjenninger i dag. Resten gjorde DigiHome.» CTA: Book en demo (/book-mote). Sannhetsvalg: ingen terskelbeløp, ingen
+regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under heroen (alle bygg/én oversikt, roller & godkjenning,
+økonomi per bygg, leietaker i skala, integrasjoner, pris → demo, FAQ, finale). `/bedrift` (gammel) står urørt.
