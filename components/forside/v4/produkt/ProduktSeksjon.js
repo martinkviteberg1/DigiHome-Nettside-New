@@ -125,7 +125,7 @@ export default function ProduktSeksjon() {
       )}
       <div aria-hidden="true" className="absolute inset-0" style={{ background: bg.overlay }} />
 
-      <div className="relative mx-auto max-w-[1760px] px-5 pb-24 pt-16 sm:px-8 lg:px-10 lg:pb-28 lg:pt-24">
+      <div className="relative mx-auto max-w-[1760px] px-5 pb-24 pt-12 sm:px-8 lg:px-10 lg:pb-28 lg:pt-16">
         {/* Modus — lett mode-switch: tekst + hårlinje under den aktive. Ingen pill-container. */}
         <div className={`flex ${venstre ? 'justify-start' : 'justify-center'}`}>
           {/* Retning A — minimal editorial: tekstrekke på én hårlinje, aktiv = full ink + medium + 2 px strek. */}
