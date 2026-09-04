@@ -5,6 +5,7 @@ import NavV4 from './NavV4';
 import HeroScene from './HeroScene';
 import ProduktSeksjon from './produkt/ProduktSeksjon';
 import TillitStripe from './TillitStripe';
+import LeietakerSeksjon from './LeietakerSeksjon';
 import AdresseFelt from './AdresseFelt';
 import { T, display } from './motion';
 
@@ -68,6 +69,8 @@ export default function ForsideV4() {
         {/* Tillit: heroens fot — før produktet. */}
         <TillitStripe />
         <ProduktSeksjon />
+        {/* Seksjon 3: leietakerens vinkel — fire parter, én som må si ja. */}
+        <LeietakerSeksjon />
       </main>
     </div>
   );
