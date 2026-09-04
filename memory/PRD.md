@@ -892,3 +892,10 @@ Google Ads-styring via native REST API).
 - Bakgrunnsvelgeren (nede til venstre) står fortsatt — fjernes når brukeren låser retningen. `justering`/`komposisjon` er fjernet fra DriftScene/BAKGRUNNER.
 - Frontend-testagent ikke kjørt (krever eksplisitt tillatelse).
 - Tabs justert etter tilbakemelding (retning A «minimal editorial»): inaktiv 60 % ink (også ikke-klare), aktiv 100 % ink + medium + 2 px strek, 15,5 px / 14 px mobil, gap 40/36/18 px, én hårlinje (10 % ink) under hele raden.
+
+### V4 TillitStripe (logo-/trust-stripe) — shippet, screenshot-QA, venter på brukervurdering
+- Ny `components/forside/v4/TillitStripe.js`, montert i ForsideV4 mellom hero og ProduktSeksjon. Samme stein-bakgrunn som heroen (heroens «fot»), én hårlinje øverst, ~104 px høy på desktop.
+- Copy: «Koblet til tjenestene du allerede bruker.» (ikke «partnere»). Ingen kort/captions/badges/marquee.
+- Logoer (brukerens valg, i livssyklusrekkefølge): FINN · BankID · Vipps · PowerOffice · Keyhole · Airbnb · Booking.com. Offisielle vektorfiler hentet fra Wikimedia Commons (FINN, Vipps, Airbnb, Booking.com) og aktørenes egne nettsider (bankid.no, usekeyhole.com, poweroffice.no), normalisert til tett viewBox i `/app/public/v4/logo/*.svg`. Vipps: clear-space-markørene fjernet.
+- Tegnes monokromt via CSS mask-image + currentColor (62 % ink), høyde per logo (15–25 px) for lik opplevd størrelse. Desktop: label venstre, logoer høyre på én linje. Mobil: label over, logoer i wrap.
+- MERK (ærlighet): stripen påstår kobling til alle sju. Kun BankID (via Posten signering) er dokumentert live i koden; FINN leses (Salgsradar) men publisering er uavklart; Keyhole/Vipps/PowerOffice/Airbnb/Booking.com uten evidens. Brukeren valgte utvalget eksplisitt. Logobruk må følge aktørenes brand-retningslinjer før produksjon.
