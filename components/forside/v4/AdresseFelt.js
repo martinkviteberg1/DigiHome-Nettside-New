@@ -10,8 +10,10 @@ import { EASE, T } from './motion';
 
    · Én pill: felt + lilla knapp inne i feltet. Ingen label, ingen løs knapp.
    · Ekte forslag fra /api/address (Google Places m/Bergen-bias, Geonorge-fallback).
-   · Valg → Place Details (postnr/poststed) → /bli-utleier/start?address&postal&city.
-     Onboardingen verifiserer, plasserer kartet og hopper forbi adressesteget.
+   · Valg → Place Details (postnr/poststed/lat/lng). Med `onValgt` personaliseres heroen
+     først (din adresse → din bolig) og knappen blir «Fortsett». Uten `onValgt` går valget
+     rett til /bli-utleier/start?address&postal&city — onboardingen verifiserer, plasserer
+     kartet og hopper forbi adressesteget.
    · Fritekst / tomt → onboardingen som før, med teksten forhåndsutfylt. Aldri feil i heroen.
    · Tastatur: ↑ ↓ Enter Esc. ARIA combobox/listbox.
 --------------------------------------------------------------------------- */
@@ -25,9 +27,10 @@ function postFraSub(sub = '') {
   return m ? { postal: m[1], city: m[2] } : { postal: '', city: '' };
 }
 
-export default function AdresseFelt({ className = '' }) {
+export default function AdresseFelt({ className = '', onValgt }) {
   const router = useRouter();
   const [verdi, setVerdi] = useState('');
+  const [valgt, setValgt] = useState(null);       // { address, postal, city } etter valg (kun med onValgt)
   const [forslag, setForslag] = useState([]);
   const [apen, setApen] = useState(false);
   const [aktiv, setAktiv] = useState(-1);
@@ -36,10 +39,12 @@ export default function AdresseFelt({ className = '' }) {
   const boksRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
+  const hoppOverSok = useRef(false);               // etter valg: ikke søk på den innsatte teksten
   const listeId = useId();
 
   /* Debounced søk. Avbryter forrige kall. */
   useEffect(() => {
+    if (hoppOverSok.current) { hoppOverSok.current = false; return undefined; }
     const q = verdi.trim();
     if (q.length < 3) { setForslag([]); setApen(false); setAktiv(-1); return undefined; }
     const t = window.setTimeout(async () => {
@@ -75,8 +80,22 @@ export default function AdresseFelt({ className = '' }) {
     router.push(qs ? `${START}?${qs}` : START);
   };
 
+  /* Ferdig valgt adresse: personaliser heroen (onValgt) eller gå rett videre. */
+  const fullfor = (v) => {
+    if (onValgt) {
+      setValgt(v);
+      setSender(false);
+      setForslag([]);
+      if (inputRef.current) inputRef.current.blur();   // lukk tastaturet, la heroen få oppmerksomheten
+      onValgt(v);
+      return;
+    }
+    gaTil({ address: v.address, postal: v.postal, city: v.city });
+  };
+
   const velg = async (s) => {
     if (!s) return;
+    hoppOverSok.current = true;
     setVerdi(s.label || s.text || '');
     setApen(false);
     setSender(true);
@@ -84,18 +103,19 @@ export default function AdresseFelt({ className = '' }) {
       if (s.place_id) {
         const r = await fetch(`/api/address?place_id=${encodeURIComponent(s.place_id)}`);
         const d = await r.json().catch(() => ({}));
-        if (d && d.ok) { gaTil({ address: d.address || s.text, postal: d.postalCode, city: d.city }); return; }
+        if (d && d.ok) { fullfor({ address: d.address || s.text, postal: d.postalCode || '', city: d.city || '', lat: d.lat, lng: d.lng }); return; }
       }
       const { postal, city } = postFraSub(s.sub);
-      gaTil({ address: s.text, postal, city });
+      fullfor({ address: s.text, postal, city });
     } catch (e) {
-      gaTil({ address: s.label || s.text });
+      fullfor({ address: s.label || s.text, postal: '', city: '' });
     }
   };
 
   const send = (e) => {
     e.preventDefault();
     if (sender) return;
+    if (valgt && (valgt.label || valgt.address) && verdi.trim()) { setSender(true); gaTil({ address: valgt.address, postal: valgt.postal, city: valgt.city }); return; }
     if (aktiv >= 0 && forslag[aktiv]) { velg(forslag[aktiv]); return; }
     if (forslag.length) { velg(forslag[0]); return; }   // Enter uten valg = første treff
     const q = verdi.trim();
@@ -125,7 +145,7 @@ export default function AdresseFelt({ className = '' }) {
             ref={inputRef}
             type="text"
             value={verdi}
-            onChange={(e) => setVerdi(e.target.value)}
+            onChange={(e) => { setVerdi(e.target.value); if (valgt) setValgt(null); }}
             onFocus={() => { setFokus(true); if (forslag.length) setApen(true); }}
             onBlur={() => setFokus(false)}
             onKeyDown={tast}
@@ -151,7 +171,7 @@ export default function AdresseFelt({ className = '' }) {
             style={{ background: sender ? T.lillaHover : T.lilla, color: T.ink, opacity: sender ? 0.8 : 1 }}
             data-testid="v4-adresse-start"
           >
-            <span className="hidden sm:inline">Start</span>
+            <span className={valgt ? 'inline' : 'hidden sm:inline'}>{valgt ? 'Fortsett' : 'Start'}</span>
             <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
           </button>
         </div>

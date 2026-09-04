@@ -995,3 +995,11 @@ html.dh-tour-snap.dh-tour-flyt { scroll-snap-type: none; }
 
 /* Forside V3: fremdrift i aktiv fane (Reisen). Kun transform. */
 @keyframes v3fane { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+
+/* Forside V4: idle-tilstand på Godkjenn mens systemet venter på deg. Én myk ring, 2,6 s. */
+@keyframes v4puls {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 150, 255, 0); }
+  50% { box-shadow: 0 0 0 7px rgba(212, 150, 255, 0.22); }
+}
+.v4-puls { animation: v4puls 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+@media (prefers-reduced-motion: reduce) { .v4-puls { animation: none; } }

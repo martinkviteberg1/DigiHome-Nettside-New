@@ -2392,6 +2392,76 @@ async function handleRoute(request, { params }) {
       }));
     }
 
+    // --- Street View for forsidens hero: «din adresse → din bolig». Nøkkelen holdes på server. ---
+    // GET /api/streetview/meta?lat&lng&q  → { ok, status, distance, date }
+    // GET /api/streetview?lat&lng&q&w&h   → JPEG (Google-attribusjon ligger i bildet og skal ikke fjernes; cache maks 1 t)
+    // Kvalitetsport: kun Googles egne gatepanoramaer (ikke brukerbidrag «CAoS…», ofte innendørs),
+    // 4–40 m fra adressen, kamera rettet mot adressen. Ellers 204 → forsiden beholder demo-fotoet.
+    if ((route === '/streetview' || route === '/streetview/meta') && method === 'GET') {
+      const { searchParams } = new URL(request.url);
+      const key = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
+      const latParam = searchParams.get('lat');
+      const lngParam = searchParams.get('lng');
+      const lat = latParam === null || latParam.trim() === '' ? NaN : Number(latParam);
+      const lng = lngParam === null || lngParam.trim() === '' ? NaN : Number(lngParam);
+      const q = (searchParams.get('q') || '').trim().slice(0, 120);
+      if (!key) return cors(NextResponse.json({ ok: false, status: 'NOT_CONFIGURED' }, { status: 503 }));
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+        return cors(NextResponse.json({ ok: false, status: 'BAD_LOCATION' }, { status: 400 }));
+      }
+      const adr = { lat, lng };
+      const toR = (x) => (x * Math.PI) / 180;
+      const avstand = (a, b) => {
+        const R = 6371000; const dLat = toR(b.lat - a.lat); const dLng = toR(b.lng - a.lng);
+        const h = Math.sin(dLat / 2) ** 2 + Math.cos(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.sin(dLng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(h));
+      };
+      const retning = (a, b) => {
+        const y = Math.sin(toR(b.lng - a.lng)) * Math.cos(toR(b.lat));
+        const x = Math.cos(toR(a.lat)) * Math.sin(toR(b.lat)) - Math.sin(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.cos(toR(b.lng - a.lng));
+        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+      };
+      const hentMeta = async (location) => {
+        try {
+          const r = await fetch(`https://maps.googleapis.com/maps/api/streetview/metadata?location=${encodeURIComponent(location)}&source=outdoor&radius=60&key=${key}`, { cache: 'no-store' });
+          return await r.json();
+        } catch (e) { return null; }
+      };
+      const godkjent = (m) => {
+        if (!m || m.status !== 'OK' || !m.location || !m.pano_id) return false;
+        if (String(m.pano_id).startsWith('CAoS')) return false;            // brukerbidrag — ofte innendørs
+        return avstand(adr, m.location) <= 40;                            // gatekamera nær nok (CAoS-filteret tar innendørs)
+      };
+      const kandidater = [q, `${lat.toFixed(6)},${lng.toFixed(6)}`].filter(Boolean);
+      let meta = null; let status = 'ZERO_RESULTS';
+      for (const loc of kandidater) {
+        const m = await hentMeta(loc);
+        if (m && m.status) status = m.status;
+        if (godkjent(m)) { meta = m; break; }
+      }
+      const ok = !!meta;
+      const dist = ok ? Math.round(avstand(adr, meta.location)) : null;
+      if (route === '/streetview/meta') {
+        const res = cors(NextResponse.json({ ok, status: ok ? 'OK' : status, distance: dist, date: meta?.date || null }));
+        res.headers.set('Cache-Control', 'public, max-age=3600');
+        return res;
+      }
+      if (!ok) return cors(new NextResponse(null, { status: 204 }));
+      const w = Math.min(1600, Math.max(320, Number(searchParams.get('w')) || 1400));
+      const h = Math.min(1600, Math.max(160, Number(searchParams.get('h')) || 1000));
+      const fov = Math.min(90, Math.max(30, Number(searchParams.get('fov')) || 68));
+      const pitch = Math.min(35, Math.max(-10, Number(searchParams.get('pitch')) || 14));
+      const heading = Math.round(retning(meta.location, adr));
+      try {
+        const ir = await fetch(`https://maps.googleapis.com/maps/api/streetview?size=${w}x${h}&pano=${encodeURIComponent(meta.pano_id)}&heading=${heading}&fov=${fov}&pitch=${pitch}&key=${key}`, { cache: 'no-store' });
+        if (!ir.ok) return cors(new NextResponse(null, { status: 204 }));
+        const buf = Buffer.from(await ir.arrayBuffer());
+        return cors(new NextResponse(buf, { status: 200, headers: { 'Content-Type': ir.headers.get('content-type') || 'image/jpeg', 'Cache-Control': 'public, max-age=3600' } }));
+      } catch (e) {
+        return cors(new NextResponse(null, { status: 204 }));
+      }
+    }
+
     // --- Adresse-autofullføring (Google Places m/Bergen-bias, Geonorge-fallback) ---
     if (route === '/address' && method === 'GET') {
       const { searchParams } = new URL(request.url);

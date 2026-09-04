@@ -73,7 +73,8 @@ export function useSynlig(ref, threshold = 0.4) {
 }
 
 /* Sekvens: spiller faser ÉN gang når `start` blir sann, hviler i sluttfasen.
-   `replay()` starter på nytt. Redusert bevegelse → rett til slutt. */
+   `replay()` starter på nytt. Redusert bevegelse → rett til slutt.
+   En fase med `ms: null` er en HOLD: sekvensen stopper der til `videre()` kalles. */
 export function useSekvens(faser, start) {
   const [i, setI] = useState(0);
   const [kjorer, setKjorer] = useState(false);
@@ -92,12 +93,15 @@ export function useSekvens(faser, start) {
   useEffect(() => {
     if (!kjorer) return undefined;
     if (i >= siste) { setKjorer(false); return undefined; }
-    const t = window.setTimeout(() => setI((v) => v + 1), faser[i].ms);
+    const ms = faser[i].ms;
+    if (ms == null) return undefined;                      // hold — venter på videre()
+    const t = window.setTimeout(() => setI((v) => v + 1), ms);
     return () => window.clearTimeout(t);
   }, [kjorer, i, faser, siste]);
 
   const replay = () => { setI(0); setKjorer(true); };
-  return { fase: faser[i].navn, er: (n) => i >= idx[n], ferdig: i >= siste, replay, kjorer };
+  const videre = () => setI((v) => Math.min(v + 1, siste));
+  return { fase: faser[i].navn, er: (n) => i >= idx[n], ferdig: i >= siste, replay, videre, kjorer, holder: kjorer && faser[i].ms == null };
 }
 
 /* Knapp — 44 px / 36 px. Radius 12 / 8. Primær = DigiHome-lilla med mørk tekst. */

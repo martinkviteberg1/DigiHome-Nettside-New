@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import NavV4 from './NavV4';
 import HeroScene from './HeroScene';
 import AdresseFelt from './AdresseFelt';
@@ -18,6 +18,21 @@ import { T, display } from './motion';
 --------------------------------------------------------------------------- */
 
 export default function ForsideV4() {
+  /* Din adresse → din bolig. Valgt adresse personaliserer heroscenen før du går videre. */
+  const [eiendom, setEiendom] = useState(null);
+  const sceneRef = useRef(null);
+  const valgt = useCallback((v) => {
+    if (!v || !v.address) return;
+    setEiendom({ adresse: v.address, by: v.city || '', lat: Number(v.lat), lng: Number(v.lng) });
+    /* Mobil: scenen ligger under feltet — vis den. */
+    try {
+      if (window.matchMedia('(max-width: 1023px)').matches && sceneRef.current) {
+        const y = sceneRef.current.getBoundingClientRect().top + window.scrollY - 200;   // feltet forblir synlig under headeren
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    } catch (e) { /* ok */ }
+  }, []);
+
   return (
     <div className="min-h-screen overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="forside-v4">
       <NavV4 />
@@ -40,11 +55,11 @@ export default function ForsideV4() {
               {/* Handlingen er feltet. Forvaltning vs. selvforvaltning velges i steg 2 etter adressen. */}
               {/* relative z-20: forslagslisten skal ligge over scenen (som selv er en stacking context). */}
               <div className="dh-cover-inn relative z-20 mt-9 w-full sm:max-w-[460px]" style={{ animationDelay: '.16s' }}>
-                <AdresseFelt />
+                <AdresseFelt onValgt={valgt} />
               </div>
             </div>
-            <div className="dh-cover-inn" style={{ animationDelay: '.12s' }}>
-              <HeroScene />
+            <div ref={sceneRef} className="dh-cover-inn" style={{ animationDelay: '.12s' }}>
+              <HeroScene eiendom={eiendom} />
             </div>
           </div>
         </section>

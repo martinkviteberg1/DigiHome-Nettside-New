@@ -874,3 +874,11 @@ Google Ads-styring via native REST API).
 - Valg → `GET /api/address?place_id=` → `/bli-utleier/start?address&postal&city`. Onboardingen (OwnerOnboarding2026) leser allerede disse, verifiserer, geokoder kartet og hopper til steg 2 («Hvordan vil du leie ut Nygårdsgaten 5?»). Verifisert ende-til-ende desktop + mobil. Enter uten valg = første treff; tomt felt → /bli-utleier/start uten parametere.
 - Wrapper har `relative z-20` så forslagslisten ligger over scenen (som er egen stacking context via dh-cover-inn).
 - Ingen backend-endringer.
+
+### V4 hero: mikro-opplevelse (interaktiv godkjenning + din adresse → din bolig) — shippet, backend-testet, ikke brukerbekreftet
+- Sekvens-hook støtter HOLD-faser (`ms: null`) + `videre()`. Kortet venter på brukeren; auto-godkjenning (Kari, 5 s) kun hvis peker/finger aldri har vært i heroen (pointerenter/move/down/touch/focus, samt :hover-sjekk).
+- Handlingsspor under Varmtvann (Diatype, ikke monospace): Sak opprettet · Varmtvann · hele bygget / Leverandør funnet · Rørlegger AS · ledig torsdag / Krever godkjenning · 3 450 kr. Kollapser ved godkjent.
+- Ditt trykk → grønn «✓ Godkjent» → kort kollapser → «Godkjent av deg · nå». Auto → Kari-avatar «Godkjent · 08:02». Footer: «Én godkjenning. Resten gjorde DigiHome.» Idle-puls på knappen (.v4-puls i globals.css).
+- Adressevalg personaliserer heroen (ikke navigasjon): scene fader ut → adresse/rader byttes → Street View-foto om kvalitetsporten godkjenner → spilles fra frame 1. Knappen blir «Fortsett» → onboarding m/ address/postal/city.
+- Backend: GET /api/streetview/meta?lat&lng&q og GET /api/streetview?lat&lng&q&w&h&fov&pitch (server-nøkkel GOOGLE_MAPS_API_KEY). Port: kun Google-pano (ikke 'CAoS…' brukerbidrag), ≤ 40 m, heading mot adressen. 204 ved avslag → demo-foto beholdes med personalisert adresse. To bilder: helbilde (fov 68/pitch 14, panelets format) + header-bånd (fov 52/pitch 20) med Google-attribusjon synlig; crossfade ved morph. Backend-testagent: 8/8 grønt. MERK: Google Maps Platform-vilkår (attribusjon, cache ≤ 30 d) må bekreftes før produksjon.
+- Seksjon 2 diskutert: Sana-lignende «scene» med modus-tabs, stort desktop-canvas, mobil som sekundært lag. Venter på valg: bakgrunn, antall tabs, fasit-skjermbilder.
