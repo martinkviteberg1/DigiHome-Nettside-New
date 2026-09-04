@@ -71,10 +71,11 @@ const BAKGRUNNER = {
     overlay: 'linear-gradient(180deg, rgba(243,241,236,0.20) 0%, rgba(243,241,236,0.06) 35%, rgba(243,241,236,0.10) 75%, rgba(236,232,225,0.62) 100%)',
   },
   oslo: {
-    /* Dempet utgave av brukerens bilde (bakt inn i asset: svak dybdeuskarphet, −14 % kontrast, kald ivory-veil 16 %)
-       + en rolig radial lysning i midten der produktet står. Skarp original: /v4/bolig-oslo-{1200,2000}.webp. */
+    /* Dempet utgave av brukerens bilde, bakt inn i asset: dybdeuskarphet r≈2,2 px (v1 var 3 px, −27 %), −29 % kontrast,
+       kald ivory-veil + rolig radial lysning i midten der produktet står. Skarp original: /v4/bolig-oslo-{1200,2000}.webp.
+       Overlay under: bare en svært subtil lys scrim for lesbarhet bak overskriften. */
     tema: 'lys', seksjonBg: '#DCE1EB', bilde: '/v4/bolig-oslo-dempet-2000.webp', srcSet: '/v4/bolig-oslo-dempet-1200.webp 1200w, /v4/bolig-oslo-dempet-2000.webp 2000w', modus: 'scene', hoyde: '100%', forankring: 'topp', posKlasse: 'object-[36%_0%] lg:object-[0%_0%]', layout: 'senter',
-    overlay: 'radial-gradient(ellipse 62% 58% at 50% 60%, rgba(223,228,236,0.42) 0%, rgba(223,228,236,0.18) 55%, rgba(223,228,236,0) 100%), linear-gradient(180deg, rgba(223,228,236,0) 0%, rgba(223,228,236,0) 80%, rgba(220,225,235,0.35) 100%)',
+    overlay: 'radial-gradient(ellipse 70% 46% at 50% 26%, rgba(243,241,236,0.22) 0%, rgba(243,241,236,0.08) 60%, rgba(243,241,236,0) 100%), linear-gradient(180deg, rgba(223,228,236,0) 0%, rgba(223,228,236,0) 80%, rgba(220,225,235,0.35) 100%)',
   },
   skumring: {
     tema: 'mork', bilde: '/v4/skumring.webp', modus: 'cover', pos: '50% 38%', layout: 'senter',
@@ -103,11 +104,11 @@ const VELGER = [['oslo', 'Oslo · bolig'], ['osloKveld', 'Oslo · kveld'], ['stu
 const TEMA = {
   mork: {
     seksjonBg: T.plomme, tekst: IVORY, ingress: 'rgba(244,241,234,0.68)',
-    tabAktiv: IVORY, tabTekst: 'rgba(244,241,234,0.62)', tabHover: 'hover:text-[#F4F1EA]', tabLinje: 'rgba(244,241,234,0.14)', ring: 'focus-visible:ring-[#F4F1EA]/40',
+    tabAktiv: 'rgba(244,241,234,0.88)', tabTekst: 'rgba(244,241,234,0.5)', tabHover: 'hover:text-[#F4F1EA]/80', tabLinje: 'rgba(244,241,234,0.12)', ring: 'focus-visible:ring-[#F4F1EA]/40',
   },
   lys: {
     seksjonBg: IVORY, tekst: INK, ingress: 'rgba(21,19,15,0.66)',
-    tabAktiv: INK, tabTekst: 'rgba(21,19,15,0.60)', tabHover: 'hover:text-[#15130F]', tabLinje: 'rgba(21,19,15,0.10)', ring: 'focus-visible:ring-[#15130F]/30',
+    tabAktiv: 'rgba(21,19,15,0.84)', tabTekst: 'rgba(21,19,15,0.46)', tabHover: 'hover:text-[#15130F]/80', tabLinje: 'rgba(21,19,15,0.08)', ring: 'focus-visible:ring-[#15130F]/30',
   },
 };
 
@@ -145,11 +146,11 @@ export default function ProduktSeksjon() {
       )}
       <div aria-hidden="true" className="absolute inset-0" style={{ background: bg.overlay }} />
 
-      <div className="relative mx-auto max-w-[1760px] px-5 pb-12 pt-12 sm:px-8 lg:px-10 lg:pb-16 lg:pt-16">
+      <div className="relative mx-auto max-w-[1760px] px-5 pb-12 pt-12 sm:px-8 lg:px-10 lg:pb-16 lg:pt-12">
         {/* Modus — lett mode-switch: tekst + hårlinje under den aktive. Ingen pill-container. */}
         <div className={`flex ${venstre ? 'justify-start' : 'justify-center'}`}>
           {/* Retning A — minimal editorial: tekstrekke på én hårlinje, aktiv = full ink + medium + 2 px strek. */}
-          <div role="tablist" aria-label="Produktområder" className="inline-flex max-w-full gap-[18px] overflow-x-auto sm:gap-9 lg:gap-10" style={{ boxShadow: `inset 0 -1px 0 ${tema.tabLinje}` }} data-testid="v4-tabs">
+          <div role="tablist" aria-label="Produktområder" className="inline-flex max-w-full gap-[18px] overflow-x-auto sm:gap-8 lg:gap-9" style={{ boxShadow: `inset 0 -1px 0 ${tema.tabLinje}` }} data-testid="v4-tabs">
             {TABS.map((t) => {
               const er = t.id === aktiv;
               return (
@@ -160,12 +161,12 @@ export default function ProduktSeksjon() {
                   aria-selected={er}
                   aria-disabled={!t.klar}
                   onClick={() => { if (t.klar) setAktiv(t.id); }}
-                  className={`relative shrink-0 pb-3 pt-1 text-[14px] tracking-[-0.005em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 sm:text-[15.5px] ${tema.ring} ${er ? 'font-medium' : t.klar ? tema.tabHover : 'cursor-default'}`}
+                  className={`relative shrink-0 pb-2.5 pt-1 text-[13.5px] tracking-[-0.005em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 sm:text-[14.5px] ${tema.ring} ${er ? 'font-medium' : t.klar ? tema.tabHover : 'cursor-default'}`}
                   style={{ color: er ? tema.tabAktiv : tema.tabTekst }}
                   data-testid={`v4-tab-${t.id}`}
                 >
                   {t.navn}
-                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[2px]" style={{ background: tema.tabAktiv, opacity: er ? 1 : 0, transition: `opacity 200ms ${EASE}` }} />
+                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[1.5px]" style={{ background: tema.tabAktiv, opacity: er ? 1 : 0, transition: `opacity 200ms ${EASE}` }} />
                 </button>
               );
             })}
@@ -173,7 +174,7 @@ export default function ProduktSeksjon() {
         </div>
 
         {/* Statement — bytter med scenen (key → sekvensiell inngang) */}
-        <div className={`mt-10 max-w-[820px] lg:mt-14 ${venstre ? 'text-left' : 'mx-auto text-center'}`} style={{ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(16px)', transition: `opacity 700ms ${EASE}, transform 700ms ${EASE}` }}>
+        <div className={`mt-10 max-w-[820px] lg:mt-10 ${venstre ? 'text-left' : 'mx-auto text-center'}`} style={{ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(16px)', transition: `opacity 700ms ${EASE}, transform 700ms ${EASE}` }}>
           <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-1 duration-500">
             <h2 className="text-[clamp(40px,4.8vw,78px)]" style={{ ...display, color: tema.tekst }} data-testid="v4-produkt-tittel">
               {scene.tittel[0]}<br />{scene.tittel[1]}
@@ -183,7 +184,7 @@ export default function ProduktSeksjon() {
         </div>
 
         {/* Produktet — alltid sentrert */}
-        <div className="mt-12 lg:mt-16">
+        <div className="mt-12 lg:mt-20">
           {/* Scenebytte: den nye flaten kommer inn sekvensielt (key → ny montering), ingen overlappende crossfade */}
           <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
             {aktiv === 'drift' && <DriftScene synlig={synlig} tema={bg.tema} />}
