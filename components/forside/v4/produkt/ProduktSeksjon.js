@@ -78,15 +78,17 @@ const BAKGRUNNER = {
 
 const VELGER = [['oslo', 'Oslo · bolig'], ['skumring', 'Skumring'], ['arkitektur', 'Arkitektur'], ['dagGlass', 'Dag · glass'], ['dagBolig', 'Dag · bolig'], ['plomme', 'Plomme']];
 
-/* Tema: farger for alt som ikke er produktflaten */
+/* Tema: farger for alt som ikke er produktflaten.
+   Tabs (retning A, «minimal editorial»): ren tekstrekke. Inaktiv 60 % ink, aktiv 100 % ink + medium vekt + 2 px strek.
+   Ikke-klare tabs ser like ut som inaktive (de markerer produktbredden), men er ikke klikkbare. */
 const TEMA = {
   mork: {
     seksjonBg: T.plomme, tekst: IVORY, ingress: 'rgba(244,241,234,0.68)',
-    tabAktiv: IVORY, tabTekst: 'rgba(244,241,234,0.62)', tabDempet: 'rgba(244,241,234,0.34)', tabHover: 'hover:text-[#F4F1EA]', ring: 'focus-visible:ring-[#F4F1EA]/40',
+    tabAktiv: IVORY, tabTekst: 'rgba(244,241,234,0.62)', tabHover: 'hover:text-[#F4F1EA]', tabLinje: 'rgba(244,241,234,0.14)', ring: 'focus-visible:ring-[#F4F1EA]/40',
   },
   lys: {
     seksjonBg: IVORY, tekst: INK, ingress: 'rgba(21,19,15,0.66)',
-    tabAktiv: INK, tabTekst: 'rgba(21,19,15,0.62)', tabDempet: 'rgba(21,19,15,0.34)', tabHover: 'hover:text-[#15130F]', ring: 'focus-visible:ring-[#15130F]/30',
+    tabAktiv: INK, tabTekst: 'rgba(21,19,15,0.60)', tabHover: 'hover:text-[#15130F]', tabLinje: 'rgba(21,19,15,0.10)', ring: 'focus-visible:ring-[#15130F]/30',
   },
 };
 
@@ -126,7 +128,8 @@ export default function ProduktSeksjon() {
       <div className="relative mx-auto max-w-[1760px] px-5 pb-24 pt-12 sm:px-8 lg:px-10 lg:pb-28 lg:pt-14">
         {/* Modus — lett mode-switch: tekst + hårlinje under den aktive. Ingen pill-container. */}
         <div className={`flex ${venstre ? 'justify-start' : 'justify-center'}`}>
-          <div role="tablist" aria-label="Produktområder" className="inline-flex max-w-full gap-4 overflow-x-auto sm:gap-8" data-testid="v4-tabs">
+          {/* Retning A — minimal editorial: tekstrekke på én hårlinje, aktiv = full ink + medium + 2 px strek. */}
+          <div role="tablist" aria-label="Produktområder" className="inline-flex max-w-full gap-[18px] overflow-x-auto sm:gap-9 lg:gap-10" style={{ boxShadow: `inset 0 -1px 0 ${tema.tabLinje}` }} data-testid="v4-tabs">
             {TABS.map((t) => {
               const er = t.id === aktiv;
               return (
@@ -137,12 +140,12 @@ export default function ProduktSeksjon() {
                   aria-selected={er}
                   aria-disabled={!t.klar}
                   onClick={() => { if (t.klar) setAktiv(t.id); }}
-                  className={`relative shrink-0 pb-2.5 pt-1 text-[14px] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 sm:text-[15px] ${tema.ring} ${er ? 'font-medium' : t.klar ? tema.tabHover : 'cursor-default'}`}
-                  style={{ color: er ? tema.tabAktiv : t.klar ? tema.tabTekst : tema.tabDempet }}
+                  className={`relative shrink-0 pb-3 pt-1 text-[14px] tracking-[-0.005em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 sm:text-[15.5px] ${tema.ring} ${er ? 'font-medium' : t.klar ? tema.tabHover : 'cursor-default'}`}
+                  style={{ color: er ? tema.tabAktiv : tema.tabTekst }}
                   data-testid={`v4-tab-${t.id}`}
                 >
                   {t.navn}
-                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[1.5px] rounded-full" style={{ background: tema.tabAktiv, opacity: er ? 1 : 0, transition: `opacity 200ms ${EASE}` }} />
+                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[2px]" style={{ background: tema.tabAktiv, opacity: er ? 1 : 0, transition: `opacity 200ms ${EASE}` }} />
                 </button>
               );
             })}

@@ -891,3 +891,4 @@ Google Ads-styring via native REST API).
 - Copy: «Fra melding til løst. DigiHome gjør resten.» / «Leietakeren melder. DigiHome oppretter saken, finner leverandør og henter pris. Du godkjenner med ett trykk.»
 - Bakgrunnsvelgeren (nede til venstre) står fortsatt — fjernes når brukeren låser retningen. `justering`/`komposisjon` er fjernet fra DriftScene/BAKGRUNNER.
 - Frontend-testagent ikke kjørt (krever eksplisitt tillatelse).
+- Tabs justert etter tilbakemelding (retning A «minimal editorial»): inaktiv 60 % ink (også ikke-klare), aktiv 100 % ink + medium + 2 px strek, 15,5 px / 14 px mobil, gap 40/36/18 px, én hårlinje (10 % ink) under hele raden.
