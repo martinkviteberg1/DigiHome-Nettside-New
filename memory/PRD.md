@@ -909,3 +909,11 @@ Google Ads-styring via native REST API).
 - Flate-varianter med preview-velger nede til venstre: **lilla** (default, T.lilla flat), **charcoal**, **foto** (`/v4/jonas-kveld.webp`, stock — dekker ansiktet, kun som test; bygget for å kunne byttes til <video>). Velger fjernes når valgt.
 - Ingen tabular-nums i tidsstempler (ga bred mellomrom i Diatype). Statement nederst: «Mindre koordinering. Færre avbrytelser. Full kontroll.»
 - Åpent: flatevalg (lilla/charcoal/video), ev. ekte video/foto av leietaker.
+
+### V4 seksjon 3 — omgjort til to akter (video/scene → morph → tråd) — shippet, screenshot-QA, venter på brukervurdering
+- Brukeren avviste lilla-flate + høyrekolonne («for tung og designet, forklarende»). Ny idé fra bruker: stor scene (video av leietaker) med Sana-tekst over, som morpher til bare tråden. Bygget som ett spor, ingen kolonne.
+- `LeietakerSeksjon.js` nå: Akt 1 (3,4 s) scene + «Leietakeren får svar. Du får bare beslutningen.» + én setning → morph (0,9 s: scenen mørkner til 66 %, tittel glir ut, tråd glir inn) → Akt 2: tråden sentrert nederst (bilde, melding, registrert, rørleggerkort m. in-place status, løst, «Fungerer igjen. Takk!») → «Se igjen» nederst til venstre. Under scenen: tre proof points («Registrert automatisk · Godkjent av deg · Oppdatert helt til løst»).
+- Scene: `SCENE.video` (null nå) for eget opptak; fallback stillbilde med sakte scale 1.07→1 over 16 s (kun transform). PLASSHOLDER-bilder: `/v4/jonas-kveld-bred.webp` (desktop) og `/v4/jonas-kveld.webp` (mobil) — Unsplash-stock, må byttes til eget opptak.
+- Stage: desktop clamp(680px,86vh,900px), mobil 92svh/min 760. Trigger ved 45 % synlig.
+- Teknisk merknad: headless Chromium i screenshot-verktøyet kan ikke spille H.264 — video kan ikke QA-es visuelt her; Mixkit-klipp ble lastet ned men ikke brukt (usett).
+- Gamle varianter ligger i /tmp (ikke varig): LeietakerSeksjon.lilla.js, LeietakerSeksjon.prev.js.
