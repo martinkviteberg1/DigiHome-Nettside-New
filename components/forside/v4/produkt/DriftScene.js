@@ -52,7 +52,7 @@ function Status({ godkjent }) {
 }
 
 const HISTORIKK = [
-  { tid: '22:41', t: 'Jonas meldte', d: '«Varmtvannet er borte i hele leiligheten. Har vært sånn siden i kveld.»', sitat: true, avatar: '/v4/jonas.webp' },
+  { tid: '22:41', t: 'Ida meldte', d: '«Varmtvannet er borte i hele leiligheten. Har vært sånn siden i kveld.»', sitat: true, avatar: '/v4/ida.webp' },
   { tid: '22:41', t: 'Sak opprettet automatisk', d: 'Kategori VVS · prioritet høy · hele bygget varslet' },
   { tid: '22:43', t: 'Leverandør funnet', d: 'Rørlegger AS · fast leverandør · ledig torsdag 09:00' },
   { tid: '22:43', t: 'Pris innhentet', d: `${tall(3450)} kr inkl. mva · sendt til deg for godkjenning` },
@@ -65,7 +65,7 @@ function GodkjenningKort({ godkjent, trykket, onGodkjenn, className = '' }) {
       <div className="flex items-center justify-between text-[12px] text-white/55">
         <span className="inline-grid">
           <span className="col-start-1 row-start-1 flex items-center gap-2" style={{ opacity: godkjent ? 0 : 1, transition: `opacity 200ms ${EASE}` }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Venter på deg</span>
-          <span className="col-start-1 row-start-1 flex items-center gap-2" style={{ opacity: godkjent ? 1 : 0, transition: `opacity 300ms ${EASE} 250ms` }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.gronn }} />Bestilt · Jonas varslet</span>
+          <span className="col-start-1 row-start-1 flex items-center gap-2" style={{ opacity: godkjent ? 1 : 0, transition: `opacity 300ms ${EASE} 250ms` }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.gronn }} />Bestilt · Ida varslet</span>
         </span>
         <span className="tabular-nums">22:43</span>
       </div>
@@ -92,7 +92,7 @@ function GodkjenningKort({ godkjent, trykket, onGodkjenn, className = '' }) {
 function Desktop({ godkjent, trykket, onGodkjenn }) {
   const NAV = ['Oversikt', 'Eiendommer', 'Leietakere', 'Saker', 'Økonomi', 'Dokumenter'];
   return (
-    <div className="grid min-h-[600px] grid-cols-[224px_minmax(0,1fr)] text-[#15130F]" style={{ background: PAPIR }} data-testid="v4-desktop">
+    <div className="grid min-h-[680px] grid-cols-[224px_minmax(0,1fr)] text-[#15130F]" style={{ background: PAPIR }} data-testid="v4-desktop">
       {/* Sidebar */}
       <aside className="flex flex-col border-r px-4 py-5" style={{ background: STEIN, borderColor: HAIR }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -128,7 +128,7 @@ function Desktop({ godkjent, trykket, onGodkjenn }) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-[22px] font-medium tracking-[-0.01em]">Varmtvannet er borte</h3>
-              <p className="mt-1 text-[13px] text-[#15130F]/55">Leilighet 2 · meldt av Jonas · i går 22:41</p>
+              <p className="mt-1 text-[13px] text-[#15130F]/55">Leilighet 2 · meldt av Ida · i går 22:41</p>
             </div>
             <Status godkjent={godkjent} />
           </div>
@@ -139,10 +139,10 @@ function Desktop({ godkjent, trykket, onGodkjenn }) {
               <p className="text-[12px] font-medium uppercase tracking-[0.04em] text-[#15130F]/45" style={{ letterSpacing: '0.02em', textTransform: 'none', fontSize: 13 }}>Historikk</p>
               <ol className="mt-3">
                 {HISTORIKK.map((h, i) => (
-                  <li key={i} className="grid grid-cols-[48px_minmax(0,1fr)] gap-3 border-t py-3.5" style={{ borderColor: HAIR }}>
+                  <li key={i} className="grid grid-cols-[48px_minmax(0,1fr)] gap-3 border-t py-4" style={{ borderColor: HAIR }}>
                     <span className="pt-[2px] text-[12.5px] tabular-nums text-[#15130F]/45">{h.tid}</span>
                     <span className="min-w-0">
-                      <span className="flex items-center gap-2 text-[14px] font-medium">{h.avatar && <Avatar src={h.avatar} alt="Jonas" size={20} />}{h.t}</span>
+                      <span className="flex items-center gap-2 text-[14px] font-medium">{h.avatar && <Avatar src={h.avatar} alt="Ida" size={20} />}{h.t}</span>
                       <span className={`mt-0.5 block text-[13px] ${h.sitat ? 'text-[#15130F]/80' : 'text-[#15130F]/55'}`}>{h.d}</span>
                     </span>
                   </li>
@@ -154,7 +154,7 @@ function Desktop({ godkjent, trykket, onGodkjenn }) {
                       <span className="pt-[2px] text-[12.5px] tabular-nums text-[#15130F]/45">nå</span>
                       <span>
                         <span className="flex items-center gap-2 text-[14px] font-medium"><Hake className="text-[#1F9D55]" />Godkjent av deg</span>
-                        <span className="mt-0.5 block text-[13px] text-[#15130F]/55">Rørlegger AS bestilt · torsdag 09:00 · Jonas varslet</span>
+                        <span className="mt-0.5 block text-[13px] text-[#15130F]/55">Rørlegger AS bestilt · torsdag 09:00 · Ida varslet</span>
                       </span>
                     </div>
                   </div>
@@ -168,7 +168,7 @@ function Desktop({ godkjent, trykket, onGodkjenn }) {
               <div className="rounded-[14px] p-5 text-[13px]" style={{ background: STEIN, boxShadow: `inset 0 0 0 1px ${HAIR}` }}>
                 <p className="text-[13px] font-medium text-[#15130F]/45">Detaljer</p>
                 <dl className="mt-3 grid grid-cols-[96px_minmax(0,1fr)] gap-y-2.5">
-                  <dt className="text-[#15130F]/50">Leietaker</dt><dd className="flex items-center gap-2"><Avatar src="/v4/jonas.webp" alt="Jonas" size={18} />Jonas</dd>
+                  <dt className="text-[#15130F]/50">Leietaker</dt><dd className="flex items-center gap-2"><Avatar src="/v4/ida.webp" alt="Ida" size={18} />Ida</dd>
                   <dt className="text-[#15130F]/50">Enhet</dt><dd>Leilighet 2</dd>
                   <dt className="text-[#15130F]/50">Kategori</dt><dd>VVS</dd>
                   <dt className="text-[#15130F]/50">Leverandør</dt><dd>Rørlegger AS</dd>
@@ -201,7 +201,7 @@ function Kompakt({ godkjent, trykket, onGodkjenn }) {
       <div className="px-4 pt-4">
         <p className="text-[12.5px] text-[#15130F]/50">Saker <span className="mx-1 text-[#15130F]/30">/</span> Sak #2418</p>
         <h4 className="mt-0.5 text-[20px] font-medium tracking-[-0.01em]">Varmtvannet er borte</h4>
-        <p className="mt-1 text-[12.5px] text-[#15130F]/55">Leilighet 2 · meldt av Jonas · i går 22:41</p>
+        <p className="mt-1 text-[12.5px] text-[#15130F]/55">Leilighet 2 · meldt av Ida · i går 22:41</p>
         <div className="mt-3"><Status godkjent={godkjent} /></div>
       </div>
 
@@ -210,7 +210,7 @@ function Kompakt({ godkjent, trykket, onGodkjenn }) {
       <ol className="mx-4 mt-5 text-[12.5px]">
         {HISTORIKK.map((h, i) => (
           <li key={i} className="flex items-center justify-between gap-3 border-t py-2.5" style={{ borderColor: HAIR }}>
-            <span className="flex min-w-0 items-center gap-2 text-[#15130F]/80">{h.avatar && <Avatar src={h.avatar} alt="Jonas" size={18} />}<span className="truncate">{h.t}</span></span>
+            <span className="flex min-w-0 items-center gap-2 text-[#15130F]/80">{h.avatar && <Avatar src={h.avatar} alt="Ida" size={18} />}<span className="truncate">{h.t}</span></span>
             <span className="shrink-0 tabular-nums text-[#15130F]/40">{h.tid}</span>
           </li>
         ))}
@@ -245,8 +245,9 @@ export default function DriftScene({ synlig, tema = 'mork' }) {
     : '0 0 0 1px rgba(244,241,234,0.12), 0 70px 120px -50px rgba(0,0,0,0.75)';
 
   return (
-    /* Alltid sentrert — ingen komposisjonsjustering, ingen sekundær flate som drar vekten til én side. */
-    <div className="relative mx-auto w-full max-w-[min(1320px,86vw)]" data-testid="v4-drift-scene">
+    /* Alltid sentrert — ingen komposisjonsjustering, ingen sekundær flate som drar vekten til én side.
+       Bredde 1400 (full-bleed-seksjon: bakgrunnen er bred, produktet følger et strammere grid). */
+    <div className="relative mx-auto w-full max-w-[min(1400px,86vw)]" data-testid="v4-drift-scene">
       {/* Desktop — det ene objektet */}
       <div className="hidden overflow-hidden rounded-[18px] lg:block" style={{ boxShadow: skygge, ...inn(0) }}>
         <Desktop godkjent={godkjent} trykket={trykket} onGodkjenn={godkjenn} />
@@ -257,8 +258,8 @@ export default function DriftScene({ synlig, tema = 'mork' }) {
         <Kompakt godkjent={godkjent} trykket={trykket} onGodkjenn={godkjenn} />
       </div>
 
-      {/* Tilbakestill — stille */}
-      <div className="mt-8 flex justify-center lg:mt-12" style={{ opacity: godkjent ? 1 : 0, transition: `opacity 400ms ${EASE} 600ms` }} aria-hidden={!godkjent}>
+      {/* Tilbakestill — stille, og uten å reservere plass under produktet (ligger i seksjonens bunnmarg) */}
+      <div className="absolute inset-x-0 -bottom-9 flex justify-center lg:-bottom-10" style={{ opacity: godkjent ? 1 : 0, transition: `opacity 400ms ${EASE} 600ms` }} aria-hidden={!godkjent}>
         <button type="button" onClick={nullstill} tabIndex={godkjent ? 0 : -1} className={`text-[13px] underline underline-offset-4 ${lys ? 'decoration-[#15130F]/30' : 'decoration-[#F4F1EA]/30'}`} style={{ color: lys ? 'rgba(21,19,15,0.6)' : 'rgba(244,241,234,0.6)', pointerEvents: godkjent ? 'auto' : 'none' }} data-testid="v4-produkt-nullstill">Tilbakestill</button>
       </div>
     </div>

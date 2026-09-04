@@ -22,7 +22,9 @@ import { T } from './motion';
 /* Seks navn, ikke sju–åtte: FINN · BankID · Vipps · PowerOffice · Keyhole + Airbnb.
    Booking.com ligger klar i /v4/logo/booking.svg (ratio 5.767) om utvalget skal byttes. */
 const LOGOER = [
-  { id: 'finn', navn: 'FINN', src: '/v4/logo/finn.svg', ratio: 2.91, h: 18 },
+  /* FINN: det ekte merket (kvartsirkel + felt med utstanset FINN — slik det står på finn.no), monokromt som de andre.
+     Fargeversjon finnes i /v4/logo/finn-farge.svg (sett farge: true). */
+  { id: 'finn', navn: 'FINN', src: '/v4/logo/finn-mono.svg', ratio: 3.153, h: 23 },
   { id: 'bankid', navn: 'BankID', src: '/v4/logo/bankid.svg', ratio: 6.392, h: 22 },
   { id: 'vipps', navn: 'Vipps', src: '/v4/logo/vipps.svg', ratio: 3.835, h: 22, dy: 3 },
   { id: 'poweroffice', navn: 'PowerOffice', src: '/v4/logo/poweroffice.svg', ratio: 6.456, h: 20 },
@@ -33,8 +35,21 @@ const LOGOER = [
 /* Egen tonal flate ble prøvd og forkastet: leste som en løs «etasje» mellom hero og produkt.
    Stripen deler nå heroens flate og lever på spacing alene. */
 
-function Logo({ navn, src, ratio, h, dy = 0 }) {
-  const mask = `url(${src})`;
+function Logo({ navn, src, mono, ratio, h, dy = 0, farge = false }) {
+  if (farge) {
+    /* Ekte merkevarefarger — tegnes som bilde, ikke maske. */
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={navn}
+        draggable={false}
+        className="block shrink-0 select-none"
+        style={{ height: h, width: Math.round(h * ratio), transform: dy ? `translateY(${dy}px)` : undefined }}
+      />
+    );
+  }
+  const mask = `url(${mono || src})`;
   return (
     <span
       role="img"
@@ -59,7 +74,7 @@ export default function TillitStripe() {
     /* Sømløs bro: samme flate som heroen, ingen egen blokk, ingen linjer, lav høyde.
        Hero → (setning + én rad logoer) → seksjon 2 tett på. */
     <section aria-label="Tjenester DigiHome er koblet til" className="relative" style={{ background: T.canvas, color: T.ink }} data-testid="v4-tillit">
-      <div className="mx-auto flex max-w-[1760px] flex-col items-center px-5 pb-12 pt-1 text-center sm:px-8 lg:px-10 lg:pb-14 lg:pt-2">
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col items-center px-5 pb-12 pt-1 text-center sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-14 lg:pt-2">
         <p className="text-[14.5px] leading-none text-[#15130F]/58 sm:text-[15px]" data-testid="v4-tillit-tekst">Koblet til tjenestene du allerede bruker.</p>
         <ul className="mt-6 flex max-w-[1100px] flex-wrap items-center justify-center gap-x-9 gap-y-5 sm:gap-x-12 lg:mt-7 lg:gap-x-14 xl:gap-x-16" style={{ color: 'rgba(21,19,15,0.74)' }} data-testid="v4-tillit-logoer">
           {LOGOER.map((l) => (

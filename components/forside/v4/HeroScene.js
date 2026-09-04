@@ -55,8 +55,8 @@ const FASER_SMAL = [
 const RADER = [
   { fase: 'rad1', tid: '08:14', t: 'Husleie registrert', s: `${tall(64500)} kr · 8 av 8` },
   { fase: 'rad2', tid: '10:32', t: 'Leiekontrakt signert', s: 'Emma Sørensen · Nygårdsgaten 5A' },
-  { fase: 'rad3', tid: '17:46', t: 'Spørsmål fra Jonas løst', s: 'Besvart fra leiekontrakten', avatar: { src: '/v4/jonas.webp', alt: 'Jonas' }, skjulMobil: true },
-  { fase: 'rad4', tid: '22:41', t: 'Varmtvann', s: 'Jonas meldte 22:41', s2: 'Rørlegger AS bestilt · torsdag 09:00 · Jonas varslet', s2Mobil: 'Rørlegger bestilt · torsdag 09:00', sak: true },
+  { fase: 'rad3', tid: '17:46', t: 'Spørsmål fra Ida løst', s: 'Besvart fra leiekontrakten', avatar: { src: '/v4/ida.webp', alt: 'Ida' }, skjulMobil: true },
+  { fase: 'rad4', tid: '22:41', t: 'Varmtvann', s: 'Ida meldte 22:41', s2: 'Rørlegger AS bestilt · torsdag 09:00 · Ida varslet', s2Mobil: 'Rørlegger bestilt · torsdag 09:00', sak: true },
 ];
 
 /* Utførte systemhandlinger — ikke tankeprosess. Dette skjedde. */

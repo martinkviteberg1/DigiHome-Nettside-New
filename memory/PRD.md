@@ -917,3 +917,16 @@ Google Ads-styring via native REST API).
 - Stage: desktop clamp(680px,86vh,900px), mobil 92svh/min 760. Trigger ved 45 % synlig.
 - Teknisk merknad: headless Chromium i screenshot-verktøyet kan ikke spille H.264 — video kan ikke QA-es visuelt her; Mixkit-klipp ble lastet ned men ikke brukt (usett).
 - Gamle varianter ligger i /tmp (ikke varig): LeietakerSeksjon.lilla.js, LeietakerSeksjon.prev.js.
+
+## V4 landingsside (/v4) — status 4. sep. (preview, rot `/` uendret)
+Rekkefølge: Nav → Hero (adresse → din bolig) → Tillitstripe (ekte FINN-logo i farge) → Produkt (Drift-showcase,
+full-bleed Oslo-bygård, mockup 680 px, diskré bakgrunnsvelger-ikon) → Spor («Autopilot, tilpasset måten du leier ut på»:
+typografisk triptyk m/ målgruppe-piller Privat huseier / Eiendomsselskap / Forvaltning Bergen og omegn) → Leietaker
+(«Forstår boligen. Ikke bare meldingen.»: brukerens 1:1-video + meldingstråd m/ maskert vindu + «Forstått fra én melding»)
+→ Alt samlet (fem områder) → FAQ (shadcn Accordion, pris uten tall → kalkulator/demo) → Avslutning (full-bleed +
+adressefelt + tre steg) → Footer (delt komponent).
+Container-system: nav 1600/40 px · hero 1440 (calc(100%-128px)) · editorial 1360 · full-bleed-seksjoner m/ produkt ≤1400.
+Leietakeren heter Ida (kvinnen i videoen) i hero/produkt/leietaker; avatar /v4/ida.webp fra videoen.
+Assets: /public/v4/video/stue-{1920.mp4,1920.webm,960.mp4,poster.webp,poster-960.webp}, /public/v4/logo/finn-{farge,mono}.svg.
+Åpent: brukergodkjenning av alle seksjoner; frontend-testagent kun med tillatelse; logo-bruksregler (BankID/FINN) før prod;
+last opp nye /public/v4-assets til object storage før deploy; /v4/spor/*.webp er ubrukte (kan slettes).

@@ -7599,9 +7599,21 @@ frontend:
         -agent: "main"
         -comment: "KUN screenshot-QA av main agent (desktop 1440/1920, mobil 390): kortet holder til trykk når pekeren har vært i heroen; auto-godkjenning (Kari) etter 5 s kun uten interaksjon; adressevalg personaliserer scene (label, rader, foto) og knappen blir 'Fortsett' -> /bli-utleier/start?address&postal&city. Frontend-testagent IKKE kjørt (krever brukertillatelse)."
 
+  - task: "V4 komplett landingsside: container-system (nav 1600/40px, hero 1440/calc(100%-128px), editorial 1360), ekte FINN-logo (farge), produktseksjon (høyere mockup 680, pb-16, diskré bakgrunnsvelger-ikon), SporSeksjon (typografisk triptyk m/ målgruppe-piller) flyttet over leietaker, LeietakerSeksjon m/ brukerens video (webm/mp4 1920 + 960 mobil, poster, lazy, play/pause, reduced-motion) og 'Forstår boligen'-register, nye seksjoner AltSamlet, FAQ (shadcn Accordion), Avslutning (full-bleed + AdresseFelt) og Footer"
+    implemented: true
+    working: "NA"
+    file: "/app/components/forside/v4/{ForsideV4,NavV4,TillitStripe,SporSeksjon,LeietakerSeksjon,AltSamletSeksjon,FaqSeksjon,AvslutningSeksjon}.js, /app/components/forside/v4/produkt/{ProduktSeksjon,DriftScene}.js, /app/public/v4/video/*, /app/public/v4/logo/finn-{farge,mono}.svg"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "KUN screenshot-QA av main agent (1728/1440/1920 desktop, 390 mobil). Rekkefølge: Nav → Hero → Tillit → Produkt → Spor → Leietaker → AltSamlet → FAQ → Avslutning → Footer. Video spiller (webm på desktop, 960-mp4 på mobil), sekvens og forståelses-register kjører. Ingen backend-endringer. Frontend-testagent IKKE kjørt (krever brukertillatelse)."
+
 test_plan:
   current_focus:
-    - "Street View-proxy for forsidens hero: GET /api/streetview/meta og GET /api/streetview"
+    - "V4 landingsside (/v4) — frontend, kun med brukerens tillatelse"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -7615,3 +7627,19 @@ agent_communication:
     -message: "FIXES APPLIED to /app/app/api/[[...path]]/route.js Street View proxy: (1) Validation fixed: searchParams.has('lat') && searchParams.has('lng') check added before Number conversion, missing/empty/null now returns 400 {ok:false,status:'BAD_LOCATION'}. (2) Quality gate relaxed: changed from 'd >= 4 && d <= 40' to 'd <= 40' (no minimum), accepts exact-location panoramas (0m distance). Still rejects user-contributed panoramas (pano_id starts with 'CAoS'). (3) Cache-Control: in Next.js DEV mode the dev server forces 'no-store' on dynamic API responses (framework behavior, not a bug). Re-testing requested."
     -agent: "testing"
     -message: "✅ STREET VIEW PROXY RE-TEST COMPLETE - ALL 8 TESTS PASSED (100% success rate). All 3 fixes verified working: (1) Validation fixed: missing/empty/invalid/out-of-range lat/lng all return 400 BAD_LOCATION ✓. (2) Quality gate relaxed: Nygårdsgaten 5 now returns ok:true with distance:0 (previously rejected at 0.17m) ✓. (3) Cache-Control: confirmed DEV mode forces 'no-store' (expected behavior, not a failure) ✓. All test cases passed: (a) 4 validation tests, (b) Nygårdsgaten 5 -> 200 OK distance:0, (c) Michael Krohns gate -> 200 OK distance:5, (d) open-sea -> 200 ok:false, (e) image endpoint -> 200 image/jpeg 81799 bytes, (f) open-sea image -> 204 empty, (g) extreme values clamped -> 200 image, (i) regression /api/address -> 200. Backend test updated at /app/backend_test_streetview.py with adjusted expectations. No issues found. Street View proxy working PERFECTLY."
+    -agent: "main"
+    -message: "Runde: /v4 ferdigstilt som komplett landingsside (ingen backend-endringer). Nye/endrede filer under /app/components/forside/v4. Ved ev. frontend-test: sjekk (1) alle seksjoner rendres i rekkefølge, (2) video i #leietaker spiller (data-testid v4-leietaker-video) og forståelses-register (v4-forstaelse) fylles i takt med tråden, (3) Spor-lenker (/privat, /bedrift, /book-mote), (4) FAQ-accordion åpner/lukker, (5) adressefelt i #start navigerer til /bli-utleier/start ved valg, (6) bakgrunnsvelger-ikon (v4-bg-toggle) åpner valg, (7) mobil 390: ingen horisontal scroll."
+    -agent: "main"
+    -message: "Leietaker-tråden bygget om: fast bunnforankret vindu m/ maske i toppen (nye meldinger skyver eldre opp — ingen kollaps/jitter), to boblestemmer (leietaker = mørk glass høyre m/ bildevedlegg, DigiHome = papir venstre m/ merke), tidsstempler inne i boblene. Leietakeren heter nå Ida (kvinnen i brukerens video) i hero, produkt og leietaker-seksjon; avatar /v4/ida.webp er et utsnitt fra videoen. Kun screenshot-QA (1728 + 390)."
+    -agent: "main"
+    -message: "Leietaker: statuspille øverst er nå én glasspille hele veien (prikk → grønn hake, 'Løst · torsdag 10:14'); leietakerens vedlegg byttet til /v4/bereder-3x4.webp (hvit bereder m/ rød lampe, 3:4, generert m/ gpt-image-1 via Emergent-nøkkel, etterjustert i PIL); trådvindu 410 px m/ 20 % maske så nyeste melding aldri ligger i maskesonen. Screenshot-QA 1728."
+    -agent: "main"
+    -message: "Produktseksjon: Annonse-tab har nå innhold (AnnonseScene.js): «Fra ledig til utleid. DigiHome gjør resten.» — annonsekort, 3 interessenter (visning/spørsmål besvart), valgkort «Send kontrakt» → status «Kontrakt sendt · BankID», detaljer. Tabs Annonse og Drift er klikkbare (data-testid v4-tab-annonse / v4-tab-drift), scenebytte via key + animate-in (ingen crossfade). Kompakt variant under lg. Screenshot-QA 1728 + 390."
+    -agent: "main"
+    -message: "Runde: FINN-logo nå monokrom som de andre (finn-mono.svg m/ utstansede bokstaver, h 23). Produktseksjon: ny standardbakgrunn 'stue' (brukerens Bergen-interiør, /v4/stue-2000.webp + 1200, cover, lyst tema, veil+bunnfade) — 'oslo' fortsatt i velgeren; ny ingress for Drift (Ida 22:41 → torsdag fikset). Spor-seksjon polert: punktlister uten prikker (kun hårlinjer), mindre piller, kolonne min-h 470. Screenshot-QA 1728."
+    -agent: "main"
+    -message: "Leietaker-tråd: sterkere mørk tone nederst i scenen (lesbarhet over lys sofa), tettere glassbobler m/ ring, kun siste 4 meldinger står skarpt (eldre tones ut oppover), roligere tempo. Produktseksjon: 'oslo' (bygården) er standard igjen, 'stue' i velgeren. Screenshot-QA 1728."
+    -agent: "main"
+    -message: "Delingsforhåndsvisning for /v4: egen OG/Twitter-metadata i app/v4/page.js (tittel «DigiHome — Utleie på autopilot», beskrivelse, og:url), nytt 1200×630-bilde via app/v4/opengraph-image.js + twitter-image.js (lib/og-v4.js: canvas, ekte logo, Right Grotesk, godkjenningskort — ingen glød/KPI). layout.js: metadataBase følger NEXT_PUBLIC_BASE_URL (fallback digihome.no) så absolutte og:-URL-er peker på hosten siden deles fra. Verifisert: GET /v4/opengraph-image → 200 PNG; meta-tagger i /v4-HTML riktige."
+    -agent: "main"
+    -message: "Produktseksjon starter nå på Annonse-fanen (useState('annonse')). Ny bakgrunnsvariant 'osloKveld' (mørk tone + offwhite tekst) i velgeren — ikke standard ennå (venter på brukerens valg). Prisvisning i valgkortet justert (tabular kun på tall)."

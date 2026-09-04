@@ -12,7 +12,8 @@ const GA4_ID = process.env.NEXT_PUBLIC_GA4_ID || '';
 const GADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || '';
 
 export const metadata = {
-  metadataBase: new URL(site.url),
+  // Absolutte og:image/og:url må peke på hosten siden deles fra (preview ≠ prod). Faller tilbake til digihome.no.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || site.url),
   title: {
     default: 'DigiHome | Automatisert utleie i Bergen',
     template: '%s | DigiHome',

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef } from 'react';
-import { EASE, Knapp, T, display, useSekvens, useSynlig } from './motion';
+import React, { useEffect, useRef, useState } from 'react';
+import { EASE, Knapp, T, display, useRedusert, useSekvens, useSmal, useSynlig } from './motion';
 
 /* ---------------------------------------------------------------------------
    LeietakerSeksjon — Sana-splitt: 1:1-scene til venstre, register til høyre.
@@ -21,65 +21,133 @@ import { EASE, Knapp, T, display, useSekvens, useSynlig } from './motion';
 --------------------------------------------------------------------------- */
 
 const SCENE = {
-  video: null,                           // f.eks. '/v4/leietaker-kveld.mp4' — eget opptak (1:1 eller beskjæres), ikke stock
-  bilde: '/v4/leietaker-1x1.webp',       // 1800×1800 — lyst nordisk soverom, telefonen i hånden. PLASSHOLDER til eget opptak.
-  bildeMobil: '/v4/leietaker-4x5.webp',  // 1200×1500
-  pos: '50% 40%',
+  /* Brukerens eget opptak: lys skandinavisk stue, leietakeren i sofaen med telefonen. 1:1-kilde (2880²) →
+     sømløs loop på ~8,8 s (siste 1,2 s krysstonet inn i det første), uten lyd. Desktop 1920² (VP9 ~1,4 MB / H.264 ~3 MB),
+     smal skjerm 960² (~0,5 MB). Poster = loopens første frame. Redusert bevegelse / data-sparing → bare poster. */
+  video: { webm: '/v4/video/stue-1920.webm', mp4: '/v4/video/stue-1920.mp4', mp4Smal: '/v4/video/stue-960.mp4' },
+  bilde: '/v4/video/stue-poster.webp',         // 1920×1920 — poster/stillbilde
+  bildeMobil: '/v4/video/stue-poster-960.webp', // 960×960
+  pos: '50% 50%',
 };
+
+/* ── Scenevideo — poster først, video tones inn når den kan spille. Laster først når scenen nærmer seg (900 px),
+      spiller bare mens seksjonen er i view, og respekterer prefers-reduced-motion (da kun poster). ── */
+function SceneVideo({ aktiv }) {
+  const redusert = useRedusert();
+  const smal = useSmal();
+  const ref = useRef(null);
+  const holder = useRef(null);
+  const [naer, setNaer] = useState(false);
+  const [klar, setKlar] = useState(false);
+
+  useEffect(() => {
+    const el = holder.current;
+    if (!el || typeof IntersectionObserver === 'undefined') { setNaer(true); return undefined; }
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setNaer(true); obs.disconnect(); } }, { rootMargin: '900px 0px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (aktiv) { const p = el.play(); if (p && p.catch) p.catch(() => {}); } else el.pause();
+  }, [aktiv, klar]);
+
+  const poster = smal ? SCENE.bildeMobil : SCENE.bilde;
+  return (
+    <div ref={holder} className="absolute inset-0">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={poster} alt="" aria-hidden="true" draggable={false} className="absolute inset-0 h-full w-full select-none object-cover" style={{ objectPosition: SCENE.pos }} />
+      {!redusert && naer && (
+        <video
+          ref={ref}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ objectPosition: SCENE.pos, opacity: klar ? 1 : 0, transition: `opacity 1000ms ${EASE}` }}
+          muted
+          loop
+          playsInline
+          autoPlay
+          preload="auto"
+          poster={poster}
+          disablePictureInPicture
+          disableRemotePlayback
+          onCanPlay={() => setKlar(true)}
+          aria-hidden="true"
+          data-testid="v4-leietaker-video"
+        >
+          {smal ? (
+            <source src={SCENE.video.mp4Smal} type="video/mp4" />
+          ) : (
+            <>
+              <source src={SCENE.video.webm} type="video/webm" />
+              <source src={SCENE.video.mp4} type="video/mp4" />
+            </>
+          )}
+        </video>
+      )}
+    </div>
+  );
+}
 
 /* Tempo: raskt der systemet svarer, sakte der mennesker er involvert. */
 const FASER = [
-  { navn: 'start', ms: 900 },
-  { navn: 'foto', ms: 650 },
-  { navn: 'meldt', ms: 800 },
-  { navn: 'registrert', ms: 1600 },
-  { navn: 'leverandor', ms: 500 },
+  { navn: 'start', ms: 700 },
+  { navn: 'foto', ms: 600 },
+  { navn: 'meldt', ms: 1400 },
+  { navn: 'registrert', ms: 1700 },
+  { navn: 'leverandor', ms: 700 },
   { navn: 'venter', ms: 2400 },        // det menneskelige leddet — holdes
-  { navn: 'godkjent', ms: 1700 },
-  { navn: 'lost', ms: 1200 },
+  { navn: 'godkjent', ms: 1900 },
+  { navn: 'lost', ms: 1500 },
   { navn: 'takk', ms: 0 },
 ];
 
-/* Registeret til høyre. `fase` = når steget blir aktivt. `venter` = fasen der steget venter på deg. */
-const STEG = [
-  { fase: 'foto', t: 'Meldt inn med bilde' },
-  { fase: 'registrert', t: 'Forstått som VVS, haster' },
-  { fase: 'leverandor', t: 'Riktig rørlegger foreslått' },
-  { fase: 'godkjent', venter: 'venter', t: 'Godkjent av deg', tVenter: 'Venter på deg' },
-  { fase: 'lost', t: 'Løst og dokumentert' },
+/* Høyre side: ikke prosess-steg, men det DigiHome FORSTO fra én melding — boligen, utstyret, saken,
+   leverandøren, og hva som er igjen til deg. Hver rad kommer når tråden har kommet dit. */
+const FORSTATT = [
+  { fase: 'meldt', k: 'Bolig', v: 'Nygårdsgaten 5 · Leilighet 2' },
+  { fase: 'registrert', k: 'Utstyr', v: 'Varmtvannsbereder på badet' },
+  { fase: 'registrert', k: 'Sak', v: 'VVS · haster · mangel' },
+  { fase: 'leverandor', k: 'Leverandør', v: 'Rørlegger AS · bygårdens faste' },
+  { fase: 'venter', k: 'Deg', v: 'Én godkjenning', vFerdig: 'Godkjent · torsdag 09:00', ferdig: 'godkjent' },
 ];
 
-/* Tråden fra Jonas' side. 'status' = det DigiHome faktisk sender leietakeren. 'kort' = rørleggeravtalen,
-   som oppdateres på stedet (venter → godkjent). Leietakeren ser ikke pris. */
+/* Tråden slik leietakeren (Ida) ser den. To stemmer, to bobler:
+   leietaker = mørk glassboble til høyre (som i meldingsapper), DigiHome = papirboble til venstre med merket.
+   'status' er det DigiHome faktisk sender leietakeren. 'kort' = rørleggeravtalen, som oppdateres på stedet
+   (venter → godkjent). Leietakeren ser aldri pris. */
 const TRAD = [
-  { fase: 'foto', type: 'bilde', src: '/v4/bereder.webp', alt: 'Varmtvannsbereder på badet' },
-  { fase: 'meldt', type: 'jonas', tid: 'tir. 22:41', t: 'Varmtvannet er borte i hele leiligheten. Lampen på berederen blinker rødt.' },
-  { fase: 'registrert', type: 'status', tid: '22:41', t: 'Saken er registrert · haster', d: 'Manglende varmtvann er en mangel. Eier er varslet.' },
-  { fase: 'leverandor', type: 'kort', tid: '22:43' },
-  { fase: 'lost', type: 'status', tid: 'tor. 10:14', t: 'Saken er løst', d: 'Berederen er reparert. Si fra her om noe ikke stemmer.', lost: true },
-  { fase: 'takk', type: 'jonas', tid: '10:20', t: 'Fungerer igjen. Takk!' },
+  { fase: 'foto', fra: 'leietaker', type: 'bilde', src: '/v4/bereder-3x4.webp', alt: 'Varmtvannsbereder på badet, rød lampe lyser' },
+  { fase: 'meldt', fra: 'leietaker', t: 'Varmtvannet er borte i hele leiligheten. Lampen på berederen blinker rødt.', tid: 'tir. 22:41' },
+  { fase: 'registrert', fra: 'digihome', t: 'Saken er registrert · haster', d: 'Eier er varslet.', tid: '22:41' },
+  { fase: 'leverandor', fra: 'digihome', type: 'kort', t: 'Rørlegger AS · torsdag 09:00', d: 'Bygårdens faste rørlegger', tid: '22:43' },
+  { fase: 'lost', fra: 'digihome', t: 'Saken er løst', d: 'Berederen er reparert.', tid: 'tor. 10:14', lost: true },
+  { fase: 'takk', fra: 'leietaker', t: 'Fungerer igjen. Takk!', tid: '10:20' },
 ];
-const VINDU = 3;   // maks synlige meldinger — resten glir ut i toppen
 
 const HAIR = 'rgba(21,19,15,0.08)';
-const SKYGGE = '0 18px 44px -20px rgba(0,0,0,0.55), 0 1px 0 rgba(21,19,15,0.04)';
+const SKYGGE = '0 14px 36px -18px rgba(0,0,0,0.5), 0 1px 0 rgba(21,19,15,0.04)';
 const MORK = '#15120F';
+const GLASS = { background: 'rgba(21,18,15,0.80)', color: T.offwhite, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.14), 0 10px 30px -16px rgba(0,0,0,0.55)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' };
 
-function Hake({ className = '' }) {
+function Hake({ className = '', style }) {
   return (
-    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 14 14" fill="none" className={className}>
+    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 14 14" fill="none" className={className} style={style}>
       <path d="M2.5 7.5l3 3 6-6.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-/* Rad som vokser inn (grid-rows 0fr → 1fr) med expo-out, og glir ut igjen når den faller ut av vinduet.
-   Inn: høyde først, så innhold (12 px opp + 1,5 % skala → hvile). Ut: innhold fader før høyden lukker. */
-function Inn({ vis, children }) {
+/* Melding som vokser inn (grid-rows 0fr → 1fr) — tråden over glir opp som én bevegelse.
+   Innholdet kommer 10 px opp + 3 % skala → hvile, med expo-out. Ingen «utglidning»: eldre meldinger
+   skyves opp under masken i toppen av vinduet, slik en ekte tråd gjør. */
+function Inn({ vis, fra, gammel = false, children }) {
+  const o = !vis ? 0 : gammel ? 0 : 1;
   return (
-    <div className="grid" style={{ gridTemplateRows: vis ? '1fr' : '0fr', transition: `grid-template-rows ${vis ? 640 : 520}ms ${EASE} ${vis ? 0 : 80}ms` }} aria-hidden={!vis}>
+    <div className="grid" style={{ gridTemplateRows: vis ? '1fr' : '0fr', transition: `grid-template-rows ${vis ? 560 : 360}ms ${EASE}` }} aria-hidden={!vis || gammel}>
       <div className="min-h-0 overflow-hidden">
-        <div style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(12px) scale(0.985)', transformOrigin: '50% 100%', transition: vis ? `opacity 520ms ${EASE} 90ms, transform 680ms ${EASE} 60ms` : `opacity 260ms ease-out, transform 320ms ease-in`, willChange: 'opacity, transform' }}>
+        <div style={{ opacity: o, transform: vis ? 'none' : 'translateY(10px) scale(0.97)', transformOrigin: fra === 'leietaker' ? '100% 100%' : '0% 100%', transition: vis ? `opacity ${gammel ? 700 : 420}ms ${EASE} ${gammel ? 0 : 60}ms, transform 640ms ${EASE} 40ms` : `opacity 200ms ease-out, transform 260ms ease-in`, willChange: 'opacity, transform' }}>
           {children}
         </div>
       </div>
@@ -87,115 +155,127 @@ function Inn({ vis, children }) {
   );
 }
 
-/* ── Kompakt tråd — maks tre synlige, eldre glir ut ── */
-function Trad({ er }) {
-  const godkjent = er('godkjent');
-  const venter = er('venter');
-  const synlige = TRAD.map((m, i) => (er(m.fase) ? i : -1)).filter((i) => i >= 0);
-  const vindu = new Set(synlige.slice(-VINDU));
+/* DigiHome-merket ved boblene — papirsirkel med ikonet, nederst ved boblen (som i meldingsapper). */
+function Merke() {
   return (
-    <ol className="flex flex-col justify-end text-[#15130F]" data-testid="v4-trad">
-      {TRAD.map((m, i) => {
-        const vis = vindu.has(i);
-        if (m.type === 'bilde') {
-          return (
-            <li key={i}>
-              <Inn vis={vis}>
-                <div className="flex justify-end pb-1.5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={m.src} alt={m.alt} width={720} height={540} draggable={false} className="block w-[168px] rounded-[16px] object-cover sm:w-[196px]" style={{ aspectRatio: '4 / 3', boxShadow: SKYGGE }} data-testid="v4-trad-bilde" />
-                </div>
-              </Inn>
-            </li>
-          );
-        }
-        if (m.type === 'jonas') {
-          return (
-            <li key={i}>
-              <Inn vis={vis}>
-                <div className="flex justify-end pb-3">
-                  <div className="max-w-[86%]">
-                    <p className="rounded-[16px] rounded-br-[5px] px-4 py-2.5 text-[14.5px] leading-[1.42]" style={{ background: 'rgba(21,19,15,0.74)', color: T.offwhite, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.08), 0 10px 30px -16px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>{m.t}</p>
-                    <p className="mt-1.5 text-right text-[11.5px]" style={{ color: 'rgba(21,19,15,0.62)' }}>Jonas · {m.tid}</p>
-                  </div>
-                </div>
-              </Inn>
-            </li>
-          );
-        }
-        if (m.type === 'kort') {
-          return (
-            <li key={i}>
-              <Inn vis={vis}>
-                <div className="pb-3">
-                  <div className="max-w-[92%] rounded-[16px] rounded-bl-[5px] px-4 pb-3 pt-3" style={{ background: '#fff', boxShadow: SKYGGE }} data-testid="v4-trad-kort">
-                    <div className="flex items-baseline justify-between gap-4">
-                      <p className="text-[14.5px] font-medium">Rørlegger AS <span className="font-normal text-[#15130F]/55">· torsdag 09:00</span></p>
-                      <p className="text-[11.5px] text-[#15130F]/42">{m.tid}</p>
-                    </div>
-                    <p className="mt-0.5 text-[13px] leading-[1.42] text-[#15130F]/58">Bygårdens faste rørlegger · feilsøking av bereder</p>
-                    <div className="grid" style={{ gridTemplateRows: venter ? '1fr' : '0fr', transition: `grid-template-rows 480ms ${EASE}` }} aria-hidden={!venter}>
-                      <div className="min-h-0 overflow-hidden">
-                        <div className="mt-2.5 flex items-center justify-between gap-3 border-t pt-2.5 text-[12.5px]" style={{ borderColor: HAIR, opacity: venter ? 1 : 0, transition: `opacity 380ms ${EASE} 120ms` }}>
-                          <span className="inline-grid">
-                            <span className="col-start-1 row-start-1 inline-flex items-center gap-2" style={{ color: 'rgba(21,19,15,0.72)', opacity: godkjent ? 0 : 1, transition: `opacity 200ms ${EASE}` }}>
-                              <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Venter på eierens godkjenning
-                            </span>
-                            <span className="col-start-1 row-start-1 inline-flex items-center gap-1.5 font-medium" style={{ color: '#166B3C', opacity: godkjent ? 1 : 0, transition: `opacity 300ms ${EASE} 260ms` }}>
-                              <Hake />Godkjent · besøket er bekreftet
-                            </span>
-                          </span>
-                          <span className="text-[#15130F]/42" style={{ opacity: godkjent ? 1 : 0, transition: `opacity 300ms ${EASE} 260ms` }}>ons. 08:02</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Inn>
-            </li>
-          );
-        }
-        return (
-          <li key={i}>
-            <Inn vis={vis}>
-              <div className="pb-3">
-                <div className="max-w-[92%] rounded-[16px] rounded-bl-[5px] px-4 py-2.5" style={{ background: '#fff', boxShadow: SKYGGE }}>
-                  <div className="flex items-baseline justify-between gap-4">
-                    <p className="flex items-center gap-2 text-[14.5px] font-medium">
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: m.lost ? T.gronn : 'rgba(21,19,15,0.5)' }} />
-                      {m.t}
-                    </p>
-                    <p className="text-[11.5px] text-[#15130F]/42">{m.tid}</p>
-                  </div>
-                  <p className="mt-0.5 text-[13px] leading-[1.42] text-[#15130F]/58">{m.d}</p>
-                </div>
-              </div>
-            </Inn>
-          </li>
-        );
-      })}
-    </ol>
+    <span aria-hidden="true" className="mb-[2px] inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full" style={{ background: '#FBFAF8', boxShadow: `0 0 0 1px ${HAIR}, 0 6px 14px -8px rgba(0,0,0,0.4)` }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/digihome-icon-purple.svg" alt="" width={11} height={11} className="h-[11px] w-[11px]" />
+    </span>
   );
 }
 
-/* ── Registeret — Sana-liste: ett aktivt steg (ink + pil), resten dempet ── */
-function Register({ er }) {
-  let aktivIdx = -1;
-  STEG.forEach((s, i) => { if (er(s.fase) || (s.venter && er(s.venter))) aktivIdx = i; });
+/* ── Tråden — fast vindu nederst i scenen, bunnforankret, maskert i toppen. Nye meldinger skyver eldre opp. ── */
+function Trad({ er }) {
+  const godkjent = er('godkjent');
+  const venter = er('venter');
+  const antallVis = TRAD.filter((m) => er(m.fase)).length;
+  const VINDU = 4; // så mange meldinger står skarpt; eldre tones ut oppover
   return (
-    <ol className="mt-5 lg:mt-6" data-testid="v4-register">
-      {STEG.map((s, i) => {
-        const aktiv = i === aktivIdx;
-        const ferdig = er(s.fase);
-        const venter = s.venter ? er(s.venter) && !ferdig : false;
+    <div
+      className="relative h-[330px] sm:h-[410px]"
+      style={{ WebkitMaskImage: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, #000 14%, #000 100%)', maskImage: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, #000 14%, #000 100%)' }}
+      data-testid="v4-trad"
+    >
+      <ol className="absolute inset-x-0 bottom-0 flex flex-col text-[#15130F]">
+        {TRAD.map((m, i) => {
+          const vis = er(m.fase);
+          const gammel = vis && antallVis - i > VINDU;
+          const forrige = TRAD[i - 1];
+          const neste = TRAD[i + 1];
+          const nyGruppe = !forrige || forrige.fra !== m.fra;
+          const sisteIGruppe = !neste || neste.fra !== m.fra;
+          const gap = i === 0 ? '' : nyGruppe ? 'pt-3.5' : 'pt-1.5';
+
+          if (m.fra === 'leietaker') {
+            return (
+              <li key={i}>
+                <Inn vis={vis} fra="leietaker" gammel={gammel}>
+                  <div className={`flex flex-col items-end ${gap}`}>
+                    {m.type === 'bilde' ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.src} alt={m.alt} width={600} height={800} draggable={false} className="block w-[124px] rounded-[16px] rounded-br-[6px] object-cover sm:w-[136px]" style={{ aspectRatio: '3 / 4', boxShadow: '0 12px 30px -16px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.10)' }} data-testid="v4-trad-bilde" />
+                    ) : (
+                      <p className="max-w-[80%] rounded-[18px] rounded-br-[6px] px-4 py-2.5 text-[14.5px] leading-[1.42]" style={GLASS}>{m.t}</p>
+                    )}
+                    {sisteIGruppe && m.tid && (
+                      <span className="mt-1.5 inline-flex h-[18px] items-center rounded-full px-2 text-[11px]" style={{ background: 'rgba(21,18,15,0.42)', color: 'rgba(244,241,234,0.88)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>Ida · {m.tid}</span>
+                    )}
+                  </div>
+                </Inn>
+              </li>
+            );
+          }
+
+          /* DigiHome — papirboble, merket nederst til venstre på første i gruppen */
+          return (
+            <li key={i}>
+              <Inn vis={vis} fra="digihome" gammel={gammel}>
+                <div className={`flex items-end gap-2 ${gap}`}>
+                  {nyGruppe ? <Merke /> : <span aria-hidden="true" className="w-[22px] shrink-0" />}
+                  <div className="max-w-[84%] rounded-[18px] rounded-bl-[6px] px-4 pb-3 pt-2.5" style={{ background: '#FBFAF8', boxShadow: SKYGGE }} data-testid={m.type === 'kort' ? 'v4-trad-kort' : undefined}>
+                    <div className="flex items-baseline justify-between gap-4">
+                      <p className="flex items-center gap-2 text-[14px] font-medium">
+                        {m.lost && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.gronn }} />}
+                        {m.t}
+                      </p>
+                      <p className="shrink-0 text-[11.5px] tabular-nums text-[#15130F]/42">{m.tid}</p>
+                    </div>
+                    {m.d && <p className="mt-0.5 text-[13px] leading-[1.42] text-[#15130F]/58">{m.d}</p>}
+                    {m.type === 'kort' && (
+                      <div className="grid" style={{ gridTemplateRows: venter ? '1fr' : '0fr', transition: `grid-template-rows 480ms ${EASE}` }} aria-hidden={!venter}>
+                        <div className="min-h-0 overflow-hidden">
+                          <div className="mt-2.5 flex items-center justify-between gap-3 border-t pt-2.5 text-[12.5px]" style={{ borderColor: HAIR, opacity: venter ? 1 : 0, transition: `opacity 380ms ${EASE} 120ms` }}>
+                            <span className="inline-grid">
+                              <span className="col-start-1 row-start-1 inline-flex items-center gap-2" style={{ color: 'rgba(21,19,15,0.72)', opacity: godkjent ? 0 : 1, transition: `opacity 200ms ${EASE}` }}>
+                                <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Venter på eiers godkjenning
+                              </span>
+                              <span className="col-start-1 row-start-1 inline-flex items-center gap-1.5 font-medium" style={{ color: '#166B3C', opacity: godkjent ? 1 : 0, transition: `opacity 300ms ${EASE} 260ms` }}>
+                                <Hake />Godkjent · besøket er bekreftet
+                              </span>
+                            </span>
+                            <span className="tabular-nums text-[#15130F]/42" style={{ opacity: godkjent ? 1 : 0, transition: `opacity 300ms ${EASE} 260ms` }}>ons. 08:02</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Inn>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+/* ── Forståelsen — det DigiHome leste ut av én melding. Åpne rader på hårlinjer, kommer inn i takt med tråden. ── */
+function Forstaelse({ er }) {
+  return (
+    <dl className="mt-3" data-testid="v4-forstaelse">
+      {FORSTATT.map((r, i) => {
+        const vis = er(r.fase);
+        const ferdig = r.ferdig ? er(r.ferdig) : false;
+        const venter = vis && r.ferdig && !ferdig;
         return (
-          <li key={i} className="flex items-baseline gap-3 py-[3px] text-[clamp(28px,2.5vw,42px)] lg:gap-4" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.12, color: aktiv ? T.ink : 'rgba(21,19,15,0.26)', transition: `color 520ms ${EASE}`, willChange: 'color' }} data-testid={`v4-register-${i}`} aria-current={aktiv ? 'step' : undefined}>
-            <span aria-hidden="true" className="inline-block w-[0.9em] shrink-0" style={{ opacity: aktiv ? 1 : 0, transform: aktiv ? 'none' : 'translateX(-10px)', transition: `opacity 360ms ${EASE} ${aktiv ? 80 : 0}ms, transform 620ms ${EASE}`, color: venter ? T.lilla : T.ink, willChange: 'opacity, transform' }}>→</span>
-            <span className="inline-block" style={{ transform: aktiv ? 'none' : 'translateX(-4px)', transition: `transform 620ms ${EASE}` }}>{venter && s.tVenter ? s.tVenter : s.t}</span>
-          </li>
+          <div key={r.k} className="grid grid-cols-[104px_minmax(0,1fr)] items-baseline gap-4 py-3 text-[15px]" style={{ borderTop: `1px solid ${HAIR}`, opacity: vis ? 1 : 0.28, transition: `opacity 520ms ${EASE}` }} data-testid={`v4-forstaelse-${i}`}>
+            <dt className="text-[13.5px]" style={{ color: 'rgba(21,19,15,0.5)' }}>{r.k}</dt>
+            <dd className="inline-grid">
+              <span className="col-start-1 row-start-1 flex items-center gap-2" style={{ color: T.ink, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', transition: `opacity 480ms ${EASE}, transform 620ms ${EASE}` }}>
+                {venter && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.lilla }} />}
+                <span style={{ opacity: ferdig ? 0 : 1, transition: `opacity 200ms ${EASE}` }} className="col-start-1 row-start-1">{r.v}</span>
+              </span>
+              {r.vFerdig && (
+                <span className="col-start-1 row-start-1 flex items-center gap-2 font-medium" style={{ color: '#166B3C', opacity: ferdig ? 1 : 0, transition: `opacity 300ms ${EASE} 260ms` }}>
+                  <Hake />{r.vFerdig}
+                </span>
+              )}
+            </dd>
+          </div>
         );
       })}
-    </ol>
+    </dl>
   );
 }
 
@@ -208,34 +288,30 @@ export default function LeietakerSeksjon() {
 
   return (
     <section id="leietaker" ref={ref} className="relative" style={{ background: T.canvas, color: T.ink }} data-testid="v4-leietaker">
-      <div className="mx-auto max-w-[1760px] px-5 pb-24 pt-16 sm:px-8 lg:px-10 lg:pb-32 lg:pt-24">
-        <div className="grid gap-12 lg:grid-cols-12 lg:items-center lg:gap-10 2xl:gap-16">
+      {/* Container: editorial (1360) — 58/42, 80 px gap. Én komposisjon, ikke to ting som fyller hver sin halvdel av skjermen. */}
+      <div className="mx-auto w-full max-w-[1360px] px-5 pb-24 pt-16 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-32 lg:pt-24">
+        <div className="grid gap-12 lg:grid-cols-[58fr_42fr] lg:items-center lg:gap-16 xl:gap-20">
           {/* ── Venstre: 1:1-scene med kompakt tråd nederst ── */}
-          <div className="lg:col-span-6">
+          <div>
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[24px] sm:aspect-square lg:rounded-[28px]" style={{ background: MORK }} data-testid="v4-leietaker-scene">
-              <div className="absolute inset-0" style={{ transform: synlig ? 'scale(1)' : 'scale(1.07)', transition: 'transform 18000ms cubic-bezier(0.2,0.6,0.2,1)', willChange: 'transform' }}>
-                {SCENE.video ? (
-                  <video className="h-full w-full object-cover" style={{ objectPosition: SCENE.pos }} src={SCENE.video} poster={SCENE.bilde} autoPlay muted loop playsInline aria-hidden="true" />
-                ) : (
-                  <picture className="block h-full w-full">
-                    <source media="(min-width: 640px)" srcSet={SCENE.bilde} />
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={SCENE.bildeMobil} alt="" aria-hidden="true" draggable={false} className="h-full w-full object-cover" style={{ objectPosition: SCENE.pos }} />
-                  </picture>
-                )}
+              <div className="absolute inset-0" style={{ transform: synlig ? 'scale(1)' : 'scale(1.04)', transition: 'transform 18000ms cubic-bezier(0.2,0.6,0.2,1)', willChange: 'transform' }}>
+                <SceneVideo aktiv={synlig} />
               </div>
               {/* Tone: lyst bilde — bare et pust av dybde nederst, ingen mørk plate */}
-              <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0) 0%, rgba(21,18,15,0) 55%, rgba(21,18,15,0.10) 80%, rgba(21,18,15,0.22) 100%)' }} />
+              <div aria-hidden="true" className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 75% 60% at 25% 100%, rgba(21,18,15,0.34) 0%, rgba(21,18,15,0) 72%), linear-gradient(180deg, rgba(21,18,15,0) 28%, rgba(21,18,15,0.14) 50%, rgba(21,18,15,0.42) 76%, rgba(21,18,15,0.66) 100%)' }} />
 
               {/* Kontekst øverst — små mørke glasspiller, lesbare på alt opptak */}
               <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 px-5 pt-5 text-[12.5px] sm:px-7 sm:pt-7" style={{ color: 'rgba(244,241,234,0.86)' }}>
                 <span className="inline-flex h-7 items-center rounded-full px-3" style={{ background: 'rgba(21,18,15,0.42)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}><span className="hidden sm:inline">Nygårdsgaten 5 · </span>Leilighet 2</span>
-                <span className="inline-grid shrink-0">
-                  <span className="col-start-1 row-start-1 inline-flex h-7 items-center gap-2 rounded-full px-3" style={{ background: 'rgba(21,18,15,0.42)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', opacity: lost ? 0 : 1, transition: `opacity 200ms ${EASE}` }}>
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: venterNa ? T.lilla : 'rgba(244,241,234,0.7)', transition: `background-color 300ms ${EASE}` }} />{er('registrert') ? 'Under behandling' : 'tirsdag 22:41'}
+                {/* Status — én og samme glasspille hele veien; bare prikken og teksten skifter (ingen grønn plate) */}
+                <span className="inline-flex h-7 shrink-0 items-center gap-2 rounded-full px-3" style={{ background: 'rgba(21,18,15,0.42)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }} data-testid="v4-scene-status">
+                  <span className="inline-grid h-3 w-3 place-items-center">
+                    <span className="col-start-1 row-start-1 h-1.5 w-1.5 rounded-full" style={{ background: venterNa ? T.lilla : 'rgba(244,241,234,0.7)', opacity: lost ? 0 : 1, transition: `background-color 300ms ${EASE}, opacity 200ms ${EASE}` }} />
+                    <Hake className="col-start-1 row-start-1" style={{ color: '#5FCB8A', opacity: lost ? 1 : 0, transition: `opacity 300ms ${EASE} 200ms` }} />
                   </span>
-                  <span className="col-start-1 row-start-1 inline-flex h-7 items-center gap-1.5 rounded-full px-3 font-medium" style={{ background: 'rgba(31,157,85,0.85)', color: '#fff', opacity: lost ? 1 : 0, transition: `opacity 300ms ${EASE} 250ms` }}>
-                    <Hake />Løst
+                  <span className="inline-grid">
+                    <span className="col-start-1 row-start-1 whitespace-nowrap" style={{ opacity: lost ? 0 : 1, transition: `opacity 200ms ${EASE}` }}>{er('registrert') ? 'Under behandling' : 'tirsdag 22:41'}</span>
+                    <span className="col-start-1 row-start-1 whitespace-nowrap" style={{ opacity: lost ? 1 : 0, transition: `opacity 300ms ${EASE} 200ms` }}>Løst · torsdag 10:14</span>
                   </span>
                 </span>
               </div>
@@ -249,16 +325,17 @@ export default function LeietakerSeksjon() {
             </div>
           </div>
 
-          {/* ── Høyre: register, én setning, én CTA ── */}
-          <div className="lg:col-span-5 lg:col-start-8">
-            <p className="flex items-center gap-2.5 text-[15px] font-medium" style={{ color: 'rgba(21,19,15,0.7)' }}>
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Slik oppleves DigiHome for leietakeren
+          {/* ── Høyre: én påstand (AI som forstår boligen), én setning, det systemet forsto, én CTA ── */}
+          <div>
+            <h2 className="text-[clamp(36px,3vw,54px)]" style={{ ...display, color: T.ink }} data-testid="v4-leietaker-tittel">
+              Forstår boligen.<br />Ikke bare meldingen.
+            </h2>
+            <p className="mt-6 max-w-[40ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: 'rgba(21,19,15,0.66)' }}>
+              Én melding fra leietakeren. DigiHome vet hvilken leilighet, hvilken bereder og hvem som er fast rørlegger — og at det haster. Du får ett spørsmål.
             </p>
-            <Register er={er} />
-            <p className="mt-10 max-w-[42ch] text-[17px] leading-[1.5] sm:text-[18px] lg:mt-14" style={{ color: 'rgba(21,19,15,0.66)' }}>
-              Når Jonas skriver at varmtvannet er borte, vet DigiHome hvilken leilighet, hvilken bereder og hvem som er fast rørlegger — og at det haster. Du får ett spørsmål.
-            </p>
-            <div className="mt-7 flex flex-wrap items-center gap-5">
+            <p className="mt-9 text-[13.5px] lg:mt-11" style={{ color: 'rgba(21,19,15,0.5)' }}>Forstått fra én melding</p>
+            <Forstaelse er={er} />
+            <div className="mt-9 flex flex-wrap items-center gap-5 lg:mt-10">
               <Knapp href="/bli-utleier/start" variant="ink" data-testid="v4-leietaker-cta">Start med din adresse</Knapp>
               <button type="button" onClick={replay} tabIndex={ferdig ? 0 : -1} className="text-[13.5px] underline underline-offset-4 decoration-[#15130F]/30" style={{ color: 'rgba(21,19,15,0.6)', opacity: ferdig ? 1 : 0, transition: `opacity 500ms ${EASE} 600ms`, pointerEvents: ferdig ? 'auto' : 'none' }} aria-hidden={!ferdig} data-testid="v4-leietaker-replay">Se igjen</button>
             </div>

@@ -1,9 +1,27 @@
 import ForsideV4 from '@/components/forside/v4/ForsideV4';
 
+const TITTEL = 'DigiHome — Utleie på autopilot';
+const BESKRIVELSE = 'Kontrakt, husleie og saker går av seg selv. Du godkjenner det som koster. For private, eiendomsselskap og full forvaltning.';
+
 export const metadata = {
-  title: 'DigiHome — Utleie på autopilot (v4)',
-  description: 'Fra leietaker og kontrakt til husleie, drift og leverandører. DigiHome samler hele utleien — og gjør arbeidet underveis.',
+  title: TITTEL,
+  description: BESKRIVELSE,
   robots: { index: false, follow: false },
+  /* Layoutens openGraph/twitter setter egen tittel/beskrivelse — må overstyres her, ellers arver /v4 dem.
+     Bildet leveres av app/v4/opengraph-image.js + twitter-image.js (1200×630, merkefonter). */
+  openGraph: {
+    type: 'website',
+    locale: 'nb_NO',
+    siteName: 'DigiHome',
+    title: TITTEL,
+    description: BESKRIVELSE,
+    url: '/v4',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITTEL,
+    description: BESKRIVELSE,
+  },
 };
 
 export default function V4Page() {
