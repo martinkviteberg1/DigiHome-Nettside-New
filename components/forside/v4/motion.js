@@ -22,6 +22,7 @@ export const T = {
   tint: '#EAE7E0',     // svak tone for én aktiv rad
   ink: '#15130F',
   charcoal: '#221F1A', // varm, dyp charcoal — for det ene objektet som får være mørkt
+  plomme: '#241C27',   // dyp, varm plomme — produktseksjonens egen verden
   offwhite: '#F4F1EA',
   lilla: '#D496FF',    // DigiHome-lilla: primærhandling, ikke bare punktumet
   lillaHover: '#C98BF7',

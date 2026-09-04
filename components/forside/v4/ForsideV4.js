@@ -3,6 +3,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import NavV4 from './NavV4';
 import HeroScene from './HeroScene';
+import ProduktSeksjon from './produkt/ProduktSeksjon';
 import AdresseFelt from './AdresseFelt';
 import { T, display } from './motion';
 
@@ -63,6 +64,7 @@ export default function ForsideV4() {
             </div>
           </div>
         </section>
+        <ProduktSeksjon />
       </main>
     </div>
   );
