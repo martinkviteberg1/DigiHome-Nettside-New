@@ -28,19 +28,19 @@ export function Feilmelding({ id, children }) {
   return <p id={id} className="mt-2 text-[13px] text-[#B43C28]" data-testid={`${id}`}>{children}</p>;
 }
 
-export function TekstFelt({ id, label, hint, value, onChange, type = 'text', autoComplete, inputMode, placeholder, feil, autoFokus }) {
+export function TekstFelt({ id, label, hint, value, onChange, onBlur, type = 'text', autoComplete, inputMode, placeholder, feil, ok = false, autoFokus }) {
   const [fokus, setFokus] = React.useState(false);
   return (
     <div>
       <Label htmlFor={id} hint={hint}>{label}</Label>
-      <div className="rounded-[14px]" style={{ background: '#FBFAF8', boxShadow: feil ? RING_FEIL : fokus ? RING_FOKUS : RING_HVILE, transition: `box-shadow 200ms ${EASE}` }}>
+      <div className="flex items-center rounded-[14px] pr-4" style={{ background: '#FBFAF8', boxShadow: feil ? RING_FEIL : fokus ? RING_FOKUS : RING_HVILE, transition: `box-shadow 200ms ${EASE}` }}>
         <input
           id={id}
           type={type}
           value={value}
           onChange={onChange}
           onFocus={() => setFokus(true)}
-          onBlur={() => setFokus(false)}
+          onBlur={() => { setFokus(false); if (onBlur) onBlur(); }}
           autoComplete={autoComplete}
           inputMode={inputMode}
           placeholder={placeholder}
@@ -51,6 +51,7 @@ export function TekstFelt({ id, label, hint, value, onChange, type = 'text', aut
           className="h-14 w-full min-w-0 appearance-none rounded-[14px] border-0 bg-transparent px-5 text-[16px] text-[#15130F] outline-none ring-0 placeholder:text-[#15130F]/40 focus:outline-none focus:ring-0"
           style={{ outline: 'none', boxShadow: 'none' }}
         />
+        <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-[#1F9D55]" strokeWidth={2.2} style={{ opacity: ok && !fokus && !feil ? 1 : 0, transition: `opacity 200ms ${EASE}` }} />
       </div>
       <Feilmelding id={`${id}-feil`}>{feil}</Feilmelding>
     </div>
@@ -58,13 +59,13 @@ export function TekstFelt({ id, label, hint, value, onChange, type = 'text', aut
 }
 
 /* Telefon: landkode som stille prefiks (native select — tastatur og mobil gratis) + nummer. */
-export function TelefonFelt({ id = 'start-telefon', land, onLand, landListe, value, onChange, feil, flagg }) {
+export function TelefonFelt({ id = 'start-telefon', land, onLand, landListe, value, onChange, onBlur, feil, ok = false, flagg, hint }) {
   const [fokus, setFokus] = React.useState(false);
   const valgt = landListe.find((l) => l.iso === land) || landListe[0];
   return (
     <div>
-      <Label htmlFor={id}>Telefon</Label>
-      <div className="flex rounded-[14px]" style={{ background: '#FBFAF8', boxShadow: feil ? RING_FEIL : fokus ? RING_FOKUS : RING_HVILE, transition: `box-shadow 200ms ${EASE}` }}>
+      <Label htmlFor={id} hint={hint}>Telefon</Label>
+      <div className="flex items-center rounded-[14px] pr-4" style={{ background: '#FBFAF8', boxShadow: feil ? RING_FEIL : fokus ? RING_FOKUS : RING_HVILE, transition: `box-shadow 200ms ${EASE}` }}>
         <div className="relative flex shrink-0 items-center border-r pl-4 pr-3" style={{ borderColor: 'rgba(21,19,15,0.10)' }}>
           <span aria-hidden="true" className="pointer-events-none text-[15px] text-[#15130F]">{flagg(valgt.iso)} <span className="ml-1 text-[14px] text-[#15130F]/70">{valgt.dial}</span></span>
           <select
@@ -85,16 +86,17 @@ export function TelefonFelt({ id = 'start-telefon', land, onLand, landListe, val
           value={value}
           onChange={onChange}
           onFocus={() => setFokus(true)}
-          onBlur={() => setFokus(false)}
+          onBlur={() => { setFokus(false); if (onBlur) onBlur(); }}
           autoComplete="tel"
           inputMode="tel"
           placeholder={valgt.iso === 'NO' ? '8 siffer' : 'Telefonnummer'}
           aria-invalid={!!feil}
           aria-describedby={feil ? `${id}-feil` : undefined}
           data-testid={id}
-          className="h-14 w-full min-w-0 appearance-none rounded-r-[14px] border-0 bg-transparent px-4 text-[16px] text-[#15130F] outline-none ring-0 placeholder:text-[#15130F]/40 focus:outline-none focus:ring-0"
+          className="h-14 w-full min-w-0 appearance-none rounded-r-[14px] border-0 bg-transparent px-4 text-[16px] tabular-nums text-[#15130F] outline-none ring-0 placeholder:text-[#15130F]/40 focus:outline-none focus:ring-0"
           style={{ outline: 'none', boxShadow: 'none' }}
         />
+        <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-[#1F9D55]" strokeWidth={2.2} style={{ opacity: ok && !fokus && !feil ? 1 : 0, transition: `opacity 200ms ${EASE}` }} />
       </div>
       <Feilmelding id={`${id}-feil`}>{feil}</Feilmelding>
     </div>

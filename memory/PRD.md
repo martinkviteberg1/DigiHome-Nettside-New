@@ -992,3 +992,10 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   Steg 2 er et triptyk i én flate: to kolonner (Lei ut selv / Full forvaltning) med **«hvem gjør hva»-ledger** (3 rader, lilla
   prikk der du er involvert), meta + ink-knapp per kolonne; kolonnen er klikkbar. Ferdig-tilstanden beholder layouten m/ panelet
   fylt ut; topplinjen viser alle steg fullført. Testet m/ mocket /api/leads (ingen ekte lead).
+- **Steg 3 — to skreddersydde skjemaer (privat/bedrift):** `SelskapSok.js` erstatter CompanyPicker i V4-stil (pill, forslag,
+  status-chip, manuell fallback, valgt rad m/ «Endre», status-bekreftelse). Bedrift: tittel «Registrer selskapet» / «Hvem skal vi
+  kontakte?», selskapet først (avtalepart), **porteføljestørrelse** (Segment 1 · 2–5 · 6–20 · 20+, valgfritt → num_properties =
+  nedre grense + «Portefølje: …» i notes), Kontaktperson / E-post (jobb) / Telefon. Privat: Fullt navn / E-post / Telefon.
+  **Inline-validering:** feil vises først etter blur (beroert) eller etter send-forsøk; grønn hake når feltet er gyldig.
+  Telefon vises formatert for NO (909 58 313), lagres som siffer. `?kind=business` forhåndsvelger Bedrift. Kvitteringen får
+  «Selskap»-rad for bedrift. Testet mot ekte Enhetsregisteret (DIGIHOME AS) — ingen lead sendt.

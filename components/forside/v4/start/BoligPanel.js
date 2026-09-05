@@ -43,7 +43,7 @@ function Verdi({ v, tom = '—' }) {
   );
 }
 
-export default function BoligPanel({ adresse, postal, city, pos, modell, kontakt, kompakt = false, ferdig = false }) {
+export default function BoligPanel({ adresse, postal, city, pos, modell, selskap, kontakt, kompakt = false, ferdig = false }) {
   const ref = useRef(null);
   const [bilde, setBilde] = useState(null);
   const [bildeKlar, setBildeKlar] = useState(false);
@@ -177,6 +177,7 @@ export default function BoligPanel({ adresse, postal, city, pos, modell, kontakt
           <dl className="absolute inset-x-0 bottom-0 p-6 lg:p-7" style={{ color: OFF }} data-testid="start-kvittering">
             {[
               { k: 'Bolig', v: gate ? `${gate}${sted ? ` · ${sted}` : ''}` : '' },
+              ...(selskap !== undefined ? [{ k: 'Selskap', v: selskap || '' }] : []),
               { k: 'Modell', v: modellTekst },
               { k: 'Kontakt', v: kontakt || '' },
             ].map((r, i) => (

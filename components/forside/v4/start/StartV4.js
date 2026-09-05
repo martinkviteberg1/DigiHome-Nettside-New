@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
-import CompanyPicker from '@/components/dh/CompanyPicker';
 import { detectFinnReference } from '@/components/dh/PropertyInputs';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
@@ -11,6 +10,7 @@ import { site } from '@/lib/site';
 import { EASE, T, display } from '../motion';
 import AdresseSok from './AdresseSok';
 import BoligPanel from './BoligPanel';
+import SelskapSok from './SelskapSok';
 import { Avkryssing, Segment, StegKnapp, TekstFelt, TelefonFelt } from './Felt';
 
 /* ---------------------------------------------------------------------------
@@ -69,6 +69,15 @@ const bareSiffer = (v, max = 15) => String(v || '').replace(/\D/g, '').slice(0, 
 const intSiffer = (v, iso) => { const d = bareSiffer(v); return iso !== 'NO' && d.startsWith('0') ? d.slice(1) : d; };
 const telefonOk = (v, iso) => { const c = landFor(iso); const d = intSiffer(v, iso); return d.length >= c.min && d.length <= c.max; };
 const e164 = (v, iso) => `${landFor(iso).dial}${intSiffer(v, iso)}`;
+const visTelefon = (d, iso) => (iso === 'NO' && d.length > 3 ? `${d.slice(0, 3)} ${d.slice(3, 5)}${d.length > 5 ? ` ${d.slice(5, 8)}` : ''}`.trim() : d);
+
+/* Porteføljestørrelse for bedrift — valgfritt, men gir riktig oppfølging. */
+const PORTEFOLJE = [
+  { id: '1', label: '1', antall: 1 },
+  { id: '2-5', label: '2–5', antall: 2 },
+  { id: '6-20', label: '6–20', antall: 6 },
+  { id: '20+', label: '20+', antall: 20 },
+];
 
 const erBergen = (postal = '', city = '') => {
   if (String(city).trim().toLowerCase() === 'bergen') return true;
@@ -155,6 +164,9 @@ export default function StartV4() {
   const [finnNotat, setFinnNotat] = useState('');
   const [company, setCompany] = useState(null);
   const [companyAck, setCompanyAck] = useState(false);
+  const [portefolje, setPortefolje] = useState('');
+  const [beroert, setBeroert] = useState({});   // felter brukeren har vært i (blur) — feil vises først da
+  const [forsokt, setForsokt] = useState(false); // etter første send-forsøk vises alle feil
   const [landIso, setLandIso] = useState('NO');
   const [terms, setTerms] = useState(false);
   const [errors, setErrors] = useState({});
@@ -246,6 +258,8 @@ export default function StartV4() {
       const rawTier = (p.get('tier') || p.get('service') || '').trim();
       const pre = rawTier === 'selvforvaltning' || rawTier === 'full_forvaltning' ? rawTier : '';
       if (pre) setPreService(pre);
+      const kind = (p.get('kind') || p.get('type') || '').trim().toLowerCase();
+      if (/^(business|bedrift)$/.test(kind)) setForm((c) => ({ ...c, ownerKind: 'business' }));
       const finn = p.get('finn');
       if (finn && detectFinnReference(finn)) { losFinn(finn); return; }
       const address = (p.get('address') || '').trim(); const postal = (p.get('postal') || '').trim(); const city = (p.get('city') || '').trim();
@@ -268,6 +282,7 @@ export default function StartV4() {
     try { trackLeadStart('utleier'); } catch (e) { /* ok */ }
     try { track('form_start', { form: 'utleier', flow: 'utleier-v4' }); } catch (e) { /* ok */ }
   }, []);
+  useEffect(() => { setForsokt(false); setBeroert({}); }, [steg]);
   useEffect(() => {
     try { track('form_step', { form: 'utleier', flow: 'utleier-v4', step: stegIndex + 1, label: STEG[stegIndex]?.label }); } catch (e) { /* ok */ }
     try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { /* ok */ }
@@ -310,6 +325,7 @@ export default function StartV4() {
   const send = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (laster) return;
+    setForsokt(true);
     if (Object.keys(kontaktFeil).length) {
       setErrors(kontaktFeil);
       /* Fokuser første felt med feil — på mobil ligger det ofte over folden. */
@@ -325,6 +341,7 @@ export default function StartV4() {
     const bedrooms = form.bedrooms ? Number(form.bedrooms) || null : null;
     const propertyType = form.propertyType || '';
     const bedrift = form.ownerKind === 'business';
+    const portefoljeValg = PORTEFOLJE.find((x) => x.id === portefolje) || null;
     const payload = {
       address: adresse, postal_code: form.postalCode, city: form.city || undefined, outside_area: utenforOmrade || undefined,
       sqm, bedrooms, property_type: propertyType,
@@ -337,9 +354,12 @@ export default function StartV4() {
       terms: form.service === 'selvforvaltning' && terms ? { version: SELF_TERMS_VERSION } : undefined,
       finn_url: finnUrl || undefined,
       units: [{ address: adresse, postal_code: form.postalCode, property_type: propertyType, sqm, bedrooms, finn_url: finnUrl || undefined }],
-      num_properties: 1,
+      num_properties: bedrift && portefoljeValg ? portefoljeValg.antall : 1,
       attribution: { ...getLeadAttribution(), ...getClickIds() },
-      notes: finnUrl ? `FINN${finnCode ? ` ${finnCode}` : ''}: ${finnNotat || 'Boligdetaljer avklares i oppfølgingen.'}` : 'Hurtigregistrering (v4) — boligdetaljer avklares senere.',
+      notes: [
+        finnUrl ? `FINN${finnCode ? ` ${finnCode}` : ''}: ${finnNotat || 'Boligdetaljer avklares i oppfølgingen.'}` : 'Hurtigregistrering (v4) — boligdetaljer avklares senere.',
+        bedrift && portefoljeValg ? `Portefølje: ${portefoljeValg.label} boliger.` : '',
+      ].filter(Boolean).join(' '),
     };
     try {
       const r = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -358,8 +378,13 @@ export default function StartV4() {
   };
 
   const erSelv = form.service === 'selvforvaltning';
+  const bedrift = form.ownerKind === 'business';
+  /* Feil vises når feltet er forlatt (blur) eller etter første send-forsøk — aldri mens du skriver første gang. */
+  const feilFor = (k) => ((beroert[k] || forsokt) ? (kontaktFeil[k] || '') : '');
+  const okFor = (k) => !!(form[k] || '').trim() && !kontaktFeil[k];
+  const rort = (k) => setBeroert((c) => (c[k] ? c : { ...c, [k]: true }));
   const kontaktTekst = form.name.trim() ? [form.name.trim(), form.email.trim()].filter(Boolean).join(' · ') : '';
-  const panel = <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} modell={form.service} kontakt={sendt ? kontaktTekst : ''} ferdig={sendt} />;
+  const panel = <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} modell={form.service} selskap={bedrift ? (company?.name || '') : undefined} kontakt={sendt ? kontaktTekst : ''} ferdig={sendt} />;
   const panelKompakt = (form.address || pos) ? <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} modell={form.service} kompakt /> : null;
 
   const fornavn = form.name.trim().split(' ')[0];
@@ -522,61 +547,80 @@ export default function StartV4() {
                 <Tilbake onClick={() => setSteg('tjeneste')} />
                 <Tittel
                   over={<>{erSelv ? 'Lei ut selv' : 'Full forvaltning'}{gate ? <> · {gate}</> : null} <button type="button" onClick={() => setSteg('tjeneste')} className="ml-1 underline decoration-[#15130F]/25 underline-offset-4 hover:text-[#15130F]" data-testid="start-endre">Endre</button></>}
-                  tittel={erSelv ? 'Opprett kontoen din' : 'Hvor kan vi nå deg?'}
-                  tekst={erSelv ? 'Kun kontaktinformasjon nå. Boligen legger du inn når kontoen er klar.' : utenforOmrade ? 'Vi trenger bare kontaktinformasjonen din for å gi beskjed når vi lanserer.' : 'Vi trenger bare kontaktinformasjonen din for å følge opp tilbudet.'}
+                  tittel={bedrift ? (erSelv ? 'Registrer selskapet' : 'Hvem skal vi kontakte?') : (erSelv ? 'Opprett kontoen din' : 'Hvor kan vi nå deg?')}
+                  tekst={bedrift
+                    ? (erSelv ? 'Selskapet blir avtalepart. Kontaktpersonen får tilgangen.' : utenforOmrade ? 'Vi gir beskjed til kontaktpersonen når vi lanserer i området.' : 'Vi ser på boligen og kontakter dere med et tilbud innen 24 timer.')
+                    : (erSelv ? 'Kun kontaktinformasjon nå. Boligen legger du inn når kontoen er klar.' : utenforOmrade ? 'Vi trenger bare kontaktinformasjonen din for å gi beskjed når vi lanserer.' : 'Vi trenger bare kontaktinformasjonen din for å følge opp tilbudet.')}
                   testId="start-h1"
                 />
 
-                <form onSubmit={send} className="mt-9 flex flex-col gap-5" noValidate>
+                <form onSubmit={send} className="mt-9 flex flex-col gap-6" noValidate>
                   <Segment
                     label="Jeg registrerer som"
                     verdi={form.ownerKind}
                     onChange={(k) => {
                       setField('ownerKind', k);
                       setErrors((c) => ({ ...c, company: '' }));
-                      if (k === 'private') { setCompany(null); setCompanyAck(false); }
+                      if (k === 'private') { setCompany(null); setCompanyAck(false); setPortefolje(''); }
                       try { track('owner_kind_choice', { form: 'utleier-start', kind: k }); } catch (e) { /* ok */ }
                     }}
                     valg={[['private', 'Privatperson'], ['business', 'Bedrift']]}
                     testId="owner-kind"
                   />
-                  {form.ownerKind === 'business' ? (
-                    <div data-testid="start-selskap">
-                      <CompanyPicker
-                        value={company}
-                        onSelect={(n) => { setCompany(n); setCompanyAck(false); setErrors((c) => ({ ...c, company: '' })); }}
-                        onClear={() => { setCompany(null); setCompanyAck(false); }}
-                        error={errors.company}
+
+                  {/* ── BEDRIFT: selskapet først — det er avtaleparten ── */}
+                  {bedrift ? (
+                    <div className="flex flex-col gap-6" data-testid="start-selskap">
+                      <SelskapSok
+                        verdi={company}
+                        onVelg={(n) => { setCompany(n); setCompanyAck(false); setErrors((c) => ({ ...c, company: '' })); rort('company'); }}
+                        onNullstill={() => { setCompany(null); setCompanyAck(false); }}
+                        feil={feilFor('company')}
                         statusAck={companyAck}
-                        onStatusAckChange={(n) => { setCompanyAck(n); setErrors((c) => ({ ...c, company: '' })); }}
+                        onStatusAck={(n) => { setCompanyAck(n); setErrors((c) => ({ ...c, company: '' })); }}
+                        autoFokus
                       />
+                      <div>
+                        <Segment
+                          label="Hvor mange boliger leier dere ut?"
+                          verdi={portefolje}
+                          onChange={(id) => { setPortefolje(id); try { track('portfolio_size_choice', { form: 'utleier-start', size: id }); } catch (e) { /* ok */ } }}
+                          valg={PORTEFOLJE.map((x) => [x.id, x.label])}
+                          testId="portefolje"
+                        />
+                        <p className="mt-2 text-[12.5px] text-[#15130F]/45">Valgfritt — gir riktig oppfølging{erSelv ? ' og oppsett av kontoen' : ''}.</p>
+                      </div>
                     </div>
                   ) : null}
-                  <TekstFelt id="owner-name-input" label={form.ownerKind === 'business' ? 'Kontaktperson' : 'Fullt navn'} value={form.name} onChange={(e) => setField('name', e.target.value)} autoComplete="name" placeholder="Ola Nordmann" feil={errors.name} autoFokus />
-                  <TekstFelt id="owner-email-input" label="E-post" hint="Bekreftelsen sendes hit" type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} autoComplete="email" inputMode="email" placeholder="ola@eksempel.no" feil={errors.email} />
-                  <TelefonFelt id="owner-phone-input" land={landIso} onLand={(iso) => { setLandIso(iso); setField('phone', bareSiffer(form.phone, landFor(iso).max + (iso === 'NO' ? 0 : 1))); }} landListe={LAND} flagg={flagg} value={form.phone} feil={errors.phone}
-                    onChange={(e) => {
-                      const raw = String(e.target.value || '').trim();
-                      let iso = landIso; let lokal = raw;
-                      if (raw.startsWith('+')) { const m = [...LAND].sort((a, b) => b.dial.length - a.dial.length).find((l) => raw.startsWith(l.dial)); if (m) { iso = m.iso; lokal = raw.slice(m.dial.length); setLandIso(m.iso); } }
-                      setField('phone', bareSiffer(lokal, landFor(iso).max + (iso === 'NO' ? 0 : 1)));
-                    }} />
+
+                  <div className="flex flex-col gap-5">
+                    <TekstFelt id="owner-name-input" label={bedrift ? 'Kontaktperson' : 'Fullt navn'} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => rort('name')} autoComplete="name" placeholder={bedrift ? 'Fullt navn' : 'Ola Nordmann'} feil={feilFor('name')} ok={okFor('name')} autoFokus={!bedrift} />
+                    <TekstFelt id="owner-email-input" label={bedrift ? 'E-post (jobb)' : 'E-post'} hint={erSelv ? 'Tilgangen sendes hit' : 'Bekreftelsen sendes hit'} type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} onBlur={() => rort('email')} autoComplete="email" inputMode="email" placeholder={bedrift ? 'navn@selskap.no' : 'ola@eksempel.no'} feil={feilFor('email')} ok={okFor('email')} />
+                    <TelefonFelt id="owner-phone-input" land={landIso} onLand={(iso) => { setLandIso(iso); setField('phone', bareSiffer(form.phone, landFor(iso).max + (iso === 'NO' ? 0 : 1))); }} landListe={LAND} flagg={flagg} value={visTelefon(form.phone, landIso)} feil={feilFor('phone')} ok={okFor('phone')} onBlur={() => rort('phone')}
+                      hint={erSelv ? undefined : 'Vi ringer for å avtale'}
+                      onChange={(e) => {
+                        const raw = String(e.target.value || '').trim();
+                        let iso = landIso; let lokal = raw;
+                        if (raw.startsWith('+')) { const m = [...LAND].sort((a, b) => b.dial.length - a.dial.length).find((l) => raw.startsWith(l.dial)); if (m) { iso = m.iso; lokal = raw.slice(m.dial.length); setLandIso(m.iso); } }
+                        setField('phone', bareSiffer(lokal, landFor(iso).max + (iso === 'NO' ? 0 : 1)));
+                      }} />
+                  </div>
 
                   {erSelv ? (
-                    <Avkryssing id="owner-terms-checkbox" checked={terms} onChange={(v) => { setTerms(v); setErrors((c) => ({ ...c, terms: '' })); }} feil={errors.terms}>
+                    <Avkryssing id="owner-terms-checkbox" checked={terms} onChange={(v) => { setTerms(v); setErrors((c) => ({ ...c, terms: '' })); rort('terms'); }} feil={feilFor('terms')}>
                       Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="font-medium text-[#15130F] underline decoration-[#15130F]/30 underline-offset-4">avtalen om selvforvaltning</a> (5 % av husleien, ingen bindingstid)
-                      {form.ownerKind === 'business' ? <> — på vegne av <strong className="font-medium text-[#15130F]">{company?.name || 'selskapet'}</strong>, som jeg har signaturrett for.</> : '.'}
+                      {bedrift ? <> — på vegne av <strong className="font-medium text-[#15130F]">{company?.name || 'selskapet'}</strong>, som jeg har signaturrett for.</> : '.'}
                     </Avkryssing>
                   ) : (
-                    <p className="text-[13.5px] leading-[1.5] text-[#15130F]/55">{utenforOmrade ? 'Uforpliktende. Vi kontakter deg kun om lansering i ditt område.' : 'Gratis og uforpliktende. En lokal rådgiver kontakter deg innen 24 timer.'}</p>
+                    <p className="text-[13.5px] leading-[1.5] text-[#15130F]/55">{utenforOmrade ? 'Uforpliktende. Vi kontakter deg kun om lansering i ditt område.' : bedrift ? 'Gratis og uforpliktende. En rådgiver kontakter dere innen 24 timer — gjerne med et forslag tilpasset porteføljen.' : 'Gratis og uforpliktende. En lokal rådgiver kontakter deg innen 24 timer.'}</p>
                   )}
 
                   {sendFeil ? <p role="alert" className="rounded-[12px] px-4 py-3 text-[13.5px]" style={{ background: 'rgba(180,60,40,0.08)', color: '#8E2E1F' }}>{sendFeil}</p> : null}
 
-                  <div className="pt-2">
+                  <div className="pt-1">
                     <StegKnapp type="submit" laster={laster} testId="owner-submit-button">
                       {laster ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                      {erSelv ? 'Opprett konto' : utenforOmrade ? 'Registrer interesse' : 'Be om tilbud'}
+                      {erSelv ? (bedrift ? 'Registrer selskapet' : 'Opprett konto') : utenforOmrade ? 'Registrer interesse' : 'Be om tilbud'}
                       {!laster && <ArrowRight className="h-4 w-4" strokeWidth={1.8} />}
                     </StegKnapp>
                     <p className="mt-3 text-[12.5px] text-[#15130F]/45">Ved innsending godtar du at DigiHome kontakter deg om denne henvendelsen.</p>
