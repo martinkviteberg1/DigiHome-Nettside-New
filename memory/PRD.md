@@ -1066,3 +1066,14 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   **Slik kommer du i gang** (4 steg + Sarah som fast forvalter) → FAQ (boligeier-spørsmål, `FaqSeksjon` har nå `sporsmal`/`prisSvar`-props)
   → AvslutningSeksjon (`tittel`/`under`-props). Innholdet holder seg til avtalen (selv: kontrakt/husleie/saker/dokumenter — ikke annonse/visning)
   og sidens løfter for full (annonse, visning, leietakervalg, kontrakt, depositum, drift, rapport). Ingen tall for full forvaltning finnes publisert.
+
+## Språkregel: selvforvaltning er AUTOMATISERT, ikke outsourcet (brukerens presisering)
+- Boligeieren er utleier og driver boligen selv; DigiHome er systemet. Det som «går av seg selv», gjør **systemet** —
+  aldri «DigiHome gjør resten» / «DigiHome driver». Full forvaltning = en fast forvalter hos DigiHome driver (der er «vi tar alt» riktig).
+- Gjennomført på: Veiskille (selv: «Du leier ut selv. Systemet tar rutinen.», type-piller Programvare/Tjeneste, ny ingress
+  «hvem som driver boligen: du — eller en fast forvalter hos oss»), Sammenligning (kolonner skifter med modell: Du/**Systemet** vs
+  Du/**Forvalteren**; `kolonner`-prop tar array eller objekt per modell; selv-radene har boligeieren som aktør i hver rad),
+  BoligScene («Du bestemte N ganger i år» · «Tre beslutninger var dine. Resten gikk på autopilot.»), StegSeksjon (steg 4),
+  FAQ (boligeiere + forside-default), AvslutningSeksjon, ProduktSeksjon («Systemet gjør resten.»), HeroStage/HeroScene
+  («Resten gikk på autopilot.»), StartV4 (Lei ut selv: «Du er utleier. Systemet tar rutinen.» / Automatisk / Systemet foreslår · du bestemmer),
+  Bedrift («Teamet driver — systemet tar rutinen», «går automatisk», kolonne Systemet), metadata-beskrivelser (/, /boligeiere, /bedrift).

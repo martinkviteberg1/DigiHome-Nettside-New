@@ -1,10 +1,109 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import NavV4 from '../NavV4';
 import Footer from '@/components/dh/Footer';
 import { EASE, Knapp, T, display } from '../motion';
 import PortefoljeScene, { STORRELSER } from './PortefoljeScene';
+import VeiskilleSeksjon from '../VeiskilleSeksjon';
+import SammenligningSeksjon from '../SammenligningSeksjon';
+import AltSamletSeksjon from '../AltSamletSeksjon';
+import StegSeksjon from '../StegSeksjon';
+import FaqSeksjon from '../FaqSeksjon';
+import AvslutningSeksjon from '../AvslutningSeksjon';
+
+/* ── Innholdet for eiendomsselskap. Samme seksjoner som boligeier-siden, én størrelse større:
+      porteføljen, teamet og rollene. Påstandene holder seg til det siden allerede lover
+      (roller/godkjenning, husleie per bygg, saker med leverandør og pris, BankID-kontrakter,
+      rapport per bygg og selskap) — og prisen slik prissiden sier den: etter enheter og moduler. ── */
+
+const MAATER = [
+  {
+    id: 'plattform',
+    merke: 'Plattform',
+    type: 'Programvare',
+    meta: 'Hele Norge',
+    tittel: ['Deres team.', 'Vår motor.'],
+    tekst: 'Bygg, enheter og leieforhold på ett sted. Teamet driver porteføljen; systemet tar rutinen — husleie, kontrakter og saker går automatisk, og teamet godkjenner det som betyr noe, med roller og full historikk.',
+    punkter: [
+      'Roller: hvem ser hva, hvem godkjenner',
+      'Husleie per bygg — registrert, fulgt opp, purret',
+      'Saker med leverandør og pris, adressert til riktig rolle',
+      'Kontrakter signert med BankID, arkivert på enheten',
+    ],
+    pris: { stor: 'Per enhet', etter: 'etter antall enheter og moduler', under: 'Konkret forslag samme uke — med deres portefølje som eksempel.' },
+    handling: { tekst: 'Book en demo', href: '/book-mote' },
+    sekundaer: { tekst: 'Registrer selskapet', href: '/bli-utleier/start?kind=business' },
+  },
+  {
+    id: 'forvaltning',
+    merke: 'Forvaltning',
+    type: 'Tjeneste',
+    meta: 'Bergen og omegn',
+    tittel: ['Vi drifter.', 'Dere eier.'],
+    tekst: 'Utleie, leietakere og drift — vi tar det hele, på samme system. Dere får rapporten per bygg og selskap, og siste ord når noe koster.',
+    punkter: [
+      'Annonse, visning og leietakervalg',
+      'Kontrakt, depositum og innflytting',
+      'Drift, leverandører og oppfølging av leietakere',
+      'Fast forvalter og månedsrapport per bygg',
+    ],
+    pris: { stor: 'Etter omfang', etter: 'en andel av husleien', under: 'Tilpasset porteføljen og hva vi skal gjøre. Konkret tilbud etter en samtale.' },
+    handling: { tekst: 'Book en samtale', href: '/book-mote' },
+    sekundaer: { tekst: 'Se forvaltning', href: '/forvaltning' },
+    mork: true,
+  },
+];
+
+const ROLLER = [['drift', 'Driftssjef'], ['okonomi', 'Økonomi'], ['vaktmester', 'Vaktmester']];
+
+const HUSLEIE = 'Registrerer alle innbetalinger, purrer de som mangler';
+const LEKKASJE = 'Oppretter sak, finner rørlegger, henter pris, følger opp til det er løst';
+const KONTRAKT = 'Kontrakt fra malen, signering med BankID, arkiv på enheten';
+const SVAR = 'Svarer fra kontrakten — løfter det som trenger noen';
+const UTFLYTT = 'Depositum, dokumenter og historikk samlet på leieforholdet';
+const RAPPORT = 'Rapport per bygg og selskap — husleie, saker, kostnader';
+
+const DAGEN = [
+  { t: 'Husleie, den 1.', drift: ['Ser status per bygg', HUSLEIE], okonomi: ['Ser avvik og tallene per bygg', HUSLEIE], vaktmester: [null, HUSLEIE] },
+  { t: 'Lekkasje i Strandgaten 12', drift: ['Godkjenner rørlegger og pris — saken er adressert til deg', LEKKASJE], okonomi: ['Ser kostnaden når den er godkjent', LEKKASJE], vaktmester: ['Slipper inn rørleggeren, kvitterer når det er ordnet', LEKKASJE] },
+  { t: 'Ny leietaker i 5A', drift: ['Godkjenner kontrakten', KONTRAKT], okonomi: ['Ser depositum og første husleie', KONTRAKT], vaktmester: ['Nøkler ved innflytting', KONTRAKT] },
+  { t: 'Leietaker spør om oppsigelsestid', drift: [null, SVAR], okonomi: [null, SVAR], vaktmester: [null, SVAR] },
+  { t: 'Utflytting i 3B', drift: ['Godkjenner depositumsoppgjøret', UTFLYTT], okonomi: ['Ser oppgjøret', UTFLYTT], vaktmester: ['Befaring og nøkler', UTFLYTT] },
+  { t: 'Månedsslutt', drift: ['Leser rapporten per bygg', RAPPORT], okonomi: ['Avstemmer tallene', RAPPORT], vaktmester: [null, RAPPORT] },
+];
+
+const DAGEN_SUM = {
+  drift: 'Du godkjenner det som koster og det som binder. Rutinen — innkreving, kontrakter, saker — går automatisk, og alt ligger i historikken.',
+  okonomi: 'Du ser tallene per bygg, avvik og oppgjør. Innkrevingen går automatisk.',
+  vaktmester: 'Du tar det fysiske — slipper inn, ser til, kvitterer. Saken og papirene ligger allerede der.',
+};
+
+const STEG = [
+  { nr: '1', t: 'Demo', d: '30 minutter med deres portefølje som eksempel. Dere ser dagen deres i systemet.' },
+  { nr: '2', t: 'Oppsett', d: 'Bygg, enheter og leieforhold settes opp sammen med dere — det dere har, som det er.' },
+  { nr: '3', t: 'Roller', d: 'Hvem ser hva, hvem godkjenner hva. Hver handling logges med hvem og når.' },
+  { nr: '4', t: 'Autopilot på', d: 'Husleie, kontrakter og saker går automatisk. Teamet tar de få beslutningene som betyr noe.' },
+];
+
+const LINK = 'underline underline-offset-4 decoration-[#15130F]/30 hover:decoration-[#15130F]';
+
+const SPORSMAL = [
+  { q: 'Hva koster det?', a: null },
+  { q: 'Kan vi ta med eksisterende leieforhold?', a: 'Ja. Bygg, enheter og løpende leieforhold settes opp sammen med dere i oppsettet — med kontrakter og historikk som de er.' },
+  { q: 'Hvordan fungerer roller?', a: 'Dere bestemmer hvem som ser hva og hvem som godkjenner. Saker og godkjenninger adresseres til riktig rolle, og hver handling logges med hvem og når.' },
+  { q: 'Hvordan signeres kontrakter?', a: 'Med BankID gjennom Posten signering. Kontrakten arkiveres på enheten, med full historikk.' },
+  { q: 'Fungerer det for flere selskaper og bygg?', a: 'Ja. Porteføljen organiseres per selskap og per bygg, med oversikt og rapport på hvert nivå.' },
+  { q: 'Kan DigiHome også drifte porteføljen for oss?', a: 'Ja — forvaltning tilbys i Bergen og omegn, på samme system. Dere får rapporten, og siste ord når noe koster.' },
+];
+
+const PRIS_SVAR = (
+  <p className="max-w-[60ch]" style={{ color: 'rgba(21,19,15,0.66)' }}>
+    Plattformen prises etter <strong style={{ color: '#15130F', fontWeight: 500 }}>antall enheter og moduler</strong>.{' '}
+    <Link href="/book-mote" className={LINK} style={{ color: '#15130F' }} data-testid="v4e-faq-demo">Book en demo</Link>, så får dere et konkret forslag samme uke — med deres portefølje som eksempel. Forvaltning prises etter omfang, som en andel av husleien.
+  </p>
+);
 
 /* ---------------------------------------------------------------------------
    BedriftV4 — undersiden for eiendomsselskap, fra scratch. Første akt: hero.
@@ -40,7 +139,7 @@ export default function BedriftV4() {
                 Porteføljen på autopilot<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
               </h1>
               <p className="dh-cover-inn mt-7 max-w-[38ch] text-[18px] leading-[1.45] text-[#15130F]/70 sm:mt-8 sm:text-[20px]" style={{ animationDelay: '.08s' }} data-testid="v4b-ingress">
-                Saker, husleie og leietakere på tvers av alle bygg. Systemet drifter — teamet godkjenner, med roller og full historikk.
+                Saker, husleie og leietakere på tvers av alle bygg. Teamet driver — systemet tar rutinen, med roller, godkjenning og full historikk.
               </p>
 
               {/* Adressefeltets tvilling: størrelsen. Skalerer scenen og spiller dagen på nytt. */}
@@ -67,10 +166,11 @@ export default function BedriftV4() {
                 </div>
               </div>
 
-              <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-4" style={{ animationDelay: '.2s' }}>
+              <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-x-6 gap-y-3" style={{ animationDelay: '.2s' }}>
                 <Knapp href="/book-mote" data-testid="v4b-cta">Book en demo</Knapp>
-                <span className="text-[14px]" style={{ color: 'rgba(21,19,15,0.5)' }}>30 minutter — med deres portefølje som eksempel.</span>
+                <Link href="/bli-utleier/start?kind=business" className="text-[15px] font-medium underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F]/60" style={{ color: T.ink }} data-testid="v4b-registrer">Registrer selskapet</Link>
               </div>
+              <p className="dh-cover-inn mt-4 text-[14px]" style={{ color: 'rgba(21,19,15,0.5)', animationDelay: '.24s' }}>30 minutter — med deres portefølje som eksempel.</p>
             </div>
 
             <div className="dh-cover-inn" style={{ animationDelay: '.12s' }}>
@@ -78,6 +178,48 @@ export default function BedriftV4() {
             </div>
           </div>
         </section>
+
+        {/* ── 2. Én motor, to måter å bruke den ── */}
+        <VeiskilleSeksjon
+          spor={MAATER}
+          tittel={['Én motor.', 'To måter å bruke den.']}
+          under="Kjør porteføljen med eget team på DigiHome — eller la oss drifte den. Samme system, samme oversikt."
+          usikker="Se hvem som gjør hva i en vanlig dag"
+          testid="v4e"
+        />
+        {/* ── 3. Én dag, tre roller ── */}
+        <SammenligningSeksjon
+          tittel={['Én dag.', 'Tre roller.']}
+          under="Seks ting som skjer i en portefølje — sett fra stolen du sitter i."
+          valg={ROLLER}
+          hendelser={DAGEN}
+          sum={DAGEN_SUM}
+          kolonner={['Hendelse', 'Du', 'Systemet']}
+          testid="v4e"
+        />
+        {/* ── 4. Hele utleien, ett sted ── */}
+        <AltSamletSeksjon />
+        {/* ── 5. Slik kommer dere i gang ── */}
+        <StegSeksjon
+          tittel={['Slik kommer', 'dere i gang.']}
+          under="Fra demo til drift på noen uker — med deres portefølje, ikke en mal."
+          steg={STEG}
+          person={null}
+          testid="v4e"
+        />
+        {/* ── 6. Spørsmål og svar ── */}
+        <FaqSeksjon sporsmal={SPORSMAL} prisSvar={PRIS_SVAR} />
+        {/* ── 7. Avslutning ── */}
+        <AvslutningSeksjon
+          tittel="Porteføljen på autopilot"
+          under="Book en demo — 30 minutter, med deres portefølje som eksempel."
+          handling={{ knapp: { tekst: 'Book en demo', href: '/book-mote' }, lenke: { tekst: 'Registrer selskapet', href: '/bli-utleier/start?kind=business' } }}
+          steg={[
+            ['1', 'Demo med deres portefølje', 'Dere ser dagen deres i systemet.'],
+            ['2', 'Oppsett og roller', 'Bygg, enheter og leieforhold — og hvem som godkjenner hva.'],
+            ['3', 'Autopilot på', 'Husleie, kontrakter og saker går automatisk. Teamet tar de få beslutningene.'],
+          ]}
+        />
       </main>
       <Footer />
     </div>

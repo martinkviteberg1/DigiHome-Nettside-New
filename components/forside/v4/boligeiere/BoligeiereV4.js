@@ -7,10 +7,10 @@ import Footer from '@/components/dh/Footer';
 import AdresseFelt from '../AdresseFelt';
 import { T, display } from '../motion';
 import BoligScene from './BoligScene';
-import VeiskilleSeksjon from './VeiskilleSeksjon';
-import SammenligningSeksjon from './SammenligningSeksjon';
+import VeiskilleSeksjon from '../VeiskilleSeksjon';
+import SammenligningSeksjon from '../SammenligningSeksjon';
 import LeietakerSeksjon from '../LeietakerSeksjon';
-import StegSeksjon from './StegSeksjon';
+import StegSeksjon from '../StegSeksjon';
 import FaqSeksjon from '../FaqSeksjon';
 import AvslutningSeksjon from '../AvslutningSeksjon';
 
@@ -19,13 +19,18 @@ import AvslutningSeksjon from '../AvslutningSeksjon';
 
    Dramaturgi:
    1. Hero — nøytral: «Boligen på autopilot.» Gjenkjennelse, ikke valg. Adressen
-      er handlingen; scenen viser ett leieår og hvor lite av det som var ditt.
-   2. Veiskillet — to måter: selvforvaltning (5 %) eller full forvaltning.
+      er handlingen; scenen viser ett leieår og de få beslutningene som var dine.
+   2. Veiskillet — hvem driver: du selv, med systemet som tar rutinen (5 %),
+      eller en fast forvalter hos oss (full forvaltning).
    3. Sammenligningen — samme leieår, hvem gjør hva, med bryter.
    4. Leietakeren — slik oppleves det i andre enden.
-   5. Slik kommer du i gang — fire steg, én fast forvalter.
+   5. Slik kommer du i gang — fire steg, én fast forvalter (ved full forvaltning).
    6. Spørsmål og svar — boligeierens spørsmål.
    7. Avslutning — adressen igjen.
+
+   Språkregel for hele siden: selvforvaltning er AUTOMATISERT, ikke outsourcet.
+   Boligeieren er utleier og driver boligen selv; DigiHome er systemet. Det som
+   «går av seg selv», gjør systemet — aldri «DigiHome gjør resten».
 --------------------------------------------------------------------------- */
 
 const LINK = 'underline underline-offset-4 decoration-[#15130F]/30 hover:decoration-[#15130F]';
@@ -33,20 +38,20 @@ const LINK = 'underline underline-offset-4 decoration-[#15130F]/30 hover:decorat
 const SPORSMAL = [
   {
     q: 'Selvforvaltning eller full forvaltning — hvordan velger jeg?',
-    a: 'Vil du finne leietakeren selv og ha kontroll på detaljene, velger du selvforvaltning: DigiHome tar kontrakt, husleie, oppfølging og saker — du godkjenner det som koster. Vil du slippe alt det praktiske, tar vi full forvaltning. Begge kjører på samme plattform, så du kan bytte senere.',
+    a: 'Vil du leie ut selv og ha kontrollen, velger du selvforvaltning: du er utleier og driver boligen, mens systemet tar rutinen — kontrakt med BankID, oppfølging og purring av husleie, saker med forslag til leverandør og pris som du godkjenner. Vil du slippe driften helt, tar en fast forvalter hos oss full forvaltning. Begge kjører på samme plattform, så du kan bytte senere.',
   },
   { q: 'Hva koster det?', a: null },
   {
     q: 'Kan jeg gå fra selvforvaltning til full forvaltning senere?',
-    a: 'Ja. Boligen, kontrakten og historikken ligger allerede i DigiHome, så vi tar over der du er. Full forvaltning tilbys foreløpig i Bergen og omegn.',
+    a: 'Ja. Boligen, kontrakten og historikken ligger allerede i DigiHome, så forvalteren tar over der du er. Full forvaltning tilbys foreløpig i Bergen og omegn.',
   },
   {
     q: 'Hva skjer hvis leietakeren ikke betaler?',
-    a: 'DigiHome registrerer betalinger, varsler leietakeren og purrer automatisk — og du ser status hele veien. Går det lenger, får du beskjed og forslag til neste steg. Beslutningen er alltid din.',
+    a: 'Betalingen registreres, og leietakeren varsles og purres automatisk — du ser status hele veien. Går det lenger, får du beskjed og forslag til neste steg; i full forvaltning tar forvalteren det. Beslutningen er alltid din.',
   },
   {
     q: 'Er DigiHome for meg når jeg bare har én bolig?',
-    a: 'Ja — det er de fleste. Selvforvaltning koster 5 % av husleien, uten bindingstid og uten faste gebyrer. Du bruker det du trenger.',
+    a: 'Ja — det er de fleste. Selvforvaltning koster 5 % av husleien, uten bindingstid og uten faste gebyrer. Du leier ut som før — bare med et system som tar rutinen.',
   },
   {
     q: 'Hvor er DigiHome tilgjengelig?',
@@ -93,8 +98,8 @@ export default function BoligeiereV4() {
                 Boligen på autopilot<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
               </h1>
               <p className="dh-cover-inn mt-7 max-w-[38ch] text-[18px] leading-[1.45] text-[#15130F]/70 sm:mt-8 sm:text-[20px]" style={{ animationDelay: '.08s' }} data-testid="v4b-ingress">
-                <span className="sm:hidden">Én bolig eller fem. Lei ut selv med DigiHome som motor — eller la oss ta alt.</span>
-                <span className="hidden sm:inline">Én bolig eller fem. Lei ut selv med DigiHome som motor — eller la oss ta alt. Du beholder oversikten og siste ord.</span>
+                <span className="sm:hidden">Én bolig eller fem. Lei ut selv, med et system som tar rutinen — eller la oss ta alt.</span>
+                <span className="hidden sm:inline">Én bolig eller fem. Lei ut selv, med et system som tar rutinen — eller la en fast forvalter hos oss ta alt. Du har oversikten og siste ord uansett.</span>
               </p>
 
               {/* Handlingen er feltet. relative z-20: forslagslisten skal ligge over scenen. */}

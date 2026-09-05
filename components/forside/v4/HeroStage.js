@@ -443,7 +443,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
                 <div className="mt-6 max-w-[520px] sm:mt-8" style={linje(5.5)}>
                   <AdresseFelt variant="ink" gjennomsiktig />
                   <div className="mt-3 flex items-center justify-between gap-4 text-[13px]" style={{ color: 'rgba(21,19,15,0.55)' }}>
-                    <span className="hidden sm:inline">Se hva DigiHome gjør for din bolig.</span>
+                    <span className="hidden sm:inline">Se boligen din på autopilot.</span>
                     <button type="button" onClick={replay} className="underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" tabIndex={hjemme ? 0 : -1} data-testid="v4-replay">Spill igjen</button>
                   </div>
                 </div>
@@ -592,7 +592,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
             <div className="grid" style={{ gridTemplateRows: ferdig && !kanHjem ? '1fr' : '0fr', transition: `grid-template-rows 500ms ${EASE}` }} aria-hidden={!(ferdig && !kanHjem)}>
               <div className="min-h-0 overflow-hidden">
                 <div className="mt-3.5 flex items-center justify-between gap-4 border-t pt-4 text-[13px]" style={{ borderColor: HAIR, color: DIM, opacity: ferdig && !kanHjem ? 1 : 0, transition: `opacity 500ms ${EASE} 200ms` }}>
-                  <span>Én godkjenning. Resten gjorde DigiHome.</span>
+                  <span>Én godkjenning. Resten gikk på autopilot.</span>
                   <button type="button" onClick={replay} className="shrink-0 underline decoration-[#F4F1EA]/30 underline-offset-4 transition-colors hover:text-[#F4F1EA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40" tabIndex={ferdig && !kanHjem ? 0 : -1} data-testid="v4-replay-panel">Spill igjen</button>
                 </div>
               </div>

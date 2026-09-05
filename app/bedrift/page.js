@@ -1,7 +1,7 @@
 import BedriftV4 from '@/components/forside/v4/bedrift/BedriftV4';
 
 const TITTEL = 'For eiendomsselskap — Porteføljen på autopilot';
-const BESKRIVELSE = 'Saker, husleie og leietakere på tvers av alle bygg. Systemet drifter — teamet godkjenner, med roller og full historikk.';
+const BESKRIVELSE = 'Saker, husleie og leietakere på tvers av alle bygg. Teamet driver — systemet tar rutinen, med roller, godkjenning og full historikk.';
 
 export const metadata = {
   title: TITTEL,

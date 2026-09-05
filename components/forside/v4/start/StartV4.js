@@ -481,11 +481,11 @@ export default function StartV4() {
                   {[
                     {
                       id: 'selvforvaltning', tittel: 'Lei ut selv', omrade: 'Hele Norge',
-                      ingress: 'Systemet gjør jobben. Du godkjenner.',
+                      ingress: 'Du er utleier. Systemet tar rutinen.',
                       rader: [
                         ['Annonse og visninger', 'Du'],
-                        ['Kontrakt, husleie og purring', 'DigiHome'],
-                        ['Saker og leverandører', 'DigiHome foreslår · du godkjenner'],
+                        ['Kontrakt, husleie og purring', 'Automatisk'],
+                        ['Saker og leverandører', 'Systemet foreslår · du bestemmer'],
                       ],
                       meta: <><span className="font-medium text-[#15130F]">5 % av husleien</span> · ingen bindingstid</>,
                       knapp: 'Lei ut selv', testId: 'service-selvforvaltning',

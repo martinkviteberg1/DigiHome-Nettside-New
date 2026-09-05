@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import ForsideV4 from '@/components/forside/v4/ForsideV4';
 
 const TITTEL = 'DigiHome — Utleie på autopilot';
-const BESKRIVELSE = 'Kontrakt, husleie og saker går av seg selv. Du godkjenner det som koster. For private, eiendomsselskap og full forvaltning.';
+const BESKRIVELSE = 'Plattformen for automatisert boligutleie. Kontrakt, husleie og saker går automatisk — du godkjenner det som koster. For boligeiere, eiendomsselskap og full forvaltning.';
 
 export const metadata = {
   title: { absolute: TITTEL },

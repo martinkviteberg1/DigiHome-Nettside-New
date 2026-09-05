@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useRef } from 'react';
 import AdresseFelt from './AdresseFelt';
-import { EASE, T, display, useSynlig } from './motion';
+import { Knapp, EASE, T, display, useSynlig } from './motion';
 
 /* ---------------------------------------------------------------------------
    AvslutningSeksjon — finalen. Lukker sirkelen fra heroen:
@@ -17,10 +18,10 @@ import { EASE, T, display, useSynlig } from './motion';
 const STEG = [
   ['1', 'Skriv inn adressen', 'Vi finner boligen og setter den opp.'],
   ['2', 'Legg inn leietaker og kontrakt', 'Kontrakten signeres med BankID.'],
-  ['3', 'Autopilot på', 'Husleie, oppfølging og saker går av seg selv — du godkjenner det som koster.'],
+  ['3', 'Autopilot på', 'Husleie, purring og saker går automatisk — du godkjenner det som koster.'],
 ];
 
-export default function AvslutningSeksjon({ tittel = 'Utleie på autopilot', under = 'Start med adressen din. Resten setter vi opp sammen — på ti minutter.' }) {
+export default function AvslutningSeksjon({ tittel = 'Utleie på autopilot', under = 'Start med adressen din. Resten setter vi opp sammen — på ti minutter.', handling = null, steg = STEG }) {
   const ref = useRef(null);
   const synlig = useSynlig(ref, 0.25);
   const inn = (i) => ({ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(18px)', transition: `opacity 800ms ${EASE} ${i * 100}ms, transform 900ms ${EASE} ${i * 100}ms` });
@@ -50,14 +51,23 @@ export default function AvslutningSeksjon({ tittel = 'Utleie på autopilot', und
           <p className="mt-6 max-w-[36ch] text-[18px] leading-[1.45] sm:text-[21px]" style={{ color: 'rgba(244,241,234,0.78)', ...inn(1) }}>
             {under}
           </p>
-          <div className="relative z-20 mt-9 w-full sm:max-w-[520px]" style={inn(2)}>
-            <AdresseFelt />
-          </div>
+          {handling ? (
+            <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4" style={inn(2)}>
+              <Knapp href={handling.knapp.href} variant="lilla" size="lg" data-testid="v4-avslutning-knapp">{handling.knapp.tekst}</Knapp>
+              {handling.lenke ? (
+                <Link href={handling.lenke.href} className="text-[15px] font-medium underline decoration-[#F4F1EA]/30 underline-offset-4 transition-colors hover:text-[#F4F1EA]/70" style={{ color: T.offwhite }} data-testid="v4-avslutning-lenke">{handling.lenke.tekst}</Link>
+              ) : null}
+            </div>
+          ) : (
+            <div className="relative z-20 mt-9 w-full sm:max-w-[520px]" style={inn(2)}>
+              <AdresseFelt />
+            </div>
+          )}
         </div>
 
         {/* Stegene som følger — tre korte, på én hårlinje */}
         <ol className="mt-16 grid gap-8 border-t pt-8 sm:grid-cols-3 sm:gap-10 lg:mt-24 lg:pt-10" style={{ borderColor: 'rgba(244,241,234,0.16)', ...inn(3) }} data-testid="v4-avslutning-steg">
-          {STEG.map(([nr, t, d]) => (
+          {steg.map(([nr, t, d]) => (
             <li key={nr} className="grid grid-cols-[28px_minmax(0,1fr)] gap-x-3">
               <span className="pt-[3px] text-[13px] tabular-nums" style={{ color: 'rgba(244,241,234,0.5)' }}>{nr}</span>
               <span>

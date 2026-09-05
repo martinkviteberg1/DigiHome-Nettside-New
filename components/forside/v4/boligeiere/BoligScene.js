@@ -9,7 +9,8 @@ import { EASE, T, display, tall, useSekvens, useSmal, useSynlig } from '../motio
    Forsiden viser én dag. Her er tidsskalaen ett helt leieår — fordi det
    spørsmålet en privat huseier egentlig har er: «hvor mye jobb blir dette
    for meg over tid?» Svaret er scenen: tolv måneder tikker forbi, husleien
-   kommer inn, og du gjorde tre ting.
+   kommer inn, og tre beslutninger var dine. Resten var rutine — og rutinen
+   gjorde systemet. (Ikke «DigiHome gjorde resten»: boligeieren er utleier.)
 
    Lag 0  Papirflate. Ett objekt.
    Lag 1  Året som en rad av tolv måneder (grønn = husleie inn, lilla = deg)
@@ -49,7 +50,7 @@ const FASER = [
   { navn: 'ferdig', ms: 0 },
 ];
 
-/* Måneder der DU gjorde noe. Alt annet gjorde DigiHome. */
+/* Måneder der en beslutning var DIN. Alt annet var rutine som systemet tok. */
 const DEG = { m1: true, m4: true, m11: true };
 
 const RADER = [
@@ -217,7 +218,7 @@ export default function BoligScene({ eiendom }) {
         className="relative overflow-hidden rounded-[20px]"
         style={{ height: sceneH, background: PAPIR, boxShadow: '0 0 0 1px rgba(21,19,15,0.07), 0 40px 90px -50px rgba(21,19,15,0.35)', opacity: skifter ? 0 : 1, transition: `opacity 300ms ${EASE}` }}
         role="img"
-        aria-label={`Animert eksempel: ett leieår i ${adresse} med DigiHome — kontrakt signert med BankID, husleie hver måned, et varmtvannsproblem løst med én godkjenning, et spørsmål besvart fra kontrakten, og ny leietaker da den forrige sa opp. Tre ting gjorde du selv.`}
+        aria-label={`Animert eksempel: ett leieår i ${adresse} med DigiHome — kontrakt signert med BankID, husleie hver måned, et varmtvannsproblem løst med én godkjenning, et spørsmål besvart fra kontrakten, og ny leietaker da den forrige sa opp. Tre beslutninger var dine — rutinen gikk automatisk.`}
         data-testid="v4p-scene"
       >
         <div className="flex h-full flex-col px-6 pb-5 pt-5 sm:px-7 sm:pt-6">
@@ -238,14 +239,14 @@ export default function BoligScene({ eiendom }) {
             {/* Tallet en privat huseier bryr seg om: hvor mye måtte jeg gjøre? */}
             <div className="flex shrink-0 items-center gap-5 sm:gap-6">
               <div className="text-right">
-                <p className="text-[12px] text-[#15130F]/50">Du gjorde</p>
+                <p className="text-[12px] text-[#15130F]/50">Du bestemte</p>
                 <p className="mt-0.5 flex items-baseline justify-end gap-1.5">
                   <span className="inline-grid text-[22px] leading-none" style={{ ...display, letterSpacing: '-0.02em', color: T.ink }} data-testid="v4p-gjort">
                     {[0, 1, 2, 3].map((n) => (
                       <span key={n} className="col-start-1 row-start-1" style={{ opacity: gjort === n ? 1 : 0, transition: `opacity 300ms ${EASE} ${gjort === n ? 160 : 0}ms` }}>{n}</span>
                     ))}
                   </span>
-                  <span className="text-[12.5px] text-[#15130F]/45">ting i år</span>
+                  <span className="text-[12.5px] text-[#15130F]/45">ganger i år</span>
                 </p>
               </div>
               <div className="hidden h-8 w-px sm:block" style={{ background: HAIR }} />
@@ -359,7 +360,7 @@ export default function BoligScene({ eiendom }) {
           </ul>
 
           <div className="mt-auto flex items-center justify-between gap-4 pt-4 text-[13.5px] text-[#15130F]/50" style={{ opacity: ferdig ? 1 : 0, transition: `opacity 600ms ${EASE}` }} aria-hidden={!ferdig}>
-            <span data-testid="v4p-scene-tekst">Tolv måneder. Tre ting du gjorde. Resten gjorde DigiHome.</span>
+            <span data-testid="v4p-scene-tekst">Tolv måneder. Tre beslutninger var dine. Resten gikk på autopilot.</span>
             <button type="button" onClick={replay} className="shrink-0 underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" style={{ pointerEvents: ferdig ? 'auto' : 'none' }} tabIndex={ferdig ? 0 : -1} data-testid="v4p-replay">Spill igjen</button>
           </div>
         </div>

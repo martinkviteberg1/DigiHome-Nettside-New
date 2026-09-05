@@ -20,7 +20,7 @@ const LINK = 'underline underline-offset-4 decoration-[#15130F]/30 hover:decorat
 const SPORSMAL = [
   {
     q: 'Hva gjør DigiHome av seg selv — og hva må jeg gjøre?',
-    a: 'DigiHome oppretter saker, foreslår leverandør og henter pris, følger opp husleie og svarer leietakeren ut fra kontrakten. Alt som koster penger eller går ut av huset, godkjenner du — med ett trykk. Du bestemmer, systemet gjør resten.',
+    a: 'Du er utleieren. Systemet oppretter saker fra leietakerens melding, foreslår leverandør og henter pris, følger opp husleie og purrer, og svarer leietakeren på det som står i kontrakten. Alt som koster penger eller binder deg, godkjenner du — med ett trykk. Vil du ikke drive selv, tar en fast forvalter hos oss full forvaltning.',
   },
   {
     q: 'Hvordan signeres leiekontrakten?',
@@ -28,7 +28,7 @@ const SPORSMAL = [
   },
   {
     q: 'Er DigiHome for privatpersoner eller selskaper?',
-    a: 'Begge. Private med én eller noen få boliger bruker DigiHome selv. Eiendomsselskap får roller, godkjenning og én oversikt på tvers av bygg. Vil du slippe alt, tar vi forvaltningen — foreløpig i Bergen og omegn.',
+    a: 'Begge. Boligeiere med én eller noen få boliger leier ut selv, med DigiHome som system. Eiendomsselskap får roller, godkjenning og én oversikt på tvers av bygg. Vil du slippe driften helt, tar vi forvaltningen — foreløpig i Bergen og omegn.',
   },
   {
     q: 'Hva koster det?',
@@ -36,7 +36,7 @@ const SPORSMAL = [
   },
   {
     q: 'Hvordan melder leietakeren fra om noe?',
-    a: 'Leietakeren sender en melding — gjerne med bilde. DigiHome forstår hvilken bolig og hva det gjelder, oppretter saken og holder leietakeren oppdatert til det er løst. Leietakeren ser aldri pris eller din godkjenning.',
+    a: 'Leietakeren sender en melding — gjerne med bilde. Systemet forstår hvilken bolig og hva det gjelder, oppretter saken og holder leietakeren oppdatert til det er løst. Leietakeren ser aldri pris eller din godkjenning.',
   },
 ];
 

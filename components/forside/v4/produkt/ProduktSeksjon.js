@@ -28,12 +28,12 @@ const TABS = [
 
 const SCENER = {
   annonse: {
-    tittel: ['Fra ledig til utleid.', 'DigiHome gjør resten.'],
+    tittel: ['Fra ledig til utleid.', 'Systemet gjør resten.'],
     ingress: 'Annonsen lages fra boligen. Interessenter, spørsmål og visninger samles på ett sted. Du velger leietaker — kontrakten går ut med BankID.',
   },
   drift: {
-    tittel: ['Fra melding til løst.', 'DigiHome gjør resten.'],
-    ingress: '22:41 melder Ida at varmtvannet er borte. DigiHome vet hvilken bereder, finner bygårdens rørlegger og henter pris. Du godkjenner med ett trykk — torsdag er det fikset.',
+    tittel: ['Fra melding til løst.', 'Systemet gjør resten.'],
+    ingress: '22:41 melder Ida at varmtvannet er borte. Systemet vet hvilken bereder, finner bygårdens rørlegger og henter pris. Du godkjenner med ett trykk — torsdag er det fikset.',
   },
 };
 

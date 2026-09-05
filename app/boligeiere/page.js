@@ -1,7 +1,7 @@
 import BoligeiereV4 from '@/components/forside/v4/boligeiere/BoligeiereV4';
 
 const TITTEL = 'For boligeiere — Boligen på autopilot';
-const BESKRIVELSE = 'Én bolig eller fem. Lei ut selv med DigiHome som motor (5 % av husleien, ingen bindingstid) — eller la oss ta full forvaltning. Kontrakt med BankID, husleie med oppfølging og saker der du bare godkjenner.';
+const BESKRIVELSE = 'Én bolig eller fem. Lei ut selv, med et system som tar rutinen (5 % av husleien, ingen bindingstid) — eller la en fast forvalter hos oss ta full forvaltning. Kontrakt med BankID, husleie som følges opp automatisk, saker du godkjenner.';
 
 export const metadata = {
   title: TITTEL,

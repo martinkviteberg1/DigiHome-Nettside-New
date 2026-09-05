@@ -476,7 +476,7 @@ export default function HeroScene({ eiendom }) {
 
             {/* Footer i bunnen — ingen løs bildetekst under scenen */}
             <div className="mt-auto flex items-center justify-between gap-4 pt-4 text-[13.5px] text-[#15130F]/50" style={{ opacity: ferdig ? 1 : 0, transition: `opacity 600ms ${EASE}` }} aria-hidden={!ferdig}>
-              <span data-testid="v4-scene-tekst">Én godkjenning. Resten gjorde DigiHome.</span>
+              <span data-testid="v4-scene-tekst">Én godkjenning. Resten gikk på autopilot.</span>
               <button type="button" onClick={replay} className="shrink-0 underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" style={{ pointerEvents: ferdig ? 'auto' : 'none' }} tabIndex={ferdig ? 0 : -1} data-testid="v4-replay">Spill igjen</button>
             </div>
           </div>
