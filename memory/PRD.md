@@ -1037,3 +1037,14 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   Blokk fra 62 % av bredden (den lyse veggen). Kamera: `pushVed 10.8 s` (filmen skalerer 1→1.07 over 4,4 s) → `hjemVed 11.95 s`/`ended`
   → stua inn (opacity 1,6 s, ramme 1→1.03) → **Ken Burns 1→1.055 over 16 s (ease-out)**. Scenen har `role="group"` (ikke img) fordi den
   inneholder knapp og adressefelt. Nav-innholdet følger scenens kanter på desktop (`lg:w-[calc(100%-64px)] lg:px-0`).
+- **OG/lenkeforhåndsvisning:** iMessage viste varmtvannsbereder (fallback til tilfeldig bilde da dynamisk /opengraph-image ikke
+  ble hentet i tide). Nå **statisk** `/public/og/forside.jpg` (1200×630, filmens første bilde + hvit logo + «Utleie på autopilot.»),
+  rendret én gang via `renderOgFoto` i `lib/og-v4.js` (krever `eier-poster.jpg` ved siden av webp — Satori leser ikke webp).
+  Root `app/opengraph-image.js` + `twitter-image.js` slettet; `app/page.js` + `app/layout.js` peker på den statiske filen.
+  Undersider beholder egne opengraph-image.js. Merk: i dev viser og:image `http://localhost:3000` (kjent Next-dev-begrensning) —
+  riktig i prod/preview-build. iMessage cacher forhåndsvisninger — test med ny URL-variant (f.eks. `?v=2`).
+- **Start uten hakk:** historien (og filmen) starter når scenen er ≥ 50 % synlig OG filmen har `canplay/canplaythrough`
+  (`onKlar`), fallback 3 s. Ingen unødvendig `currentTime = 0`-seek ved første start.
+- **Klipp til stua:** ved `ended` + `hjemEtterMs` 800 (ikke lenger tidsstyrt 11,95 s). Push-in fra 10,8 s (1→1.08 over 5,2 s)
+  dekker pusten ved døren og dissolven. Fallback 6,5 s etter ferdig hvis `ended` aldri kommer.
+- **AdresseFelt `gjennomsiktig`:** frostet flate (rgba 251,250,248 @ 0.58 → 0.82 ved fokus, backdrop-blur 18px) for bruk på foto.

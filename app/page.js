@@ -9,7 +9,9 @@ export const metadata = {
   description: BESKRIVELSE,
   alternates: { canonical: '/' },
   /* Layoutens openGraph/twitter setter egen tittel/beskrivelse — overstyres her.
-     Bildet leveres av app/opengraph-image.js + twitter-image.js (1200×630, merkefonter). */
+     Bildet er statisk: /public/og/forside.jpg (1200×630, filmens første bilde + «Utleie på autopilot.»),
+     rendret én gang med lib/og-v4.js → renderOgFoto. Statisk fil = ingen kaldstart, ingen fallback til
+     tilfeldige bilder på siden (iMessage viste en varmtvannsbereder). */
   openGraph: {
     type: 'website',
     locale: 'nb_NO',
@@ -17,11 +19,13 @@ export const metadata = {
     title: TITTEL,
     description: BESKRIVELSE,
     url: '/',
+    images: [{ url: '/og/forside.jpg', width: 1200, height: 630, alt: 'DigiHome — Utleie på autopilot. Én godkjenning, resten gjorde DigiHome.' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: TITTEL,
     description: BESKRIVELSE,
+    images: ['/og/forside.jpg'],
   },
 };
 

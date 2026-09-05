@@ -40,8 +40,9 @@ export const FILM = {
   /* Sekundet der han fortsatt leser — rett før telefonen går i lommen. Har du ikke trykket, trykker historien her. */
   trykkVed: 7.4,
   /* Sekundet der han går inn: her begynner overgangen til stua — mens filmen fortsatt beveger seg. Aldri på et frosset bilde. */
-  hjemVed: 11.95,
-  /* Litt før: kameraet begynner å gå sakte inn mot døren — bevegelsen fortsetter uavbrutt gjennom klippet til stua. */
+  /* Klippet til stua skjer når filmen er ferdig (`ended`) + `hjemEtterMs` — han har nådd døren, kameraet er
+     fortsatt i bevegelse (push-in fra `pushVed`), så det finnes aldri et stille bilde å klippe fra. */
+  hjemEtterMs: 800,
   pushVed: 10.8,
   once: true,
 };
@@ -96,7 +97,7 @@ function HakeIkon({ className = '' }) {
 /* Virkeligheten: film hvis den finnes, ellers foto. Ett bilde/én film i DOM — pluss stillbildet
    filmen glir over i når historien er ferdig (han hjemme). Filmen spiller én gang, fra det
    historien starter, og hviler på siste bilde (han ved døren) til du har godkjent. Aldri frys midt i. */
-function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, hjemme, pusher, onFilmFerdig, onTid }) {
+function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, hjemme, pusher, onFilmFerdig, onTid, onKlar }) {
   const vidRef = useRef(null);
 
   /* Filmen starter når historien starter — ikke før (så bilde og tekst følger hverandre). */
@@ -104,9 +105,23 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
     const v = vidRef.current;
     if (!v || !film) return;
     if (fase === 'foto' && kjorer) {
-      try { v.currentTime = 0; v.play().catch(() => {}); } catch (e) { /* ok */ }
+      try {
+        if (v.currentTime > 0.05 || v.ended) v.currentTime = 0;   // bare spol når vi faktisk starter på nytt
+        v.play().catch(() => {});
+      } catch (e) { /* ok */ }
     }
   }, [fase, kjorer, film]);
+
+  /* Klar = nok data til å spille uten stopp. Sjekk også umiddelbart (kan være bufret fra før). */
+  useEffect(() => {
+    const v = vidRef.current;
+    if (!v || !film || !onKlar) return undefined;
+    if (v.readyState >= 3) { onKlar(); return undefined; }
+    const f = () => onKlar();
+    v.addEventListener('canplaythrough', f);
+    v.addEventListener('canplay', f);
+    return () => { v.removeEventListener('canplaythrough', f); v.removeEventListener('canplay', f); };
+  }, [film, onKlar]);
 
   const pos = egen ? '50% 50%' : (smal ? bilde.posSmal : bilde.pos);
   const felles = {
@@ -131,7 +146,7 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
         <video
           ref={vidRef}
           {...felles}
-          style={{ ...felles.style, transform: (hjemme || pusher) ? 'scale(1.07)' : 'scale(1)', transition: (hjemme || pusher) ? 'transform 4400ms cubic-bezier(0.25, 0.1, 0.25, 1)' : 'transform 0ms linear' }}
+          style={{ ...felles.style, transform: (hjemme || pusher) ? 'scale(1.08)' : 'scale(1)', transition: (hjemme || pusher) ? 'transform 5200ms cubic-bezier(0.3, 0.1, 0.3, 1)' : 'transform 0ms linear' }}
           poster={smal && film.posterSmal ? film.posterSmal : film.poster}
           muted
           loop={!film.once}
@@ -193,13 +208,25 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   const smal = useSmal();
   const redusert = useRedusert();
   const bildet = BILDER[bilde] || BILDER.stue;
-  const synlig = useSynlig(ref, smal ? 0.55 : 0.3);
-  const { fase, er, ferdig, replay, videre, kjorer, holder } = useSekvens(FASER, synlig);
+  const [egen, setEgen] = useState(null);           // URL til Street View når den finnes
+  /* Historien starter når scenen er godt inne i bildet (halve scenen) OG filmen er klar til å spille uten stopp —
+     så første bilde aldri hakker. Blir ikke filmen klar (treg linje), starter vi likevel etter 3 s. */
+  const synlig = useSynlig(ref, smal ? 0.55 : 0.5);
+  const [filmKlar, setFilmKlar] = useState(false);
+  const onFilmKlar = useCallback(() => setFilmKlar(true), []);
+  const [ventetUt, setVentetUt] = useState(false);
+  useEffect(() => {
+    if (!synlig || filmKlar) return undefined;
+    const t = window.setTimeout(() => setVentetUt(true), 3000);
+    return () => window.clearTimeout(t);
+  }, [synlig, filmKlar]);
+  const harFilm = !!film && !egen;
+  const start = synlig && (!harFilm || filmKlar || ventetUt);
+  const { fase, er, ferdig, replay, videre, kjorer, holder } = useSekvens(FASER, start);
 
   /* ── Din adresse → din bolig. Street View via egen proxy når panoramaet er nært nok.
         Byttet skjer sekvensielt: fade ut → bytt → spill fra frame 1. ── */
   const [vist, setVist] = useState(null);
-  const [egen, setEgen] = useState(null);           // URL til Street View når den finnes
   const [skifter, setSkifter] = useState(false);
   const sisteNokkel = useRef(null);
   useEffect(() => {
@@ -262,8 +289,10 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   const kanHjem = !!film && !egen;   // uten film (eller med din egen bolig fra Street View) blir panelet stående
   useEffect(() => {
     if (!ferdig || !kanHjem) return undefined;
-    if (redusert || filmFerdig) { setHjemme(true); return undefined; }
-    const t = window.setTimeout(() => setHjemme(true), 5200);
+    if (redusert) { setHjemme(true); return undefined; }
+    /* Filmen er ferdig → liten pust ved døren (kameraet beveger seg fortsatt) → stua. */
+    if (filmFerdig) { const t = window.setTimeout(() => setHjemme(true), film.hjemEtterMs ?? 800); return () => window.clearTimeout(t); }
+    const t = window.setTimeout(() => setHjemme(true), 6500);
     return () => window.clearTimeout(t);
   }, [ferdig, filmFerdig, kanHjem, redusert]);
   const inne = er('rad1') && !hjemme;
@@ -303,8 +332,6 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   const onTid = useCallback((t) => {
     if (film && film.trykkVed && t >= film.trykkVed) godkjenn('kari');
     if (film && film.pushVed && kanHjem && ferdig && t >= film.pushVed) setPusher(true);
-    /* Overgangen hjem starter i det han går inn — bevegelsen fortsetter gjennom klippet. */
-    if (film && film.hjemVed && kanHjem && ferdig && t >= film.hjemVed) setHjemme(true);
   }, [film, godkjenn, kanHjem, ferdig]);
   /* Uten film (eller om autoplay er blokkert) trykker historien selv etter en liten stund i hold. */
   useEffect(() => {
@@ -329,7 +356,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
         data-testid="v4-scene"
       >
         {/* ── Virkeligheten ── */}
-        <Virkelighet film={film} bilde={bildet} smal={smal} kjorer={kjorer} ferdig={ferdig} redusert={redusert} egen={egen} fase={fase} hjemme={hjemme} pusher={pusher} onFilmFerdig={onFilmFerdig} onTid={onTid} />
+        <Virkelighet film={film} bilde={bildet} smal={smal} kjorer={kjorer} ferdig={ferdig} redusert={redusert} egen={egen} fase={fase} hjemme={hjemme} pusher={pusher} onFilmFerdig={onFilmFerdig} onTid={onTid} onKlar={onFilmKlar} />
 
         {/* Filmen vises først helt ren. Når dagen begynner, dempes bildet — lett, filmen skal fortsatt sees. Slipper igjen hjemme. */}
         <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.38) 0%, rgba(21,18,15,0.14) 40%, rgba(21,18,15,0.02) 62%, rgba(21,18,15,0.24) 100%)', opacity: inne ? 1 : 0, transition: `opacity ${hjemme ? 900 : 1400}ms ${EASE}` }} />
@@ -380,7 +407,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
 
                 {/* Neste steg er ett felt unna. */}
                 <div className="mt-6 max-w-[520px] sm:mt-8" style={linje(5.5)}>
-                  <AdresseFelt variant="ink" />
+                  <AdresseFelt variant="ink" gjennomsiktig />
                   <div className="mt-3 flex items-center justify-between gap-4 text-[13px]" style={{ color: 'rgba(21,19,15,0.55)' }}>
                     <span className="hidden sm:inline">Se hva DigiHome gjør for din bolig.</span>
                     <button type="button" onClick={replay} className="underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" tabIndex={hjemme ? 0 : -1} data-testid="v4-replay">Spill igjen</button>

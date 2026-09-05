@@ -39,13 +39,15 @@ export const metadata = {
     siteName: 'DigiHome',
     title: 'DigiHome | Automatisert utleie i Bergen',
     description: site.defaultDescription,
-    // og:image leveres av app/opengraph-image.js (dynamisk, per side).
+    /* Statisk og:image (1200×630 JPG) — lynrask og pålitelig for iMessage/Slack/LinkedIn (ingen kaldstart, ingen
+       fallback til tilfeldige bilder på siden). Undersider med egen opengraph-image.js overstyrer. */
+    images: [{ url: '/og/forside.jpg', width: 1200, height: 630, alt: 'DigiHome — Utleie på autopilot. Én godkjenning, resten gjorde DigiHome.' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'DigiHome | Automatisert utleie i Bergen',
     description: site.defaultDescription,
-    // twitter:image leveres av app/twitter-image.js.
+    images: ['/og/forside.jpg'],
   },
   icons: {
     icon: [{ url: '/digihome-favicon.svg', type: 'image/svg+xml' }],

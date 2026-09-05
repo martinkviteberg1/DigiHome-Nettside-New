@@ -28,7 +28,7 @@ function postFraSub(sub = '') {
 }
 
 /* variant: 'lilla' (standard) eller 'ink' — mørk knapp, så lilla kan reserveres for «Godkjenn». */
-export default function AdresseFelt({ className = '', onValgt, variant = 'lilla' }) {
+export default function AdresseFelt({ className = '', onValgt, variant = 'lilla', gjennomsiktig = false }) {
   const ink = variant === 'ink';
   const router = useRouter();
   const [verdi, setVerdi] = useState('');
@@ -134,14 +134,18 @@ export default function AdresseFelt({ className = '', onValgt, variant = 'lilla'
 
   const ring = fokus
     ? (ink ? '0 0 0 1px rgba(21,19,15,0.55), 0 0 0 4px rgba(21,19,15,0.10)' : `0 0 0 1px ${T.lilla}, 0 0 0 4px rgba(212,150,255,0.22)`)
-    : 'inset 0 0 0 1px rgba(21,19,15,0.12)';
+    : gjennomsiktig ? 'inset 0 0 0 1px rgba(255,255,255,0.55), 0 0 0 1px rgba(21,19,15,0.08), 0 20px 40px -24px rgba(21,19,15,0.35)' : 'inset 0 0 0 1px rgba(21,19,15,0.12)';
+  /* Gjennomsiktig: feltet ligger på et fotografi — lys, frostet flate som lar bildet skinne gjennom. */
+  const flate = gjennomsiktig
+    ? { background: fokus ? 'rgba(251,250,248,0.82)' : 'rgba(251,250,248,0.58)', backdropFilter: 'blur(18px) saturate(1.15)', WebkitBackdropFilter: 'blur(18px) saturate(1.15)' }
+    : { background: '#FBFAF8' };
 
   return (
     <div ref={boksRef} className={`relative ${className}`} data-testid="v4-adressefelt">
       <form onSubmit={send} role="search" aria-label="Start med din adresse" className="relative">
         <div
           className="flex h-14 items-center rounded-[14px] pl-5 pr-1.5"
-          style={{ background: '#FBFAF8', boxShadow: ring, transition: `box-shadow 200ms ${EASE}` }}
+          style={{ ...flate, boxShadow: ring, transition: `box-shadow 200ms ${EASE}, background-color 200ms ${EASE}` }}
         >
           <input
             ref={inputRef}
