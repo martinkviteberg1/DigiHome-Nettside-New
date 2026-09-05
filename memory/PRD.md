@@ -1048,3 +1048,10 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - **Klipp til stua:** ved `ended` + `hjemEtterMs` 800 (ikke lenger tidsstyrt 11,95 s). Push-in fra 10,8 s (1→1.08 over 5,2 s)
   dekker pusten ved døren og dissolven. Fallback 6,5 s etter ferdig hvis `ended` aldri kommer.
 - **AdresseFelt `gjennomsiktig`:** frostet flate (rgba 251,250,248 @ 0.58 → 0.82 ved fokus, backdrop-blur 18px) for bruk på foto.
+- **«Frys + zoom» ved ~10,8 s = bufring** (Chrome pauser nedlasting når bufferen er «nok», og rakk ikke resten på treg linje —
+  push-in-zoomen fortsatte mens bildet sto). Fiks: filmen `fetch`-es helt ned som blob (2,5 MB / 1,2 MB) og spilles fra minnet
+  (`src=blob:`); fallback til strømming etter 5,5 s. `eier-1920.mp4` re-enkodet CRF 25 + faststart (2,9 → 2,56 MB).
+- **Film-frys, endelig fiks (verifisert med ekte avspilling, VP9 i headless Chromium — currentTime økte jevnt, ingen stall):**
+  (1) Filmen hentes som blob og spilles fra minnet. (2) **Ingen transform/zoom på `<video>` noen gang** («push-in» fjernet).
+  (3) Dissolven til stua starter ved `hjemVed = 11,45 s` (siste 0,6 s av filmen ligger under overgangen, 1,3 s), `ended` er reserve.
+  (4) `loopWebm` (VP9 1280) velges automatisk når nettleseren ikke kan H.264 (`canPlayType`).

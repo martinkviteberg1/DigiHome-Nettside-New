@@ -33,6 +33,8 @@ import AdresseFelt from './AdresseFelt';
 export const FILM = {
   loop: '/v4/video/eier-1920.mp4',
   loopSmal: '/v4/video/eier-1280.mp4',
+  /* VP9-kopi for nettlesere uten H.264 (enkelte Linux-Firefox/Chromium-bygg). */
+  loopWebm: '/v4/video/eier-1280.webm',
   poster: '/v4/video/eier-poster.webp',
   posterSmal: '/v4/video/eier-poster-mobil.webp',
   hjem: '/v4/video/eier-hjemme-1920.webp',
@@ -40,10 +42,10 @@ export const FILM = {
   /* Sekundet der han fortsatt leser — rett før telefonen går i lommen. Har du ikke trykket, trykker historien her. */
   trykkVed: 7.4,
   /* Sekundet der han går inn: her begynner overgangen til stua — mens filmen fortsatt beveger seg. Aldri på et frosset bilde. */
-  /* Klippet til stua skjer når filmen er ferdig (`ended`) + `hjemEtterMs` — han har nådd døren, kameraet er
-     fortsatt i bevegelse (push-in fra `pushVed`), så det finnes aldri et stille bilde å klippe fra. */
-  hjemEtterMs: 800,
-  pushVed: 10.8,
+  /* Dissolven til stua starter `hjemVed` — de siste 0,6 s av filmen (han tar det siste steget inn) ligger
+     under overgangen, så bildet beveger seg helt til stua har tatt over. Filmen selv rører vi aldri (ingen
+     transform/zoom på video-elementet). `ended` er reserve. */
+  hjemVed: 11.45,
   once: true,
 };
 
@@ -97,31 +99,65 @@ function HakeIkon({ className = '' }) {
 /* Virkeligheten: film hvis den finnes, ellers foto. Ett bilde/én film i DOM — pluss stillbildet
    filmen glir over i når historien er ferdig (han hjemme). Filmen spiller én gang, fra det
    historien starter, og hviler på siste bilde (han ved døren) til du har godkjent. Aldri frys midt i. */
-function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, hjemme, pusher, onFilmFerdig, onTid, onKlar }) {
+function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, hjemme, onFilmFerdig, onTid, onKlar }) {
   const vidRef = useRef(null);
+
+  /* Filmen hentes HELT ned først (2–3 MB) og spilles fra minnet — så den aldri stopper for å bufre midt i
+     (det så ut som «frys + zoom»). Kommer den ikke i mål på 5,5 s, strømmes den som vanlig. */
+  const filUrl = useMemo(() => {
+    if (!film) return null;
+    const mp4 = smal && film.loopSmal ? film.loopSmal : film.loop;
+    if (!film.loopWebm || typeof document === 'undefined') return mp4;
+    try {
+      const kan = document.createElement('video').canPlayType('video/mp4; codecs="avc1.640028"');
+      return kan ? mp4 : film.loopWebm;
+    } catch (e) { return mp4; }
+  }, [film, smal]);
+  const [src, setSrc] = useState(null);
+  useEffect(() => {
+    if (!filUrl || redusert) return undefined;
+    let objUrl = null;
+    let ferdigLastet = false;
+    const ctrl = new AbortController();
+    const fallback = window.setTimeout(() => { if (!ferdigLastet) setSrc(filUrl); }, 5500);
+    (async () => {
+      try {
+        const r = await fetch(filUrl, { signal: ctrl.signal });
+        if (!r.ok) throw new Error(String(r.status));
+        const b = await r.blob();
+        ferdigLastet = true;
+        window.clearTimeout(fallback);
+        objUrl = URL.createObjectURL(b);
+        setSrc(objUrl);
+      } catch (e) {
+        if (!ctrl.signal.aborted) { ferdigLastet = true; window.clearTimeout(fallback); setSrc(filUrl); }
+      }
+    })();
+    return () => { ctrl.abort(); window.clearTimeout(fallback); if (objUrl) URL.revokeObjectURL(objUrl); };
+  }, [filUrl, redusert]);
 
   /* Filmen starter når historien starter — ikke før (så bilde og tekst følger hverandre). */
   useEffect(() => {
     const v = vidRef.current;
-    if (!v || !film) return;
+    if (!v || !film || !src) return;
     if (fase === 'foto' && kjorer) {
       try {
         if (v.currentTime > 0.05 || v.ended) v.currentTime = 0;   // bare spol når vi faktisk starter på nytt
         v.play().catch(() => {});
       } catch (e) { /* ok */ }
     }
-  }, [fase, kjorer, film]);
+  }, [fase, kjorer, film, src]);
 
   /* Klar = nok data til å spille uten stopp. Sjekk også umiddelbart (kan være bufret fra før). */
   useEffect(() => {
     const v = vidRef.current;
-    if (!v || !film || !onKlar) return undefined;
+    if (!v || !film || !onKlar || !src) return undefined;
     if (v.readyState >= 3) { onKlar(); return undefined; }
     const f = () => onKlar();
     v.addEventListener('canplaythrough', f);
     v.addEventListener('canplay', f);
     return () => { v.removeEventListener('canplaythrough', f); v.removeEventListener('canplay', f); };
-  }, [film, onKlar]);
+  }, [film, onKlar, src]);
 
   const pos = egen ? '50% 50%' : (smal ? bilde.posSmal : bilde.pos);
   const felles = {
@@ -146,20 +182,19 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
         <video
           ref={vidRef}
           {...felles}
-          style={{ ...felles.style, transform: (hjemme || pusher) ? 'scale(1.08)' : 'scale(1)', transition: (hjemme || pusher) ? 'transform 5200ms cubic-bezier(0.3, 0.1, 0.3, 1)' : 'transform 0ms linear' }}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ objectPosition: pos }}
           poster={smal && film.posterSmal ? film.posterSmal : film.poster}
           muted
           loop={!film.once}
           playsInline
           preload="auto"
           aria-hidden="true"
+          src={src || undefined}
           onTimeUpdate={onTid ? (e) => onTid(e.currentTarget.currentTime) : undefined}
           onEnded={onFilmFerdig}
           data-testid="v4-film"
-        >
-          {film.loopWebm && <source src={film.loopWebm} type="video/webm" />}
-          <source src={smal && film.loopSmal ? film.loopSmal : film.loop} type="video/mp4" />
-        </video>
+        />
         {/* Fargebro: filmens kjølige kveld glir mot stuas varme før bildet kommer — det er slik en overgang blir usynlig. */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#E2C6A5', opacity: hjemme ? 0.5 : 0, transition: hjemme ? `opacity 900ms ${EASE}` : 'opacity 0ms linear' }} />
         {/* Stillbildet: han hjemme. Samme bevegelse gjennom klippet (inn, inn) — så pittelitt, nesten umerkelig drift. */}
@@ -170,7 +205,7 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
             style={{
               opacity: hjemme ? 1 : 0,
               transform: hjemme ? 'scale(1.03)' : 'scale(1)',
-              transition: hjemme ? `opacity 1600ms ${EASE}, transform 3600ms ${EASE}` : 'opacity 240ms linear, transform 0ms linear 240ms',
+              transition: hjemme ? `opacity 1300ms ${EASE}, transform 3600ms ${EASE}` : 'opacity 240ms linear, transform 0ms linear 240ms',
             }}
             data-testid="v4-film-hjem-ramme"
           >
@@ -217,7 +252,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   const [ventetUt, setVentetUt] = useState(false);
   useEffect(() => {
     if (!synlig || filmKlar) return undefined;
-    const t = window.setTimeout(() => setVentetUt(true), 3000);
+    const t = window.setTimeout(() => setVentetUt(true), 6500);
     return () => window.clearTimeout(t);
   }, [synlig, filmKlar]);
   const harFilm = !!film && !egen;
@@ -285,13 +320,12 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   const [filmFerdig, setFilmFerdig] = useState(false);
   const onFilmFerdig = useCallback(() => setFilmFerdig(true), []);
   const [hjemme, setHjemme] = useState(false);
-  const [pusher, setPusher] = useState(false);   // kameraet går sakte inn mot døren før klippet
   const kanHjem = !!film && !egen;   // uten film (eller med din egen bolig fra Street View) blir panelet stående
   useEffect(() => {
     if (!ferdig || !kanHjem) return undefined;
     if (redusert) { setHjemme(true); return undefined; }
     /* Filmen er ferdig → liten pust ved døren (kameraet beveger seg fortsatt) → stua. */
-    if (filmFerdig) { const t = window.setTimeout(() => setHjemme(true), film.hjemEtterMs ?? 800); return () => window.clearTimeout(t); }
+    if (filmFerdig) { setHjemme(true); return undefined; }
     const t = window.setTimeout(() => setHjemme(true), 6500);
     return () => window.clearTimeout(t);
   }, [ferdig, filmFerdig, kanHjem, redusert]);
@@ -326,12 +360,12 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
     window.setTimeout(() => { setPresser(false); setTrykket(true); }, 180);
     window.setTimeout(() => { videre(); }, 180 + 900);
   }, [trykket, presser, venter, videre]);
-  useEffect(() => { if (fase === 'foto') { setTrykket(false); setPresser(false); setHvem(null); setFilmFerdig(false); setHjemme(false); setPusher(false); } }, [fase]);
+  useEffect(() => { if (fase === 'foto') { setTrykket(false); setPresser(false); setHvem(null); setFilmFerdig(false); setHjemme(false); } }, [fase]);
 
   /* Filmen bestemmer når: rett før han legger telefonen i lommen trykker historien — hvis du ikke har gjort det. */
   const onTid = useCallback((t) => {
     if (film && film.trykkVed && t >= film.trykkVed) godkjenn('kari');
-    if (film && film.pushVed && kanHjem && ferdig && t >= film.pushVed) setPusher(true);
+    if (film && film.hjemVed && kanHjem && ferdig && t >= film.hjemVed) setHjemme(true);
   }, [film, godkjenn, kanHjem, ferdig]);
   /* Uten film (eller om autoplay er blokkert) trykker historien selv etter en liten stund i hold. */
   useEffect(() => {
@@ -356,7 +390,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
         data-testid="v4-scene"
       >
         {/* ── Virkeligheten ── */}
-        <Virkelighet film={film} bilde={bildet} smal={smal} kjorer={kjorer} ferdig={ferdig} redusert={redusert} egen={egen} fase={fase} hjemme={hjemme} pusher={pusher} onFilmFerdig={onFilmFerdig} onTid={onTid} onKlar={onFilmKlar} />
+        <Virkelighet film={film} bilde={bildet} smal={smal} kjorer={kjorer} ferdig={ferdig} redusert={redusert} egen={egen} fase={fase} hjemme={hjemme} onFilmFerdig={onFilmFerdig} onTid={onTid} onKlar={onFilmKlar} />
 
         {/* Filmen vises først helt ren. Når dagen begynner, dempes bildet — lett, filmen skal fortsatt sees. Slipper igjen hjemme. */}
         <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.38) 0%, rgba(21,18,15,0.14) 40%, rgba(21,18,15,0.02) 62%, rgba(21,18,15,0.24) 100%)', opacity: inne ? 1 : 0, transition: `opacity ${hjemme ? 900 : 1400}ms ${EASE}` }} />
