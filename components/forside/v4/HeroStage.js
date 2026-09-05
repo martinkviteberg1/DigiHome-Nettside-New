@@ -37,7 +37,9 @@ export const FILM = {
   hjem: '/v4/video/eier-hjemme-1920.webp',
   hjemSmal: '/v4/video/eier-hjemme-mobil.webp',
   /* Sekundet der han fortsatt leser — rett før telefonen går i lommen. Har du ikke trykket, trykker historien her. */
-  trykkVed: 7.9,
+  trykkVed: 7.4,
+  /* Sekundet der han går inn: her begynner overgangen til stua — mens filmen fortsatt beveger seg. Aldri på et frosset bilde. */
+  hjemVed: 10.2,
   once: true,
 };
 
@@ -150,7 +152,7 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
             style={{
               opacity: hjemme ? 1 : 0,
               transform: hjemme ? 'scale(1.04)' : 'scale(1)',
-              transition: hjemme ? `opacity 1900ms ${EASE} 450ms, transform 3000ms ${EASE} 450ms` : 'opacity 240ms linear, transform 0ms linear 240ms',
+              transition: hjemme ? `opacity 1800ms ${EASE} 300ms, transform 3000ms ${EASE} 300ms` : 'opacity 240ms linear, transform 0ms linear 240ms',
             }}
             data-testid="v4-film-hjem-ramme"
           >
@@ -256,7 +258,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   const kanHjem = !!film && !egen;   // uten film (eller med din egen bolig fra Street View) blir panelet stående
   useEffect(() => {
     if (!ferdig || !kanHjem) return undefined;
-    if (redusert || filmFerdig) { const t = window.setTimeout(() => setHjemme(true), redusert ? 0 : 350); return () => window.clearTimeout(t); }
+    if (redusert || filmFerdig) { setHjemme(true); return undefined; }
     const t = window.setTimeout(() => setHjemme(true), 5200);
     return () => window.clearTimeout(t);
   }, [ferdig, filmFerdig, kanHjem, redusert]);
@@ -294,7 +296,11 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   useEffect(() => { if (fase === 'foto') { setTrykket(false); setPresser(false); setHvem(null); setFilmFerdig(false); setHjemme(false); } }, [fase]);
 
   /* Filmen bestemmer når: rett før han legger telefonen i lommen trykker historien — hvis du ikke har gjort det. */
-  const onTid = useCallback((t) => { if (film && film.trykkVed && t >= film.trykkVed) godkjenn('kari'); }, [film, godkjenn]);
+  const onTid = useCallback((t) => {
+    if (film && film.trykkVed && t >= film.trykkVed) godkjenn('kari');
+    /* Overgangen hjem starter mens han går inn — filmen løper under hele dissolven. */
+    if (film && film.hjemVed && kanHjem && ferdig && t >= film.hjemVed) setHjemme(true);
+  }, [film, godkjenn, kanHjem, ferdig]);
   /* Uten film (eller om autoplay er blokkert) trykker historien selv etter en liten stund i hold. */
   useEffect(() => {
     if (!venter || trykket || presser) return undefined;
