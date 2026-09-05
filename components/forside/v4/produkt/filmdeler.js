@@ -215,7 +215,7 @@ export function Tekstbytte({ id, ov, children, className = '' }) {
 }
 
 /* ── Fremdrift — stille streker ── */
-export function Fyll({ aktiv, gjort, dur }) {
+export function Fyll({ aktiv, gjort, dur, morkt = false }) {
   const [full, setFull] = useState(false);
   useEffect(() => {
     if (!aktiv) { setFull(false); return undefined; }
@@ -224,18 +224,18 @@ export function Fyll({ aktiv, gjort, dur }) {
     return () => { window.cancelAnimationFrame(id); window.cancelAnimationFrame(id2); };
   }, [aktiv]);
   const bredde = gjort ? '100%' : aktiv && full ? '100%' : '0%';
-  return <span className="absolute inset-y-0 left-0 rounded-full" style={{ background: aktiv ? T.lilla : 'rgba(21,19,15,0.35)', width: bredde, transition: aktiv && full ? `width ${dur}ms linear` : 'none' }} />;
+  return <span className="absolute inset-y-0 left-0 rounded-full" style={{ background: aktiv ? T.lilla : morkt ? 'rgba(244,241,234,0.7)' : 'rgba(21,19,15,0.35)', width: bredde, transition: aktiv && full ? `width ${dur}ms linear` : 'none' }} />;
 }
 
-/* Én strek per akt. `varighet(i)` = aktens lengde i ms, `navn(i)` = aria-label. */
-export function Akter({ antall, aktiv, varighet, onVelg, navn }) {
+/* Én strek per akt. `varighet(i)` = aktens lengde i ms, `navn(i)` = aria-label. `morkt` = på mørk flate. */
+export function Akter({ antall, aktiv, varighet, onVelg, navn, morkt = false }) {
   return (
     <ol className="flex items-center gap-2" aria-label="Akter" data-testid="v4-akter">
       {Array.from({ length: antall }, (_, i) => (
         <li key={i}>
           <button type="button" onClick={() => onVelg(i)} aria-label={navn(i)} aria-current={i === aktiv ? 'step' : undefined} className="block py-3 focus-visible:outline-none" data-testid={`v4-akt-${i}`}>
-            <span className="relative block h-[2px] w-7 overflow-hidden rounded-full" style={{ background: 'rgba(21,19,15,0.12)' }}>
-              <Fyll aktiv={i === aktiv} gjort={i < aktiv} dur={varighet(i)} />
+            <span className="relative block h-[2px] w-7 overflow-hidden rounded-full" style={{ background: morkt ? 'rgba(244,241,234,0.22)' : 'rgba(21,19,15,0.12)', transition: `background-color 900ms ${EASE}` }}>
+              <Fyll aktiv={i === aktiv} gjort={i < aktiv} dur={varighet(i)} morkt={morkt} />
             </span>
           </button>
         </li>

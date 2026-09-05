@@ -42,6 +42,19 @@ PROMPTS = {
         "the two wall lanterns, the balcony, the street lamp, the dusk sky tone, camera position, perspective, framing, aspect ratio and color grading. "
         "Do not add people, cars, text or objects. Photorealistic, seamless."
     ),
+    "natt": (
+        "Edit this exact photograph of the building facade into LATE EVENING, around 22:40. Make the sky a deep, dark blue night sky and the overall scene darker and calmer, "
+        "like a real long-exposure night photo. The street lamp and the two wall lanterns by the entrance are lit with warm light. "
+        "IMPORTANT: only ONE window is lit from inside — the large ground-floor window at the far right of the facade (the one with warm interior light) — keep it glowing warm. "
+        "ALL other windows are dark (no interior light, just faint reflections). Keep EVERYTHING else pixel-identical: the same building, entrance door, steps, balcony, "
+        "pavement, camera position, perspective, framing, aspect ratio. No people, cars, text or new objects. Photorealistic, seamless, cinematic but natural."
+    ),
+    "morgen": (
+        "Edit this exact photograph of the building facade into a bright, calm MORNING, around 09:40 on a clear day. Soft natural daylight, a pale blue sky with a hint of "
+        "warm morning sun on the facade, gentle shadows. All interior lights are OFF (windows show daylight reflections, no warm glow), the street lamp and wall lanterns are off. "
+        "Keep EVERYTHING else pixel-identical: the same building, windows, entrance door, steps, balcony, pavement, camera position, perspective, framing, aspect ratio. "
+        "No people, cars, text or new objects. Photorealistic, seamless, natural color grading."
+    ),
     "tomt": (
         "Edit this exact interior photograph into a realistic EMPTY-room photograph of the same apartment. Remove all movable furniture and loose objects. "
         "Keep walls, floor, windows, fixed lamps, perspective, camera position, lighting and aspect ratio identical. Photorealistic."

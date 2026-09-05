@@ -39,6 +39,15 @@ export const FILM = {
   posterSmal: '/v4/video/eier-poster-mobil.webp',
   hjem: '/v4/video/eier-hjemme-1920.webp',
   hjemSmal: '/v4/video/eier-hjemme-mobil.webp',
+  /* Sluttbildet lever: han i sofaen, kvelden er hans. Sømløs 14 s loop (scripts/lag-hjemme-loop.py) — H.264 1920/1280,
+     VP9 som reserve, første bilde som poster. Stillbildene over brukes ved redusert bevegelse. */
+  hjemVideo: '/v4/video/eier-hjemme-loop-1920.mp4?v=2',
+  hjemVideoSmal: '/v4/video/eier-hjemme-loop-1280.mp4?v=2',
+  hjemVideoWebm: '/v4/video/eier-hjemme-loop-1280.webm?v=2',
+  hjemPoster: '/v4/video/eier-hjemme-loop-poster.webp?v=2',
+  /* direkte: heroen åpner rett i sofaen — ingen gåtur, ingen panelhistorie. Loopen er scenen fra første bilde;
+     tekst og feeden fra mobilen kommer inn i rolig rekkefølge. (Din adresse → Street View-flyten er som før.) */
+  direkte: true,
   /* Sekundet der han fortsatt leser — rett før telefonen går i lommen. Har du ikke trykket, trykker historien her. */
   trykkVed: 7.4,
   /* Filmen er 12,04 s og slutter med ham på trappen foran døren. Dissolven til stua starter `hjemVed` — så sent at
@@ -48,6 +57,123 @@ export const FILM = {
   hjemVed: 11.9,
   once: true,
 };
+
+/* ---------------------------------------------------------------------------
+   Telefonstrøm — det som skjer i DigiHome-appen mens han sitter i sofaen.
+   En glassflate «projiseres» opp fra telefonen hans, bundet til skjermen med
+   én hårlinje: DigiHome-feeden. Hvert tredje sekund kommer en ny hendelse inn
+   øverst (husleie inn, Emma bekrefter, faktura bokført …), de eldre glir ned,
+   den eldste slipper — og en stille ring treffer skjermen. Ingen fingre å
+   synkronisere mot; rytmen er systemets.
+
+   Telefonen ligger på ~(33 %, 50 %) av filmbildet (30:17). Scenen har et
+   annet format (1.92:1 / 4:5.6) og filmen dekker (object-cover), så punktet
+   regnes om fra scenens målte størrelse. Kun transform/opacity (+ animert
+   grid-template-rows på radene).
+--------------------------------------------------------------------------- */
+const TELEFON = { x: 0.33, y: 0.503 };      // toppen av skjermen, i filmens koordinater
+const FILM_ASPEKT = 30 / 17;
+/* Rekkefølgen følger veggen: Annonse → Kontrakt → Økonomi → Drift. Ingen beløp, ingen «forfaller». */
+const STROM = [
+  { id: 'visning', t: 'Visning booket', u: 'Lørdag 12:00 · 2 påmeldte', ikon: 'prikk' },
+  { id: 'kontrakt', t: 'Kontrakt signert', u: 'Leilighet 3 · BankID', ikon: 'hake' },
+  { id: 'regnskap', t: 'Regnskapet er ført', u: 'September · 8 av 8 betalt', ikon: 'hake' },
+  { id: 'emma', t: 'Emma bekreftet', u: '«Varmt vann igjen. Takk!»', bilde: '/v4/annonse/leietaker-emma.webp' },
+];
+const STROM_START = 2400; const STROM_TAKT = 3000; const STROM_ETTER = 1300;
+const STROM_TID = ['nå', '3 min', '9 min', '14 min'];
+
+function StromIkon({ m }) {
+  if (m.bilde) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={m.bilde} alt="" width={26} height={26} className="h-[26px] w-[26px] shrink-0 rounded-full object-cover" draggable={false} />;
+  }
+  if (m.ikon === 'hake') return <span className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(31,157,85,0.14)', color: '#166B3C' }}><svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5l3 3 6-6.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg></span>;
+  return <span className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(212,150,255,0.24)' }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} /></span>;
+}
+
+function Telefonstrom({ hjemme, redusert, smal, puls }) {
+  const ref = useRef(null);
+  const [maal, setMaal] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = ref.current; if (!el) return undefined;
+    const f = () => setMaal({ w: el.offsetWidth, h: el.offsetHeight });
+    f();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(f) : null;
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, []);
+  /* Hendelsene følger veggfortellingen: `puls` øker én gang per beat, og hendelsen kommer opp av telefonen litt
+     etter at veggen har sagt det (STROM_ETTER). Uten puls (Street View-flyten) går strømmen i egen takt. */
+  const [n, setN] = useState(-1);
+  useEffect(() => {
+    if (!hjemme || redusert) { setN(-1); return undefined; }
+    if (puls === null) return undefined;               // synkronisert, men veggen har ikke sagt noe enda (eller siste beat)
+    if (puls !== undefined) {
+      const t = window.setTimeout(() => setN(puls), STROM_ETTER);
+      return () => window.clearTimeout(t);
+    }
+    let id = 0;
+    const t = window.setTimeout(() => { setN(0); id = window.setInterval(() => setN((k) => k + 1), STROM_TAKT); }, STROM_START);
+    return () => { window.clearTimeout(t); if (id) window.clearInterval(id); };
+  }, [hjemme, redusert, puls]);
+
+  /* Filmpunkt → scenepunkt (object-cover, sentrert) */
+  const A = maal.w && maal.h ? maal.w / maal.h : FILM_ASPEKT;
+  const px = A >= FILM_ASPEKT ? TELEFON.x : 0.5 + (TELEFON.x - 0.5) * (FILM_ASPEKT / A);
+  const py = A >= FILM_ASPEKT ? 0.5 + (TELEFON.y - 0.5) * (A / FILM_ASPEKT) : TELEFON.y;
+  const X = px * maal.w; const Y = py * maal.h;
+  const B = smal ? 212 : 252;
+  /* Flaten står opp og til høyre for skjermen — over skulderen, aldri over ansiktet. Bunnen bindes til skjermen. */
+  const fx = X + (smal ? 16 : Math.round(maal.w * 0.034)); const fy = Y - (smal ? 26 : Math.round(maal.h * 0.042));
+  const inne = n >= 0;
+  const rader = inne ? [n, n - 1, n - 2, n - 3].filter((k) => k >= 0) : [];
+
+  return (
+    <div ref={ref} aria-hidden="true" className="pointer-events-none absolute inset-0 z-[3] overflow-hidden" data-testid="v4-telefonstrom" data-n={n}>
+      {maal.w > 0 && hjemme && !redusert && (
+        <>
+          {/* Ringen på skjermen — hver gang noe nytt kommer */}
+          {inne && <span key={`ring-${n}`} className="absolute h-3 w-3 rounded-full" style={{ left: X - 6, top: Y - 6, boxShadow: '0 0 0 1.5px rgba(251,250,248,0.9)', animation: 'v4-ping 1300ms cubic-bezier(0.2, 0.6, 0.2, 1) forwards', opacity: 0 }} />}
+          {/* Hårlinjen fra skjermen opp til flatens nedre venstre hjørne */}
+          <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${maal.w} ${maal.h}`} preserveAspectRatio="none" style={{ opacity: inne ? 1 : 0, transition: `opacity 500ms ${EASE} 300ms` }}>
+            <line x1={X + 4} y1={Y - 2} x2={fx + 16} y2={fy + 1} stroke="rgba(251,250,248,0.6)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+            <circle cx={X + 4} cy={Y - 2} r="2" fill="rgba(251,250,248,0.95)" />
+          </svg>
+          {/* Flaten */}
+          <div className="absolute" style={{ left: fx, bottom: maal.h - fy, width: B, transformOrigin: '0% 100%', opacity: inne ? 1 : 0, transform: inne ? 'translateY(0px) scale(1)' : 'translateY(14px) scale(0.94)', transition: `opacity 600ms ${EASE} 500ms, transform 800ms cubic-bezier(0.2, 0.7, 0.2, 1) 500ms`, willChange: 'transform, opacity' }} data-testid="v4-strom-flate">
+            <div className="overflow-hidden rounded-[18px] px-3 pb-2 pt-2.5" style={{ background: smal ? 'rgba(251,250,248,0.94)' : 'rgba(251,250,248,0.80)', backdropFilter: smal ? 'none' : 'blur(14px) saturate(1.2)', WebkitBackdropFilter: smal ? 'none' : 'blur(14px) saturate(1.2)', color: T.ink, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.75), 0 24px 60px -24px rgba(0,0,0,0.6), 0 2px 10px -2px rgba(0,0,0,0.25)' }}>
+              <div className="flex items-center justify-between px-0.5 text-[10.5px] font-medium" style={{ color: 'rgba(21,19,15,0.55)' }}>
+                <span className="inline-flex items-center gap-1.5">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/brand/digihome-icon-purple.svg" alt="" width={12} height={12} className="h-3 w-3" draggable={false} />DigiHome</span>
+                <span>Nygårdsgaten 5</span>
+              </div>
+              <div className="mt-1">
+                {rader.map((k, i) => {
+                  const m = STROM[k % STROM.length];
+                  const ut = i === 3;
+                  return (
+                    <div key={k} className="grid" style={{ gridTemplateRows: ut ? '0fr' : '1fr', opacity: ut ? 0 : 1, transition: `grid-template-rows 600ms ${EASE}, opacity 400ms ${EASE}`, animation: i === 0 ? `v4-feed-inn 650ms cubic-bezier(0.2, 0.7, 0.2, 1) both` : 'none' }} data-testid={`v4-strom-${m.id}`}>
+                      <div className="min-h-0 overflow-hidden">
+                        <div className="flex items-center gap-2.5 py-2" style={{ borderTop: i === 0 ? '1px solid transparent' : '1px solid rgba(21,19,15,0.07)' }}>
+                          <StromIkon m={m} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[12.5px] font-medium leading-[1.25]">{m.t}</span>
+                            <span className="block truncate text-[11px] leading-[1.3]" style={{ color: 'rgba(21,19,15,0.56)' }}>{m.u}</span>
+                          </span>
+                          <span className="shrink-0 text-[10.5px] tabular-nums" style={{ color: 'rgba(21,19,15,0.45)' }}>{STROM_TID[i] || ''}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 /* Midlertidig scene til footagen finnes. 'stue' = hjemme hos eieren (nærmest filmkonseptet). 'bygg' = boligen. */
 const BILDER = {
@@ -99,8 +225,25 @@ function HakeIkon({ className = '' }) {
 /* Virkeligheten: film hvis den finnes, ellers foto. Ett bilde/én film i DOM — pluss stillbildet
    filmen glir over i når historien er ferdig (han hjemme). Filmen spiller én gang, fra det
    historien starter, og hviler på siste bilde (han ved døren) til du har godkjent. Aldri frys midt i. */
-function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, hjemme, onFilmFerdig, onTid, onKlar }) {
+function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, hjemme, direkte = false, onFilmFerdig, onTid, onKlar }) {
   const vidRef = useRef(null);
+  const hjemRef = useRef(null);
+
+  /* Loopen hjemme: hentes først når historien er i gang (så den ikke konkurrerer med filmen om båndbredden),
+     og spilles fra start idet stua kommer opp av mørket. Ingen transform på selve video-elementet.
+     I direkte-modus er loopen selve scenen: hentes og spilles fra første stund. */
+  useEffect(() => {
+    const v = hjemRef.current;
+    if (!v || !film?.hjemVideo || redusert) return;
+    if ((kjorer || direkte) && v.preload !== 'auto') { try { v.preload = 'auto'; v.load(); } catch (e) { /* ok */ } }
+  }, [kjorer, direkte, film, redusert]);
+  useEffect(() => {
+    const v = hjemRef.current;
+    if (!v || !film?.hjemVideo || redusert) return;
+    try {
+      if (hjemme || direkte) { if (!direkte && v.currentTime > 0.05) v.currentTime = 0; v.play().catch(() => {}); } else if (!v.paused) v.pause();
+    } catch (e) { /* ok */ }
+  }, [hjemme, direkte, film, redusert]);
 
   /* Filmen ligger i HTML-en fra serveren (<source> med media/type) — nettleseren begynner å hente den idet
      siden parses, lenge før React er hydrert. Ingen fetch→blob først (det var 2–3 MB å vente på før første
@@ -149,59 +292,80 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
       // eslint-disable-next-line @next/next/no-img-element
       return <img src={hjem || film.poster} alt="" {...felles} style={{ ...felles.style, objectPosition: '50% 50%' }} />;
     }
+    const visHjem = direkte || hjemme;
     return (
       <>
-        <video
-          ref={vidRef}
-          {...felles}
-          className="absolute inset-0 h-full w-full object-cover"
-          style={{ objectPosition: pos }}
-          poster={smal && film.posterSmal ? film.posterSmal : film.poster}
-          muted
-          loop={!film.once}
-          playsInline
-          preload="auto"
-          aria-hidden="true"
-          onTimeUpdate={onTid ? (e) => onTid(e.currentTarget.currentTime) : undefined}
-          onEnded={onFilmFerdig}
-          data-testid="v4-film"
-        >
-          {/* Nettleseren velger: smal skjerm → 1280, ellers 1920. Uten H.264 (enkelte Linux-bygg) → VP9. */}
-          {film.loopSmal ? <source src={film.loopSmal} type='video/mp4; codecs="avc1.640028"' media="(max-width: 639px)" /> : null}
-          <source src={film.loop} type='video/mp4; codecs="avc1.640028"' />
-          {film.loopWebm ? <source src={film.loopWebm} type="video/webm" /> : null}
-        </video>
-        {/* Stillbildet: han hjemme. Ligger under dyppet; kommer opp av mørket med et lite «setter seg» (1.05 → 1) og et varmt
-            lysoverskudd som stilner — som når du kommer inn fra kvelden og øynene venner seg til lyset. Så en nesten
-            umerkelig drift i 16 s. */}
+        {!direkte && (
+          <video
+            ref={vidRef}
+            {...felles}
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ objectPosition: pos }}
+            poster={smal && film.posterSmal ? film.posterSmal : film.poster}
+            muted
+            loop={!film.once}
+            playsInline
+            preload="auto"
+            aria-hidden="true"
+            onTimeUpdate={onTid ? (e) => onTid(e.currentTarget.currentTime) : undefined}
+            onEnded={onFilmFerdig}
+            data-testid="v4-film"
+          >
+            {/* Nettleseren velger: smal skjerm → 1280, ellers 1920. Uten H.264 (enkelte Linux-bygg) → VP9. */}
+            {film.loopSmal ? <source src={film.loopSmal} type='video/mp4; codecs="avc1.640028"' media="(max-width: 639px)" /> : null}
+            <source src={film.loop} type='video/mp4; codecs="avc1.640028"' />
+            {film.loopWebm ? <source src={film.loopWebm} type="video/webm" /> : null}
+          </video>
+        )}
+        {/* Stua: han hjemme. Etter filmen kommer den opp av mørket med et lite «setter seg» (1.05 → 1) og et varmt
+            lysoverskudd som stilner. I direkte-modus står den der fra første bilde. */}
         {hjem ? (
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 will-change-transform"
             style={{
-              opacity: hjemme ? 1 : 0,
-              transform: hjemme ? 'scale(1)' : 'scale(1.05)',
-              transition: hjemme ? `opacity 420ms linear 380ms, transform 3000ms ${EASE} 520ms` : 'opacity 240ms linear, transform 0ms linear 240ms',
+              opacity: visHjem ? 1 : 0,
+              transform: visHjem ? 'scale(1)' : 'scale(1.05)',
+              transition: direkte ? 'none' : visHjem ? `opacity 420ms linear 380ms, transform 3000ms ${EASE} 520ms` : 'opacity 240ms linear, transform 0ms linear 240ms',
             }}
             data-testid="v4-film-hjem-ramme"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={hjem}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover will-change-transform"
-              style={{ objectPosition: '50% 50%', transform: hjemme ? 'scale(1.045)' : 'scale(1)', transition: hjemme ? 'transform 16000ms cubic-bezier(0.22, 0.61, 0.36, 1) 2200ms' : 'transform 0ms linear' }}
-              data-testid="v4-film-hjem"
-            />
-            {/* Lysoverskudd: varmt lys som stilner idet rommet kommer til syne */}
-            <div aria-hidden="true" className="absolute inset-0" style={{ background: 'radial-gradient(85% 75% at 60% 38%, rgba(255,236,212,0.62) 0%, rgba(255,236,212,0.26) 55%, rgba(255,236,212,0) 100%)', opacity: hjemme ? 0 : 1, transition: hjemme ? `opacity 1700ms ${EASE} 700ms` : 'opacity 0ms linear' }} />
+            {film.hjemVideo ? (
+              <video
+                ref={hjemRef}
+                className="absolute inset-0 h-full w-full object-cover"
+                style={{ objectPosition: '50% 50%' }}
+                poster={film.hjemPoster || hjem}
+                muted
+                loop
+                playsInline
+                autoPlay={direkte}
+                preload={direkte ? 'auto' : 'none'}
+                aria-hidden="true"
+                data-testid="v4-film-hjem"
+              >
+                {film.hjemVideoSmal ? <source src={film.hjemVideoSmal} type='video/mp4; codecs="avc1.640028"' media="(max-width: 639px)" /> : null}
+                <source src={film.hjemVideo} type='video/mp4; codecs="avc1.640028"' />
+                {film.hjemVideoWebm ? <source src={film.hjemVideoWebm} type="video/webm" /> : null}
+              </video>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={hjem}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover will-change-transform"
+                style={{ objectPosition: '50% 50%', transform: hjemme ? 'scale(1.045)' : 'scale(1)', transition: hjemme ? 'transform 16000ms cubic-bezier(0.22, 0.61, 0.36, 1) 2200ms' : 'transform 0ms linear' }}
+                data-testid="v4-film-hjem"
+              />
+            )}
+            {/* Lysoverskudd: varmt lys som stilner idet rommet kommer til syne (bare etter filmen) */}
+            {!direkte && <div aria-hidden="true" className="absolute inset-0" style={{ background: 'radial-gradient(85% 75% at 60% 38%, rgba(255,236,212,0.62) 0%, rgba(255,236,212,0.26) 55%, rgba(255,236,212,0) 100%)', opacity: hjemme ? 0 : 1, transition: hjemme ? `opacity 1700ms ${EASE} 700ms` : 'opacity 0ms linear' }} />}
             {/* Subtil overlay: myk vignett + hint av kveldslys — bildet får dybde, teksten står roligere. */}
             <div aria-hidden="true" className="absolute inset-0" style={{ background: 'radial-gradient(115% 105% at 50% 50%, rgba(21,18,15,0) 52%, rgba(21,18,15,0.22) 100%), linear-gradient(180deg, rgba(21,18,15,0.10) 0%, rgba(21,18,15,0) 28%, rgba(21,18,15,0) 72%, rgba(21,18,15,0.12) 100%)' }} />
           </div>
         ) : null}
-        {/* Dyppet: filmen går ned i varm mørke (≈0,6 s), stua kommer opp av den (≈1,3 s). Skjuler også filmens siste,
-            stillestående bilde. Øverst i laget — over både film og stillbilde. */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#17120E', opacity: 0, animation: hjemme ? 'v4-dipp 1900ms linear both' : 'none' }} data-testid="v4-dipp" />
+        {/* Dyppet: filmen går ned i varm mørke (≈0,6 s), stua kommer opp av den (≈1,3 s). Bare etter filmen. */}
+        {!direkte && <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#17120E', opacity: 0, animation: hjemme ? 'v4-dipp 1900ms linear both' : 'none' }} data-testid="v4-dipp" />}
       </>
     );
   }
@@ -215,6 +379,153 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={bilde.src} srcSet={bilde.srcSet || undefined} sizes="(min-width: 1680px) 1600px, 100vw" alt="" fetchPriority="high" {...felles} />
     </picture>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   Veggfortellingen — den lyse veggen til høyre for ham er ikke plass til én setning, men til historien om hva
+   DigiHome er. Fem beats, kort: Annonse → Kontrakt → Økonomi → Drift → «Kvelden er din.» Hvert beat er én
+   setning i display, ord for ord (blur-inn), én linje under, og et stille register nederst (Annonse · Kontrakt ·
+   Økonomi · Drift) der det aktive ordet er blekk. Siste beat holder lenger og viser dagens tall. Så begynner det
+   igjen — som loopen. Telefonstrømmen følger fortellingen: idet veggen sier «Annonsen skriver seg selv.», kommer
+   «Visning booket» opp fra telefonen hans. Én koreografi, to flater.
+   Kun opacity/transform/filter på små tekstelementer. Faste minimumshøyder — ingenting hopper.
+--------------------------------------------------------------------------- */
+const FORTELLING = [
+  { id: 'annonse', ord: ['Annonsen', 'skriver', 'seg', 'selv.'], u: 'Fem bilder fra mobilen. Ferdig annonse — ute på FINN.', ms: 3300 },
+  { id: 'kontrakt', ord: ['Signert', 'med', 'BankID.'], u: 'Leietaker, kontrakt, depositum og overtakelse — i samme flyt.', ms: 3300 },
+  { id: 'okonomi', ord: ['Betalt.', 'Bokført.'], u: 'Husleien kommer inn hver måned. Regnskapet fører seg selv.', ms: 3300 },
+  { id: 'drift', ord: ['Noe', 'skjer.', 'Rørlegger', 'booket.'], u: 'Leietakeren melder fra i appen. Du godkjenner. Resten går.', ms: 3400 },
+  { id: 'kveld', ord: ['Kvelden', 'er', 'din'], u: 'Alt som kan gå av seg selv, gjør det. Du godkjenner resten.', ms: 7200, slutt: true },
+];
+const REGISTER = [
+  { id: 'annonse', t: 'Annonse' },
+  { id: 'kontrakt', t: 'Kontrakt' },
+  { id: 'okonomi', t: 'Økonomi' },
+  { id: 'drift', t: 'Drift' },
+];
+const FORTELLING_T0 = 1500;   // rommet må komme opp av mørket før teksten begynner
+const FORTELLING_PAUSE = 340; // det gamle går ut, så kommer det nye
+
+/* Klokken for fortellingen. `aktiv` = veggen er synlig (hjemme). Returnerer beat (k), om ordene står (vis) og
+   runden (for telefonstrømmen). Redusert bevegelse: siste beat, stille. */
+function useFortelling(aktiv, redusert) {
+  const [k, setK] = useState(0);
+  const [vis, setVis] = useState(false);
+  const [runde, setRunde] = useState(0);
+  const startet = useRef(false);
+  useEffect(() => {
+    if (!aktiv) { startet.current = false; setK(0); setVis(false); setRunde(0); return undefined; }
+    if (redusert) { setK(FORTELLING.length - 1); setVis(true); return undefined; }
+    let t;
+    if (vis) {
+      t = window.setTimeout(() => setVis(false), FORTELLING[k].ms);
+    } else {
+      t = window.setTimeout(() => {
+        if (startet.current) {
+          if (k === FORTELLING.length - 1) setRunde((r) => r + 1);
+          setK((kk) => (kk + 1) % FORTELLING.length);
+        }
+        startet.current = true;
+        setVis(true);
+      }, startet.current ? FORTELLING_PAUSE : FORTELLING_T0);
+    }
+    return () => window.clearTimeout(t);
+  }, [aktiv, redusert, vis, k]);
+  /* Pulsen til telefonen: én per beat i de fire første — telefonen får hendelsen litt etter at veggen har sagt det */
+  const puls = aktiv && !redusert && startet.current && k < REGISTER.length ? runde * REGISTER.length + k : null;
+  return { k, vis, runde, puls };
+}
+
+function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, replay }) {
+  const { k, vis } = fort;
+  /* Uten direkte-modus (din adresse → Street View) står veggen som før: én setning, én linje, feltet. */
+  const beat = direkte ? FORTELLING[k] : { id: 'auto', ord: ['Utleie', 'på', 'autopilot'], u: 'Én godkjenning. Resten skjedde mens du gikk hjem.', slutt: true };
+  const inne = direkte ? hjemme && vis : hjemme;
+  const T0 = direkte ? 0 : FORTELLING_T0;
+  /* Konstantene (status, hårlinje, registeret) kommer én gang med rommet; beat-teksten følger klokken */
+  const fast = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(12px)', transition: `opacity 900ms ${EASE} ${hjemme ? FORTELLING_T0 + i * 130 : 0}ms, transform 900ms ${EASE} ${hjemme ? FORTELLING_T0 + i * 130 : 0}ms` });
+  /* Ordene monteres på nytt per beat (key) — derfor keyframes, ikke transitions: inn (blur, nedenfra) når de står,
+     ut (opp, blur) når beatet er over. Før rommet er oppe: bare skjult. */
+  const ut = direkte && hjemme && !vis;
+  const ordStil = (i) => (inne
+    ? { animation: `v4-ord-inn 820ms ${EASE} ${T0 + 120 + i * 120}ms both`, willChange: 'transform, opacity' }
+    : ut ? { animation: `v4-ord-ut 300ms ${EASE} ${i * 24}ms both` } : { opacity: 0 });
+  const linjeStil = (d) => (inne
+    ? { animation: `v4-linje-inn 820ms ${EASE} ${T0 + d}ms both` }
+    : ut ? { animation: `v4-linje-ut 280ms ${EASE} 60ms both` } : { opacity: 0 });
+  const husleie = vist ? `${tall(18500)}\u00A0kr` : `${tall(64500)}\u00A0kr`;
+  const slutt = !!beat.slutt;
+  const fs = smal ? (direkte ? 36 : 42) : direkte ? 'clamp(38px, 5.4svh, 62px)' : 'clamp(48px, 7.4svh, 86px)';
+  return (
+    <div
+      className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-24' : 'absolute flex flex-col justify-center'}
+      style={{
+        ...(smal ? {} : { left: '61%', right: '5%', top: '8%', bottom: '8%' }),
+        color: T.ink,
+        background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 30%, rgba(243,241,236,0.98) 100%)' : 'none',
+        opacity: hjemme ? 1 : 0,
+        pointerEvents: hjemme ? 'auto' : 'none',
+        transition: `opacity 500ms ${EASE} ${hjemme ? 900 : 0}ms`,
+      }}
+      aria-hidden={!hjemme}
+      data-testid="v4-slutt"
+      data-beat={beat.id}
+    >
+      <p className="flex items-center gap-2 text-[13px] sm:text-[13.5px]" style={{ ...fast(0), color: 'rgba(21,19,15,0.58)' }} data-testid="v4-slutt-status">
+        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55' }} />
+        Alt i orden<span className="opacity-50"> · </span>{adresse}<span className="hidden opacity-50 sm:inline"> · </span><span className="hidden sm:inline">{direkte ? 'torsdag kveld' : '22:42'}</span>
+      </p>
+      {/* Setningen — fast høyde for to linjer, så ingenting under flytter seg mellom beatene */}
+      <h3 className="mt-3 sm:mt-5" style={{ ...display, fontSize: fs, lineHeight: 0.96, letterSpacing: '-0.04em', ...(direkte ? { minHeight: 'calc(2 * 0.96em)', display: 'flex', flexWrap: 'wrap', alignContent: 'flex-end' } : {}) }} data-testid="v4-slutt-tittel">
+        {beat.ord.map((o, i) => (
+          <span key={`${beat.id}-${i}`} className="inline-block" style={{ ...ordStil(i), marginRight: i < beat.ord.length - 1 ? '0.22em' : 0 }}>
+            {o}{slutt && i === beat.ord.length - 1 ? <span style={{ color: T.lilla, marginLeft: '0.02em' }}>.</span> : null}
+          </span>
+        ))}
+      </h3>
+      <p key={`u-${beat.id}`} className="mt-4 max-w-[30ch] text-[16px] leading-[1.42] sm:mt-5 sm:text-[18px]" style={{ ...linjeStil(120 + beat.ord.length * 120), color: 'rgba(21,19,15,0.66)', minHeight: direkte ? '2.84em' : undefined }}>{beat.u}</p>
+
+      {/* Hårlinjen tegnes én gang — under den: registeret (hva DigiHome er) i de fire beatene, dagens tall i det siste */}
+      <div aria-hidden="true" className="mt-7 h-px sm:mt-9" style={{ background: 'rgba(21,19,15,0.16)', transform: hjemme ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: '0 50%', transition: `transform 1200ms ${EASE} ${hjemme ? FORTELLING_T0 + 800 : 0}ms` }} />
+      <div className="mt-4 grid" style={fast(7.5)}>
+        {direkte && (
+          <p className="col-start-1 row-start-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] sm:text-[13.5px]" style={{ opacity: slutt ? 0 : 1, transition: `opacity 500ms ${EASE} ${slutt ? 0 : 200}ms` }} aria-hidden={slutt} data-testid="v4-register">
+            {REGISTER.map((r, i) => {
+              const paa = r.id === beat.id;
+              return (
+                <span key={r.id} className="inline-flex items-center gap-2 tabular-nums" style={{ color: paa ? T.ink : 'rgba(21,19,15,0.38)', fontWeight: paa ? 500 : 400, transition: `color 500ms ${EASE}` }} data-paa={paa ? '1' : '0'}>
+                  <span className="text-[11px]" style={{ color: paa ? '#7A3FB0' : 'rgba(21,19,15,0.30)', transition: `color 500ms ${EASE}` }}>0{i + 1}</span>
+                  {r.t}
+                </span>
+              );
+            })}
+          </p>
+        )}
+        <p className="col-start-1 row-start-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] tabular-nums sm:text-[13.5px]" style={{ color: 'rgba(21,19,15,0.56)', opacity: slutt ? 1 : 0, transition: `opacity 500ms ${EASE} ${slutt ? 300 : 0}ms` }} aria-hidden={!slutt} data-testid="v4-slutt-tall">
+          <span><span style={{ color: T.ink, fontWeight: 500 }}>{husleie}</span> husleie inn</span>
+          <span className="opacity-40">·</span>
+          {direkte ? (
+            <span><span style={{ color: T.ink, fontWeight: 500 }}>3</span> {smal ? 'spørsmål besvart' : 'leietakerspørsmål besvart'}</span>
+          ) : (
+            <span><span style={{ color: T.ink, fontWeight: 500 }}>1 min</span> {smal ? 'til rørlegger' : 'fra melding til rørlegger bestilt'}</span>
+          )}
+          <span className="opacity-40">·</span>
+          <span><span style={{ color: T.ink, fontWeight: 500 }}>1</span> godkjenning{hvem === 'deg' || direkte ? ' — din' : ''}</span>
+        </p>
+      </div>
+
+      {/* Neste steg er ett felt unna (ikke i direkte-modus — feltet står allerede over scenen). */}
+      {!direkte && (
+        <div className="mt-7 max-w-[520px] sm:mt-9" style={fast(9.5)}>
+          <AdresseFelt variant="ink" gjennomsiktig />
+          <div className="mt-3 flex items-center justify-between gap-4 text-[13px]" style={{ color: 'rgba(21,19,15,0.55)' }}>
+            <span className="hidden sm:inline">Skriv adressen din — se hva som går av seg selv.</span>
+            <button type="button" onClick={replay} className="underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" tabIndex={hjemme ? 0 : -1} data-testid="v4-replay">Spill igjen</button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -250,7 +561,10 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
     return () => window.clearTimeout(t);
   }, [synlig, filmKlar]);
   const harFilm = !!film && !egen;
-  const start = synlig && roet && (!harFilm || filmKlar || ventetUt);
+  /* Direkte: heroen åpner i sofaen — ingen gåtur, ingen panelhistorie (sekvensen står stille).
+     Din adresse (Street View) skrur direkte-modus av og kjører panelhistorien som før. */
+  const direkte = !!(film && film.direkte) && !egen;
+  const start = !direkte && synlig && roet && (!harFilm || filmKlar || ventetUt);
   const { fase, er, ferdig, replay, videre, kjorer, holder } = useSekvens(FASER, start);
 
   /* ── Din adresse → din bolig. Street View via egen proxy når panoramaet er nært nok.
@@ -313,10 +627,21 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
      Kommer ikke filmen i mål (nettverk, autoplay blokkert), går vi videre etter en stund. */
   const [filmFerdig, setFilmFerdig] = useState(false);
   const onFilmFerdig = useCallback(() => setFilmFerdig(true), []);
-  const [hjemme, setHjemme] = useState(false);
+  const [hjemmeState, setHjemme] = useState(false);
   const [sammen, setSammen] = useState(false);       // radene har foldet seg sammen til én linje
   const [panelUte, setPanelUte] = useState(false);   // panelet har løftet seg av bildet
   const kanHjem = !!film && !egen;   // uten film (eller med din egen bolig fra Street View) blir panelet stående
+  /* Direkte: scenen står fra første bilde; tekst og feed kommer inn et lite øyeblikk etter montering (så entréen
+     faktisk animerer). */
+  const [direkteInne, setDirekteInne] = useState(false);
+  useEffect(() => {
+    if (!direkte) { setDirekteInne(false); return undefined; }
+    const t = window.setTimeout(() => setDirekteInne(true), 350);
+    return () => window.clearTimeout(t);
+  }, [direkte]);
+  const hjemme = direkte ? direkteInne : hjemmeState;
+  /* Fortellingen på veggen (kun direkte-modus) — og pulsen som driver telefonstrømmen i takt med den */
+  const fort = useFortelling(direkte && hjemme, redusert);
   useEffect(() => {
     if (!ferdig || !kanHjem) return undefined;
     if (redusert) { setHjemme(true); return undefined; }
@@ -397,77 +722,22 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
       <div
         ref={ref}
         className="relative w-full overflow-hidden rounded-[20px] sm:rounded-[24px]"
-        style={{ aspectRatio: smal ? '4 / 5.6' : '1.92 / 1', minHeight: smal ? 600 : 520, maxHeight: smal ? undefined : 'min(880px, calc(100svh - 124px))', background: T.charcoal, boxShadow: '0 0 0 1px rgba(21,19,15,0.08)', opacity: skifter ? 0 : 1, transition: `opacity 320ms ${EASE}` }}
+        style={{ aspectRatio: smal ? '4 / 5.6' : '1.92 / 1', minHeight: smal ? 600 : 520, maxHeight: smal ? undefined : 'min(880px, calc(100svh - 124px))', background: T.charcoal, boxShadow: '0 0 0 1px rgba(21,19,15,0.08)', opacity: skifter || (direkte && !direkteInne) ? 0 : 1, transition: `opacity ${direkte && !skifter ? 1100 : 320}ms ${EASE}` }}
         role="group"
-        aria-label={`Animert eksempel: en dag i ${adresse} med DigiHome — husleie registrert, kontrakt signert, et spørsmål fra leietaker besvart fra kontrakten, og et varmtvannsproblem løst med én godkjenning fra eier.`}
+        aria-label={direkte ? `Animert eksempel: eieren hjemme i sofaen mens DigiHome håndterer ${adresse} — annonse, kontrakt, husleie og drift går av seg selv; han godkjenner resten.` : `Animert eksempel: en dag i ${adresse} med DigiHome — husleie registrert, kontrakt signert, et spørsmål fra leietaker besvart fra kontrakten, og et varmtvannsproblem løst med én godkjenning fra eier.`}
         data-testid="v4-scene"
       >
         {/* ── Virkeligheten ── */}
-        <Virkelighet film={film} bilde={bildet} smal={smal} kjorer={kjorer} ferdig={ferdig} redusert={redusert} egen={egen} fase={fase} hjemme={hjemme} onFilmFerdig={onFilmFerdig} onTid={onTid} onKlar={onFilmKlar} />
+        <Virkelighet film={film} bilde={bildet} smal={smal} kjorer={kjorer} ferdig={ferdig} redusert={redusert} egen={egen} fase={fase} hjemme={hjemme} direkte={direkte} onFilmFerdig={onFilmFerdig} onTid={onTid} onKlar={onFilmKlar} />
 
         {/* Filmen vises først helt ren. Når dagen begynner, dempes bildet — lett, filmen skal fortsatt sees. Slipper igjen hjemme. */}
         <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.38) 0%, rgba(21,18,15,0.14) 40%, rgba(21,18,15,0.02) 62%, rgba(21,18,15,0.24) 100%)', opacity: inne ? 1 : 0, transition: `opacity ${hjemme ? 900 : 1400}ms ${EASE}` }} />
 
-        {/* ── Slutten: han hjemme. Alt står rett på den lyse veggen — ingen boks. Én setning, én linje, én stille
-              oppsummering av dagen, og adressefeltet — så neste steg er ett felt unna. Aldri over ham. ── */}
-        <div
-          className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-24' : 'absolute flex flex-col justify-center'}
-          style={{
-            ...(smal ? {} : { left: '61%', right: '5%', top: '8%', bottom: '8%' }),
-            color: T.ink,
-            background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 30%, rgba(243,241,236,0.98) 100%)' : 'none',
-            opacity: hjemme ? 1 : 0,
-            pointerEvents: hjemme ? 'auto' : 'none',
-            transition: `opacity 500ms ${EASE} ${hjemme ? 900 : 0}ms`,
-          }}
-          aria-hidden={!hjemme}
-          data-testid="v4-slutt"
-        >
-          {(() => {
-            /* Teksten kommer når rommet har kommet opp av mørket (≈1,5 s): status, så «Utleie på autopilot.» ord for ord,
-               så én linje, en hårlinje som tegnes, dagens tall i én stille linje — og feltet. */
-            const T0 = 1500;
-            const linje = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(12px)', transition: `opacity 900ms ${EASE} ${hjemme ? T0 + i * 130 : 0}ms, transform 900ms ${EASE} ${hjemme ? T0 + i * 130 : 0}ms` });
-            const ord = ['Utleie', 'på', 'autopilot'];
-            const ordStil = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(18px)', filter: hjemme ? 'blur(0px)' : 'blur(7px)', transition: hjemme ? `opacity 900ms ${EASE} ${T0 + 150 + i * 140}ms, transform 1100ms ${EASE} ${T0 + 150 + i * 140}ms, filter 900ms ${EASE} ${T0 + 150 + i * 140}ms` : `opacity 240ms ${EASE}, transform 240ms ${EASE}, filter 240ms ${EASE}` });
-            const husleie = vist ? `${tall(18500)}\u00A0kr` : `${tall(64500)}\u00A0kr`;
-            return (
-              <>
-                <p className="flex items-center gap-2 text-[13px] sm:text-[13.5px]" style={{ ...linje(0), color: 'rgba(21,19,15,0.58)' }} data-testid="v4-slutt-status">
-                  <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55' }} />
-                  Alt i orden<span className="opacity-50"> · </span>{adresse}<span className="hidden opacity-50 sm:inline"> · </span><span className="hidden sm:inline">22:42</span>
-                </p>
-                <h3 className="mt-3 sm:mt-5" style={{ ...display, fontSize: smal ? 42 : 'clamp(48px, 7.4svh, 86px)', lineHeight: 0.93, letterSpacing: '-0.04em' }} data-testid="v4-slutt-tittel">
-                  {ord.map((o, i) => (
-                    <span key={o} className="inline-block" style={{ ...ordStil(i), marginRight: i < ord.length - 1 ? '0.22em' : 0 }}>
-                      {o}{i === ord.length - 1 ? <span style={{ color: T.lilla, marginLeft: '0.02em' }}>.</span> : null}
-                    </span>
-                  ))}
-                </h3>
-                <p className="mt-4 max-w-[30ch] text-[16px] leading-[1.42] sm:mt-5 sm:text-[18px]" style={{ ...linje(5), color: 'rgba(21,19,15,0.66)' }}>Én godkjenning. Resten skjedde mens du gikk hjem.</p>
+        {/* Det som skjer i appen mens han sitter der — kort som kommer opp av telefonen */}
+        <Telefonstrom hjemme={hjemme} redusert={redusert} smal={smal} puls={direkte ? fort.puls : undefined} />
 
-                {/* Hårlinjen tegnes — så dagen i én stille linje. */}
-                <div aria-hidden="true" className="mt-7 h-px sm:mt-9" style={{ background: 'rgba(21,19,15,0.16)', transform: hjemme ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: '0 50%', transition: `transform 1200ms ${EASE} ${hjemme ? T0 + 800 : 0}ms` }} />
-                <p className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] tabular-nums sm:text-[13.5px]" style={{ ...linje(7.5), color: 'rgba(21,19,15,0.56)' }} data-testid="v4-slutt-tall">
-                  <span><span style={{ color: T.ink, fontWeight: 500 }}>{husleie}</span> husleie inn</span>
-                  <span className="opacity-40">·</span>
-                  <span><span style={{ color: T.ink, fontWeight: 500 }}>1 min</span> {smal ? 'til rørlegger' : 'fra melding til rørlegger bestilt'}</span>
-                  <span className="opacity-40">·</span>
-                  <span><span style={{ color: T.ink, fontWeight: 500 }}>1</span> godkjenning{hvem === 'deg' ? ' — din' : ''}</span>
-                </p>
-
-                {/* Neste steg er ett felt unna. */}
-                <div className="mt-7 max-w-[520px] sm:mt-9" style={linje(9.5)}>
-                  <AdresseFelt variant="ink" gjennomsiktig />
-                  <div className="mt-3 flex items-center justify-between gap-4 text-[13px]" style={{ color: 'rgba(21,19,15,0.55)' }}>
-                    <span className="hidden sm:inline">Skriv adressen din — se hva som går av seg selv.</span>
-                    <button type="button" onClick={replay} className="underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" tabIndex={hjemme ? 0 : -1} data-testid="v4-replay">Spill igjen</button>
-                  </div>
-                </div>
-              </>
-            );
-          })()}
-        </div>
+        {/* ── Veggen: han hjemme. Fortellingen om hva DigiHome er står rett på den lyse veggen — ingen boks. ── */}
+        <Veggfortelling hjemme={hjemme} direkte={direkte} smal={smal} fort={fort} adresse={adresse} vist={vist} hvem={hvem} replay={replay} />
 
         {/* ── Dagen: ett panel. Alt som skjedde, i rekkefølge — og handlingen der hendelsen er. ── */}
         <div

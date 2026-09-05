@@ -1017,6 +1017,23 @@ html.dh-tour-snap.dh-tour-flyt { scroll-snap-type: none; }
 @keyframes v4-kamera { from { transform: translate(0.9%, 0.5%) scale(1.04); } to { transform: translate(0%, 0%) scale(1); } }
 @keyframes v4-blink-sort { 0% { opacity: 0; } 25% { opacity: 1; } 55% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes v4-utloser { 0% { transform: scale(1); } 35% { transform: scale(0.82); } 100% { transform: scale(1); } }
+/* Lesingen av et bilde (AnnonseFilm). Kun transform/opacity.
+   v4-pinne-punkt: nålens punkt popper inn.
+   v4-lese: leselinjen med den dempede, uleste flaten til høyre glir fra venstre til høyre kant (ease-in-out-sine i JS-synk).
+   v4-lese-inn: den uleste flaten tones inn før linjen begynner å gå.
+   v4-fokus: fokusrammen rundt det som kjennes igjen — kommer litt for stor, lander, holder, slipper. */
+@keyframes v4-pinne-punkt { from { transform: scale(0.3); } to { transform: scale(1); } }
+@keyframes v4-lese { from { transform: translateX(0%); } to { transform: translateX(100%); } }
+@keyframes v4-lese-inn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes v4-fokus { 0% { transform: scale(1.1); opacity: 0; } 20% { transform: scale(1); opacity: 1; } 68% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.97); opacity: 0; } }
+@keyframes v4-lysning { 0% { opacity: 0; } 35% { opacity: 1; } 100% { opacity: 0; } }
+/* Strømmen fra mobilen (HeroStage): en ny hendelse kommer inn øverst i feeden */
+/* Veggfortellingen i heroen — ordene inn (nedenfra, blur) og ut (opp, blur); linjen under likeså */
+@keyframes v4-ord-inn { from { opacity: 0; transform: translateY(18px); filter: blur(7px); } to { opacity: 1; transform: translateY(0); filter: blur(0px); } }
+@keyframes v4-ord-ut { from { opacity: 1; transform: translateY(0); filter: blur(0px); } to { opacity: 0; transform: translateY(-8px); filter: blur(6px); } }
+@keyframes v4-linje-inn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes v4-linje-ut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-4px); } }
+@keyframes v4-feed-inn { from { grid-template-rows: 0fr; opacity: 0; transform: translateY(-6px); } to { grid-template-rows: 1fr; opacity: 1; transform: translateY(0); } }
 
 /* V4: boligkort i bevegelse (BoligerSeksjon). Halve sporet = én runde, sporet er duplisert. */
 @keyframes v4-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }

@@ -8,6 +8,7 @@ import BoligerSeksjon from './BoligerSeksjon';
 import HeroVeksler from './HeroVeksler';
 import ProduktSeksjon from './produkt/ProduktSeksjon';
 import TillitStripe from './TillitStripe';
+import SystemSeksjon from './SystemSeksjon';
 import LeietakerSeksjon from './LeietakerSeksjon';
 import SporSeksjon from './SporSeksjon';
 import AltSamletSeksjon from './AltSamletSeksjon';
@@ -105,6 +106,8 @@ export default function ForsideV4({ hero = 'side', bilde = null, veksler = false
         )}
         {/* Tillit: heroens fot — før produktet. */}
         <TillitStripe />
+        {/* Systemet i ro: portalen (eier) + appen (leietaker) — før filmene viser det i arbeid. */}
+        <SystemSeksjon />
         <ProduktSeksjon />
         {/* Bevis: boligene som driftes gjennom DigiHome — kort i bevegelse. */}
         <BoligerSeksjon />

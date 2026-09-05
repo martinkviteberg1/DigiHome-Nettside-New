@@ -45,10 +45,11 @@ const F = Object.fromEntries(FASE_NAVN.map((n, i) => [n, i]));
 const AUTO = {
   /* Åpningen: bygården alene (etablering) → telefonen løftes med appen på skjermen → pekeren trykker «Lag annonse» */
   [F.START]: 1500, [F.OPP]: 1000, [F.PEKER]: 700, [F.HOVER]: 300, [F.TRYKK_START]: 340,
-  /* Kameraet: fasaden og stua får ekte øyeblikk, de tre i midten tas i burst */
-  /* Kameraet: fasaden glir inn i søkeren og tas; kjøkken, soverom, spisestue i jevn rytme; stua får et halvt sekund ekstra */
-  [F.FOTO1]: 1500, [F.FOTO2]: 1000, [F.FOTO3]: 900, [F.FOTO4]: 900, [F.FOTO5]: 1100,
-  [F.STABEL]: 600, [F.BILDER]: 2400,
+  /* Kameraet (FOTO1): fasaden alene et øyeblikk → teksten nede til venstre → kamerautsnittet glir inn over høyre
+     halvdel → autofokus → utløser. Så kjøkken, soverom, spisestue i rolig rytme; stua får litt ekstra.
+     STABEL: kameraet legges ned, «Vi gjør resten.» — tre handlinger kommer én og én. */
+  [F.FOTO1]: 3400, [F.FOTO2]: 1100, [F.FOTO3]: 1000, [F.FOTO4]: 1000, [F.FOTO5]: 1300,
+  [F.STABEL]: 2600, [F.BILDER]: 2400,
   [F.LES1]: 3300, [F.LES2]: 3000, [F.LES3]: 3200,
   [F.STYLE]: 3400, [F.SKILLE]: 2800, [F.STYLET]: 2000,
   [F.TITTEL]: 1000, [F.TEKST]: 1100, [F.PRIS]: 1700,
@@ -67,8 +68,12 @@ const PEKER_MAAL = {
 const PRESSER = new Set([F.TRYKK_START, F.TRYKK, F.VELG]);
 
 
+/* Kamerascenen (FOTO1–STABEL) står på fasaden, ikke på papiret: kort editorial tekst nede til venstre. `under` er
+   den svakeste linjen. Ved STABEL bytter tittelen til «Vi gjør resten.» og HANDLINGER kommer én og én. */
+const HANDLINGER = ['Romtype gjenkjent', 'Bilde optimalisert', 'Rekkefølge foreslått'];
 const AKTER = [
-  { fra: F.FOTO1, tittel: 'Begynn med bildene.', tekst: 'Fem bilder fra mobilen holder. Ta dem rett i appen — hvert rom kjennes igjen idet det lastes opp.' },
+  { fra: F.FOTO1, tittel: 'Begynn med bildene.', tekst: 'Fem bilder fra mobilen holder.', under: 'DigiHome ordner resten mens de lastes opp.' },
+  { fra: F.STABEL, tittel: 'Vi gjør resten.', tekst: 'Rommene kjennes igjen, bildene justeres og legges i rekkefølge — før du har lagt fra deg telefonen.' },
   { fra: F.LES1, tittel: 'Ser hva rommet har.', tekst: 'Parkett, kjøkkenøy, store vinduer. Alt som havner i annonsen, kan spores tilbake til et bilde.' },
   { fra: F.LES2, tittel: 'Finner det leietakere spør om.', tekst: 'Hvitevarer, spiseplass, oppvaskmaskin. Svarene ligger i bildene — før noen rekker å spørre.' },
   { fra: F.LES3, tittel: 'Foreslår det som kan bli bedre.', tekst: 'Sengen er uoppredd. Forslaget: re den opp digitalt — resten av rommet får være som det er.' },
@@ -109,23 +114,37 @@ const fotoFase = (id) => F.FOTO1 + OPPTAK.indexOf(id);
 const iSoker = (fase) => fase >= F.FOTO1 && fase <= F.FOTO5;
 const sokerId = (fase) => OPPTAK[fase - F.FOTO1];
 
-/* Nåler — det systemet ser i hvert bilde. Prosent av bildeflaten (3:2). Kommer én og én mens kameraet driver. */
+/* Lesingen av et bilde — én rolig linje går over bildet fra venstre til høyre (ease-in-out-sine). Til høyre for
+   linjen ligger det uleste svakt dempet; bak den er bildet «kjent». Der linjen passerer noe systemet kjenner igjen,
+   lander en fokusramme (fire hjørner) rundt området, punktet popper, etiketten glir ut — og brikken i tekstspalten
+   kommer i samme takt. Ingen ord om KI; det ser ut som et kamera som stiller fokus. */
+const SKANN_START = 420; const SKANN_MS = 1500;
+const LESE_EASE = 'cubic-bezier(0.37, 0, 0.63, 1)';   // ≈ ease-in-out-sine — invers i leseTid()
+/* Når linjen passerer x % av bildet (ms fra fasestart) */
+const leseTid = (x) => SKANN_START + Math.round((Math.acos(1 - 2 * Math.min(1, Math.max(0, x / 100))) / Math.PI) * SKANN_MS);
+/* Fokusrammen kommer idet linjen er et stykke inn i området (aldri etter punktet) */
+const fokusTid = (p) => leseTid(p.omr ? Math.min(p.x, p.omr.x + p.omr.w * 0.35) : p.x);
+
+/* Nåler — det systemet ser i hvert bilde. Prosent av bildeflaten (3:2). `omr` = området fokusrammen legger seg rundt
+   (holdes innenfor det kameraet viser når det har drevet inn 14 %). */
 const PINNER = {
   stue: [
-    { id: 'vinduer', x: 30, y: 37, t: 'Store vinduer' },
-    { id: 'oy', x: 27, y: 65, t: 'Kjøkkenøy' },
-    { id: 'parkett', x: 64, y: 84, t: 'Parkett' },
+    { id: 'vinduer', x: 30, y: 37, t: 'Store vinduer', omr: { x: 25, y: 16, w: 34, h: 48 } },
+    { id: 'oy', x: 27, y: 65, t: 'Kjøkkenøy', omr: { x: 3, y: 61, w: 52, h: 37 } },
+    { id: 'parkett', x: 64, y: 84, t: 'Parkett', omr: { x: 57, y: 74, w: 29, h: 22 } },
   ],
   kjokken: [
-    { id: 'hvitevarer', x: 31, y: 70, t: 'Integrerte hvitevarer' },
-    { id: 'oppvask', x: 22, y: 86, t: 'Oppvaskmaskin' },
-    { id: 'spise', x: 84, y: 74, t: 'Spiseplass til fire' },
+    { id: 'hvitevarer', x: 31, y: 70, t: 'Integrerte hvitevarer', omr: { x: 23, y: 56, w: 17, h: 28 } },
+    { id: 'oppvask', x: 22, y: 86, t: 'Oppvaskmaskin', omr: { x: 11, y: 62, w: 13, h: 27 } },
+    { id: 'spise', x: 84, y: 74, t: 'Spiseplass til fire', omr: { x: 66, y: 60, w: 28, h: 36 } },
   ],
   soverom: [
-    { id: 'seng', x: 42, y: 76, t: 'Uoppredd seng', tone: 'forslag', under: 'Forslag: re opp' },
+    { id: 'seng', x: 42, y: 76, t: 'Uoppredd seng', tone: 'forslag', under: 'Forslag: re opp', omr: { x: 15, y: 56, w: 58, h: 38 } },
     { id: 'garderobe', x: 92, y: 36, t: 'Garderobe' },
   ],
 };
+const ROM_FOR_LES = Object.fromEntries(FOTOS.filter((b) => b.les != null).map((b) => [b.les, b.id]));
+const pinAv = (les, id) => PINNER[ROM_FOR_LES[les]].find((p) => p.id === id);
 /* Kameraet: én rolig bevegelse per bilde — svakt inn (14 %) mot detaljene. Nålene ligger i bildet og følger med. */
 const DRIFT = 1.14;
 const FOKUS = { stue: { x: 40, y: 62 }, kjokken: { x: 52, y: 70 }, soverom: { x: 66, y: 56 } };
@@ -145,13 +164,12 @@ function kameraFor(id, fase) {
   return { transform: driftTransform(id), transition: 'none', skala: DRIFT };
 }
 
-/* Brikkene i tekstspalten — det som hentes ut, i takt med nålene. `tone: 'forslag'` = lilla. */
+/* Brikkene i tekstspalten — det som hentes ut, i samme takt som nålene (`pin` peker på nålen). `tone: 'forslag'` = lilla. */
 const FAKTA = [
-  { t: 'Store vinduer', fra: F.LES1 }, { t: 'Kjøkkenøy', fra: F.LES1 }, { t: 'Parkett', fra: F.LES1 },
-  { t: 'Hvitevarer inkludert', fra: F.LES2 }, { t: 'Oppvaskmaskin', fra: F.LES2 }, { t: 'Spiseplass', fra: F.LES2 },
-  { t: 'Garderobe', fra: F.LES3 }, { t: 'Re opp sengen', fra: F.LES3, tone: 'forslag' },
+  { t: 'Store vinduer', fra: F.LES1, pin: 'vinduer' }, { t: 'Kjøkkenøy', fra: F.LES1, pin: 'oy' }, { t: 'Parkett', fra: F.LES1, pin: 'parkett' },
+  { t: 'Hvitevarer inkludert', fra: F.LES2, pin: 'hvitevarer' }, { t: 'Oppvaskmaskin', fra: F.LES2, pin: 'oppvask' }, { t: 'Spiseplass', fra: F.LES2, pin: 'spise' },
+  { t: 'Garderobe', fra: F.LES3, pin: 'garderobe' }, { t: 'Re opp sengen', fra: F.LES3, tone: 'forslag', pin: 'seng' },
 ];
-const PIN_DELAY = 620;   // avstand mellom nålene i samme bilde
 
 /* Styling: utvalget rundt sengen (prosent av bildeflaten) og instruksen — setning for setning. */
 const UTVALG = { x: 3.5, y: 41, w: 75, h: 56.5 };
@@ -266,26 +284,103 @@ function viserBilde(fase) {
   return 'stue';
 }
 
-function Pinne({ x, y, t, vis, delay = 0, ov, skala = 1, kamera, tone, under }) {
+/* `myk` = åpningsnålen (Leilighet 2): lengre, mykere entré uten oversving — punktet vokser rolig fram (760 ms),
+   ringen puster én gang, etiketten glir ut over 900 ms. Ellers (lesingen): punktet popper med en liten oversving
+   idet leselinjen passerer, etiketten følger etter 240 ms. Kun transform/opacity — ingen filter under bevegelse. */
+function Pinne({ x, y, t, vis, delay = 0, ov, skala = 1, kamera, tone, under, myk = false, barePunkt = false }) {
   const speil = x > 60;
-  const forslag = tone === 'forslag';
+  const forslag = tone === 'forslag' || tone === 'lilla';
+  const dl = vis ? delay : 0;
+  const punktAnim = myk ? `v4-pinne-punkt 760ms cubic-bezier(0.16, 1, 0.3, 1) ${dl}ms both` : `v4-pinne-punkt 520ms cubic-bezier(0.2, 0.9, 0.3, 1.25) ${dl}ms both`;
+  const ringAnim = myk ? `v4-ping 1400ms cubic-bezier(0.2, 0.6, 0.2, 1) ${dl + 260}ms forwards` : `v4-ping 900ms cubic-bezier(0.2, 0.6, 0.2, 1) ${dl + 200}ms forwards`;
+  const etikettD = myk ? dl + 320 : dl + 240;
+  const etikettInn = myk ? `opacity 700ms ${EASE} ${etikettD}ms, transform 900ms ${EASE} ${etikettD}ms` : `opacity 460ms ${EASE} ${etikettD}ms, transform 560ms ${EASE} ${etikettD}ms`;
   return (
     <span className="pointer-events-none absolute z-[2]" style={{ left: `${x}%`, top: `${y}%`, transform: `scale(${1 / skala})`, transformOrigin: '0 0', transition: kamera || 'none' }}>
       <span
         className="flex items-center gap-2"
-        style={{ flexDirection: speil ? 'row-reverse' : 'row', transform: `translate(${speil ? 'calc(-100% + 6px)' : '-6px'}, -50%) scale(${vis ? 1 : 0.96})`, opacity: vis ? 1 : 0, filter: vis ? 'blur(0px)' : 'blur(4px)', transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? delay : 0}ms, transform 420ms ${EASE} ${vis ? delay : 0}ms, filter 420ms ${EASE} ${vis ? delay : 0}ms` }}
+        style={{ flexDirection: speil ? 'row-reverse' : 'row', transform: `translate(${speil ? 'calc(-100% + 6px)' : '-6px'}, -50%)`, opacity: vis ? 1 : 0, transition: ov ? 'none' : vis ? `opacity 0ms linear ${dl}ms` : `opacity ${myk ? 420 : 260}ms ${EASE}` }}
         aria-hidden={!vis}
         data-testid={`v4-pinne-${t}`}
       >
-        <span className="relative h-3 w-3 shrink-0 rounded-full" style={{ background: forslag ? T.lilla : T.ink, boxShadow: '0 0 0 2.5px rgba(251,250,248,0.96), 0 2px 8px rgba(21,19,15,0.3)' }}>
-          {vis && !ov && <span aria-hidden="true" className="absolute inset-0 rounded-full" style={{ boxShadow: '0 0 0 1.5px rgba(251,250,248,0.9)', animation: `v4-ping 900ms cubic-bezier(0.2, 0.6, 0.2, 1) ${delay + 120}ms forwards`, opacity: 0 }} />}
+        <span key={vis ? 'inn' : 'ut'} className="relative h-3 w-3 shrink-0 rounded-full" style={{ background: forslag ? T.lilla : T.ink, boxShadow: '0 0 0 2.5px rgba(251,250,248,0.96), 0 2px 8px rgba(21,19,15,0.3)', animation: vis && !ov ? punktAnim : 'none', willChange: 'transform' }}>
+          {vis && !ov && <span aria-hidden="true" className="absolute inset-0 rounded-full" style={{ boxShadow: '0 0 0 1.5px rgba(251,250,248,0.9)', animation: ringAnim, opacity: 0 }} />}
         </span>
-        <span className={`whitespace-nowrap font-medium ${under ? 'rounded-[12px] px-3 py-1.5 text-left' : 'rounded-full px-2.5 py-1'} text-[12px]`} style={{ ...GLASS, color: T.ink }}>
-          {t}
-          {under && <span className="block text-[11px] font-medium" style={{ color: '#7A3FB0' }}>{under}</span>}
-        </span>
+        {!barePunkt && (
+          <span className={`whitespace-nowrap font-medium ${under ? 'rounded-[12px] px-3 py-1.5 text-left' : 'rounded-full px-2.5 py-1'} text-[12px]`} style={{ ...GLASS, color: T.ink, opacity: vis ? 1 : 0, transform: vis ? 'translateX(0px)' : `translateX(${speil ? (myk ? 14 : 10) : (myk ? -14 : -10)}px)`, transition: ov ? 'none' : vis ? etikettInn : 'none', willChange: 'transform, opacity' }}>
+            {t}
+            {under && <span className="block text-[11px] font-medium" style={{ color: '#7A3FB0' }}>{under}</span>}
+          </span>
+        )}
       </span>
     </span>
+  );
+}
+
+/* Fokusrammen — fire hjørner rundt det lesingen kjenner igjen. Kommer litt for stor idet linjen går inn i området,
+   lander, holder mens etiketten glir ut, og slipper. Hvite streker med en tynn blekk-skygge under, så de leses både
+   på hvit vegg og mørkt treverk. Kun transform/opacity. */
+function Hjorne({ style, rot }) {
+  return (
+    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" className="absolute" style={{ ...style, transform: `rotate(${rot}deg)` }}>
+      <path d="M1.5 13V4A2.5 2.5 0 0 1 4 1.5h9" stroke="rgba(21,19,15,0.32)" strokeWidth="3.6" strokeLinecap="round" />
+      <path d="M1.5 13V4A2.5 2.5 0 0 1 4 1.5h9" stroke="rgba(251,250,248,0.98)" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+function Fokus({ omr, delay, ov }) {
+  if (!omr || ov) return null;
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute z-[2]" style={{ left: `${omr.x}%`, top: `${omr.y}%`, width: `${omr.w}%`, height: `${omr.h}%`, animation: `v4-fokus 1500ms cubic-bezier(0.2, 0.7, 0.2, 1) ${delay}ms both`, transformOrigin: '50% 50%', willChange: 'transform, opacity' }} data-testid="v4-fokus">
+      {/* Gjenkjenningens lille lysning — flaten innenfor hjørnene lyser svakt opp idet rammen lander, og slipper */}
+      <div className="absolute inset-0 rounded-[6px]" style={{ background: 'rgba(255,255,255,0.14)', opacity: 0, animation: `v4-lysning 1000ms cubic-bezier(0.2, 0.7, 0.2, 1) ${delay + 120}ms both` }} />
+      <Hjorne style={{ left: -2, top: -2 }} rot={0} />
+      <Hjorne style={{ right: -2, top: -2 }} rot={90} />
+      <Hjorne style={{ right: -2, bottom: -2 }} rot={180} />
+      <Hjorne style={{ left: -2, bottom: -2 }} rot={270} />
+    </div>
+  );
+}
+
+/* Leselinjen — går én gang over bildet. Til høyre for linjen: det uleste, svakt dempet. Rett bak linjen: et smalt
+   lysbånd (det som nettopp ble lest). Alt i ett element som flyttes med transform. */
+function Leselinje({ fase }) {
+  return (
+    <div key={`lese-${fase}`} aria-hidden="true" className="pointer-events-none absolute inset-0 z-[1]" style={{ animation: `v4-lese ${SKANN_MS}ms ${LESE_EASE} ${SKANN_START}ms both, v4-lese-inn 320ms linear ${Math.max(0, SKANN_START - 320)}ms both`, willChange: 'transform, opacity' }} data-testid="v4-skann">
+      <div className="absolute inset-0" style={{ background: 'rgba(21,19,15,0.13)' }} />
+      <div className="absolute inset-y-0 right-full" style={{ width: '18%', background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.12) 58%, rgba(255,255,255,0.38) 100%)' }} />
+      <span className="absolute inset-y-0 left-0 w-[1.5px]" style={{ transform: 'translateX(-50%)', background: 'rgba(255,255,255,0.98)', boxShadow: '0 0 22px 3px rgba(255,255,255,0.6), 1px 0 0 rgba(21,19,15,0.2)' }} />
+    </div>
+  );
+}
+
+/* Leselappen — oppe til høyre mens bildet leses: en levende lilla prikk og «Leser bildet», så «3 detaljer» med hake
+   når linjen har gått over. */
+function LeseLapp({ fase, ov }) {
+  const leser = fase >= F.LES1 && fase <= F.LES3;
+  const [ferdig, setFerdig] = useState(false);
+  useEffect(() => {
+    setFerdig(false);
+    if (!leser) return undefined;
+    if (ov) { setFerdig(true); return undefined; }
+    const t = window.setTimeout(() => setFerdig(true), SKANN_START + SKANN_MS + 120);
+    return () => window.clearTimeout(t);
+  }, [fase, leser, ov]);
+  const rom = leser ? viserBilde(fase) : 'stue';
+  const n = PINNER[rom].length;
+  return (
+    <Lapp vis={leser} className="right-2.5 top-2.5" ov={ov} testid="v4-lese-lapp">
+      {ferdig ? (
+        <span key="f" className="inline-flex items-center gap-1.5 animate-in fade-in-0 duration-300" data-testid="v4-lese-ferdig"><span style={{ color: '#166B3C' }}><Hake size={11} /></span>{n} detaljer</span>
+      ) : (
+        <span key="l" className="inline-flex items-center gap-1.5 animate-in fade-in-0 duration-300">
+          <span className="relative h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }}>
+            {!ov && <span aria-hidden="true" className="absolute inset-0 rounded-full" style={{ boxShadow: `0 0 0 1px ${T.lilla}`, animation: 'v4-ping 1300ms cubic-bezier(0.2, 0.6, 0.2, 1) infinite', opacity: 0 }} />}
+          </span>
+          Leser bildet
+        </span>
+      )}
+    </Lapp>
   );
 }
 
@@ -392,8 +487,12 @@ function Bildeflate({ fase, ov, onHold, liten = false, pos: objPos = '50% 50%', 
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={liten ? KILDE.soverom.styletLiten : KILDE.soverom.stylet} alt="Soverommet, stylet med KI" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: objPos, clipPath: `inset(0 0 0 ${pos}%)`, transition: ov ? 'none' : `${dur ? `clip-path ${dur}ms ${MORF}, ` : ''}object-position 1100ms ${MORF}` }} draggable={false} data-testid="v4-bilde-stylet" />
               )}
-              {PINNER[b.id].map((p, i) => (
-                <Pinne key={p.id} x={p.x} y={p.y} t={p.t} tone={p.tone} under={p.under} vis={fase === KILDE[b.id].les} delay={520 + i * PIN_DELAY} ov={ov} skala={k.skala} kamera={k.transition} />
+              {/* Lesingen: linjen går én gang over bildet; fokusrammer og nåler kommer der den passerer.
+                  På den lille flaten (mobil) står nålene uten etikett — ordene kommer som brikker rett over bildet. */}
+              {fase === KILDE[b.id].les && !ov && <Leselinje fase={fase} />}
+              {fase === KILDE[b.id].les && PINNER[b.id].map((p) => <Fokus key={`f-${p.id}`} omr={p.omr} delay={fokusTid(p)} ov={ov} />)}
+              {PINNER[b.id].map((p) => (
+                <Pinne key={p.id} x={p.x} y={p.y} t={p.t} tone={p.tone} under={p.under} vis={fase === KILDE[b.id].les} delay={leseTid(p.x)} ov={ov} skala={k.skala} kamera={k.transition} barePunkt={liten} />
               ))}
             </div>
           </div>
@@ -429,6 +528,7 @@ function Bildeflate({ fase, ov, onHold, liten = false, pos: objPos = '50% 50%', 
 
       {/* Lapper */}
       <Lapp vis={!!navn} delay={fase === F.BILDER ? 1000 : 0} className="left-2.5 top-2.5" ov={ov}><span key={navn} className="animate-in fade-in-0 duration-300">{navn}</span></Lapp>
+      <LeseLapp fase={fase} ov={ov} />
       <Lapp vis={fase === F.SKILLE && pos > 14} className="bottom-2.5 left-2.5" ov={ov} testid="v4-original-merke">Original</Lapp>
       <Lapp vis={fase >= F.SKILLE && fase <= F.PUBLISERT && pos < 86} className="bottom-2.5 right-2.5" delay={500} ov={ov} testid="v4-ki-merke">
         <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />
@@ -447,8 +547,7 @@ function Brikke({ tekst, vis, delay = 0, ov, kilde, tone }) {
 }
 
 function Fakta({ fase, ov }) {
-  const teller = {};
-  const delay = FAKTA.map((x) => { teller[x.fra] = (teller[x.fra] || 0) + 1; return 520 + (teller[x.fra] - 1) * PIN_DELAY; });
+  const delay = FAKTA.map((x) => leseTid(pinAv(x.fra, x.pin).x) + 300);
   const overskrift = fase >= F.LES3 ? 'Fra bildene · og ett forslag' : 'Fra bildene';
   return (
     <div data-testid="v4-fakta">
@@ -655,24 +754,20 @@ function layout(W) {
   const finnBilde = { x: vx + ip, y: vy + topp + 24, w: fw, h: fh };
   const finnTekst = { x: vx + ip + fw + 24, y: finnBilde.y, w: VW - 2 * ip - fw - 24, h: fh };
   const finnBeskrivelse = { x: vx + ip, y: finnBilde.y + fh + 26, w: VW - 2 * ip };
-  /* Kameraet: søkeren (stor 3:2, venstre i scenen) + filmrullen (fem miniatyrer i én kolonne til høyre).
-     Én rolig scene: rommene byttes inne i søkeren, hvert bilde du tar glir ut til rullen. */
-  const rg = 12;
-  const rh = Math.floor((VH - 4 * rg) / 5); const rw = Math.round(rh * 1.5);
-  /* Telefonen ligger. Skjermen: søkerbildet (3:2) fyller høyden, en smal stripe til venstre, kontrollstripen til høyre
-     (utløser + miniatyr). Ramme (bezel) 10 px. Størrelsen settes av plassen ved siden av rullen. */
-  const bez = 12; const gapR = 28;
-  const plass = VW - rw - gapR;
-  const skh = Math.min(Math.floor((plass - 2 * bez) / 1.8), Math.round(VH * 0.9) - 2 * bez, 440);
-  const skw = Math.round(skh * 1.5); const stripL = 0; const stripR = Math.round(skh * 0.30);
-  const pw = 2 * bez + stripL + skw + stripR; const ph = skh + 2 * bez;
-  const gx = vx + Math.round((VW - (pw + gapR + rw)) / 2); const py = vy + Math.round((VH - ph) / 2);
-  const mobil = { x: gx, y: py, w: pw, h: ph, bez, radius: Math.round(ph * 0.12) };
-  const soker = { x: gx + bez + stripL, y: py + bez, w: skw, h: skh };
-  const utloser = { cx: gx + bez + stripL + skw + Math.round(stripR / 2), cy: py + Math.round(ph / 2), r: Math.round(Math.min(30, skh * 0.07)) };
-  const rullY = vy + Math.round((VH - (rh * 5 + rg * 4)) / 2);
-  const rull = [0, 1, 2, 3, 4].map((i) => ({ x: gx + pw + gapR, y: rullY + i * (rh + rg), w: rw, h: rh }));
-  return { hel, tekst, omr, mosaikk, stabel, stor, banner, finnBilde, finnTekst, finnBeskrivelse, topp, mobil, soker, utloser, rull, smal: VW < 660 };
+  /* Kameraet: ikke en telefon, men et kamerautsnitt — ett stort, avrundet 3:2-utsnitt som flyter over høyre del av
+     fasaden. Under det: raden med fem plasser der bildene lander etter hvert som de tas (raden ER telleren).
+     Teksten står nede til venstre, i samme hjørne som åpningsteksten. */
+  const kw = Math.min(Math.round(H * 0.6 * 1.5), Math.round((W - 2 * P) * 0.5));
+  const kh = Math.round(kw / 1.5);
+  const rg = 8; const rw = Math.round(kw * 0.148); const rh = Math.round(rw / 1.5);
+  const blokk = kh + 14 + rh;
+  const sy = Math.round((H - blokk) / 2) - 6; const sx = W - P - kw;
+  const soker = { x: sx, y: sy, w: kw, h: kh, radius: 22 };
+  const utloser = { cx: sx + kw - 46, cy: sy + Math.round(kh / 2), r: 22 };
+  const rull = [0, 1, 2, 3, 4].map((i) => ({ x: sx + i * (rw + rg), y: sy + kh + 14, w: rw, h: rh }));
+  /* Teksten nede til venstre får plassen fram til kameraet */
+  const kameraTekst = { x: P, w: Math.min(560, sx - P - 40) };
+  return { hel, tekst, omr, mosaikk, stabel, stor, banner, finnBilde, finnTekst, finnBeskrivelse, topp, soker, utloser, rull, kameraTekst, smal: VW < 660 };
 }
 
 function fotoRekt(L, f) {
@@ -712,17 +807,17 @@ function bunkeTransform({ id, fase, L, ov, base = L.stor }) {
     const kk = til({ x: 0, y: (L.hel.h - L.hel.w / 1.5) / 2, w: L.hel.w, h: L.hel.w / 1.5 });
     transform = tr(kk); op = 1; zi = 3; radius = '0px 0px 0px 0px';
   } else if (fase <= ff) {
-    /* I rammen. Fasaden krymper hit fra hele rammen (synlig); de andre ligger usynlige her, klare til å «tas».
-       Hjørnene følger platen konsentrisk (ytre radius − ramme) på venstre side, små mot kontrollstripen. */
+    /* I kamerautsnittet, usynlig — utsnittet viser rommet selv. Flisen ligger klar her med nøyaktig samme piksler,
+       så den kan «løsne» fra utsnittet idet bildet tas. Fasaden hopper hit uten overgang ved FOTO1; bakteppet
+       (Bakteppe) tar over hele rammen med samme bilde i samme posisjon, så byttet er usynlig. */
     const kk = til(L.soker);
-    const R = (L.mobil.radius - L.mobil.bez) / kk.sc; const r = 10 / kk.sc;
-    transform = tr(kk); radius = `${R}px ${r}px ${r}px ${R}px`; op = fasade ? 1 : 0; zi = fasade ? 3 : 1; skygge = fasade ? 'none' : 'none';
-    overgang = ov || !fasade ? 'none' : `transform 900ms ${MORF}, border-radius 900ms ${MORF}, box-shadow 500ms ${EASE} 400ms`;
+    transform = tr(kk); radius = `${L.soker.radius / kk.sc}px`; op = 0; zi = 1;
+    overgang = 'none';
   } else if (fase < F.BILDER) {
-    /* Tatt: glir ut til sin plass i filmrullen */
+    /* Tatt: løsner fra utsnittet og glir ned til sin plass i raden */
     const kk = til(L.rull[k]);
     transform = tr(kk); radius = `${8 / kk.sc}px`; op = 1; zi = 10 + k; skygge = SKYGGE_FLAT;
-    overgang = ov ? 'none' : `transform 620ms ${MORF}, border-radius 620ms ${MORF}`;
+    overgang = ov ? 'none' : `transform 720ms ${MORF}, border-radius 720ms ${MORF}, box-shadow 400ms ${EASE} 300ms`;
   } else if (fase === F.BILDER) {
     const kk = til(SLOT[id](L));
     transform = tr(kk); radius = `${10 / kk.sc}px`; op = 1; zi = LAG[id]; skygge = SKYGGE_FLAT;
@@ -749,24 +844,33 @@ function Romlapp({ navn, vis, delay, ov }) {
 const SLOT = { stue: (L) => L.mosaikk.stor, kjokken: (L) => L.mosaikk.smaa[0], soverom: (L) => L.mosaikk.smaa[1], spisestue: (L) => L.mosaikk.smaa[2], fasade: (L) => L.mosaikk.smaa[3] };
 const LAG = { stue: 6, kjokken: 2, soverom: 3, spisestue: 4, fasade: 1 };
 
+/* Åpningskoreografien (kameraets driv, nålen på Leilighet 2, papirtoningen) starter først når filmen faktisk spiller
+   (`startet`) — ikke ved montering. Ellers står nålen allerede på plass når man ruller ned til rammen. Nullstilles
+   hver gang filmen går tilbake til START (loop). */
+function useAapning(fase, startet) {
+  const [inne, setInne] = useState(false);
+  useEffect(() => {
+    if (fase !== F.START) return undefined;
+    setInne(false);
+    if (!startet) return undefined;
+    let id2 = 0;
+    const id = window.requestAnimationFrame(() => { id2 = window.requestAnimationFrame(() => setInne(true)); });
+    return () => { window.cancelAnimationFrame(id); window.cancelAnimationFrame(id2); };
+  }, [fase, startet]);
+  return inne;
+}
+
 /* Ett bilde i kamerasekvensen: ligger usynlig i rammen til det «tas», glir så ut til rullen, og videre til mosaikken.
    Fasaden er åpningsbildet: dekker rammen (stille kamera inn + en anelse sideveis, nålen på Leilighet 2), krymper
    inn i rammen ved trykket og blir bilde 1. Stua tar det store bildet (Foto) over fra ved LES1 — samme piksler. */
-function OpptakFlis({ id, fase, L, ov }) {
+function OpptakFlis({ id, fase, L, ov, startet }) {
   const b = KILDE[id]; const ff = fotoFase(id);
   const fasade = id === 'fasade';
   const inne = fasade ? fase <= F.BILDER : fase > ff && fase <= F.BILDER;
   const st = bunkeTransform({ id, fase, L, ov });
   if (id === 'stue' && fase > F.BILDER) { st.transition = 'none'; st.opacity = 0; }
   const start = fasade && fase <= F.TRYKK_START;
-  const [zoomet, setZoomet] = useState(false);
-  useEffect(() => {
-    if (!fasade || fase !== F.START) return undefined;
-    setZoomet(false);
-    let id2 = 0;
-    const raf = window.requestAnimationFrame(() => { id2 = window.requestAnimationFrame(() => setZoomet(true)); });
-    return () => { window.cancelAnimationFrame(raf); window.cancelAnimationFrame(id2); };
-  }, [fase, fasade]);
+  const zoomet = useAapning(fase, startet);
   const KAM = 'cubic-bezier(0.25, 0.6, 0.3, 1)';
   const sd = L.hel.w / L.stor.w;
   const kamera = start ? (zoomet ? 'translate(0%, 0%) scale(1)' : 'translate(1.2%, 0%) scale(1.05)') : 'translate(0%, 0%) scale(1)';
@@ -777,121 +881,182 @@ function OpptakFlis({ id, fase, L, ov }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={b.src} alt={fasade ? 'Bygården i Nygårdsgaten' : b.navn} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: b.pos || '50% 50%' }} draggable={false} />
         {fasade && (
-          <Pinne x={LEILIGHET.x} y={LEILIGHET.y} t="Leilighet 2" under="Ledig fra 1. november" vis={fase <= F.HOVER && zoomet} delay={fase === F.START ? 900 : 0} ov={ov} skala={skala} kamera={ov ? 'none' : start ? `transform 3800ms ${KAM}` : 'none'} />
+          <Pinne x={LEILIGHET.x} y={LEILIGHET.y} t="Leilighet 2" under="Ledig fra 1. november" tone="lilla" vis={fase <= F.HOVER && zoomet} delay={fase === F.START ? 700 : 0} ov={ov} skala={skala} kamera={ov ? 'none' : start ? `transform 3800ms ${KAM}` : 'none'} myk />
         )}
       </div>
     </div>
   );
 }
 
-/* Telefonen — abstrakt, men med kropp: en matt, mørk plate med stor radius og tynn lyskant. Ingen notch, ingen merke,
-   ingen «skjerm» — bildet du tar ligger rett i platen, kontrollstripen til høyre har utløserringen og miniatyren av
-   forrige bilde. Kommer opp rundt fasaden idet den krymper inn (som å løfte telefonen), legges ned etter siste bilde
-   (glir litt ned, vipper 3°, tones ut). Kun transform/opacity. */
-function Mobil({ fase, L, ov }) {
-  const m = L.mobil; const u = L.utloser;
-  const aktiv = iSoker(fase);
-  const inn = fase === F.FOTO1; const etter = fase > F.FOTO5;
-  const k = aktiv ? fase - F.FOTO1 : 0;
-  const forrige = k > 0 ? OPPTAK[k - 1] : null;
-  const presser = !ov && fase >= F.FOTO2 && fase <= F.STABEL;
-  const transform = aktiv ? 'translateY(0px) rotate(0deg) scale(1)' : etter ? 'translateY(18px) rotate(-3deg) scale(0.985)' : 'translateY(10px) rotate(0deg) scale(1.03)';
-  const transition = ov ? 'none' : aktiv ? `opacity 560ms ${EASE} ${inn ? 380 : 0}ms, transform 1000ms ${MORF} ${inn ? 200 : 0}ms` : etter ? `opacity 640ms ${EASE} 140ms, transform 800ms ${EASE} 140ms` : 'none';
-  const tw = Math.round(u.r * 1.5);
+/* ── Kamerascenen (FOTO1–STABEL) ──
+   Ikke «bakgrunn → hvit boks → telefon i boksen», men «eiendom → editorial tekst → et intelligent lag rett over scenen».
+   Fasaden fortsetter bak hele scenen (Bakteppe), mykt uskarp og svakt dempet idet kamerautsnittet kommer. Utsnittet er
+   et produktobjekt — ett stort avrundet 3:2-utsnitt med rommet, tynt tredelingsnett, én etikett og utløseren. Ingen
+   telefonkropp, ingen statuslinje. Hvert bilde løsner som en miniatyr og legger seg i raden under. Kun transform/opacity
+   under bevegelse; uskarpheten er statisk (én forhåndsrastrert kopi som tones inn). */
+
+/* Bakteppet: fasaden i nøyaktig samme geometri som åpningsflisen (3:2-rekt med rammens bredde, vertikalt sentrert),
+   så byttet fra flis til bakteppe ved FOTO1 er usynlig. Oppå: en statisk uskarp kopi (blur 7 px, 8 % mørkere) som tones
+   inn mens utsnittet kommer, og ut igjen når papiret tar over (BILDER). */
+function Bakteppe({ fase, L, ov }) {
+  const b = KILDE.fasade;
+  const inne = fase >= F.FOTO1 && fase <= F.STABEL;
+  const uskarp = inne && fase >= F.FOTO1;
+  const ut = fase === F.BILDER;
+  const r = { x: 0, y: (L.hel.h - L.hel.w / 1.5) / 2, w: L.hel.w, h: L.hel.w / 1.5 };
+  const img = { objectPosition: b.pos || '50% 50%' };
   return (
-    <div className="absolute" style={{ left: m.x, top: m.y, width: m.w, height: m.h, zIndex: 2, opacity: aktiv ? 1 : 0, transform, transformOrigin: '50% 50%', transition, pointerEvents: 'none', willChange: 'transform, opacity' }} aria-hidden={!aktiv} data-testid="v4-mobil">
-      {/* Platen: matt mørk, lys kant, myk skygge */}
-      <div className="absolute inset-0" style={{ borderRadius: m.radius, background: 'linear-gradient(135deg, #24211D 0%, #15130F 55%, #1B1815 100%)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10), inset 0 1px 0 rgba(255,255,255,0.06), 0 40px 80px -36px rgba(21,19,15,0.6), 0 14px 30px -18px rgba(21,19,15,0.4)' }} />
-      {/* Utløserringen — trykkes idet et bilde tas */}
-      <div className="absolute" style={{ left: u.cx - m.x - u.r, top: u.cy - m.y - u.r, width: u.r * 2, height: u.r * 2, borderRadius: '50%', boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.9)' }}>
-        <div key={presser ? `p${fase}` : 'px'} className="absolute" style={{ inset: 5, borderRadius: '50%', background: '#FFFFFF', animation: presser ? 'v4-utloser 360ms cubic-bezier(0.3, 0, 0.2, 1) both' : 'none' }} />
-      </div>
-      {/* Miniatyren av forrige bilde — under ringen */}
-      <div className="absolute overflow-hidden" style={{ left: u.cx - m.x - Math.round(tw / 2), top: u.cy - m.y + u.r + Math.round(u.r * 0.7), width: tw, height: tw, borderRadius: Math.round(tw * 0.24), background: 'rgba(255,255,255,0.07)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.16)' }} data-testid="v4-mobil-miniatyr" data-rom={forrige || ''}>
-        {OPPTAK.slice(0, 4).map((rid) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={rid} src={KILDE[rid].liten || KILDE[rid].src} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: KILDE[rid].posLiten || KILDE[rid].pos || '50% 50%', opacity: rid === forrige ? 1 : 0, transition: ov ? 'none' : `opacity 300ms ${EASE} 180ms` }} draggable={false} />
-        ))}
+    <div className="absolute overflow-hidden" style={{ left: 0, top: 0, width: L.hel.w, height: L.hel.h, zIndex: 1, opacity: inne ? 1 : 0, transition: ov ? 'none' : ut ? `opacity 900ms ${EASE}` : 'none', pointerEvents: 'none' }} aria-hidden={!inne} data-testid="v4-bakteppe">
+      <div className="absolute" style={{ left: r.x, top: r.y, width: r.w, height: r.h }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={b.src} alt="" className="absolute inset-0 h-full w-full object-cover" style={img} draggable={false} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={b.src} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ ...img, filter: 'blur(7px) brightness(0.92)', transform: 'scale(1.04)', opacity: uskarp ? 1 : 0, transition: ov ? 'none' : `opacity 1100ms ${EASE} ${fase === F.FOTO1 ? 900 : 0}ms`, willChange: 'opacity' }} draggable={false} />
       </div>
     </div>
   );
 }
 
-/* Rullen er DigiHome. En liten overskrift over kolonnen sier det — og teller: «Lastet opp · 3 av 5». */
-function RullTopp({ fase, L, ov }) {
+/* Raden — fem stille plasser under utsnittet. Tomme: en tynn lys hårlinje. Bildene (flisene) lander oppå etter hvert
+   som de tas. Raden er telleren; ingen egen fremdriftsstrek. */
+function KameraRad({ fase, L, ov }) {
   const aktiv = iSoker(fase) || fase === F.STABEL;
-  const n = Math.max(0, Math.min(5, fase - F.FOTO1));
-  const r0 = L.rull[0];
+  const inn = fase === F.FOTO1;
+  return L.rull.map((r, i) => (
+    <div key={i} className="absolute" style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: 8, zIndex: 5, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.035)', opacity: aktiv ? 1 : 0, transform: aktiv ? 'none' : 'translateY(6px)', transition: ov ? 'none' : `opacity 500ms ${EASE} ${aktiv && inn ? 1500 + i * 60 : 0}ms, transform 600ms ${EASE} ${aktiv && inn ? 1500 + i * 60 : 0}ms`, pointerEvents: 'none' }} aria-hidden={!aktiv} data-testid={`v4-rad-${i}`} />
+  ));
+}
+
+/* Autofokus — én fokusramme (fire hjørner) lander rolig der kameraet stiller seg inn, holder, og slipper. Fasaden får
+   den lange (spec: 3,0–4,2 s); rommene får en kortere idet de kommer i utsnittet. */
+const FOKUS_OMR = {
+  fasade: { x: 44, y: 34, w: 24, h: 30 },
+  kjokken: { x: 38, y: 40, w: 26, h: 30 },
+  soverom: { x: 30, y: 38, w: 30, h: 32 },
+  spisestue: { x: 36, y: 36, w: 28, h: 32 },
+  stue: { x: 34, y: 34, w: 30, h: 32 },
+};
+function Autofokus({ id, fase, ov }) {
+  if (ov || !id) return null;
+  const o = FOKUS_OMR[id]; const forste = id === 'fasade';
+  const dur = forste ? 1300 : Math.max(600, (AUTO[fotoFase(id)] || 900) - 250);
+  const delay = forste ? 2050 : 120;
   return (
-    <div className="absolute" style={{ left: r0.x, top: r0.y - 26, width: r0.w, zIndex: 7, opacity: aktiv ? 1 : 0, transform: aktiv ? 'none' : 'translateY(4px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${aktiv ? 900 : 0}ms, transform 500ms ${EASE} ${aktiv ? 900 : 0}ms`, pointerEvents: 'none' }} aria-hidden={!aktiv} data-testid="v4-rull-topp" data-n={n}>
-      <p className="flex items-center gap-1.5 whitespace-nowrap text-[11.5px] font-medium tabular-nums" style={{ color: DIM }}>
-        <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full" style={{ background: n >= 5 ? '#166B3C' : 'rgba(21,19,15,0.12)', color: '#fff', transition: `background 300ms ${EASE}` }}>{n >= 5 ? <Hake size={9} /> : null}</span>
-        Lastet opp <span style={{ color: T.ink }}>{n} av 5</span>
-      </p>
+    <div key={id} aria-hidden="true" className="pointer-events-none absolute z-[3]" style={{ left: `${o.x}%`, top: `${o.y}%`, width: `${o.w}%`, height: `${o.h}%`, animation: `v4-fokus ${dur}ms cubic-bezier(0.2, 0.7, 0.2, 1) ${delay}ms both`, transformOrigin: '50% 50%', willChange: 'transform, opacity' }} data-testid="v4-autofokus">
+      <Hjorne style={{ left: -2, top: -2 }} rot={0} />
+      <Hjorne style={{ right: -2, top: -2 }} rot={90} />
+      <Hjorne style={{ right: -2, bottom: -2 }} rot={180} />
+      <Hjorne style={{ left: -2, bottom: -2 }} rot={270} />
     </div>
   );
 }
 
-/* Søkeren — det du ser på skjermen: rommet (rolig håndholdt drift), tredelingslinjer, etiketten «Kjøkken · 2 av 5»,
-   zoom-brikken «1×», og et kort svart blink idet utløseren går. Fasaden (bilde 1) er selve flisen som har glidd inn hit
-   (søkeren er gjennomsiktig over den); fra bilde 2 viser søkeren rommene selv. */
+/* Kamerautsnittet. Glir rolig inn fra høyre (48 px, 0.94 → 1) idet teksten har landet; legges ned etter siste bilde
+   (litt ned, 0.97, tones ut). Inni: rommet (rolig håndholdt driv), tredelingsnett, «Fasade · 1 av 5», utløseren til
+   høyre, et kort svart blink idet den går. */
 function Soker({ fase, L, ov }) {
   const aktiv = iSoker(fase);
   const id = aktiv ? sokerId(fase) : null;
   const k = aktiv ? OPPTAK.indexOf(id) + 1 : 0;
   const blink = !ov && fase >= F.FOTO2 && fase <= F.STABEL;
-  const r = L.soker;
-  const inn = fase === F.FOTO1;
-  const linje = 'rgba(250,248,244,0.22)';
+  const presser = blink;
+  const r = L.soker; const u = L.utloser;
+  const inn = fase === F.FOTO1; const etter = fase > F.FOTO5;
+  const linje = 'rgba(250,248,244,0.16)';
   const liten = r.h < 300;
+  const transform = aktiv ? 'translate(0px, 0px) scale(1)' : etter ? 'translate(0px, 14px) scale(0.97)' : 'translate(48px, 0px) scale(0.94)';
+  const transition = ov ? 'none' : aktiv ? `opacity 600ms ${EASE} ${inn ? 1200 : 0}ms, transform 1000ms ${MORF} ${inn ? 1200 : 0}ms` : etter ? `opacity 520ms ${EASE} 120ms, transform 700ms ${EASE} 120ms` : 'none';
   return (
-    <div className="absolute overflow-hidden" style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: `${L.mobil.radius - L.mobil.bez}px 10px 10px ${L.mobil.radius - L.mobil.bez}px`, zIndex: 6, opacity: aktiv ? 1 : 0, transition: ov ? 'none' : `opacity ${aktiv ? 300 : 500}ms ${EASE} ${aktiv && inn ? 800 : 0}ms`, pointerEvents: 'none' }} aria-hidden={!aktiv} data-testid="v4-soker" data-rom={id || ''}>
-      {/* Rommene (fra bilde 2) — krysstoning + håndholdt drift. Fasaden (bilde 1) er flisen under. */}
-      {OPPTAK.slice(1).map((rid) => {
-        const rb = KILDE[rid]; const paa = rid === id;
-        return (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={rid} src={rb.src} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: rb.pos || '50% 50%', opacity: paa ? 1 : 0, transition: ov ? 'none' : `opacity 300ms ${EASE}`, animation: paa && !ov ? `v4-kamera ${(AUTO[fotoFase(rid)] || 900) + 400}ms cubic-bezier(0.25, 0.6, 0.3, 1) both` : 'none', willChange: 'transform, opacity' }} draggable={false} aria-hidden={!paa} />
-        );
-      })}
-      {/* Tredelingslinjer */}
-      <div aria-hidden="true" className="absolute inset-0" style={{ backgroundImage: `linear-gradient(90deg, transparent calc(33.33% - 0.5px), ${linje} calc(33.33% - 0.5px), ${linje} calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), ${linje} calc(66.66% - 0.5px), ${linje} calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px)), linear-gradient(180deg, transparent calc(33.33% - 0.5px), ${linje} calc(33.33% - 0.5px), ${linje} calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), ${linje} calc(66.66% - 0.5px), ${linje} calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px))` }} />
-      {/* Etiketten: rom · n av 5 — øverst, midt på */}
-      <div className="absolute" style={{ left: '50%', top: liten ? 8 : 12, transform: 'translateX(-50%)' }}>
-        <span className={`inline-flex items-center gap-2 rounded-full font-medium ${liten ? 'h-6 pl-2 pr-2.5 text-[11px]' : 'h-7 pl-2.5 pr-3 text-[12px]'}`} style={{ background: 'rgba(12,11,10,0.55)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12)', color: 'rgba(250,248,244,0.96)' }}>
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />
-          <span key={id} className="animate-in fade-in-0 duration-300">{id ? KILDE[id].navn : ''}</span>
-          <span style={{ color: 'rgba(250,248,244,0.55)' }}>{k} av 5</span>
-        </span>
+    <div className="absolute" style={{ left: r.x, top: r.y, width: r.w, height: r.h, zIndex: 6, opacity: aktiv ? 1 : 0, transform, transformOrigin: '50% 50%', transition, pointerEvents: 'none', willChange: 'transform, opacity' }} aria-hidden={!aktiv} data-testid="v4-soker" data-rom={id || ''}>
+      <div className="absolute inset-0 overflow-hidden" style={{ borderRadius: r.radius, background: '#15130F', boxShadow: '0 70px 120px -50px rgba(0,0,0,0.75), 0 24px 48px -30px rgba(0,0,0,0.5)' }}>
+        {/* Rommene — krysstoning + håndholdt driv */}
+        {OPPTAK.map((rid) => {
+          const rb = KILDE[rid]; const paa = rid === id;
+          return (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={rid} src={rb.src} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: rb.pos || '50% 50%', opacity: paa ? 1 : 0, transition: ov ? 'none' : `opacity 320ms ${EASE}`, animation: paa && !ov ? `v4-kamera ${(AUTO[fotoFase(rid)] || 900) + 400}ms cubic-bezier(0.25, 0.6, 0.3, 1) both` : 'none', willChange: 'transform, opacity' }} draggable={false} aria-hidden={!paa} />
+          );
+        })}
+        {/* Tredelingsnett — svakt */}
+        <div aria-hidden="true" className="absolute inset-0" style={{ backgroundImage: `linear-gradient(90deg, transparent calc(33.33% - 0.5px), ${linje} calc(33.33% - 0.5px), ${linje} calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), ${linje} calc(66.66% - 0.5px), ${linje} calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px)), linear-gradient(180deg, transparent calc(33.33% - 0.5px), ${linje} calc(33.33% - 0.5px), ${linje} calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), ${linje} calc(66.66% - 0.5px), ${linje} calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px))` }} />
+        <Autofokus id={id} fase={fase} ov={ov} />
+        {/* Etiketten: «Fasade · 1 av 5» — oppe til venstre */}
+        <div className="absolute" style={{ left: liten ? 12 : 16, top: liten ? 12 : 16 }}>
+          <span className={`inline-flex items-center gap-2 rounded-full font-medium tabular-nums ${liten ? 'h-6 pl-2 pr-2.5 text-[11px]' : 'h-7 pl-2.5 pr-3 text-[12px]'}`} style={{ background: 'rgba(12,11,10,0.50)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12)', color: 'rgba(250,248,244,0.96)' }}>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />
+            <span key={id} className="animate-in fade-in-0 duration-300">{id ? KILDE[id].navn : ''}</span>
+            <span style={{ color: 'rgba(250,248,244,0.5)' }}>· {k} av 5</span>
+          </span>
+        </div>
+        {/* Utløseren — ring med hvit skive, trykkes idet et bilde tas */}
+        <div className="absolute" style={{ left: u.cx - r.x - u.r, top: u.cy - r.y - u.r, width: u.r * 2, height: u.r * 2, borderRadius: '50%', boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.92), 0 6px 20px -8px rgba(0,0,0,0.6)' }} data-testid="v4-utloser">
+          <div key={presser ? `p${fase}` : 'px'} className="absolute" style={{ inset: 5, borderRadius: '50%', background: '#FFFFFF', animation: presser ? 'v4-utloser 360ms cubic-bezier(0.3, 0, 0.2, 1) both' : 'none' }} />
+        </div>
+        {/* Utløseren: utsnittet går svart et øyeblikk */}
+        <div key={blink ? `b${fase}` : 'bx'} aria-hidden="true" className="absolute inset-0" style={{ background: '#000', opacity: 0, animation: blink ? 'v4-blink-sort 240ms ease-out both' : 'none' }} data-testid="v4-blink" />
       </div>
-      {/* Zoom-brikken «1×» — nederst, midt på */}
-      {!liten && (
-        <div className="absolute flex items-center justify-center rounded-full text-[11px] font-semibold" style={{ left: '50%', bottom: 12, width: 30, height: 30, transform: 'translateX(-50%)', background: 'rgba(12,11,10,0.5)', color: 'rgba(250,248,244,0.92)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12)' }}>1×</div>
-      )}
-      {/* Utløseren: skjermen går svart et øyeblikk */}
-      <div key={blink ? `b${fase}` : 'bx'} aria-hidden="true" className="absolute inset-0" style={{ background: '#000', opacity: 0, animation: blink ? 'v4-blink-sort 240ms ease-out both' : 'none' }} data-testid="v4-blink" />
     </div>
   );
 }
 
-/* Tonene over åpningsbildet — fullramme, kun opacity. Bildet står rent først (kort toning inn fra papiret);
-   gradient og vignett kommer idet teksten kommer (OPP). */
+/* Teksten i kamerascenen — nede til venstre, rett på fasaden, ingen boks. «01 · Annonsen», tittelen ord for ord,
+   én setning, én svakere linje. Ved STABEL: «Vi gjør resten.» og tre handlinger, én og én. */
+function KameraTekst({ fase, L, ov }) {
+  const inne = fase >= F.FOTO1 && fase <= F.STABEL;
+  const rest = fase >= F.STABEL;
+  const akt = rest ? AKTER[1] : AKTER[0];
+  const forste = fase === F.FOTO1;
+  const ord = akt.tittel.split(' ');
+  const steg = (i) => ({ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'translateY(14px)', filter: inne ? 'blur(0px)' : 'blur(8px)', transition: ov ? 'none' : inne ? `opacity 700ms ${EASE} ${forste ? 600 + i : i}ms, transform 900ms ${EASE} ${forste ? 600 + i : i}ms, filter 700ms ${EASE} ${forste ? 600 + i : i}ms` : `opacity 320ms ${EASE}, transform 320ms ${EASE}, filter 320ms ${EASE}` });
+  return (
+    <div className="absolute z-[5]" style={{ left: L.kameraTekst.x, width: L.kameraTekst.w, bottom: P + 6, color: OFF, pointerEvents: 'none' }} aria-hidden={!inne} data-testid="v4-kamera-tekst" data-rest={rest ? '1' : '0'}>
+      <p className="text-[12.5px] font-medium tabular-nums" style={{ color: 'rgba(244,241,234,0.58)', ...steg(0) }}>01 · Annonsen</p>
+      <Tekstbytte id={rest ? 'rest' : 'start'} ov={ov}>
+        {(id) => {
+          const a = id === 'rest' ? AKTER[1] : AKTER[0];
+          const o = a.tittel.split(' ');
+          return (
+            <h3 className="mt-3 text-[clamp(34px,3.4vw,54px)]" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 1.0, color: OFF }} data-testid="v4-kamera-tittel">
+              {o.map((w, i) => (
+                <span key={`${id}-${w}-${i}`} className="inline-block" style={{ ...steg(120 + i * 80), marginRight: i < o.length - 1 ? '0.24em' : 0 }}>{w}</span>
+              ))}
+            </h3>
+          );
+        }}
+      </Tekstbytte>
+      {/* Første del: setningen + den svake linjen. STABEL: handlingene, én og én. */}
+      <div className="grid">
+        <div className="col-start-1 row-start-1" style={{ opacity: inne && !rest ? 1 : 0, transition: ov ? 'none' : `opacity 300ms ${EASE}` }} aria-hidden={rest}>
+          <p className="mt-4 text-[16px] leading-[1.45]" style={{ color: 'rgba(244,241,234,0.82)', ...steg(520) }}>{AKTER[0].tekst}</p>
+          <p className="mt-1.5 text-[13.5px] leading-[1.45]" style={{ color: 'rgba(244,241,234,0.48)', ...steg(680) }}>{AKTER[0].under}</p>
+        </div>
+        <ul className="col-start-1 row-start-1 mt-4 space-y-2" style={{ opacity: rest ? 1 : 0, transition: ov ? 'none' : `opacity 300ms ${EASE}` }} aria-hidden={!rest} data-testid="v4-handlinger">
+          {HANDLINGER.map((h, i) => {
+            const vis = rest && inne;
+            const d = 520 + i * 560;
+            return (
+              <li key={h} className="flex items-center gap-2.5 text-[15px]" style={{ color: 'rgba(244,241,234,0.9)', opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(8px)', transition: ov ? 'none' : `opacity 520ms ${EASE} ${vis ? d : 0}ms, transform 620ms ${EASE} ${vis ? d : 0}ms` }}>
+                <span className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full" style={{ background: T.lilla, color: T.ink }}><Hake size={10} /></span>
+                {h}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/* Tonene over åpningsbildet — fullramme, kun opacity. Bildet står rent først; gradient og vignett kommer idet
+   teksten kommer (OPP). Loopens toning håndteres av `blend` i AnnonseFilm. */
 function StartToner({ fase, ov }) {
-  const start = fase <= F.TRYKK_START;
-  const overlay = start && fase >= F.OPP;
-  const [inne, setInne] = useState(false);
-  useEffect(() => {
-    if (fase !== F.START) return undefined;
-    setInne(false);
-    let id2 = 0;
-    const id = window.requestAnimationFrame(() => { id2 = window.requestAnimationFrame(() => setInne(true)); });
-    return () => { window.cancelAnimationFrame(id); window.cancelAnimationFrame(id2); };
-  }, [fase]);
+  /* Står fra OPP gjennom hele kamerascenen (teksten nede til venstre trenger den), slipper når papiret tar over */
+  const overlay = fase >= F.OPP && fase <= F.STABEL;
+  const ut = fase === F.BILDER;
   return (
     <>
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[4]" style={{ background: START_GRADIENT, opacity: overlay ? 1 : 0, transition: ov ? 'none' : `opacity ${overlay ? 900 : 450}ms ${EASE}` }} />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[4]" style={{ background: START_VIGNETT, opacity: overlay ? 1 : 0, transition: ov ? 'none' : `opacity ${overlay ? 900 : 400}ms ${EASE}` }} />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[4]" style={{ background: PAPIR, opacity: start && !inne ? 1 : 0, transition: ov ? 'none' : 'opacity 700ms cubic-bezier(0.3, 0, 0.2, 1)' }} />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[4]" style={{ background: START_GRADIENT, opacity: overlay ? 1 : 0, transition: ov ? 'none' : `opacity ${overlay ? 900 : ut ? 800 : 450}ms ${EASE}` }} />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[4]" style={{ background: START_VIGNETT, opacity: overlay ? 1 : 0, transition: ov ? 'none' : `opacity ${overlay ? 900 : ut ? 800 : 400}ms ${EASE}` }} />
     </>
   );
 }
@@ -1015,7 +1180,7 @@ function Tekstspalte({ fase, L, ov, onAkt, knapper, neste }) {
   );
 }
 
-function Desktop({ fase, ov, onAkt, onHold, neste }) {
+function Desktop({ fase, ov, onAkt, onHold, neste, startet }) {
   const ref = useRef(null);
   const [W, setW] = useState(0);
   useEffect(() => {
@@ -1028,7 +1193,7 @@ function Desktop({ fase, ov, onAkt, onHold, neste }) {
   }, []);
   const L = W ? layout(W) : null;
   const start = fase <= F.TRYKK_START;
-  const skjult = fase <= F.TRYKK_START;   // åpningen: ingen tekstspalte
+  const skjult = fase <= F.STABEL;   // åpningen og kamerascenen står på fasaden: ingen tekstspalte, ingen papirflate
   const folk = fase >= F.INT1 && fase < F.SLUTT;
   const slutt = fase >= F.SLUTT;
   const bt = (ms, d = 0) => (ov ? 'none' : `${ms}ms ${EASE} ${d}ms`);
@@ -1037,12 +1202,14 @@ function Desktop({ fase, ov, onAkt, onHold, neste }) {
 
   return (
     <div ref={ref} className="relative overflow-hidden text-[#15130F]" style={{ height: H, background: PAPIR }} data-testid="v4-annonse-desktop">
-      {/* Kameraet: de fem bildene — hvert dekker rammen mens du tar det, krymper ned i hjørnet, glir til mosaikken */}
-      {L && <Mobil fase={fase} L={L} ov={ov} />}
-      {L && OPPTAK.map((id) => <OpptakFlis key={id} id={id} fase={fase} L={L} ov={ov} />)}
+      {/* Kamerascenen: fasaden bak alt (Bakteppe), de fem bildene som fliser (usynlige i utsnittet → raden → mosaikken),
+          tonene, raden, utsnittet og teksten nede til venstre */}
+      {L && <Bakteppe fase={fase} L={L} ov={ov} />}
+      {L && OPPTAK.map((id) => <OpptakFlis key={id} id={id} fase={fase} L={L} ov={ov} startet={startet} />)}
       {L && <StartToner fase={fase} ov={ov} />}
+      {L && <KameraRad fase={fase} L={L} ov={ov} />}
       {L && <Soker fase={fase} L={L} ov={ov} />}
-      {L && <RullTopp fase={fase} L={L} ov={ov} />}
+      {L && <KameraTekst fase={fase} L={L} ov={ov} />}
       {L && <Foto fase={fase} L={L} ov={ov} onHold={onHold} />}
 
       {/* Åpningsteksten — i venstre spalte, der aktenes tekst står. Kommer inn ord for ord; går raskt ut i trykket. */}
@@ -1073,15 +1240,8 @@ function Desktop({ fase, ov, onAkt, onHold, neste }) {
 
 /* ── Under lg: samme akter, stablet ── */
 
-function StartKompakt({ fase, ov }) {
-  const [zoomet, setZoomet] = useState(false);
-  useEffect(() => {
-    if (fase !== F.START) return undefined;
-    setZoomet(false);
-    let id2 = 0;
-    const id = window.requestAnimationFrame(() => { id2 = window.requestAnimationFrame(() => setZoomet(true)); });
-    return () => { window.cancelAnimationFrame(id); window.cancelAnimationFrame(id2); };
-  }, [fase]);
+function StartKompakt({ fase, ov, startet }) {
+  const zoomet = useAapning(fase, startet);
   return (
     <div className="relative overflow-hidden" style={{ aspectRatio: '4 / 5' }} data-testid="v4-start-kompakt">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1092,59 +1252,87 @@ function StartKompakt({ fase, ov }) {
   );
 }
 
-/* Telefonen på mobil — abstrakt, stående: tegnet kontur rundt søkerbildet (4:5), kontrollstripe nederst med
-   utløserring og miniatyr. Under: filmrullen — fem små som fylles etter hvert som du tar bildene. */
-function SokerKompakt({ fase, ov }) {
-  const id = iSoker(fase) ? sokerId(fase) : OPPTAK[0];
-  const k = OPPTAK.indexOf(id) + 1;
-  const forrige = k > 1 ? OPPTAK[k - 2] : null;
-  const presser = !ov && fase >= F.FOTO2 && fase <= F.FOTO5;
-  const linje = 'rgba(250,248,244,0.22)';
+/* Kamerascenen på mobil — samme idé som på desktop, stående: fasaden bak (uskarp, dempet), teksten oppe til venstre,
+   kamerautsnittet (4:3) som objekt, raden med fem plasser under. Ingen telefonkropp. */
+function KameraKompakt({ fase, ov }) {
+  const aktiv = iSoker(fase);
+  const id = aktiv ? sokerId(fase) : OPPTAK[OPPTAK.length - 1];
+  const k = aktiv ? OPPTAK.indexOf(id) + 1 : 5;
+  const rest = fase === F.STABEL;
+  const presser = !ov && fase >= F.FOTO2 && fase <= F.STABEL;
+  const inn = fase === F.FOTO1;
+  const linje = 'rgba(250,248,244,0.16)';
+  const steg = (i) => ({ opacity: 1, transform: 'none', transition: ov ? 'none' : `opacity 600ms ${EASE} ${i}ms, transform 800ms ${EASE} ${i}ms` });
   return (
-    <div className="px-5 pt-5" data-testid="v4-soker-kompakt" data-rom={id}>
-      <div className="relative" style={{ borderRadius: 34, padding: 10, background: 'linear-gradient(135deg, #24211D 0%, #15130F 55%, #1B1815 100%)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10), 0 34px 70px -34px rgba(21,19,15,0.6)' }}>
-        <div className="relative overflow-hidden" style={{ borderRadius: 24, background: '#15130F', aspectRatio: '4 / 5' }}>
+    <div className="relative overflow-hidden" style={{ aspectRatio: '4 / 5', background: '#15130F' }} data-testid="v4-soker-kompakt" data-rom={aktiv ? id : ''}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={KILDE.fasade.liten} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: KILDE.fasade.posLiten, filter: 'blur(6px) brightness(0.8)', transform: 'scale(1.06)' }} draggable={false} />
+      <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,19,15,0.55) 0%, rgba(21,19,15,0.15) 40%, rgba(21,19,15,0.55) 100%)' }} />
+      <div className="absolute inset-0 flex flex-col p-4" style={{ color: OFF }}>
+        <p className="text-[11.5px] font-medium tabular-nums" style={{ color: 'rgba(244,241,234,0.58)', ...steg(inn ? 300 : 0) }}>01 · Annonsen</p>
+        <Tekstbytte id={rest ? 'rest' : 'start'} ov={ov}>
+          {(tid) => {
+            const a = tid === 'rest' ? AKTER[1] : AKTER[0];
+            return (
+              <>
+                <h3 className="mt-2 text-[28px]" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 1.0, color: OFF, textWrap: 'balance' }}>{a.tittel}</h3>
+                {tid === 'rest' ? (
+                  <ul className="mt-3 space-y-1.5">
+                    {HANDLINGER.map((h, i) => (
+                      <li key={h} className="flex items-center gap-2 text-[13.5px] animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-both duration-500" style={{ color: 'rgba(244,241,234,0.9)', animationDelay: `${400 + i * 480}ms` }}>
+                        <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full" style={{ background: T.lilla, color: T.ink }}><Hake size={9} /></span>
+                        {h}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-[13.5px] leading-[1.45]" style={{ color: 'rgba(244,241,234,0.78)' }}>{a.tekst}</p>
+                )}
+              </>
+            );
+          }}
+        </Tekstbytte>
+        <div className="flex-1" />
+        {/* Utsnittet */}
+        {/* Utsnittet står også gjennom STABEL på mobil (siste bilde), så kortet ikke blir tomt */}
+        <div className="relative overflow-hidden" style={{ borderRadius: 18, aspectRatio: '4 / 3', background: '#15130F', boxShadow: '0 40px 80px -40px rgba(0,0,0,0.8)', opacity: aktiv || rest ? 1 : 0, transform: aktiv || rest ? 'none' : 'translateX(32px) scale(0.95)', transition: ov ? 'none' : aktiv || rest ? `opacity 600ms ${EASE} ${inn ? 700 : 0}ms, transform 900ms ${MORF} ${inn ? 700 : 0}ms` : 'none' }} aria-hidden={!(aktiv || rest)}>
           {OPPTAK.map((rid) => {
             const rb = KILDE[rid]; const paa = rid === id;
             return (
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={rid} src={rb.liten || rb.src} alt={rb.navn} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: rb.posLiten || rb.pos || '50% 50%', opacity: paa ? 1 : 0, transition: ov ? 'none' : `opacity 300ms ${EASE}`, animation: paa && !ov ? `v4-kamera ${(AUTO[fotoFase(rid)] || 900) + 400}ms cubic-bezier(0.25, 0.6, 0.3, 1) both` : 'none' }} draggable={false} aria-hidden={!paa} />
+              <img key={rid} src={rb.liten || rb.src} alt={rb.navn} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: rb.posLiten || rb.pos || '50% 50%', opacity: paa ? 1 : 0, transition: ov ? 'none' : `opacity 320ms ${EASE}`, animation: paa && !ov ? `v4-kamera ${(AUTO[fotoFase(rid)] || 900) + 400}ms cubic-bezier(0.25, 0.6, 0.3, 1) both` : 'none' }} draggable={false} aria-hidden={!paa} />
             );
           })}
           <div aria-hidden="true" className="absolute inset-0" style={{ backgroundImage: `linear-gradient(90deg, transparent calc(33.33% - 0.5px), ${linje} calc(33.33% - 0.5px), ${linje} calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), ${linje} calc(66.66% - 0.5px), ${linje} calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px)), linear-gradient(180deg, transparent calc(33.33% - 0.5px), ${linje} calc(33.33% - 0.5px), ${linje} calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), ${linje} calc(66.66% - 0.5px), ${linje} calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px))` }} />
-          <div className="absolute" style={{ left: '50%', top: 10, transform: 'translateX(-50%)' }}>
-            <span className="inline-flex h-7 items-center gap-2 rounded-full pl-2.5 pr-3 text-[12px] font-medium" style={{ background: 'rgba(12,11,10,0.55)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12)', color: 'rgba(250,248,244,0.96)' }}>
+          <Autofokus id={aktiv ? id : null} fase={fase} ov={ov} />
+          <div className="absolute" style={{ left: 12, top: 12 }}>
+            <span className="inline-flex h-6 items-center gap-2 rounded-full pl-2 pr-2.5 text-[11px] font-medium tabular-nums" style={{ background: 'rgba(12,11,10,0.5)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12)', color: 'rgba(250,248,244,0.96)' }}>
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />
               <span key={id} className="animate-in fade-in-0 duration-300">{KILDE[id].navn}</span>
-              <span style={{ color: 'rgba(250,248,244,0.55)' }}>{k} av 5</span>
+              <span style={{ color: 'rgba(250,248,244,0.5)' }}>· {k} av 5</span>
             </span>
           </div>
-          <div className="absolute flex items-center justify-center rounded-full text-[11px] font-semibold" style={{ left: '50%', bottom: 10, width: 30, height: 30, transform: 'translateX(-50%)', background: 'rgba(12,11,10,0.5)', color: 'rgba(250,248,244,0.92)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12)' }}>1×</div>
+          <div className="absolute" style={{ right: 14, top: '50%', width: 40, height: 40, marginTop: -20, borderRadius: '50%', boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.92), 0 6px 20px -8px rgba(0,0,0,0.6)' }}>
+            <div key={presser ? `p${fase}` : 'px'} className="absolute" style={{ inset: 4, borderRadius: '50%', background: '#fff', animation: presser ? 'v4-utloser 360ms cubic-bezier(0.3, 0, 0.2, 1) both' : 'none' }} />
+          </div>
           <div key={presser ? `b${fase}` : 'bx'} aria-hidden="true" className="absolute inset-0" style={{ background: '#000', opacity: 0, animation: presser ? 'v4-blink-sort 240ms ease-out both' : 'none' }} />
         </div>
-        {/* Kontrollstripen: miniatyr · utløserring */}
-        <div className="relative flex items-center justify-center" style={{ height: 76 }}>
-          <div className="absolute overflow-hidden" style={{ left: 14, top: 18, width: 40, height: 40, borderRadius: 10, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.07)' }}>
-            {OPPTAK.slice(0, 4).map((rid) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={rid} src={KILDE[rid].liten || KILDE[rid].src} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ opacity: rid === forrige ? 1 : 0, transition: ov ? 'none' : `opacity 300ms ${EASE} 180ms` }} draggable={false} />
-            ))}
-          </div>
-          <div className="relative" style={{ width: 54, height: 54, borderRadius: '50%', boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.9)' }}>
-            <div key={presser ? `p${fase}` : 'px'} className="absolute" style={{ inset: 5, borderRadius: '50%', background: '#fff', animation: presser ? 'v4-utloser 360ms cubic-bezier(0.3, 0, 0.2, 1) both' : 'none' }} />
-          </div>
+        {/* Raden: fem plasser som fylles etter hvert som bildene tas */}
+        <div className="mt-3 grid grid-cols-5 gap-2" data-testid="v4-rull-kompakt">
+          {OPPTAK.map((rid) => (
+            <div key={rid} className="relative overflow-hidden rounded-[6px]" style={{ aspectRatio: '3 / 2', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.035)' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={KILDE[rid].liten || KILDE[rid].src} alt={KILDE[rid].navn} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: KILDE[rid].posLiten || KILDE[rid].pos || '50% 50%', opacity: fase > fotoFase(rid) ? 1 : 0, transform: fase > fotoFase(rid) ? 'scale(1)' : 'scale(1.3)', transition: ov ? 'none' : `opacity 400ms ${EASE}, transform 700ms ${MORF}` }} draggable={false} />
+            </div>
+          ))}
         </div>
-      </div>
-      {/* Filmrullen: fylles etter hvert som du tar bildene */}
-      <div className="mt-3 grid grid-cols-5 gap-2" data-testid="v4-rull-kompakt">
-        {OPPTAK.map((rid) => <Bilde key={rid} src={KILDE[rid].liten || KILDE[rid].src} alt={KILDE[rid].navn} pos={KILDE[rid].posLiten || KILDE[rid].pos} vis={fase > fotoFase(rid)} ov={ov} className="rounded-[6px]" />)}
       </div>
     </div>
   );
 }
 
 function MosaikkKompakt({ fase, ov }) {
-  const inne = fase === F.STABEL || fase === F.BILDER;
+  const inne = fase === F.BILDER;
   return (
     <div data-testid="v4-mosaikk-kompakt">
       <Bilde src={KILDE.stue.liten} alt="Stue" vis={inne} ov={ov} className="rounded-[12px]" />
@@ -1182,15 +1370,15 @@ function FinnKortKompakt({ ov }) {
   );
 }
 
-function Kompakt({ fase, ov, onAkt, onHold, neste }) {
+function Kompakt({ fase, ov, onAkt, onHold, neste, startet }) {
   const start = fase <= F.TRYKK_START;
-  const soker = iSoker(fase);
+  const kamera = iSoker(fase) || fase === F.STABEL;
   const akt = aktTekst(fase);
   return (
     <div className="flex flex-col text-[#15130F]" style={{ background: PAPIR }} data-testid="v4-annonse-kompakt">
-      <Vokse vis={start || soker} ov={ov}>{soker ? <SokerKompakt fase={fase} ov={ov} /> : <StartKompakt fase={fase} ov={ov} />}</Vokse>
+      <Vokse vis={start || kamera} ov={ov}>{kamera ? <KameraKompakt fase={fase} ov={ov} /> : <StartKompakt fase={fase} ov={ov} startet={startet} />}</Vokse>
 
-      <Vokse vis={!start && !soker} ov={ov}>
+      <Vokse vis={!start && !kamera} ov={ov}>
         <div className="px-5 pt-6">
           <Tekstbytte id={akt.id} ov={ov}>
             {(id) => {
@@ -1214,7 +1402,7 @@ function Kompakt({ fase, ov, onAkt, onHold, neste }) {
         </div>
 
         <div className="px-5 pt-6">
-          <Vokse vis={fase === F.STABEL || fase === F.BILDER} ov={ov}><MosaikkKompakt fase={fase} ov={ov} /></Vokse>
+          <Vokse vis={fase === F.BILDER} ov={ov}><MosaikkKompakt fase={fase} ov={ov} /></Vokse>
           <Vokse vis={fase >= F.LES1 && fase <= F.STYLET} ov={ov}>
             <div className="relative overflow-hidden rounded-[12px]" style={{ aspectRatio: '3 / 2', background: 'rgba(21,19,15,0.05)' }} data-testid="v4-viser-kompakt">
               <Bildeflate fase={fase} ov={ov} onHold={onHold} liten testid="v4-bildeflate-kompakt" />
@@ -1285,7 +1473,7 @@ export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', o
   const skygge = lys
     ? '0 0 0 1px rgba(21,19,15,0.08), 0 60px 120px -40px rgba(21,19,15,0.35)'
     : '0 0 0 1px rgba(244,241,234,0.12), 0 70px 120px -50px rgba(0,0,0,0.75)';
-  const felles = { fase, ov, onAkt: tilAkt, onHold: setHoldt, neste };
+  const felles = { fase, ov, startet, onAkt: tilAkt, onHold: setHoldt, neste };
   const blend = { opacity: morkt ? 0 : 1, transition: ov ? 'none' : `opacity 450ms ${EASE}` };
 
   return (

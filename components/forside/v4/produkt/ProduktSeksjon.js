@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Layers } from 'lucide-react';
 import { EASE, T, display, useSynlig } from '../motion';
-import DriftScene from './DriftScene';
+import DriftFilm from './DriftFilm';
 import AnnonseFilm from './AnnonseFilm';
 import KontraktFilm from './KontraktFilm';
 
@@ -40,8 +40,8 @@ const SCENER = {
     ingress: 'Kontrakten er fylt ut fra annonsen og signeres med BankID av begge. Depositumet står på egen konto hos Keyhole, og overtakelsen dokumenteres i en protokoll dere signerer i døra.',
   },
   drift: {
-    tittel: ['Fra melding til løst.', 'Systemet gjør resten.'],
-    ingress: '22:41 melder Ida at varmtvannet er borte. Systemet vet hvilken bereder, finner bygårdens rørlegger og henter pris. Du godkjenner med ett trykk — torsdag er det fikset.',
+    tittel: ['Fra melding til løst.', 'Du trykker én gang.'],
+    ingress: 'Emma melder i chatten at varmtvannet er borte. Saken sorterer seg selv, rørleggeren svarer med tidspunkt og pris — du godkjenner med ett trykk. Torsdag er det fikset, og fakturaen ligger i regnskapet.',
   },
 };
 
@@ -63,7 +63,7 @@ const INK = '#15130F';
    modus 'cover' = bakgrunnsbilde som dekker. modus 'scene' = <img> med egen høyde/forankring (bygget plasseres bevisst).
    srcSet = valgfri responsiv kildeliste (ellers bygges 2000/4000 fra bilde/bilde2x). posKlasse må være literale Tailwind-klasser (JIT).
    layout 'senter' | 'venstre' — hvor tabs/statement står. seksjonBg = valgfri overstyring av flaten bak bildet.
-   Produktet er alltid sentrert (DriftScene). */
+   Produktet er alltid sentrert (filmene: AnnonseFilm, KontraktFilm, DriftFilm). */
 const BAKGRUNNER = {
   osloKveld: {
     /* Samme bygård, kveldsversjon: skarpt bilde under en varm, mørk tone (à la finalen) — offwhite typografi,
@@ -297,7 +297,7 @@ export default function ProduktSeksjon() {
         <div ref={sceneRef} className="mt-12 lg:mt-20">
           {/* Scenebytte: den nye flaten kommer inn sekvensielt (key → ny montering), ingen overlappende crossfade */}
           <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500" style={{ opacity: bytter ? 0 : 1, transform: bytter ? 'translateY(-8px)' : 'none', transition: `opacity 340ms ${EASE}, transform 340ms ${EASE}` }}>
-            {aktiv === 'drift' && <DriftScene synlig={synlig} tema={bg.tema} />}
+            {aktiv === 'drift' && <DriftFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}
             {aktiv === 'annonse' && <AnnonseFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}
             {aktiv === 'kontrakt' && <KontraktFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}
           </div>

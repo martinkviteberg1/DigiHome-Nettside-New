@@ -1119,3 +1119,23 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - **Moderne-pass (bruker: «gjør alt mye mer moderne»):** blur-inn på alt som kommer inn, frostet glass (GLASS i filmdeler) på etiketter over
   bilder, indre lys-hårlinje (LYSKANT) på bildefliser, hjørnemarkører på utvalget, rundere kort, glass-adressepille i åpningen, kapittel-
   fremdrift som tynn lilla linje i aktiv tab-pille (onFremdrift). Teller står nederst til venstre i scenen (unngår sticky tab-rad).
+
+## Kamerascenen i Annonse + veggfortellingen i Hero — sept 2025 (agent-testet, ikke brukergodkjent)
+- **Annonse «Begynn med bildene.» (FOTO1–STABEL) bygget om etter brukerens spec:** ikke «bakgrunn → hvit boks → telefon i boksen», men
+  «eiendom → editorial tekst → intelligent lag rett over scenen». Fasaden fortsetter bak hele scenen (`Bakteppe`: samme geometri som
+  åpningsflisen, statisk uskarp kopi blur 7 px/−8 % tones inn), tekst nede til venstre uten boks («01 · Annonsen» / «Begynn med bildene.» ord
+  for ord / «Fem bilder fra mobilen holder.» / svak «DigiHome ordner resten…»), kamerautsnittet (`Soker`) som produktobjekt — stort avrundet
+  3:2, glir inn fra høyre (48 px, 0.94→1, 1,2 s inn i FOTO1), tredelingsnett, «Fasade · 1 av 5», utløserring, autofokus-hjørner (`Autofokus`,
+  v4-fokus), svart blink. Ingen telefonkropp, ingen statuslinje, ingen «1×». Hvert bilde løsner som miniatyr (flisen, transform) og lander i
+  raden med fem plasser under utsnittet (`KameraRad` — raden ER telleren; 7-strekers Akter skjult t.o.m. STABEL). STABEL (2,6 s): utsnittet
+  legges ned, tittel → «Vi gjør resten.» + HANDLINGER én og én («Romtype gjenkjent», «Bilde optimalisert», «Rekkefølge foreslått»). BILDER: bakteppe
+  → papir, raden sorterer seg til mosaikken. Ny akt {fra: STABEL, «Vi gjør resten.»} (10 akter). Tider: FOTO1 3400, FOTO2 1100, FOTO3/4 1000,
+  FOTO5 1300, STABEL 2600. Mobil: `KameraKompakt` (samme idé, stående; utsnittet står gjennom STABEL). Fjernet: `Mobil`, `RullTopp`, `SokerKompakt`.
+  Regel: aldri `sw`/`sh` som lokale navn i `layout()` (kolliderer med mosaikkens) — kameraet bruker `kw`/`kh`.
+- **Hero-veggen = fortelling om hva DigiHome er (`Veggfortelling` + `useFortelling` i HeroStage, kun direkte-modus):** fem beats
+  Annonse «Annonsen skriver seg selv.» → Kontrakt «Signert med BankID.» → Økonomi «Betalt. Bokført.» → Drift «Noe skjer. Rørlegger booket.» →
+  «Kvelden er din.» (holder 7,2 s m/ dagens tall) — loop. Ord for ord med keyframes (`v4-ord-inn/ut`, `v4-linje-inn/ut` i globals.css — ikke
+  transitions, fordi ordene remonteres per beat). Faste minimumshøyder (2 linjer, align flex-end) — ingenting hopper. Register nederst
+  «01 Annonse · 02 Kontrakt · 03 Økonomi · 04 Drift» (aktivt i blekk) → dagens tall i siste beat. **Telefonstrømmen følger veggen:** `puls`
+  (én per beat) → hendelsen kommer 1,3 s etter at veggen har sagt det. STROM = Visning booket → Kontrakt signert → Regnskapet er ført →
+  Emma bekreftet. «Husleie mottatt» og alle kr-beløp fjernet (brukerkrav). `puls === undefined` = egen takt (Street View-flyten), `null` = vent.
