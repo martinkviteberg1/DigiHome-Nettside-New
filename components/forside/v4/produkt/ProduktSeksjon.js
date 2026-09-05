@@ -30,8 +30,8 @@ const TABS = [
 
 const SCENER = {
   annonse: {
-    tittel: ['Fra ledig til utleid.', 'Du trykker to ganger.'],
-    ingress: 'Jonas sier opp. Systemet leser bildene, skriver annonsen og møblerer forsidebildet — merket som illustrasjon. Du publiserer til FINN.no med ett trykk. Interessenter og visninger samles på ett sted; du velger leietaker, og kontrakten går ut med BankID.',
+    tittel: ['Fra ledig til utleid.', 'Du trykker tre ganger.'],
+    ingress: 'Ett trykk lager annonsen, ett publiserer den på FINN.no, ett velger leietaker. Alt imellom gjør systemet — du ser og godkjenner underveis.',
   },
   drift: {
     tittel: ['Fra melding til løst.', 'Systemet gjør resten.'],
@@ -101,18 +101,18 @@ const BAKGRUNNER = {
 const VELGER = [['oslo', 'Oslo · bolig'], ['osloKveld', 'Oslo · kveld'], ['stue', 'Stue · Bergen'], ['skumring', 'Skumring'], ['arkitektur', 'Arkitektur'], ['dagGlass', 'Dag · glass'], ['dagBolig', 'Dag · bolig'], ['plomme', 'Plomme']];
 
 /* Tema: farger for alt som ikke er produktflaten.
-   Tabs (retning A, «minimal editorial»): ren tekstrekke. Inaktiv 60 % ink, aktiv 100 % ink + medium vekt + 2 px strek.
-   Ikke-klare tabs ser like ut som inaktive (de markerer produktbredden), men er ikke klikkbare. */
+   Tabs: segmentert pille (frostet) med én glidende, fylt markør bak den aktive. Inaktive er dempet tekst;
+   ikke-klare tabs er enda mer dempet (de markerer produktbredden), men er ikke klikkbare. Festet = tettere pille + skygge. */
 const TEMA = {
   mork: {
     seksjonBg: T.plomme, tekst: IVORY, ingress: 'rgba(244,241,234,0.68)',
-    tabAktiv: 'rgba(244,241,234,0.88)', tabTekst: 'rgba(244,241,234,0.5)', tabHover: 'hover:text-[#F4F1EA]/80', tabLinje: 'rgba(244,241,234,0.12)', ring: 'focus-visible:ring-[#F4F1EA]/40',
-    pille: 'rgba(36,28,39,0.72)', pilleKant: 'rgba(244,241,234,0.14)',
+    pille: 'rgba(36,28,39,0.42)', pilleFestet: 'rgba(36,28,39,0.78)', pilleKant: 'rgba(244,241,234,0.14)',
+    markor: IVORY, markorSkygge: '0 6px 18px -8px rgba(0,0,0,0.55)', tabAktiv: INK, tabTekst: 'rgba(244,241,234,0.74)', tabDempet: 'rgba(244,241,234,0.36)', tabHover: 'hover:text-[#F4F1EA]', ring: 'focus-visible:ring-[#F4F1EA]/40',
   },
   lys: {
     seksjonBg: IVORY, tekst: INK, ingress: 'rgba(21,19,15,0.66)',
-    tabAktiv: 'rgba(21,19,15,0.84)', tabTekst: 'rgba(21,19,15,0.46)', tabHover: 'hover:text-[#15130F]/80', tabLinje: 'rgba(21,19,15,0.08)', ring: 'focus-visible:ring-[#15130F]/30',
-    pille: 'rgba(243,241,236,0.82)', pilleKant: 'rgba(21,19,15,0.08)',
+    pille: 'rgba(243,241,236,0.66)', pilleFestet: 'rgba(243,241,236,0.88)', pilleKant: 'rgba(21,19,15,0.08)',
+    markor: INK, markorSkygge: '0 8px 20px -10px rgba(21,19,15,0.55)', tabAktiv: IVORY, tabTekst: 'rgba(21,19,15,0.68)', tabDempet: 'rgba(21,19,15,0.34)', tabHover: 'hover:text-[#15130F]', ring: 'focus-visible:ring-[#15130F]/30',
   },
 };
 
@@ -121,8 +121,11 @@ export default function ProduktSeksjon() {
   const [bakgrunn, setBakgrunn] = useState('oslo');   // nøkkel i BAKGRUNNER — bygården er standard; 'stue' (interiør) ligger i velgeren
   const [velgerOpen, setVelgerOpen] = useState(false);
   const [festet, setFestet] = useState(false);   // tabs-raden ligger klistret under navigasjonen
+  const [markor, setMarkor] = useState(null);    // {x, w} for den glidende markøren bak aktiv tab
   const ref = useRef(null);
   const vaktRef = useRef(null);
+  const listeRef = useRef(null);
+  const tabRefs = useRef({});
   const synlig = useSynlig(ref, 0.12);
   const scene = SCENER[aktiv] || SCENER.drift;
   const bg = BAKGRUNNER[bakgrunn] || BAKGRUNNER.plomme;
@@ -153,6 +156,25 @@ export default function ProduktSeksjon() {
       if (raf) window.cancelAnimationFrame(raf);
     };
   }, []);
+
+  /* Glidende markør: måles fra den aktive knappen (offsetLeft/offsetWidth relativt til listen). Måles på nytt
+     når listen endrer størrelse (fonter lastes, vindu endres). På smale skjermer rulles den aktive inn midt i listen. */
+  useEffect(() => {
+    const liste = listeRef.current;
+    const maal = () => {
+      const b = tabRefs.current[aktiv];
+      if (!b) return;
+      setMarkor({ x: b.offsetLeft, w: b.offsetWidth });
+      if (liste && liste.scrollWidth > liste.clientWidth + 2) {
+        liste.scrollTo({ left: b.offsetLeft - (liste.clientWidth - b.offsetWidth) / 2, behavior: 'smooth' });
+      }
+    };
+    maal();
+    const ro = typeof ResizeObserver !== 'undefined' && liste ? new ResizeObserver(maal) : null;
+    ro?.observe(liste);
+    window.addEventListener('resize', maal);
+    return () => { ro?.disconnect(); window.removeEventListener('resize', maal); };
+  }, [aktiv]);
 
   /* Tabbytte fra festet rad: hold blikket der raden er — scroll produktet inn rett under den. */
   const bytt = (id) => {
@@ -189,36 +211,38 @@ export default function ProduktSeksjon() {
       <div className="relative mx-auto max-w-[1760px] px-5 pb-12 pt-12 sm:px-8 lg:px-10 lg:pb-16 lg:pt-12">
         {/* Vakt for sticky-raden */}
         <div ref={vaktRef} aria-hidden="true" className="h-px w-full" />
-        {/* Modus — lett mode-switch: tekst + hårlinje under den aktive. Klistres under navigasjonen når man
-            skroller i seksjonen, så neste område alltid er ett trykk unna. */}
+        {/* Modus — segmentert pille med glidende markør. Klistres under navigasjonen når man skroller i seksjonen,
+            så neste område alltid er ett trykk unna. */}
         <div className={`sticky top-[72px] z-30 flex lg:top-[64px] ${venstre ? 'justify-start' : 'justify-center'}`} data-testid="v4-tabs-sticky" data-festet={festet ? '1' : '0'}>
           <div
-            className={`inline-flex max-w-full rounded-full transition-[background-color,box-shadow,padding] duration-300 ${festet ? 'px-3 pt-1.5 sm:px-[18px]' : ''}`}
+            className="inline-flex max-w-full rounded-full p-1 transition-[background-color,box-shadow] duration-300"
             style={{
-              background: festet ? tema.pille : 'transparent',
-              boxShadow: festet ? `inset 0 0 0 1px ${tema.pilleKant}, 0 10px 30px -18px rgba(0,0,0,0.35)` : 'none',
-              backdropFilter: festet ? 'blur(14px)' : 'none',
-              WebkitBackdropFilter: festet ? 'blur(14px)' : 'none',
+              background: festet ? tema.pilleFestet : tema.pille,
+              boxShadow: `inset 0 0 0 1px ${tema.pilleKant}${festet ? ', 0 12px 32px -18px rgba(0,0,0,0.45)' : ''}`,
+              backdropFilter: 'blur(16px) saturate(1.3)',
+              WebkitBackdropFilter: 'blur(16px) saturate(1.3)',
             }}
           >
-            {/* Retning A — minimal editorial: tekstrekke på én hårlinje, aktiv = full ink + medium + 2 px strek. */}
-            <div role="tablist" aria-label="Produktområder" className="inline-flex max-w-full gap-[14px] overflow-x-auto sm:gap-8 lg:gap-9" style={{ boxShadow: festet ? 'none' : `inset 0 -1px 0 ${tema.tabLinje}` }} data-testid="v4-tabs">
+            <div ref={listeRef} role="tablist" aria-label="Produktområder" className="relative inline-flex max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-testid="v4-tabs">
+              {markor && (
+                <span aria-hidden="true" className="absolute top-0 h-full rounded-full" style={{ left: markor.x, width: markor.w, background: tema.markor, boxShadow: tema.markorSkygge, transition: `left 450ms ${EASE}, width 450ms ${EASE}, background-color 300ms ${EASE}` }} data-testid="v4-tabs-markor" />
+              )}
               {TABS.map((t) => {
                 const er = t.id === aktiv;
                 return (
                   <button
                     key={t.id}
+                    ref={(el) => { tabRefs.current[t.id] = el; }}
                     type="button"
                     role="tab"
                     aria-selected={er}
                     aria-disabled={!t.klar}
                     onClick={() => { if (t.klar) bytt(t.id); }}
-                    className={`relative shrink-0 pb-2.5 pt-1 text-[13.5px] tracking-[-0.005em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 sm:text-[14.5px] ${tema.ring} ${er ? 'font-medium' : t.klar ? tema.tabHover : 'cursor-default'}`}
-                    style={{ color: er ? tema.tabAktiv : tema.tabTekst }}
+                    className={`relative z-[1] h-9 shrink-0 rounded-full px-3.5 text-[13.5px] tracking-[-0.005em] transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 sm:px-[18px] sm:text-[14px] ${tema.ring} ${er ? 'font-medium' : t.klar ? tema.tabHover : 'cursor-default'}`}
+                    style={{ color: er ? tema.tabAktiv : t.klar ? tema.tabTekst : tema.tabDempet }}
                     data-testid={`v4-tab-${t.id}`}
                   >
                     {t.navn}
-                    <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[1.5px]" style={{ background: tema.tabAktiv, opacity: er ? 1 : 0, transition: `opacity 200ms ${EASE}` }} />
                   </button>
                 );
               })}
