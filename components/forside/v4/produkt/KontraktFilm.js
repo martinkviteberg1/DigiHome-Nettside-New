@@ -19,15 +19,17 @@ const F = {
   START: 0, PEKER: 1, HOVER: 2, TRYKK1: 3,
   DOK: 4, FYLL1: 5, FYLL2: 6, FYLL3: 7,
   KLAR2: 8, TRYKK2: 9, SIGN1: 10, SMS1: 11, LEST: 12, SIGN2: 13,
-  DEP1: 14, DEP2: 15,
-  OVER0: 16, OVER1: 17, OVER2: 18, OVER3: 19, KLAR3: 20, TRYKK3: 21, SIGNERT: 22,
-  SLUTT: 23,
+  DEP1: 14, DEP2: 15, DEP3: 16,
+  BOOK0: 17, BOOK1: 18, BOOK2: 19,
+  OVER0: 20, OVER1: 21, OVER2: 22, OVER3: 23, KLAR3: 24, TRYKK3: 25, SIGNERT: 26,
+  SLUTT: 27,
 };
 const AUTO = {
   [F.START]: 1300, [F.PEKER]: 1350, [F.HOVER]: 420, [F.TRYKK1]: 380,
   [F.DOK]: 1300, [F.FYLL1]: 900, [F.FYLL2]: 900, [F.FYLL3]: 1100,
   [F.KLAR2]: 1700, [F.TRYKK2]: 380, [F.SIGN1]: 1500, [F.SMS1]: 1700, [F.LEST]: 1300, [F.SIGN2]: 2000,
-  [F.DEP1]: 1600, [F.DEP2]: 2200,
+  [F.DEP1]: 2000, [F.DEP2]: 1500, [F.DEP3]: 2300,
+  [F.BOOK0]: 1700, [F.BOOK1]: 1400, [F.BOOK2]: 2300,
   [F.OVER0]: 1700, [F.OVER1]: 1500, [F.OVER2]: 1300, [F.OVER3]: 1300, [F.KLAR3]: 1700, [F.TRYKK3]: 380, [F.SIGNERT]: 2600,
   [F.SLUTT]: 4400,
 };
@@ -43,7 +45,8 @@ const AKTER = [
   { fra: F.START, tittel: 'Emma er valgt.', tekst: 'Kontrakten er allerede fylt ut — med det som stod i annonsen, og det Emma oppga i søknaden.' },
   { fra: F.DOK, tittel: 'Kontrakten er ferdig utfylt.', tekst: 'Standard husleiekontrakt. Stiplet tekst er hentet fra annonsen og søknaden. Les gjennom, endre om du vil — og signer.' },
   { fra: F.SIGN1, tittel: 'Begge signerer med BankID.', tekst: 'Du signerer først. Emma får en SMS med lenke og signerer på mobilen. Ingen utskrift, ingen skanning.' },
-  { fra: F.DEP1, tittel: 'Depositumet står trygt.', tekst: 'Egen depositumskonto i Emmas navn hos Keyhole. Opprettes automatisk — pengene går aldri via din konto.' },
+  { fra: F.DEP1, tittel: 'Depositumet velger Emma selv.', tekst: 'Sperret depositumskonto — eller garanti fra Keyhole, så hun beholder pengene. Du er sikret uansett, og ingenting går via din konto.' },
+  { fra: F.BOOK0, tittel: 'Overtakelsen booker Emma selv.', tekst: 'Du legger ut tidspunktene som passer deg. Emma velger på mobilen, får bekreftelsen på SMS — og kalenderen din oppdateres.' },
   { fra: F.OVER0, tittel: 'Overtakelsen tas i døra.', tekst: 'Bilder av hvert rom, målerstand og nøkler i én protokoll. Begge signerer på mobilen før dere går fra hverandre.' },
 ];
 const SLUTT = { tittel: 'Emma har flyttet inn.', tekst: 'Første husleie forfaller 1. desember og følges opp automatisk. Fra nå handler det om driften.' };
@@ -69,7 +72,8 @@ const FELT = [
 
 const SMS = [
   { id: 'k1', til: 'Emma', fra: F.SMS1, tilOg: F.DEP1, tid: 'i dag 14:03', tekst: 'Hei Emma! Leiekontrakten for Nygårdsgaten 5 er klar. Les og signer med BankID: digihome.no/s/7ka2 – DigiHome' },
-  { id: 'k2', til: 'Emma', fra: F.DEP1, tilOg: F.OVER0, tid: 'i dag 14:41', tekst: 'Depositumskontoen din er opprettet hos Keyhole. Betal inn 37 500 kr innen 25. oktober — lenke i DigiHome. – DigiHome' },
+  { id: 'k2', til: 'Emma', fra: F.DEP1, tilOg: F.BOOK0, tid: 'i dag 14:41', tekst: 'Hei Emma! Depositumet på 37 500 kr kan settes på sperret konto eller sikres med garanti fra Keyhole. Velg i DigiHome: digihome.no/d/7ka2 – DigiHome' },
+  { id: 'k2b', til: 'Emma', fra: F.BOOK2, tilOg: F.OVER0, tid: 'i dag 15:02', tekst: 'Overtakelsen er bekreftet: lørdag 1. november kl. 12:00 i Nygårdsgaten 5. Ta med legitimasjon. – DigiHome' },
   { id: 'k3', til: 'Emma', fra: F.SIGNERT, tilOg: F.SLUTT, tid: '1. nov 12:14', tekst: 'Velkommen hjem, Emma! Overtakelsesprotokollen er signert av begge og ligger i DigiHome. – DigiHome' },
 ];
 
@@ -152,7 +156,7 @@ function Kontrakt({ fase, ov, kompakt = false }) {
       {/* Vedlegg — følger kontrakten automatisk */}
       <div className="mt-3 flex flex-wrap items-center gap-1.5" style={{ opacity: fase >= F.FYLL3 ? 1 : 0, transform: fase >= F.FYLL3 ? 'none' : 'translateY(6px)', transition: ov ? 'none' : `opacity 450ms ${EASE} 600ms, transform 450ms ${EASE} 600ms` }} aria-hidden={fase < F.FYLL3}>
         <span className="mr-1 text-[12px]" style={{ color: DIM }}>Vedlegg</span>
-        {['Husordensregler', 'Sjekkliste ved innflytting', 'Depositumsavtale · Keyhole'].map((v) => <Chip key={v} tekst={v} liten />)}
+        {['Husordensregler', 'Sjekkliste ved innflytting', 'Depositumsavtale'].map((v) => <Chip key={v} tekst={v} liten />)}
       </div>
       <div className={`mt-auto ${kompakt ? 'pt-4' : 'pt-5'}`} style={{ opacity: fase >= F.KLAR2 ? 1 : 0, transform: fase >= F.KLAR2 ? 'none' : 'translateY(8px)', transition: ov ? 'none' : `opacity 500ms ${EASE} 200ms, transform 500ms ${EASE} 200ms` }} aria-hidden={fase < F.KLAR2}>
         <p className="text-[12px] font-medium text-[#15130F]/60">Signaturer</p>
@@ -239,34 +243,113 @@ function Papir({ fase, ov, kompakt = false, className = '', style }) {
   );
 }
 
-/* ── Sidespalten: depositum (Keyhole) og SMS-ene ── */
-function DepositumKort({ fase, ov }) {
-  const steg = [
-    { t: 'Depositumskonto opprettet', s: 'I Emmas navn · Keyhole', fra: F.DEP1 },
-    { t: 'Innbetalt av Emma', s: '24. oktober', fra: F.DEP2 },
-    { t: 'Sikret til innflytting', s: `${tall(DEPOSITUM)} kr`, fra: F.DEP2 },
-  ];
+/* ── Depositum: Emma velger på mobilen — sperret konto eller garanti fra Keyhole ── */
+const VALG = [
+  { id: 'konto', t: 'Sperret depositumskonto', u: 'Pengene låses på en konto i ditt navn til leieforholdet er over.' },
+  { id: 'garanti', t: 'Depositumsgaranti', u: 'Behold pengene. Keyhole garanterer for depositumet overfor utleier.', keyhole: true },
+];
+function DepositumValg({ fase, ov, kompakt = false }) {
+  const valgt = fase >= F.DEP2;
+  const utstedt = fase >= F.DEP3;
   return (
-    <div className="rounded-[16px] p-4" style={{ background: STEIN, boxShadow: `inset 0 0 0 1px ${HAIR}` }} data-testid="v4-depositum">
-      <div className="flex items-center justify-between gap-3 text-[13px]">
-        <span className="font-medium text-[#15130F]/60">Depositum · {tall(DEPOSITUM)} kr</span>
-        <Keyhole h={13} />
+    <div className={`mx-auto w-full rounded-[20px] ${kompakt ? 'max-w-[360px] p-4' : 'max-w-[400px] p-5'}`} style={{ background: HVIT, boxShadow: `0 0 0 1px ${HAIR}, 0 40px 90px -50px rgba(21,19,15,0.45)` }} data-testid="v4-depositum" data-valgt={valgt ? '1' : '0'} data-utstedt={utstedt ? '1' : '0'}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-2 text-[12.5px]" style={{ color: DIM }}><Portrett src={EMMA.bilde} alt={EMMA.navn} size={22} />Emma velger · på mobilen</span>
+        <span className="text-[12.5px] font-medium">Depositum · {tall(DEPOSITUM)} kr</span>
       </div>
-      <ol className="mt-2">
-        {steg.map((x, i) => {
-          const vis = fase >= x.fra;
-          const d = steg.filter((y) => y.fra === x.fra).indexOf(x) * 320;
-          return (
-            <li key={x.t} className="flex items-center justify-between gap-3 border-t py-2.5 text-[13px]" style={{ borderColor: HAIR, opacity: vis ? 1 : 0.4, transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? d : 0}ms` }}>
-              <span className="inline-flex items-center gap-2">
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full" style={{ background: vis ? 'rgba(31,157,85,0.14)' : 'rgba(21,19,15,0.06)', color: '#166B3C', transition: ov ? 'none' : `background-color 300ms ${EASE} ${vis ? d : 0}ms` }}>{vis ? <Hake size={11} /> : <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'rgba(21,19,15,0.3)' }} />}</span>
-                <span className="font-medium">{x.t}</span>
-              </span>
-              <span style={{ color: DIM }}>{x.s}</span>
-            </li>
-          );
-        })}
-      </ol>
+
+      <div className="mt-4 grid">
+        {/* Valget */}
+        <div className="col-start-1 row-start-1" style={{ opacity: utstedt ? 0 : 1, transform: utstedt ? 'translateY(-8px)' : 'none', transition: ov ? 'none' : `opacity 320ms ${EASE}, transform 320ms ${EASE}`, pointerEvents: utstedt ? 'none' : 'auto' }} aria-hidden={utstedt}>
+          <div className="grid gap-2">
+            {VALG.map((v, i) => {
+              const aktiv = v.id === 'garanti' && valgt;
+              return (
+                <div key={v.id} className="relative flex items-start gap-3 rounded-[14px] p-3.5" style={{ boxShadow: aktiv ? `inset 0 0 0 1.5px ${T.lilla}` : `inset 0 0 0 1px ${HAIR}`, background: aktiv ? 'rgba(212,150,255,0.10)' : 'transparent', transition: ov ? 'none' : `box-shadow 300ms ${EASE}, background-color 300ms ${EASE}`, opacity: fase >= F.DEP1 ? 1 : 0, transitionDelay: `${i * 120}ms` }} data-testid={`v4-valg-${v.id}`}>
+                  <span className="relative mt-0.5 inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full" style={{ width: 18, height: 18, boxShadow: aktiv ? `inset 0 0 0 5px ${T.lilla}` : 'inset 0 0 0 1.5px rgba(21,19,15,0.3)', background: HVIT, transition: ov ? 'none' : `box-shadow 260ms ${EASE}` }}>
+                    {aktiv && !ov && <span key="ring" aria-hidden="true" className="absolute -inset-[7px] rounded-full" style={{ boxShadow: `inset 0 0 0 1.5px ${T.lilla}`, animation: 'v4-ring 600ms cubic-bezier(0.2, 0.6, 0.2, 1) forwards' }} />}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 text-[14px] font-medium">{v.t}{v.keyhole && <Keyhole h={12} />}</span>
+                    <span className="mt-0.5 block text-[12.5px] leading-[1.45]" style={{ color: DIM }}>{v.u}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Resultatet */}
+        <div className="col-start-1 row-start-1" style={{ opacity: utstedt ? 1 : 0, transform: utstedt ? 'none' : 'translateY(10px)', filter: utstedt ? 'blur(0px)' : 'blur(6px)', transition: ov ? 'none' : `opacity 500ms ${EASE} 320ms, transform 500ms ${EASE} 320ms, filter 500ms ${EASE} 320ms`, pointerEvents: utstedt ? 'auto' : 'none' }} aria-hidden={!utstedt} data-testid="v4-depositum-utstedt">
+          <div className="rounded-[14px] p-4" style={{ background: STEIN, boxShadow: `inset 0 0 0 1px ${HAIR}` }}>
+            <div className="flex items-center justify-between gap-3">
+              <Keyhole h={16} />
+              <Chip tekst="Sikret" tone="gronn" liten />
+            </div>
+            <p className="mt-3 text-[17px] font-medium tracking-[-0.01em]">Depositumsgaranti utstedt</p>
+            <p className="mt-1 text-[13px] leading-[1.45]" style={{ color: DIM }}>Dekker {tall(DEPOSITUM)} kr for {BOLIG.adresse}, {BOLIG.enhet.toLowerCase()}. Gjelder fra {BOLIG.innflytting}.</p>
+            <div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-[12.5px]" style={{ borderColor: HAIR }}>
+              <div><p style={{ color: DIM }}>Leietaker</p><p className="mt-0.5 font-medium">{EMMA.navn}</p></div>
+              <div><p style={{ color: DIM }}>Utleier</p><p className="mt-0.5 font-medium">Varslet · dokument i saken</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Overtakelse: Emma booker tidspunkt — Kari har lagt ut når hun kan ── */
+const TIDER = ['10:00', '12:00', '14:00'];
+function OvertakelseBooking({ fase, ov, kompakt = false }) {
+  const valgt = fase >= F.BOOK1;
+  const bekreftet = fase >= F.BOOK2;
+  return (
+    <div className={`mx-auto w-full rounded-[20px] ${kompakt ? 'max-w-[360px] p-4' : 'max-w-[400px] p-5'}`} style={{ background: HVIT, boxShadow: `0 0 0 1px ${HAIR}, 0 40px 90px -50px rgba(21,19,15,0.45)` }} data-testid="v4-booking" data-valgt={valgt ? '1' : '0'} data-bekreftet={bekreftet ? '1' : '0'}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-2 text-[12.5px]" style={{ color: DIM }}><Portrett src={EMMA.bilde} alt={EMMA.navn} size={22} />Emma velger · på mobilen</span>
+        <span className="text-[12.5px] font-medium">Overtakelse</span>
+      </div>
+
+      <div className="mt-4 grid">
+        <div className="col-start-1 row-start-1" style={{ opacity: bekreftet ? 0 : 1, transform: bekreftet ? 'translateY(-8px)' : 'none', transition: ov ? 'none' : `opacity 320ms ${EASE}, transform 320ms ${EASE}`, pointerEvents: bekreftet ? 'none' : 'auto' }} aria-hidden={bekreftet}>
+          {/* Dagen: innflyttingsdatoen fra kontrakten */}
+          <div className="flex items-center justify-between rounded-[14px] px-3.5 py-3" style={{ background: STEIN, boxShadow: `inset 0 0 0 1px ${HAIR}` }}>
+            <span>
+              <span className="block text-[11.5px]" style={{ color: DIM }}>Innflytting · fra kontrakten</span>
+              <span className="mt-0.5 block text-[15px] font-medium tracking-[-0.01em]">Lørdag 1. november</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[12px]" style={{ color: DIM }}><Portrett src={KARI.bilde} alt={KARI.navn} size={20} />Kari kan</span>
+          </div>
+          <div className="mt-2.5 grid grid-cols-3 gap-2">
+            {TIDER.map((t, i) => {
+              const aktiv = t === '12:00' && valgt;
+              return (
+                <div key={t} className="relative flex h-12 items-center justify-center rounded-[12px] text-[14px] font-medium" style={{ boxShadow: aktiv ? `inset 0 0 0 1.5px ${T.lilla}` : `inset 0 0 0 1px ${HAIR}`, background: aktiv ? 'rgba(212,150,255,0.14)' : 'transparent', transition: ov ? 'none' : `box-shadow 300ms ${EASE}, background-color 300ms ${EASE}`, opacity: fase >= F.BOOK0 ? 1 : 0, transitionDelay: `${i * 90}ms` }} data-testid={`v4-tid-${t}`}>
+                  {t}
+                  {aktiv && !ov && <span key="ring" aria-hidden="true" className="absolute inset-0 rounded-[12px]" style={{ boxShadow: `inset 0 0 0 1.5px ${T.lilla}`, animation: 'v4-ring 600ms cubic-bezier(0.2, 0.6, 0.2, 1) forwards' }} />}
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-2.5 text-[12px]" style={{ color: DIM }}>Ledige tidspunkt er hentet fra Karis kalender.</p>
+        </div>
+
+        <div className="col-start-1 row-start-1" style={{ opacity: bekreftet ? 1 : 0, transform: bekreftet ? 'none' : 'translateY(10px)', filter: bekreftet ? 'blur(0px)' : 'blur(6px)', transition: ov ? 'none' : `opacity 500ms ${EASE} 320ms, transform 500ms ${EASE} 320ms, filter 500ms ${EASE} 320ms`, pointerEvents: bekreftet ? 'auto' : 'none' }} aria-hidden={!bekreftet} data-testid="v4-booking-bekreftet">
+          <div className="rounded-[14px] p-4" style={{ background: STEIN, boxShadow: `inset 0 0 0 1px ${HAIR}` }}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[12px] font-medium" style={{ color: DIM }}>Overtakelse</span>
+              <Chip tekst="Bekreftet" tone="gronn" liten />
+            </div>
+            <p className="mt-3 text-[17px] font-medium tracking-[-0.01em]">Lørdag 1. november, kl. 12:00</p>
+            <p className="mt-1 text-[13px] leading-[1.45]" style={{ color: DIM }}>{BOLIG.adresse}, {BOLIG.enhet.toLowerCase()} · Emma og Kari</p>
+            <div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-[12.5px]" style={{ borderColor: HAIR }}>
+              <div><p style={{ color: DIM }}>Emma</p><p className="mt-0.5 font-medium">Bekreftelse på SMS</p></div>
+              <div><p style={{ color: DIM }}>Kari</p><p className="mt-0.5 font-medium">Lagt i kalenderen</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -274,9 +357,6 @@ function DepositumKort({ fase, ov }) {
 function Side({ fase, ov, kompakt = false }) {
   return (
     <div data-testid="v4-side">
-      <Vokse vis={fase >= F.DEP1 && fase <= F.OVER0} ov={ov}>
-        <div style={{ transform: fase >= F.DEP1 && fase <= F.DEP2 && !kompakt ? 'scale(1.03)' : 'none', transformOrigin: '0 50%', transition: ov ? 'none' : `transform 700ms ${MORF}` }}><DepositumKort fase={fase} ov={ov} /></div>
-      </Vokse>
       {SMS.map((s) => <Sms key={s.id} vis={fase >= s.fra && fase <= s.tilOg} til={s.til} tid={s.tid} tekst={s.tekst} ov={ov} delay={fase === s.fra ? 450 : 150} testid={`v4-sms-${s.id}`} className={kompakt ? 'mt-3' : 'mt-3'} />)}
     </div>
   );
@@ -290,7 +370,7 @@ function InnflyttetKort({ kompakt = false }) {
       <p className={`${kompakt ? 'mt-3.5 text-[19px]' : 'mt-4 text-[22px]'} font-medium tracking-[-0.012em]`}>{EMMA.navn}</p>
       <p className="mt-1 inline-flex items-center gap-1.5 text-[13px]" style={{ color: 'rgba(244,241,234,0.62)' }}><Nokkel size={13} />Innflyttet 1. november · {BOLIG.adresse}</p>
       <div className="mt-5 grid grid-cols-3 gap-3 border-t pt-4 text-left" style={{ borderColor: 'rgba(244,241,234,0.12)' }}>
-        {[['Kontrakt', 'Signert · BankID'], ['Depositum', 'Sikret · Keyhole'], ['Første leie', '1. des']].map(([k, v]) => (
+        {[['Kontrakt', 'Signert · BankID'], ['Depositum', 'Garanti · Keyhole'], ['Første leie', '1. des']].map(([k, v]) => (
           <div key={k}><p className="text-[11.5px]" style={{ color: 'rgba(244,241,234,0.55)' }}>{k}</p><p className="mt-0.5 text-[13.5px] font-medium tracking-[-0.005em]">{v}</p></div>
         ))}
       </div>
@@ -356,6 +436,8 @@ function Desktop({ fase, ov, onAkt, neste }) {
   const papir = fase >= F.DOK && fase < F.SLUTT;
   const dempet = fase >= F.DEP1 && fase <= F.OVER0;  // depositumet (og så datoskiftet) er i fokus — papiret trer et halvt skritt tilbake
   const datoskift = fase === F.OVER0;                // «1. november» — tidsspranget før overtakelsen
+  const dep = fase >= F.DEP1 && fase <= F.DEP3;      // Emmas depositumsvalg står midt i scenen
+  const book = fase >= F.BOOK0 && fase <= F.BOOK2;   // … så bookingen av overtakelsen
   const slutt = fase >= F.SLUTT;
   const knapper = useRef({});
   const peker = usePeker(fase, ref, knapper, PEKER_MAAL, PRESSER);
@@ -378,8 +460,17 @@ function Desktop({ fase, ov, onAkt, neste }) {
           </div>
 
           {/* Papiret */}
-          <div className="absolute" style={{ left: L.dok.x, top: L.dok.y, width: L.dok.w, height: L.dok.h, opacity: !papir ? 0 : datoskift ? 0.18 : dempet ? 0.5 : 1, transform: papir ? (dempet ? 'scale(0.985)' : 'none') : slutt ? 'translateY(-12px)' : 'translateY(18px)', transition: `opacity ${bt(papir ? 600 : 350, papir ? 250 : 0)}, transform ${bt(papir ? 800 : 350, papir ? 250 : 0)}`, pointerEvents: papir ? 'auto' : 'none' }} aria-hidden={!papir}>
+          <div className="absolute" style={{ left: L.dok.x, top: L.dok.y, width: L.dok.w, height: L.dok.h, opacity: !papir ? 0 : datoskift ? 0.18 : dempet ? 0.35 : 1, transform: papir ? (dempet ? 'scale(0.985)' : 'none') : slutt ? 'translateY(-12px)' : 'translateY(18px)', transition: `opacity ${bt(papir ? 600 : 350, papir ? 250 : 0)}, transform ${bt(papir ? 800 : 350, papir ? 250 : 0)}`, pointerEvents: papir ? 'auto' : 'none' }} aria-hidden={!papir}>
             <Papir fase={fase} ov={ov} className="h-full" />
+          </div>
+
+          {/* Depositum: Emmas valg — midt i scenen, over det dempede papiret */}
+          <div className="absolute z-[4] flex items-center justify-center" style={{ left: L.omr.x, top: L.omr.y, width: L.omr.w, height: L.omr.h, opacity: dep ? 1 : 0, transform: dep ? 'none' : 'translateY(14px) scale(0.985)', transition: `opacity ${bt(dep ? 600 : 300, dep ? 300 : 0)}, transform ${bt(700, dep ? 300 : 0)}`, pointerEvents: dep ? 'auto' : 'none' }} aria-hidden={!dep}>
+            <DepositumValg fase={fase} ov={ov} />
+          </div>
+          {/* Overtakelse: Emma booker tidspunkt — samme plass, etter depositumet */}
+          <div className="absolute z-[4] flex items-center justify-center" style={{ left: L.omr.x, top: L.omr.y, width: L.omr.w, height: L.omr.h, opacity: book ? 1 : 0, transform: book ? 'none' : 'translateY(14px) scale(0.985)', transition: `opacity ${bt(book ? 600 : 300, book ? 300 : 0)}, transform ${bt(700, book ? 300 : 0)}`, pointerEvents: book ? 'auto' : 'none' }} aria-hidden={!book}>
+            <OvertakelseBooking fase={fase} ov={ov} />
           </div>
 
           {/* Tidsspranget: én stille linje midt i scenen før protokollen */}
@@ -422,7 +513,9 @@ function Kompakt({ fase, ov, onAkt, neste }) {
       </div>
       <div className="px-5 pt-6">
         <Vokse vis={start} ov={ov}><ValgtKort kompakt /></Vokse>
-        <Vokse vis={papir} ov={ov}><Papir fase={fase} ov={ov} kompakt /></Vokse>
+        <Vokse vis={papir && !(fase >= F.DEP1 && fase <= F.BOOK2)} ov={ov}><Papir fase={fase} ov={ov} kompakt /></Vokse>
+        <Vokse vis={fase >= F.DEP1 && fase <= F.DEP3} ov={ov}><DepositumValg fase={fase} ov={ov} kompakt /></Vokse>
+        <Vokse vis={fase >= F.BOOK0 && fase <= F.BOOK2} ov={ov}><OvertakelseBooking fase={fase} ov={ov} kompakt /></Vokse>
         <Vokse vis={papir} ov={ov}><Side fase={fase} ov={ov} kompakt /></Vokse>
         <Vokse vis={fase >= F.SLUTT} ov={ov}><div className="py-2"><InnflyttetKort kompakt /></div></Vokse>
       </div>

@@ -36,6 +36,12 @@ PROMPTS = {
         "both beige curtains, the white wardrobe on the right, the small wooden bedside table on the left, the light floor, the same soft daylight and color grading. "
         "Do not add people, text, or new furniture. Photorealistic, natural, believable — not staged."
     ),
+    "fasade": (
+        "Edit this exact photograph: REMOVE the man standing on the sidewalk completely, and reconstruct what is behind him — the facade, the dark entrance door, "
+        "the stone steps, the wall, the pavement — so the street is empty. Keep EVERYTHING else pixel-identical: the same building, windows with warm interior light, "
+        "the two wall lanterns, the balcony, the street lamp, the dusk sky tone, camera position, perspective, framing, aspect ratio and color grading. "
+        "Do not add people, cars, text or objects. Photorealistic, seamless."
+    ),
     "tomt": (
         "Edit this exact interior photograph into a realistic EMPTY-room photograph of the same apartment. Remove all movable furniture and loose objects. "
         "Keep walls, floor, windows, fixed lamps, perspective, camera position, lighting and aspect ratio identical. Photorealistic."

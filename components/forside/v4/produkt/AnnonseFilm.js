@@ -47,7 +47,7 @@ const F = {
   ETTER: 23, VELG: 24, VALGT: 25, SLUTT: 26,
 };
 const AUTO = {
-  [F.START]: 1400, [F.PEKER]: 1350, [F.HOVER]: 420, [F.TRYKK_START]: 380,
+  [F.START]: 1500, [F.PEKER]: 900, [F.HOVER]: 300, [F.TRYKK_START]: 340,
   [F.STABEL]: 2050, [F.BILDER]: 2700,
   [F.LES1]: 3300, [F.LES2]: 3000, [F.LES3]: 3200,
   [F.STYLE]: 3400, [F.SKILLE]: 2800, [F.STYLET]: 2000,
@@ -95,9 +95,13 @@ const FOTOS = [
   { id: 'kjokken', src: '/v4/annonse/kjokken-600.webp', navn: 'Kjøkken', les: F.LES2 },
   { id: 'soverom', src: '/v4/annonse/soverom-useng-1000.webp', liten: '/v4/annonse/soverom-useng-700.webp', stylet: '/v4/annonse/soverom-1000.webp', styletLiten: '/v4/annonse/soverom-700.webp', navn: 'Soverom', les: F.LES3 },
   { id: 'spisestue', src: '/v4/annonse/spisestue-600.webp', navn: 'Spisestue' },
-  { id: 'fasade', src: '/v4/bolig-hero.webp', liten: '/v4/bolig-hero-mobil.webp', navn: 'Fasade', pos: '50% 64%', posLiten: '50% 45%' },
+  /* Heroens bygård (Nygårdsgaten 5) i skumring, uten eieren — filmens verden fortsetter inn i produktet. Laget fra filmens første bilde (scripts/generer-variant.py fasade). */
+  { id: 'fasade', src: '/v4/annonse/fasade-kveld-1920.webp', liten: '/v4/annonse/fasade-kveld-1200.webp', navn: 'Fasade', pos: '56% 46%', posLiten: '46% 50%', posFlis: '50% 58%' },
 ];
 const KILDE = Object.fromEntries(FOTOS.map((b) => [b.id, b]));
+/* Vinduet til Leilighet 2 i fasadebildet (andel av bildet: 75,5 % / 57 %) → andel av 3:2-kortet: bildet (1,75:1) dekker
+   kortets høyde, er 116,7 % bredt og ligger −9,3 % (object-position 56 %). x = 0,755·1,1667 − 0,0933. */
+const LEILIGHET = { x: 78.8, y: 57 };
 const SMAA = ['kjokken', 'soverom', 'spisestue', 'fasade'];
 
 /* Nåler — det systemet ser i hvert bilde. Prosent av bildeflaten (3:2). Kommer én og én mens kameraet driver. */
@@ -212,22 +216,36 @@ const Brodtekst = () => (
 
 /* Sekvensielt tekstbytte: det gamle går ut (240 ms), så kommer det nye inn — aldri to tekster samtidig. */
 
-/* ── Åpningen: bygården fyller rammen i kveldssol. Sentrert, nederst: adresse, én setning, én knapp.
-   Pekeren glir inn og trykker. Ved trykket krymper bygården til «Fasade»-bildet i mosaikken. ── */
-function StartTekst({ fase, kompakt = false, knappRef }) {
+/* ── Åpningen: Nygårdsgaten 5 i skumring — samme bygård som heroen (filmens verden fortsetter her), uten eieren.
+   Teksten står i venstre spalte, på samme sted som aktenes tekst: adresse, én setning i to linjer, én knapp.
+   Pekeren glir inn og trykker. Ved trykket krymper bygården til «Fasade»-bildet i mosaikken — og teksten
+   bytter til første akt på samme sted. ── */
+function StartTekst({ fase, kompakt = false, knappRef, inne = true, ov = false }) {
   const hover = fase === F.HOVER || fase === F.TRYKK_START;
+  const linjer = [['Fra', 'ledig'], ['til', 'utleid.']];
+  const steg = (i) => ({ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'translateY(16px)', filter: inne ? 'blur(0px)' : 'blur(8px)', transition: ov ? 'none' : inne ? `opacity 640ms ${EASE} ${i}ms, transform 820ms ${EASE} ${i}ms, filter 640ms ${EASE} ${i}ms` : `opacity 220ms ${EASE}, transform 220ms ${EASE}, filter 220ms ${EASE}` });
+  let k = 0;
   return (
-    <div className={kompakt ? 'text-left' : 'text-center'} data-testid="v4-start" style={{ color: OFF }}>
-      <p className={`inline-flex items-center gap-2 rounded-full ${kompakt ? 'h-7 px-3 text-[12px]' : 'h-8 px-3.5 text-[13px]'}`} style={{ color: 'rgba(244,241,234,0.92)', background: 'rgba(21,19,15,0.28)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', boxShadow: 'inset 0 0 0 1px rgba(244,241,234,0.22)' }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />{ADRESSE}</p>
-      <h3 className={kompakt ? 'mt-1.5 text-[34px]' : 'mt-2.5 text-[clamp(40px,3.8vw,62px)]'} style={{ ...display, letterSpacing: '-0.03em', lineHeight: 0.98, color: OFF }}>Ledig fra 1. november.</h3>
-      <div className={`flex items-center ${kompakt ? 'mt-5' : 'mt-8 justify-center'}`}>
+    <div className="text-left" data-testid="v4-start" style={{ color: OFF }}>
+      <p className={`inline-flex items-center gap-2 rounded-full ${kompakt ? 'h-7 px-3 text-[12px]' : 'h-8 px-3.5 text-[13px]'}`} style={{ color: 'rgba(244,241,234,0.92)', background: 'rgba(21,19,15,0.30)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', boxShadow: 'inset 0 0 0 1px rgba(244,241,234,0.20)', ...steg(140) }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />{kompakt ? ADRESSE : 'Nygårdsgaten 5 · Bergen'}</p>
+      <h3 className={kompakt ? 'mt-3 text-[38px]' : 'mt-4 text-[clamp(44px,3.9vw,64px)]'} style={{ ...display, letterSpacing: '-0.035em', lineHeight: 0.96, color: OFF, textWrap: 'nowrap' }}>
+        {linjer.map((linje, li) => (
+          <span key={li} className="block">
+            {linje.map((o, i) => { k += 1; return <span key={o} className="inline-block" style={{ ...steg(360 + k * 90), marginRight: i < linje.length - 1 ? '0.22em' : 0 }}>{o}</span>; })}
+          </span>
+        ))}
+      </h3>
+      <div className={`flex items-center ${kompakt ? 'mt-5' : 'mt-7'}`} style={steg(820)}>
         <AutoKnapp presser={fase === F.TRYKK_START} hover={!kompakt && hover} stor testid="v4-lag-annonse" knappRef={knappRef}>Lag annonse</AutoKnapp>
       </div>
     </div>
   );
 }
-/* Varm, mørk tone nederst så teksten leser — nesten ingenting øverst, så fasaden får lyset */
-const START_GRADIENT = 'linear-gradient(180deg, rgba(21,19,15,0.10) 0%, rgba(21,19,15,0.02) 30%, rgba(21,19,15,0.30) 58%, rgba(21,19,15,0.78) 100%)';
+/* Vignett — rolig dybde mot kantene mens bygården står */
+const START_VIGNETT = 'radial-gradient(120% 95% at 50% 42%, rgba(21,19,15,0) 55%, rgba(21,19,15,0.38) 100%)';
+/* Mørk, varm tone fra venstre der teksten står — nesten ingenting til høyre, så fasaden og de lyse vinduene får lyset */
+const START_GRADIENT = 'linear-gradient(90deg, rgba(21,19,15,0.66) 0%, rgba(21,19,15,0.42) 34%, rgba(21,19,15,0.10) 62%, rgba(21,19,15,0.06) 100%), linear-gradient(180deg, rgba(21,19,15,0.18) 0%, rgba(21,19,15,0) 30%, rgba(21,19,15,0.22) 100%)';
+const START_EKSPONERING = '#15130F';
 
 /* ── Bildeflaten — bildene, nålene og før/etter-skillet ── */
 function navnFor(fase) {
@@ -654,33 +672,49 @@ const LANDING = 'cubic-bezier(0.22, 1.08, 0.36, 1)';   // litt overshoot — kor
 const SKYGGE_LOFT = `0 22px 40px -24px rgba(21,19,15,0.45), 0 0 0 1px rgba(21,19,15,0.06), ${LYSKANT}`;
 const SKYGGE_FLAT = `0 0 0 1px ${HAIR}, ${LYSKANT}`;
 
-/* Felles: stilen for et bilde som lander i bunken (STABEL) og glir ut i mosaikken (BILDER). */
-function bunkeStil({ id, fase, L, ov, slot, z }) {
+/* Ytelse — regelen for hele opplastingssekvensen: alt som beveger seg, beveger seg KUN med transform og opacity.
+   Hver flis har en fast basisflate = bunkens størrelse (3:2), og glir til bunken/mosaikken med translate/rotate/scale.
+   Ingen animert left/top/width/height, ingen animert blur eller skygge på bilder. Skyggen bytter i ett steg.
+   `start` (bare fasaden): flisen er skalert opp så den dekker hele rammen — og krymper ned i bunken ved trykket. */
+function bunkeTransform({ id, fase, L, ov, slot, z, start = false, base = L.stabel }) {
   const b = BUNKE[id];
-  const iBunke = fase === F.STABEL;
-  const iMosaikk = fase === F.BILDER;
-  const foer = fase < F.STABEL;
-  const r = iBunke || foer ? { x: L.stabel.x + b.dx, y: L.stabel.y + b.dy, w: L.stabel.w, h: L.stabel.h } : slot;
-  const m = (p, ms, d = 0) => `${p} ${ms}ms ${MORF} ${d}ms`;
-  const t = (p, ms, d = 0) => `${p} ${ms}ms ${EASE} ${d}ms`;
-  let overgang = 'none';
-  if (!ov) {
-    /* Ytelse: ingen animert blur/skygge på bildene — bare opacity, transform og posisjon. Skyggen bytter i ett steg. */
-    if (iBunke) overgang = [t('opacity', 420, b.delay), `transform 760ms ${LANDING} ${b.delay}ms`, `top 760ms ${LANDING} ${b.delay}ms`].join(', ');
-    else if (iMosaikk) overgang = [m('left', 950, z * 45), m('top', 950, z * 45), m('width', 950, z * 45), m('height', 950, z * 45), m('transform', 950, z * 45), t('border-radius', 600)].join(', ');
-    else overgang = [t('opacity', 480, z * 40), t('transform', 600, z * 40)].join(', ');
+  const iBunke = fase === F.STABEL; const iMosaikk = fase === F.BILDER; const foer = fase < F.STABEL;
+  /* Mål-rektangel per fase → translate (senter til senter) + skala (bredde/bredde). Alle flater er 3:2. */
+  const til = (r, skala = 1) => {
+    const sc = (r.w / base.w) * skala;
+    const dx = (r.x + r.w / 2) - (base.x + base.w / 2); const dy = (r.y + r.h / 2) - (base.y + base.h / 2);
+    return { dx, dy, sc };
+  };
+  const bunke = { x: L.stabel.x + b.dx, y: L.stabel.y + b.dy, w: L.stabel.w, h: L.stabel.h };
+  let transform; let overgang = 'none'; let radius = 12;
+  if (foer && start) {
+    /* Dekker rammen: skalert til rammens bredde, sentrert. Radius 0 (kortets kanter ligger utenfor rammen). */
+    const k = til({ x: 0, y: (L.hel.h - L.hel.w / 1.5) / 2, w: L.hel.w, h: L.hel.w / 1.5 });
+    transform = `translate(${k.dx}px, ${k.dy}px) rotate(0deg) scale(${k.sc})`; radius = 0;
+    overgang = ov ? 'none' : `transform 1100ms ${MORF}, border-radius 1100ms ${MORF}`;
+  } else if (foer) {
+    const k = til({ ...bunke, y: bunke.y + 96 }, 0.9);
+    transform = `translate(${k.dx}px, ${k.dy}px) rotate(${b.rot - 7}deg) scale(${k.sc})`; radius = 12 / k.sc;
+  } else if (iBunke) {
+    const k = til(bunke);
+    transform = `translate(${k.dx}px, ${k.dy}px) rotate(${b.rot}deg) scale(${k.sc})`; radius = 12 / k.sc;
+    overgang = ov ? 'none' : start ? `transform 1100ms ${MORF}, border-radius 1100ms ${MORF}, opacity 420ms ${EASE}` : `opacity 420ms ${EASE} ${b.delay}ms, transform 760ms ${LANDING} ${b.delay}ms`;
+  } else if (iMosaikk) {
+    const k = til(slot);
+    transform = `translate(${k.dx}px, ${k.dy}px) rotate(0deg) scale(${k.sc})`; radius = 10 / k.sc;
+    overgang = ov ? 'none' : `transform 950ms ${MORF} ${z * 45}ms, border-radius 950ms ${MORF} ${z * 45}ms`;
+  } else {
+    const k = til(slot, 0.94);
+    transform = `translate(${k.dx}px, ${k.dy}px) rotate(0deg) scale(${k.sc})`; radius = 10 / k.sc;
+    overgang = ov ? 'none' : `opacity 480ms ${EASE} ${z * 40}ms, transform 600ms ${EASE} ${z * 40}ms`;
   }
-  const etter = fase > F.BILDER;
   return {
-    left: r.x, top: foer ? r.y + 96 : r.y, width: r.w, height: r.h,
-    opacity: iBunke || iMosaikk ? 1 : 0,
-    willChange: iBunke || iMosaikk ? 'transform, opacity' : 'auto',
-    transform: iBunke ? `rotate(${b.rot}deg) scale(1)` : foer ? `rotate(${b.rot - 7}deg) scale(0.9)` : etter ? 'rotate(0deg) scale(0.94)' : 'rotate(0deg) scale(1)',
-    boxShadow: iBunke ? SKYGGE_LOFT : SKYGGE_FLAT,
-    borderRadius: iBunke ? 12 : 10,
-    background: 'rgba(21,19,15,0.05)',
-    transition: overgang,
-    zIndex: z,
+    left: base.x, top: base.y, width: base.w, height: base.h,
+    transform, transformOrigin: '50% 50%', borderRadius: radius,
+    opacity: iBunke || iMosaikk || (start && foer) ? 1 : 0,
+    boxShadow: iBunke ? SKYGGE_LOFT : start && foer ? 'none' : SKYGGE_FLAT,
+    background: 'rgba(21,19,15,0.05)', transition: overgang, zIndex: z,
+    willChange: 'transform, opacity',
   };
 }
 
@@ -689,44 +723,52 @@ function Romlapp({ navn, vis, delay, ov }) {
   return <Lapp vis={vis} delay={delay} ov={ov} className="left-2.5 top-2.5">{navn}</Lapp>;
 }
 
-/* Bildet — ett element som reiser gjennom aktene: lander sist i bunken (øverst), blir det store i mosaikken,
-   så det store bildet som leses og styles, så banner i utkastet, så bildet på FINN-siden. */
+/* Stuen som flis (≤ BILDER): lander sist i bunken (øverst) og blir det store bildet i mosaikken — kun transform.
+   Ved LES1 tar det store bildet (Foto) over på nøyaktig samme rektangel, uten overgang: samme piksler, ingen sømmer. */
+function StueFlis({ fase, L, ov }) {
+  const inne = fase >= F.STABEL && fase <= F.BILDER;
+  const st = bunkeTransform({ id: 'stue', fase, L, ov, slot: L.mosaikk.stor, z: 6 });
+  if (fase > F.BILDER) { st.transition = 'none'; st.opacity = 0; }
+  return (
+    <div className="absolute overflow-hidden" style={st} aria-hidden={!inne} data-testid="v4-stue-flis">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={KILDE.stue.src} alt="Stuen" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: '50% 50%' }} draggable={false} />
+    </div>
+  );
+}
+
+/* Det store bildet — fra LES1: leses og styles, så banner i utkastet, så bildet på FINN-siden.
+   Før LES1 ligger det usynlig på mosaikkens store plass (uten overgang), så det kan ta over sømløst fra flisen. */
 function Foto({ fase, L, ov, onHold }) {
-  const r = fotoRekt(L, fase);
-  const inne = fase >= F.STABEL && fase <= F.PUBLISERT;
+  const foer = fase <= F.BILDER;
+  const r = foer ? L.mosaikk.stor : fotoRekt(L, fase);
+  const inne = fase >= F.LES1 && fase <= F.PUBLISERT;
   const stor = fase >= F.LES1 && fase <= F.STYLET;
   const banner = fase >= F.TITTEL && fase <= F.TRYKK;
   const finn = fase === F.PUBLISERT;
   const t = (p, ms, d = 0) => `${p} ${ms}ms ${EASE} ${d}ms`;
   const m = (p, ms, d = 0) => `${p} ${ms}ms ${MORF} ${d}ms`;
-  if (fase <= F.BILDER) {
-    const st = bunkeStil({ id: 'stue', fase, L, ov, slot: L.mosaikk.stor, z: 6 });
-    return (
-      <div className="absolute overflow-hidden" style={st} aria-hidden={!inne} data-testid="v4-foto" data-bilde="stue">
-        <Bildeflate fase={fase} ov={ov} onHold={onHold} pos="50% 50%" />
-      </div>
-    );
-  }
-  const overgang = ov ? 'none' : [m('left', 1100), m('top', 1100), m('width', 1100), m('height', 1100), t('opacity', 500), t('box-shadow', 700), t('border-radius', 800)].join(', ');
+  const overgang = ov || foer ? 'none' : [m('left', 1100), m('top', 1100), m('width', 1100), m('height', 1100), t('opacity', 500), t('box-shadow', 700), t('border-radius', 800)].join(', ');
   return (
     <div
       className="absolute overflow-hidden"
-      style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: banner ? '14px 14px 0 0' : finn ? 10 : 14, opacity: inne ? 1 : 0, background: 'rgba(21,19,15,0.05)', boxShadow: stor ? '0 40px 90px -40px rgba(21,19,15,0.45)' : banner || finn ? 'none' : SKYGGE_FLAT, transition: overgang, zIndex: 2, transform: 'rotate(0deg)' }}
+      style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: banner ? '14px 14px 0 0' : finn ? 10 : foer ? 10 : 14, opacity: inne ? 1 : 0, background: 'rgba(21,19,15,0.05)', boxShadow: stor ? '0 40px 90px -40px rgba(21,19,15,0.45)' : banner || finn ? 'none' : SKYGGE_FLAT, transition: fase === F.LES1 ? overgang.replace(t('opacity', 500), 'opacity 0ms linear') : overgang, zIndex: 2, transform: 'rotate(0deg)' }}
       aria-hidden={!inne}
       data-testid="v4-foto"
       data-bilde={fase >= F.STYLET ? 'stylet' : viserBilde(fase)}
     >
-      <Bildeflate fase={fase} ov={ov} onHold={onHold} pos={banner ? '50% 55%' : '50% 50%'} />
+      {fase >= F.LES1 || fase === F.BILDER ? <Bildeflate fase={fase} ov={ov} onHold={onHold} pos={banner ? '50% 55%' : '50% 50%'} /> : null}
     </div>
   );
 }
 
-/* Bygården — fyller rammen i åpningen (stille zoom), krymper ned i bunken som det første bildet, glir så til
-   «Fasade»-plassen i mosaikken og følger de andre små ut. */
+/* Bygården — dekker rammen i åpningen (stille zoom inni), krymper ned i bunken som det første bildet ved trykket,
+   glir så til «Fasade»-plassen i mosaikken og følger de andre små ut. Alt med transform. Tonene over bildet
+   (gradient, vignett, eksponering) ligger i egne fullramme-lag i Desktop — de skal ikke skaleres med kortet. */
 function Fasade({ fase, L, ov }) {
   const start = fase <= F.TRYKK_START;
   const inne = fase <= F.BILDER;
-  const b = KILDE.fasade; const k = BUNKE.fasade;
+  const b = KILDE.fasade;
   const [zoomet, setZoomet] = useState(false);
   useEffect(() => {
     if (fase !== F.START) return undefined;
@@ -735,39 +777,77 @@ function Fasade({ fase, L, ov }) {
     const id = window.requestAnimationFrame(() => { id2 = window.requestAnimationFrame(() => setZoomet(true)); });
     return () => { window.cancelAnimationFrame(id); window.cancelAnimationFrame(id2); };
   }, [fase]);
-  const t = (p, ms, d = 0) => `${p} ${ms}ms ${EASE} ${d}ms`;
-  const m = (p, ms, d = 0) => `${p} ${ms}ms ${MORF} ${d}ms`;
-  const r = start ? L.hel : fase === F.STABEL ? { x: L.stabel.x + k.dx, y: L.stabel.y + k.dy, w: L.stabel.w, h: L.stabel.h } : L.mosaikk.smaa[3];
-  const overgang = ov ? 'none' : [m('left', 1100), m('top', 1100), m('width', 1100), m('height', 1100), m('transform', 1100), t('opacity', 350), t('border-radius', 800)].join(', ');
+  /* Basisflaten er den store 3:2-flaten (skarp når kortet dekker rammen, ~1,6×) — skaleres ned til bunken og mosaikken. */
+  const st = bunkeTransform({ id: 'fasade', fase, L, ov, slot: L.mosaikk.smaa[3], z: start ? 3 : 1, start: true, base: L.stor });
+  /* Kameraet i åpningen: svakt inn og en anelse sideveis (1.05 → 1, 1,2 % → 0) over 3,8 s. Nålen ligger i kameralaget
+     og følger bildet; motskaleres med kortets skala (rammen/basis) × kameraets, så den holder ekte størrelse. */
+  const KAM = 'cubic-bezier(0.25, 0.6, 0.3, 1)';
+  const sd = L.hel.w / L.stor.w;
+  const kamera = start ? (zoomet ? 'translate(0%, 0%) scale(1)' : 'translate(1.2%, 0%) scale(1.05)') : 'translate(0%, 0%) scale(1)';
+  const skala = start ? sd * (zoomet ? 1 : 1.05) : 1;
   return (
-    <div className="absolute overflow-hidden" style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: start ? 0 : fase === F.STABEL ? 12 : 10, opacity: inne ? 1 : 0, background: 'rgba(21,19,15,0.05)', boxShadow: start ? 'none' : fase === F.STABEL ? SKYGGE_LOFT : SKYGGE_FLAT, transform: fase === F.STABEL ? `rotate(${k.rot}deg)` : 'rotate(0deg)', transition: overgang, zIndex: start ? 3 : 1 }} aria-hidden={!inne} data-testid="v4-fasade" data-start={start ? '1' : '0'}>
-      <div className="absolute inset-0" style={{ transform: start ? (zoomet ? 'scale(1)' : 'scale(1.06)') : 'scale(1)', transition: ov ? 'none' : start ? 'transform 3800ms cubic-bezier(0.25, 0.6, 0.3, 1)' : `transform 1100ms ${MORF}` }}>
+    <div className="absolute overflow-hidden" style={st} aria-hidden={!inne} data-testid="v4-fasade" data-start={start ? '1' : '0'}>
+      <div className="absolute inset-0" style={{ transform: kamera, transition: ov ? 'none' : start ? `transform 3800ms ${KAM}` : `transform 1100ms ${MORF}`, willChange: 'transform' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={b.src} alt="Bygården i Nygårdsgaten" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: start ? b.pos : '50% 72%', transition: ov ? 'none' : `object-position 1100ms ${MORF}` }} draggable={false} />
+        <img src={b.src} alt="Bygården i Nygårdsgaten" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: b.pos }} draggable={false} />
+        {/* Leiligheten som blir ledig — pekt ut på fasaden, i samme nålespråk som detaljene senere i filmen */}
+        <Pinne x={LEILIGHET.x} y={LEILIGHET.y} t="Leilighet 2" under="Ledig fra 1. november" vis={fase <= F.HOVER} delay={fase === F.START ? 760 : 0} ov={ov} skala={skala} kamera={ov ? 'none' : start ? `transform 3800ms ${KAM}` : 'none'} />
       </div>
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: START_GRADIENT, opacity: start ? 1 : 0, transition: ov ? 'none' : `opacity ${start ? 600 : 500}ms ${EASE}` }} />
-      <Romlapp navn="Fasade" vis={fase === F.BILDER} delay={1000 + 4 * 110} ov={ov} />
     </div>
   );
 }
 
-/* De tre andre små (fasaden er sitt eget element). Lander i bunken, glir ut i mosaikken. */
+/* Tonene over åpningsbildet — fullramme, kun opacity. Eksponering: bildet kommer opp fra mørkt, som en film som starter. */
+function StartToner({ fase, ov }) {
+  const start = fase <= F.TRYKK_START;
+  const [zoomet, setZoomet] = useState(false);
+  useEffect(() => {
+    if (fase !== F.START) return undefined;
+    setZoomet(false);
+    let id2 = 0;
+    const id = window.requestAnimationFrame(() => { id2 = window.requestAnimationFrame(() => setZoomet(true)); });
+    return () => { window.cancelAnimationFrame(id); window.cancelAnimationFrame(id2); };
+  }, [fase]);
+  return (
+    <>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[4]" style={{ background: START_GRADIENT, opacity: start ? 1 : 0, transition: ov ? 'none' : `opacity ${start ? 600 : 500}ms ${EASE}` }} />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[4]" style={{ background: START_VIGNETT, opacity: start ? 1 : 0, transition: ov ? 'none' : `opacity ${start ? 600 : 400}ms ${EASE}` }} />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[4]" style={{ background: START_EKSPONERING, opacity: start && !zoomet ? 0.72 : 0, transition: ov ? 'none' : 'opacity 1300ms cubic-bezier(0.3, 0, 0.2, 1)' }} />
+    </>
+  );
+}
+
+/* De tre andre små (fasaden er sitt eget element). Lander i bunken, glir ut i mosaikken — kun transform. */
 function Smaa({ fase, L, ov }) {
   const inne = fase === F.STABEL || fase === F.BILDER;
   return SMAA.filter((id) => id !== 'fasade').map((id, i) => {
     const b = KILDE[id];
-    const st = bunkeStil({ id, fase, L, ov, slot: L.mosaikk.smaa[i], z: 2 + i });
+    const st = bunkeTransform({ id, fase, L, ov, slot: L.mosaikk.smaa[i], z: 2 + i });
     return (
       <div key={id} className="absolute overflow-hidden" style={st} aria-hidden={!inne} data-testid={`v4-mosaikk-${id}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={b.src} alt={b.navn} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: b.pos || '50% 50%' }} draggable={false} />
-        <Romlapp navn={b.navn} vis={fase === F.BILDER} delay={1000 + (i + 1) * 110} ov={ov} />
       </div>
     );
   });
 }
 
-/* Telleren — «Laster opp · 3 av 5» mens bildene lander, «5 bilder · rom gjenkjent» når de har sortert seg */
+/* Romnavnene på flisene — eget lag utenfor flisene, så de ikke skaleres med dem. Stuen får sin fra Foto fra LES1. */
+function Romlapper({ fase, L, ov }) {
+  const vis = fase === F.BILDER;
+  const lapper = [
+    { id: 'stue', r: L.mosaikk.stor, delay: 1000 },
+    ...SMAA.map((id, i) => ({ id, r: L.mosaikk.smaa[i], delay: 1000 + (i + 1) * 110 })),
+  ];
+  return lapper.map(({ id, r, delay }) => (
+    <div key={id} className="absolute" style={{ left: r.x, top: r.y, width: r.w, height: r.h, zIndex: 6, pointerEvents: 'none', transition: 'none' }}>
+      <Romlapp navn={KILDE[id].navn} vis={vis} delay={delay} ov={ov || (id === 'stue' && fase > F.BILDER)} />
+    </div>
+  ));
+}
+
+/* Telleren — «Laster opp · 3 av 5» mens bildene lander, «5 bilder · rom gjenkjent» når de har sortert seg.
+   Kun opacity/transform (ingen blur, ingen animert bredde) — den skal aldri hakke mens bunken beveger seg. */
 function Teller({ fase, L, ov }) {
   const [n, setN] = useState(0);
   useEffect(() => {
@@ -780,9 +860,9 @@ function Teller({ fase, L, ov }) {
   const vis = fase === F.STABEL || fase === F.BILDER;
   const ferdig = fase === F.BILDER;
   return (
-    <div className="absolute z-[7]" style={{ left: L.omr.x, top: L.omr.y + L.omr.h - 32, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', filter: vis ? 'blur(0px)' : 'blur(4px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? 250 : 0}ms, transform 400ms ${EASE}, filter 400ms ${EASE}` }} aria-hidden={!vis} data-testid="v4-teller" data-n={n}>
-      <div className="inline-flex h-8 items-center gap-2.5 rounded-full pl-3 pr-3.5 text-[12.5px] font-medium" style={{ background: 'rgba(251,250,248,0.96)', boxShadow: `inset 0 0 0 1px ${HAIR}, 0 6px 20px -10px rgba(21,19,15,0.3)`, color: T.ink }}>
-        {ferdig ? <span style={{ color: '#166B3C' }}><Hake size={13} /></span> : <span className="relative block h-[2px] w-9 overflow-hidden rounded-full" style={{ background: 'rgba(21,19,15,0.12)' }}><span className="absolute inset-y-0 left-0 rounded-full" style={{ background: T.ink, width: `${(n / 5) * 100}%`, transition: ov ? 'none' : `width 350ms ${EASE}` }} /></span>}
+    <div className="absolute z-[7]" style={{ left: L.omr.x, top: L.omr.y + L.omr.h - 32, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? 250 : 0}ms, transform 400ms ${EASE}`, willChange: 'transform, opacity' }} aria-hidden={!vis} data-testid="v4-teller" data-n={n}>
+      <div className="inline-flex h-8 items-center gap-2.5 rounded-full pl-3 pr-3.5 text-[12.5px] font-medium" style={{ background: 'rgba(251,250,248,0.98)', boxShadow: `inset 0 0 0 1px ${HAIR}, 0 6px 20px -10px rgba(21,19,15,0.3)`, color: T.ink }}>
+        {ferdig ? <span style={{ color: '#166B3C' }}><Hake size={13} /></span> : <span className="relative block h-[2px] w-9 overflow-hidden rounded-full" style={{ background: 'rgba(21,19,15,0.12)' }}><span className="absolute inset-y-0 left-0 w-full rounded-full" style={{ background: T.ink, transform: `scaleX(${n / 5})`, transformOrigin: '0 50%', transition: ov ? 'none' : `transform 350ms ${EASE}` }} /></span>}
         <span key={ferdig ? 'f' : n} className="animate-in fade-in-0 duration-300">{ferdig ? '5 bilder · rom gjenkjent' : `Laster opp · ${n} av 5`}</span>
       </div>
     </div>
@@ -878,11 +958,13 @@ function Desktop({ fase, ov, onAkt, onHold, neste }) {
   return (
     <div ref={ref} className="relative overflow-hidden text-[#15130F]" style={{ height: H, background: PAPIR }} data-testid="v4-annonse-desktop">
       {L && <Fasade fase={fase} L={L} ov={ov} />}
+      {L && <StartToner fase={fase} ov={ov} />}
+      {L && <StueFlis fase={fase} L={L} ov={ov} />}
       {L && <Foto fase={fase} L={L} ov={ov} onHold={onHold} />}
 
-      {/* Åpningsteksten — sentrert nederst over bygården. Går raskt ut i trykket; resten kommer inn etterpå. */}
-      <div className="absolute z-[5]" style={{ left: P, bottom: P + 8, right: P, opacity: start ? 1 : 0, transform: start ? 'none' : 'translateY(10px)', filter: start ? 'blur(0px)' : BLUR_INN, transition: ov ? 'none' : start ? `opacity 900ms ${EASE} 300ms, transform 900ms ${EASE} 300ms, filter 900ms ${EASE} 300ms` : `opacity 260ms ${EASE}, transform 260ms ${EASE}, filter 260ms ${EASE}`, pointerEvents: start ? 'auto' : 'none' }} aria-hidden={!start}>
-        <StartTekst fase={fase} knappRef={(el) => { knapper.current.start = el; }} />
+      {/* Åpningsteksten — i venstre spalte, der aktenes tekst står. Kommer inn ord for ord; går raskt ut i trykket. */}
+      <div className="absolute z-[5]" style={{ left: P, top: L ? L.tekst.y : P + 96, width: L ? L.tekst.w + 40 : 400, pointerEvents: start ? 'auto' : 'none' }} aria-hidden={!start}>
+        <StartTekst fase={fase} inne={start} ov={ov} knappRef={(el) => { knapper.current.start = el; }} />
       </div>
 
       {L && (
@@ -890,6 +972,7 @@ function Desktop({ fase, ov, onAkt, onHold, neste }) {
           <Tekstspalte fase={fase} L={L} ov={ov} onAkt={onAkt} knapper={knapper} neste={neste} />
           <KortLag fase={fase} L={L} ov={ov} />
           <Smaa fase={fase} L={L} ov={ov} />
+          <Romlapper fase={fase} L={L} ov={ov} />
           <Teller fase={fase} L={L} ov={ov} />
           <div className="absolute" style={{ left: L.omr.x, top: L.omr.y + 22, width: L.omr.w, opacity: folk ? 1 : 0, transform: folk ? 'none' : slutt ? 'translateY(-10px)' : 'translateY(14px)', transition: `opacity ${bt(folk ? 500 : 350, folk ? 250 : 0)}, transform ${bt(600, folk ? 250 : 0)}`, pointerEvents: folk ? 'auto' : 'none' }} aria-hidden={!folk}>
             <Leietakere fase={fase} ov={ov} smal={L.smal} />
@@ -921,8 +1004,8 @@ function StartKompakt({ fase, ov }) {
     <div className="relative overflow-hidden" style={{ aspectRatio: '4 / 5' }} data-testid="v4-start-kompakt">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={KILDE.fasade.liten} alt="Bygården i Nygårdsgaten" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: KILDE.fasade.posLiten, transform: zoomet ? 'scale(1)' : 'scale(1.06)', transition: ov ? 'none' : 'transform 3600ms cubic-bezier(0.25, 0.6, 0.3, 1)' }} draggable={false} />
-      <div aria-hidden="true" className="absolute inset-0" style={{ background: START_GRADIENT }} />
-      <div className="absolute inset-x-0 bottom-0 p-5"><StartTekst fase={fase} kompakt /></div>
+      <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,19,15,0.12) 0%, rgba(21,19,15,0.04) 34%, rgba(21,19,15,0.52) 68%, rgba(21,19,15,0.84) 100%)' }} />
+      <div className="absolute inset-x-0 bottom-0 p-5"><StartTekst fase={fase} kompakt inne={zoomet} ov={ov} /></div>
     </div>
   );
 }

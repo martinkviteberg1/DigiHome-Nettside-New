@@ -3,6 +3,7 @@ import Script from 'next/script';
 import { Providers } from './providers';
 import { rightGrotesk, diatype, instrumentSerif } from './fonts';
 import { site } from '@/lib/site';
+import { ogUrl } from '@/lib/og-url';
 import SiteAnalytics from '@/components/SiteAnalytics';
 import CallTracking from '@/components/CallTracking';
 import ConsentBanner from '@/components/ConsentBanner';
@@ -40,14 +41,15 @@ export const metadata = {
     title: 'DigiHome | Automatisert utleie i Bergen',
     description: site.defaultDescription,
     /* Statisk og:image (1200×630 JPG) — lynrask og pålitelig for iMessage/Slack/LinkedIn (ingen kaldstart, ingen
-       fallback til tilfeldige bilder på siden). Undersider med egen opengraph-image.js overstyrer. */
-    images: [{ url: '/og/forside.jpg', width: 1200, height: 630, alt: 'DigiHome — Utleie på autopilot. Én godkjenning, resten gjorde DigiHome.' }],
+       fallback til tilfeldige bilder på siden). Undersider med egen opengraph-image.js overstyrer.
+       Absolutt URL (lib/og-url): Next løser relative sosiale bilder mot localhost i dev → previewen mistet bildet. */
+    images: [{ url: ogUrl('/og/forside.jpg'), width: 1200, height: 630, alt: 'DigiHome — Utleie på autopilot. Én godkjenning, resten gjorde DigiHome.' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'DigiHome | Automatisert utleie i Bergen',
     description: site.defaultDescription,
-    images: ['/og/forside.jpg'],
+    images: [ogUrl('/og/forside.jpg')],
   },
   icons: {
     icon: [{ url: '/digihome-favicon.svg', type: 'image/svg+xml' }],

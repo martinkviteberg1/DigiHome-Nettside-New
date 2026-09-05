@@ -41,11 +41,11 @@ export const FILM = {
   hjemSmal: '/v4/video/eier-hjemme-mobil.webp',
   /* Sekundet der han fortsatt leser — rett før telefonen går i lommen. Har du ikke trykket, trykker historien her. */
   trykkVed: 7.4,
-  /* Sekundet der han går inn: her begynner overgangen til stua — mens filmen fortsatt beveger seg. Aldri på et frosset bilde. */
-  /* Dissolven til stua starter `hjemVed` — de siste 0,6 s av filmen (han tar det siste steget inn) ligger
-     under overgangen, så bildet beveger seg helt til stua har tatt over. Filmen selv rører vi aldri (ingen
-     transform/zoom på video-elementet). `ended` er reserve. */
-  hjemVed: 11.45,
+  /* Filmen er 12,04 s og slutter med ham på trappen foran døren. Dissolven til stua starter `hjemVed` — så sent at
+     hele gangen inn til døren spilles ferdig, og de siste bildene (han står ved døren) ligger under overgangen.
+     Timeren settes presist fra filmens klokke (ikke bare timeupdate, som tikker hvert ~250 ms). Filmen selv rører
+     vi aldri (ingen transform/zoom på video-elementet). `ended` er reserve. */
+  hjemVed: 11.9,
   once: true,
 };
 
@@ -66,7 +66,7 @@ const FASER = [
   { navn: 'lev', ms: 600 },
   { navn: 'krev', ms: 220 },
   { navn: 'kort', ms: null },    // HOLD — venter på deg
-  { navn: 'godkjent', ms: 1400 },
+  { navn: 'godkjent', ms: 1000 },   // grønn «Godkjent» leses — så oppsummerer panelet seg
   { navn: 'ferdig', ms: 0 },
 ];
 
@@ -102,62 +102,34 @@ function HakeIkon({ className = '' }) {
 function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, hjemme, onFilmFerdig, onTid, onKlar }) {
   const vidRef = useRef(null);
 
-  /* Filmen hentes HELT ned først (2–3 MB) og spilles fra minnet — så den aldri stopper for å bufre midt i
-     (det så ut som «frys + zoom»). Kommer den ikke i mål på 5,5 s, strømmes den som vanlig. */
-  const filUrl = useMemo(() => {
-    if (!film) return null;
-    const mp4 = smal && film.loopSmal ? film.loopSmal : film.loop;
-    if (!film.loopWebm || typeof document === 'undefined') return mp4;
-    try {
-      const kan = document.createElement('video').canPlayType('video/mp4; codecs="avc1.640028"');
-      return kan ? mp4 : film.loopWebm;
-    } catch (e) { return mp4; }
-  }, [film, smal]);
-  const [src, setSrc] = useState(null);
-  useEffect(() => {
-    if (!filUrl || redusert) return undefined;
-    let objUrl = null;
-    let ferdigLastet = false;
-    const ctrl = new AbortController();
-    const fallback = window.setTimeout(() => { if (!ferdigLastet) setSrc(filUrl); }, 5500);
-    (async () => {
-      try {
-        const r = await fetch(filUrl, { signal: ctrl.signal });
-        if (!r.ok) throw new Error(String(r.status));
-        const b = await r.blob();
-        ferdigLastet = true;
-        window.clearTimeout(fallback);
-        objUrl = URL.createObjectURL(b);
-        setSrc(objUrl);
-      } catch (e) {
-        if (!ctrl.signal.aborted) { ferdigLastet = true; window.clearTimeout(fallback); setSrc(filUrl); }
-      }
-    })();
-    return () => { ctrl.abort(); window.clearTimeout(fallback); if (objUrl) URL.revokeObjectURL(objUrl); };
-  }, [filUrl, redusert]);
+  /* Filmen ligger i HTML-en fra serveren (<source> med media/type) — nettleseren begynner å hente den idet
+     siden parses, lenge før React er hydrert. Ingen fetch→blob først (det var 2–3 MB å vente på før første
+     bilde). Kildevalget skjer i nettleseren: 1280 på smal skjerm, 1920 ellers, VP9 der H.264 mangler. */
 
   /* Filmen starter når historien starter — ikke før (så bilde og tekst følger hverandre). */
   useEffect(() => {
     const v = vidRef.current;
-    if (!v || !film || !src) return;
+    if (!v || !film || redusert) return;
     if (fase === 'foto' && kjorer) {
       try {
         if (v.currentTime > 0.05 || v.ended) v.currentTime = 0;   // bare spol når vi faktisk starter på nytt
         v.play().catch(() => {});
       } catch (e) { /* ok */ }
     }
-  }, [fase, kjorer, film, src]);
+  }, [fase, kjorer, film, redusert]);
 
-  /* Klar = nok data til å spille uten stopp. Sjekk også umiddelbart (kan være bufret fra før). */
+  /* Klar = nok data til å begynne å spille (HAVE_FUTURE_DATA). Sjekk også umiddelbart (kan være bufret fra før).
+     Resten av filen strømmer inn mens den spiller — 12 s film, 1,2–2,5 MB. */
   useEffect(() => {
     const v = vidRef.current;
-    if (!v || !film || !onKlar || !src) return undefined;
+    if (!v || !film || !onKlar || redusert) return undefined;
     if (v.readyState >= 3) { onKlar(); return undefined; }
     const f = () => onKlar();
     v.addEventListener('canplaythrough', f);
     v.addEventListener('canplay', f);
-    return () => { v.removeEventListener('canplaythrough', f); v.removeEventListener('canplay', f); };
-  }, [film, onKlar, src]);
+    v.addEventListener('loadeddata', f);
+    return () => { v.removeEventListener('canplaythrough', f); v.removeEventListener('canplay', f); v.removeEventListener('loadeddata', f); };
+  }, [film, onKlar, redusert]);
 
   const pos = egen ? '50% 50%' : (smal ? bilde.posSmal : bilde.pos);
   const felles = {
@@ -190,22 +162,26 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
           playsInline
           preload="auto"
           aria-hidden="true"
-          src={src || undefined}
           onTimeUpdate={onTid ? (e) => onTid(e.currentTarget.currentTime) : undefined}
           onEnded={onFilmFerdig}
           data-testid="v4-film"
-        />
-        {/* Fargebro: filmens kjølige kveld glir mot stuas varme før bildet kommer — det er slik en overgang blir usynlig. */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#E2C6A5', opacity: hjemme ? 0.5 : 0, transition: hjemme ? `opacity 900ms ${EASE}` : 'opacity 0ms linear' }} />
-        {/* Stillbildet: han hjemme. Samme bevegelse gjennom klippet (inn, inn) — så pittelitt, nesten umerkelig drift. */}
+        >
+          {/* Nettleseren velger: smal skjerm → 1280, ellers 1920. Uten H.264 (enkelte Linux-bygg) → VP9. */}
+          {film.loopSmal ? <source src={film.loopSmal} type='video/mp4; codecs="avc1.640028"' media="(max-width: 639px)" /> : null}
+          <source src={film.loop} type='video/mp4; codecs="avc1.640028"' />
+          {film.loopWebm ? <source src={film.loopWebm} type="video/webm" /> : null}
+        </video>
+        {/* Stillbildet: han hjemme. Ligger under dyppet; kommer opp av mørket med et lite «setter seg» (1.05 → 1) og et varmt
+            lysoverskudd som stilner — som når du kommer inn fra kvelden og øynene venner seg til lyset. Så en nesten
+            umerkelig drift i 16 s. */}
         {hjem ? (
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 will-change-transform"
             style={{
               opacity: hjemme ? 1 : 0,
-              transform: hjemme ? 'scale(1.03)' : 'scale(1)',
-              transition: hjemme ? `opacity 1300ms ${EASE}, transform 3600ms ${EASE}` : 'opacity 240ms linear, transform 0ms linear 240ms',
+              transform: hjemme ? 'scale(1)' : 'scale(1.05)',
+              transition: hjemme ? `opacity 420ms linear 380ms, transform 3000ms ${EASE} 520ms` : 'opacity 240ms linear, transform 0ms linear 240ms',
             }}
             data-testid="v4-film-hjem-ramme"
           >
@@ -214,13 +190,18 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
               src={hjem}
               alt=""
               className="absolute inset-0 h-full w-full object-cover will-change-transform"
-              style={{ objectPosition: '50% 50%', transform: hjemme ? 'scale(1.055)' : 'scale(1)', transition: hjemme ? 'transform 16000ms cubic-bezier(0.22, 0.61, 0.36, 1) 200ms' : 'transform 0ms linear' }}
+              style={{ objectPosition: '50% 50%', transform: hjemme ? 'scale(1.045)' : 'scale(1)', transition: hjemme ? 'transform 16000ms cubic-bezier(0.22, 0.61, 0.36, 1) 2200ms' : 'transform 0ms linear' }}
               data-testid="v4-film-hjem"
             />
+            {/* Lysoverskudd: varmt lys som stilner idet rommet kommer til syne */}
+            <div aria-hidden="true" className="absolute inset-0" style={{ background: 'radial-gradient(85% 75% at 60% 38%, rgba(255,236,212,0.62) 0%, rgba(255,236,212,0.26) 55%, rgba(255,236,212,0) 100%)', opacity: hjemme ? 0 : 1, transition: hjemme ? `opacity 1700ms ${EASE} 700ms` : 'opacity 0ms linear' }} />
             {/* Subtil overlay: myk vignett + hint av kveldslys — bildet får dybde, teksten står roligere. */}
             <div aria-hidden="true" className="absolute inset-0" style={{ background: 'radial-gradient(115% 105% at 50% 50%, rgba(21,18,15,0) 52%, rgba(21,18,15,0.22) 100%), linear-gradient(180deg, rgba(21,18,15,0.10) 0%, rgba(21,18,15,0) 28%, rgba(21,18,15,0) 72%, rgba(21,18,15,0.12) 100%)' }} />
           </div>
         ) : null}
+        {/* Dyppet: filmen går ned i varm mørke (≈0,6 s), stua kommer opp av den (≈1,3 s). Skjuler også filmens siste,
+            stillestående bilde. Øverst i laget — over både film og stillbilde. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#17120E', opacity: 0, animation: hjemme ? 'v4-dipp 1900ms linear both' : 'none' }} data-testid="v4-dipp" />
       </>
     );
   }
@@ -244,19 +225,32 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   const redusert = useRedusert();
   const bildet = BILDER[bilde] || BILDER.stue;
   const [egen, setEgen] = useState(null);           // URL til Street View når den finnes
-  /* Historien starter når scenen er godt inne i bildet (halve scenen) OG filmen er klar til å spille uten stopp —
-     så første bilde aldri hakker. Blir ikke filmen klar (treg linje), starter vi likevel etter 3 s. */
-  const synlig = useSynlig(ref, smal ? 0.55 : 0.5);
+  /* Historien starter når scenen er godt inne i bildet (halve scenen) OG filmen har nok data til å begynne —
+     så første bilde aldri hakker. Filmen hentes fra HTML-parsing, så dette er normalt umiddelbart. Blir den
+     ikke klar (treg linje), starter vi likevel etter 2,5 s. */
+  const synlig = useSynlig(ref, smal ? 0.55 : 0.7);
+  /* Ikke i det siden laster: filmen begynner idet du scroller og scenen er inne (70 % synlig) — kjapt på scroll.
+     Scroller du ikke (hele scenen synlig fra start, du bare ser), starter den etter 4 s. */
+  const [roet, setRoet] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setRoet(true), 4000);
+    const f = () => setRoet(true);
+    const opts = { passive: true, once: true };
+    window.addEventListener('scroll', f, opts);
+    window.addEventListener('wheel', f, opts);
+    window.addEventListener('touchmove', f, opts);
+    return () => { window.clearTimeout(t); window.removeEventListener('scroll', f); window.removeEventListener('wheel', f); window.removeEventListener('touchmove', f); };
+  }, []);
   const [filmKlar, setFilmKlar] = useState(false);
   const onFilmKlar = useCallback(() => setFilmKlar(true), []);
   const [ventetUt, setVentetUt] = useState(false);
   useEffect(() => {
     if (!synlig || filmKlar) return undefined;
-    const t = window.setTimeout(() => setVentetUt(true), 6500);
+    const t = window.setTimeout(() => setVentetUt(true), 2500);
     return () => window.clearTimeout(t);
   }, [synlig, filmKlar]);
   const harFilm = !!film && !egen;
-  const start = synlig && (!harFilm || filmKlar || ventetUt);
+  const start = synlig && roet && (!harFilm || filmKlar || ventetUt);
   const { fase, er, ferdig, replay, videre, kjorer, holder } = useSekvens(FASER, start);
 
   /* ── Din adresse → din bolig. Street View via egen proxy når panoramaet er nært nok.
@@ -320,6 +314,8 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   const [filmFerdig, setFilmFerdig] = useState(false);
   const onFilmFerdig = useCallback(() => setFilmFerdig(true), []);
   const [hjemme, setHjemme] = useState(false);
+  const [sammen, setSammen] = useState(false);       // radene har foldet seg sammen til én linje
+  const [panelUte, setPanelUte] = useState(false);   // panelet har løftet seg av bildet
   const kanHjem = !!film && !egen;   // uten film (eller med din egen bolig fra Street View) blir panelet stående
   useEffect(() => {
     if (!ferdig || !kanHjem) return undefined;
@@ -329,7 +325,17 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
     const t = window.setTimeout(() => setHjemme(true), 6500);
     return () => window.clearTimeout(t);
   }, [ferdig, filmFerdig, kanHjem, redusert]);
-  const inne = er('rad1') && !hjemme;
+  const inne = er('rad1') && !hjemme && !panelUte;
+
+  /* Oppsummeringen — etter godkjenningen. Radene folder seg sammen (nyeste først), én linje står igjen under
+     adressen («Dagen er gjort. Én ting trengte deg.»), så løfter hele panelet seg av bildet og filmen får lyset
+     tilbake mens han går inn. Panelet skal ikke stå og «vente» på slutten. */
+  useEffect(() => {
+    if (!ferdig || !kanHjem || redusert) return undefined;
+    setSammen(true);
+    const t = window.setTimeout(() => setPanelUte(true), 1400);
+    return () => window.clearTimeout(t);
+  }, [ferdig, kanHjem, redusert]);
 
   /* Sluttbildet hentes i det saken venter — så overgangen aldri må vente på nettet. */
   useEffect(() => {
@@ -360,13 +366,20 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
     window.setTimeout(() => { setPresser(false); setTrykket(true); }, 180);
     window.setTimeout(() => { videre(); }, 180 + 900);
   }, [trykket, presser, venter, videre]);
-  useEffect(() => { if (fase === 'foto') { setTrykket(false); setPresser(false); setHvem(null); setFilmFerdig(false); setHjemme(false); } }, [fase]);
+  const hjemTimer = useRef(0);
+  useEffect(() => { if (fase === 'foto') { setTrykket(false); setPresser(false); setHvem(null); setFilmFerdig(false); setHjemme(false); setSammen(false); setPanelUte(false); window.clearTimeout(hjemTimer.current); hjemTimer.current = 0; } }, [fase]);
 
-  /* Filmen bestemmer når: rett før han legger telefonen i lommen trykker historien — hvis du ikke har gjort det. */
+  /* Filmen bestemmer når: rett før han legger telefonen i lommen trykker historien — hvis du ikke har gjort det.
+     Og overgangen hjem settes som en presis timer fra filmens klokke idet vi er under et halvt sekund unna `hjemVed`
+     (timeupdate alene tikker hvert ~250 ms — for grovt for et klipp). */
   const onTid = useCallback((t) => {
     if (film && film.trykkVed && t >= film.trykkVed) godkjenn('kari');
-    if (film && film.hjemVed && kanHjem && ferdig && t >= film.hjemVed) setHjemme(true);
+    if (film && film.hjemVed && kanHjem && ferdig && !hjemTimer.current) {
+      const rest = film.hjemVed - t;
+      if (rest <= 0.5) hjemTimer.current = window.setTimeout(() => setHjemme(true), Math.max(0, Math.round(rest * 1000)));
+    }
   }, [film, godkjenn, kanHjem, ferdig]);
+  useEffect(() => () => window.clearTimeout(hjemTimer.current), []);
   /* Uten film (eller om autoplay er blokkert) trykker historien selv etter en liten stund i hold. */
   useEffect(() => {
     if (!venter || trykket || presser) return undefined;
@@ -395,55 +408,59 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
         {/* Filmen vises først helt ren. Når dagen begynner, dempes bildet — lett, filmen skal fortsatt sees. Slipper igjen hjemme. */}
         <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.38) 0%, rgba(21,18,15,0.14) 40%, rgba(21,18,15,0.02) 62%, rgba(21,18,15,0.24) 100%)', opacity: inne ? 1 : 0, transition: `opacity ${hjemme ? 900 : 1400}ms ${EASE}` }} />
 
-        {/* ── Slutten: han hjemme. Alt står rett på den lyse veggen — ingen boks. Status · setningen · tre tall fra
-              dagen · og adressefeltet, så neste steg er ett felt unna. Aldri over ham. ── */}
+        {/* ── Slutten: han hjemme. Alt står rett på den lyse veggen — ingen boks. Én setning, én linje, én stille
+              oppsummering av dagen, og adressefeltet — så neste steg er ett felt unna. Aldri over ham. ── */}
         <div
-          className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-24' : 'absolute flex flex-col justify-start'}
+          className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-24' : 'absolute flex flex-col justify-center'}
           style={{
-            ...(smal ? {} : { left: '62%', right: '4.5%', top: '11%', bottom: '8%' }),
+            ...(smal ? {} : { left: '61%', right: '5%', top: '8%', bottom: '8%' }),
             color: T.ink,
             background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 30%, rgba(243,241,236,0.98) 100%)' : 'none',
             opacity: hjemme ? 1 : 0,
             pointerEvents: hjemme ? 'auto' : 'none',
-            transition: `opacity 500ms ${EASE} ${hjemme ? 400 : 0}ms`,
+            transition: `opacity 500ms ${EASE} ${hjemme ? 900 : 0}ms`,
           }}
           aria-hidden={!hjemme}
           data-testid="v4-slutt"
         >
           {(() => {
-            /* Teksten kommer når bildet har landet (≈1,4 s), én linje om gangen. */
-            const linje = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(14px)', transition: `opacity 900ms ${EASE} ${hjemme ? 1400 + i * 120 : 0}ms, transform 900ms ${EASE} ${hjemme ? 1400 + i * 120 : 0}ms` });
-            const tallene = [
-              [vist ? `${tall(18500)}\u00A0kr` : `${tall(64500)}\u00A0kr`, vist || smal ? 'Husleie inn' : 'Husleie inn · 8 av 8'],
-              ['1 min', smal ? 'Fra melding til rørlegger' : 'Fra Idas melding til rørlegger bestilt'],
-              ['1', smal ? 'Godkjenning' : hvem === 'deg' ? 'Godkjenning — din' : 'Godkjenning — alt annet gikk av seg selv'],
-            ];
+            /* Teksten kommer når rommet har kommet opp av mørket (≈1,5 s): status, så «Utleie på autopilot.» ord for ord,
+               så én linje, en hårlinje som tegnes, dagens tall i én stille linje — og feltet. */
+            const T0 = 1500;
+            const linje = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(12px)', transition: `opacity 900ms ${EASE} ${hjemme ? T0 + i * 130 : 0}ms, transform 900ms ${EASE} ${hjemme ? T0 + i * 130 : 0}ms` });
+            const ord = ['Utleie', 'på', 'autopilot'];
+            const ordStil = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(18px)', filter: hjemme ? 'blur(0px)' : 'blur(7px)', transition: hjemme ? `opacity 900ms ${EASE} ${T0 + 150 + i * 140}ms, transform 1100ms ${EASE} ${T0 + 150 + i * 140}ms, filter 900ms ${EASE} ${T0 + 150 + i * 140}ms` : `opacity 240ms ${EASE}, transform 240ms ${EASE}, filter 240ms ${EASE}` });
+            const husleie = vist ? `${tall(18500)}\u00A0kr` : `${tall(64500)}\u00A0kr`;
             return (
               <>
                 <p className="flex items-center gap-2 text-[13px] sm:text-[13.5px]" style={{ ...linje(0), color: 'rgba(21,19,15,0.58)' }} data-testid="v4-slutt-status">
                   <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55' }} />
                   Alt i orden<span className="opacity-50"> · </span>{adresse}<span className="hidden opacity-50 sm:inline"> · </span><span className="hidden sm:inline">22:42</span>
                 </p>
-                <h3 className="mt-3 sm:mt-4" style={{ ...display, fontSize: smal ? 38 : 'clamp(44px, 6.6svh, 76px)', lineHeight: 0.95, ...linje(1) }} data-testid="v4-slutt-tittel">
-                  Én godkjenning<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
-                </h3>
-                <p className="mt-3 max-w-[32ch] text-[15.5px] leading-[1.4] sm:mt-3.5 sm:text-[17px]" style={{ ...linje(2), color: 'rgba(21,19,15,0.62)' }}>Resten skjedde mens du gikk hjem.</p>
-
-                {/* Tre tall — rett på veggen, hårlinje over. */}
-                <dl className="mt-6 grid grid-cols-3 gap-x-5 border-t pt-4 sm:mt-8 sm:gap-x-8 sm:pt-5" style={{ borderColor: 'rgba(21,19,15,0.14)' }} data-testid="v4-slutt-tall">
-                  {tallene.map(([v, l], i) => (
-                    <div key={l} className="min-w-0" style={linje(3 + i * 0.6)}>
-                      <dd className="m-0 text-[24px] sm:text-[30px] lg:text-[34px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>{v}</dd>
-                      <dt className="mt-1.5 text-[12px] leading-[1.35] sm:mt-2 sm:text-[13px]" style={{ color: 'rgba(21,19,15,0.55)' }}>{l}</dt>
-                    </div>
+                <h3 className="mt-3 sm:mt-5" style={{ ...display, fontSize: smal ? 42 : 'clamp(48px, 7.4svh, 86px)', lineHeight: 0.93, letterSpacing: '-0.04em' }} data-testid="v4-slutt-tittel">
+                  {ord.map((o, i) => (
+                    <span key={o} className="inline-block" style={{ ...ordStil(i), marginRight: i < ord.length - 1 ? '0.22em' : 0 }}>
+                      {o}{i === ord.length - 1 ? <span style={{ color: T.lilla, marginLeft: '0.02em' }}>.</span> : null}
+                    </span>
                   ))}
-                </dl>
+                </h3>
+                <p className="mt-4 max-w-[30ch] text-[16px] leading-[1.42] sm:mt-5 sm:text-[18px]" style={{ ...linje(5), color: 'rgba(21,19,15,0.66)' }}>Én godkjenning. Resten skjedde mens du gikk hjem.</p>
+
+                {/* Hårlinjen tegnes — så dagen i én stille linje. */}
+                <div aria-hidden="true" className="mt-7 h-px sm:mt-9" style={{ background: 'rgba(21,19,15,0.16)', transform: hjemme ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: '0 50%', transition: `transform 1200ms ${EASE} ${hjemme ? T0 + 800 : 0}ms` }} />
+                <p className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] tabular-nums sm:text-[13.5px]" style={{ ...linje(7.5), color: 'rgba(21,19,15,0.56)' }} data-testid="v4-slutt-tall">
+                  <span><span style={{ color: T.ink, fontWeight: 500 }}>{husleie}</span> husleie inn</span>
+                  <span className="opacity-40">·</span>
+                  <span><span style={{ color: T.ink, fontWeight: 500 }}>1 min</span> {smal ? 'til rørlegger' : 'fra melding til rørlegger bestilt'}</span>
+                  <span className="opacity-40">·</span>
+                  <span><span style={{ color: T.ink, fontWeight: 500 }}>1</span> godkjenning{hvem === 'deg' ? ' — din' : ''}</span>
+                </p>
 
                 {/* Neste steg er ett felt unna. */}
-                <div className="mt-6 max-w-[520px] sm:mt-8" style={linje(5.5)}>
+                <div className="mt-7 max-w-[520px] sm:mt-9" style={linje(9.5)}>
                   <AdresseFelt variant="ink" gjennomsiktig />
                   <div className="mt-3 flex items-center justify-between gap-4 text-[13px]" style={{ color: 'rgba(21,19,15,0.55)' }}>
-                    <span className="hidden sm:inline">Se boligen din på autopilot.</span>
+                    <span className="hidden sm:inline">Skriv adressen din — se hva som går av seg selv.</span>
                     <button type="button" onClick={replay} className="underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" tabIndex={hjemme ? 0 : -1} data-testid="v4-replay">Spill igjen</button>
                   </div>
                 </div>
@@ -461,12 +478,13 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
             color: OFF,
             boxShadow: '0 0 0 1px rgba(244,241,234,0.08), 0 40px 80px -40px rgba(0,0,0,0.6)',
             opacity: inne ? 1 : 0,
-            transform: inne ? 'none' : hjemme ? 'translateY(-10px) scale(0.985)' : 'translateY(10px)',
-            transition: hjemme ? `opacity 450ms ${EASE}, transform 450ms ${EASE}` : `opacity 700ms ${EASE} 200ms, transform 700ms ${EASE} 200ms`,
+            transform: inne ? 'none' : hjemme || panelUte ? 'translateY(-10px) scale(0.985)' : 'translateY(10px)',
+            transition: hjemme || panelUte ? `opacity 560ms ${EASE}, transform 560ms ${EASE}` : `opacity 700ms ${EASE} 200ms, transform 700ms ${EASE} 200ms`,
             pointerEvents: inne ? 'auto' : 'none',
           }}
           aria-hidden={!inne}
           data-testid="v4-stage-dag"
+          data-sammen={sammen ? '1' : '0'}
         >
           <div className="p-5 sm:p-6">
             {/* Boligen · status */}
@@ -484,14 +502,16 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
               </p>
             </div>
 
-            {/* Dagen — radene kommer én og én; panelet vokser rolig med dem. Ingenting hopper. */}
-            <ul className="mt-4 sm:mt-5" aria-hidden={!er('rad1')}>
-              {rader.map((r) => {
-                const vis = er(r.fase);
+            {/* Dagen — radene kommer én og én; panelet vokser rolig med dem. Ingenting hopper.
+                Når historien er ferdig, folder de seg sammen igjen — nyeste først — til én linje. */}
+            <ul className="mt-4 sm:mt-5" aria-hidden={!er('rad1') || sammen}>
+              {rader.map((r, ri) => {
+                const vis = er(r.fase) && !sammen;
+                const inn = (rader.length - 1 - ri) * 90;   // forsinkelse i sammenfoldingen: nederste rad først
                 return (
-                  <li key={r.tid} className={r.skjulMobil ? 'hidden sm:grid' : 'grid'} style={{ gridTemplateRows: vis ? '1fr' : '0fr', transition: `grid-template-rows 520ms ${EASE}` }}>
+                  <li key={r.tid} className={r.skjulMobil ? 'hidden sm:grid' : 'grid'} style={{ gridTemplateRows: vis ? '1fr' : '0fr', transition: sammen ? `grid-template-rows 460ms ${EASE} ${inn + 120}ms` : `grid-template-rows 520ms ${EASE}` }}>
                     <div className="min-h-0 overflow-hidden">
-                      <div className="border-t py-3 sm:py-3.5" style={{ borderColor: HAIR, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', transition: radT }}>
+                      <div className="border-t py-3 sm:py-3.5" style={{ borderColor: HAIR, opacity: vis ? 1 : 0, transform: vis ? 'none' : sammen ? 'translateY(-6px)' : 'translateY(6px)', transition: sammen ? `opacity 280ms ${EASE} ${inn}ms, transform 320ms ${EASE} ${inn}ms` : radT }}>
                         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 sm:grid-cols-[44px_minmax(0,1fr)_auto]">
                           <span className="hidden pt-[2px] text-[13px] tabular-nums sm:block" style={{ color: 'rgba(244,241,234,0.45)' }}>{r.tid}</span>
                           <span className="min-w-0">
@@ -587,6 +607,15 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
                 );
               })}
             </ul>
+
+            {/* Oppsummeringen — én linje der dagen sto. Kommer idet radene har foldet seg sammen. */}
+            <div className="grid" style={{ gridTemplateRows: sammen ? '1fr' : '0fr', transition: `grid-template-rows 480ms ${EASE} ${sammen ? 360 : 0}ms` }} aria-hidden={!sammen}>
+              <div className="min-h-0 overflow-hidden">
+                <p className="mt-4 border-t pt-4 text-[15px] leading-[1.4] sm:mt-5 sm:text-[15.5px]" style={{ borderColor: HAIR, color: 'rgba(244,241,234,0.9)', opacity: sammen ? 1 : 0, transform: sammen ? 'none' : 'translateY(6px)', transition: `opacity 480ms ${EASE} ${sammen ? 560 : 0}ms, transform 480ms ${EASE} ${sammen ? 560 : 0}ms` }} data-testid="v4-oppsummering">
+                  Dagen er gjort<span style={{ color: T.lilla }}>.</span> <span style={{ color: DIM }}>{hvem === 'deg' ? 'Én ting trengte deg — ett trykk.' : 'Én ting trengte deg. Resten gikk av seg selv.'}</span>
+                </p>
+              </div>
+            </div>
 
             {/* Sluttlinje i panelet — bare når scenen ikke går hjem (egen bolig fra Street View / uten film). */}
             <div className="grid" style={{ gridTemplateRows: ferdig && !kanHjem ? '1fr' : '0fr', transition: `grid-template-rows 500ms ${EASE}` }} aria-hidden={!(ferdig && !kanHjem)}>

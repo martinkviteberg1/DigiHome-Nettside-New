@@ -1004,5 +1004,12 @@ html.dh-tour-snap.dh-tour-flyt { scroll-snap-type: none; }
 .v4-puls { animation: v4puls 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
 @media (prefers-reduced-motion: reduce) { .v4-puls { animation: none; } }
 
+/* V4 hero: dypp gjennom varm mørke — filmen går ned, stua kommer opp av mørket. Én bevegelse, ingen kryssklipp. */
+@keyframes v4-dipp {
+  0% { opacity: 0; animation-timing-function: cubic-bezier(0.45, 0, 0.75, 0.35); }
+  32% { opacity: 1; animation-timing-function: cubic-bezier(0.2, 0.55, 0.25, 1); }
+  100% { opacity: 0; }
+}
+
 /* V4: boligkort i bevegelse (BoligerSeksjon). Halve sporet = én runde, sporet er duplisert. */
 @keyframes v4-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }

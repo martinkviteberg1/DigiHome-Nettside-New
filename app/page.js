@@ -1,17 +1,20 @@
 import { cookies } from 'next/headers';
 import ForsideV4 from '@/components/forside/v4/ForsideV4';
+import { ogUrl } from '@/lib/og-url';
 
 const TITTEL = 'DigiHome — Utleie på autopilot';
 const BESKRIVELSE = 'Plattformen for automatisert boligutleie. Kontrakt, husleie og saker går automatisk — du godkjenner det som koster. For boligeiere, eiendomsselskap og full forvaltning.';
+/* Statisk og:image. Absolutt URL fordi Next i dev løser relative sosiale bilder mot localhost (→ preview mistet bildet
+   og iMessage falt tilbake til varmtvannsberederen fra Drift). ?v= bumper cachen hos iMessage/Slack når bildet byttes. */
+const OG_BILDE = ogUrl('/og/forside.jpg?v=2');
 
 export const metadata = {
   title: { absolute: TITTEL },
   description: BESKRIVELSE,
   alternates: { canonical: '/' },
   /* Layoutens openGraph/twitter setter egen tittel/beskrivelse — overstyres her.
-     Bildet er statisk: /public/og/forside.jpg (1200×630, filmens første bilde + «Utleie på autopilot.»),
-     rendret én gang med lib/og-v4.js → renderOgFoto. Statisk fil = ingen kaldstart, ingen fallback til
-     tilfeldige bilder på siden (iMessage viste en varmtvannsbereder). */
+     Bildet er statisk: /public/og/forside.jpg (1200×630), rendret én gang med lib/og-v4.js → renderOgForside.
+     Statisk fil = ingen kaldstart, ingen fallback til tilfeldige bilder på siden. */
   openGraph: {
     type: 'website',
     locale: 'nb_NO',
@@ -19,13 +22,13 @@ export const metadata = {
     title: TITTEL,
     description: BESKRIVELSE,
     url: '/',
-    images: [{ url: '/og/forside.jpg', width: 1200, height: 630, alt: 'DigiHome — Utleie på autopilot. Én godkjenning, resten gjorde DigiHome.' }],
+    images: [{ url: OG_BILDE, width: 1200, height: 630, alt: 'DigiHome — Utleie på autopilot. Én godkjenning, resten gjorde DigiHome.' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: TITTEL,
     description: BESKRIVELSE,
-    images: ['/og/forside.jpg'],
+    images: [OG_BILDE],
   },
 };
 
