@@ -1077,3 +1077,19 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   FAQ (boligeiere + forside-default), AvslutningSeksjon, ProduktSeksjon («Systemet gjør resten.»), HeroStage/HeroScene
   («Resten gikk på autopilot.»), StartV4 (Lei ut selv: «Du er utleier. Systemet tar rutinen.» / Automatisk / Systemet foreslår · du bestemmer),
   Bedrift («Teamet driver — systemet tar rutinen», «går automatisk», kolonne Systemet), metadata-beskrivelser (/, /boligeiere, /bedrift).
+
+## Forsiden · produktseksjonen: Annonse-historien + sticky tabs
+- **Sticky tabs**: raden Annonse · Kontrakt · Økonomi · Leietaker · Drift klistrer seg under navigasjonen (top 72/64 px) mens
+  produktseksjonen er i view, med frostet pille bak (tema-avhengig). Seksjonen bruker `overflow-clip` (hidden dreper sticky).
+  Festet-tilstand sjekkes på scroll (rAF) — IO mistet hopp. Tab-klikk fra festet rad skroller produktet inn under raden.
+  Kun Annonse og Drift har innhold; Kontrakt/Økonomi/Leietaker er dempet (ikke bygget).
+- **AnnonseFilm** (`components/forside/v4/produkt/AnnonseFilm.js`, erstatter AnnonseScene): «Fra ledig til utleid. Du trykker to ganger.»
+  ALT skjer innenfor produktflaten (bruker avviste zoom-ut/frittstående variant: «alt må skje innenfor den rammen vi hadde»).
+  Kapitler: Bildene leses (forsidebildet viser stue → kjøkken → soverom, fakta-chips setter seg i høyrekolonnen, miniatyr får ring)
+  → Møbleres (tomt rom → møblert, 900 ms dissolve, merkelapp «Illustrasjon · møblert med KI») → Skrives (spes, tittel, tekst, pris)
+  → Publiseres (beslutningskort tar fakta-kolonnens plass; «Publiser» → «Publisert · ute på FINN.no») → Utleid (Emma/Martin/Sara dag 1/2/4,
+  dag 6 «Send kontrakt» → BankID). Kapittel-linje under flaten (klikkbar). Redusert bevegelse: ingen overganger, start på «klar».
+  Ingen skannelinjer/spinnere/skrivemaskin. Mobil: tekstblokker vokser inn (Vokse) i stedet for reservert plass.
+- **Bilder**: `/public/v4/annonse/` — `stue-tom-{1200,700}.webp` er GENERERT (Gemini 2.5 Flash Image via Emergent-nøkkel, to pass,
+  `scripts/generer-tomt-rom.py`) fra det ekte `interior-openplan.webp` (= `stue-moblert`). Kjøkken/soverom/spisestue/bar er ekte
+  showcase-bilder. FINN-publisering vises som produktløfte etter brukerens ønske — må være/bli reelt før produksjon.

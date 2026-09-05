@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Layers } from 'lucide-react';
 import { EASE, T, display, useSynlig } from '../motion';
 import DriftScene from './DriftScene';
-import AnnonseScene from './AnnonseScene';
+import AnnonseFilm from './AnnonseFilm';
 
 /* ---------------------------------------------------------------------------
    ProduktSeksjon — «Se hele DigiHome i arbeid.» En scene, ikke et skjermbilde.
@@ -14,8 +14,10 @@ import AnnonseScene from './AnnonseScene';
    produktet står på den rolige himmelen, fjellene lever i kantene (Sana-regelen).
 
    Tabs i livssyklus-rekkefølge: Annonse · Kontrakt · Økonomi · Leietaker · Drift.
-   Default er Drift — heroen fortalte nettopp den historien; her er produktet bak den.
-   Kun Drift har innhold i denne runden. De andre er synlige, dempet og ikke klikkbare.
+   Default er Annonse — livssyklusen leses fra venstre. Annonse er en historie
+   (AnnonseFilm: to zoom-nivåer — annonsen skrives fra boligen, stort og frittstående;
+   ved «Publiser» trekker kameraet seg tilbake og annonsen lander i produktet),
+   Drift er én sak med én godkjenning. De andre er synlige, dempet og ikke klikkbare.
 --------------------------------------------------------------------------- */
 
 const TABS = [
@@ -28,8 +30,8 @@ const TABS = [
 
 const SCENER = {
   annonse: {
-    tittel: ['Fra ledig til utleid.', 'Systemet gjør resten.'],
-    ingress: 'Annonsen lages fra boligen. Interessenter, spørsmål og visninger samles på ett sted. Du velger leietaker — kontrakten går ut med BankID.',
+    tittel: ['Fra ledig til utleid.', 'Du trykker to ganger.'],
+    ingress: 'Jonas sier opp. Systemet leser bildene, skriver annonsen og møblerer forsidebildet — merket som illustrasjon. Du publiserer til FINN.no med ett trykk. Interessenter og visninger samles på ett sted; du velger leietaker, og kontrakten går ut med BankID.',
   },
   drift: {
     tittel: ['Fra melding til løst.', 'Systemet gjør resten.'],
@@ -105,10 +107,12 @@ const TEMA = {
   mork: {
     seksjonBg: T.plomme, tekst: IVORY, ingress: 'rgba(244,241,234,0.68)',
     tabAktiv: 'rgba(244,241,234,0.88)', tabTekst: 'rgba(244,241,234,0.5)', tabHover: 'hover:text-[#F4F1EA]/80', tabLinje: 'rgba(244,241,234,0.12)', ring: 'focus-visible:ring-[#F4F1EA]/40',
+    pille: 'rgba(36,28,39,0.72)', pilleKant: 'rgba(244,241,234,0.14)',
   },
   lys: {
     seksjonBg: IVORY, tekst: INK, ingress: 'rgba(21,19,15,0.66)',
     tabAktiv: 'rgba(21,19,15,0.84)', tabTekst: 'rgba(21,19,15,0.46)', tabHover: 'hover:text-[#15130F]/80', tabLinje: 'rgba(21,19,15,0.08)', ring: 'focus-visible:ring-[#15130F]/30',
+    pille: 'rgba(243,241,236,0.82)', pilleKant: 'rgba(21,19,15,0.08)',
   },
 };
 
@@ -116,7 +120,9 @@ export default function ProduktSeksjon() {
   const [aktiv, setAktiv] = useState('annonse');   // starter på Annonse — livssyklusen leses fra venstre
   const [bakgrunn, setBakgrunn] = useState('oslo');   // nøkkel i BAKGRUNNER — bygården er standard; 'stue' (interiør) ligger i velgeren
   const [velgerOpen, setVelgerOpen] = useState(false);
+  const [festet, setFestet] = useState(false);   // tabs-raden ligger klistret under navigasjonen
   const ref = useRef(null);
+  const vaktRef = useRef(null);
   const synlig = useSynlig(ref, 0.12);
   const scene = SCENER[aktiv] || SCENER.drift;
   const bg = BAKGRUNNER[bakgrunn] || BAKGRUNNER.plomme;
@@ -124,8 +130,42 @@ export default function ProduktSeksjon() {
   const venstre = bg.layout === 'venstre';
   const srcSet = bg.srcSet || (bg.bilde2x ? `${bg.bilde} 2000w, ${bg.bilde2x} 4000w` : undefined);
 
+  /* Sticky tabs: en 1 px vakt rett over raden. Når vakten er skrollet forbi nav-høyden, er raden festet
+     og får en frostet pille bak seg så den leser over bilde og produkt. Sjekkes på scroll (rAF-throttlet) —
+     IntersectionObserver mister hopp der vakten aldri er i skjæringen. Seksjonen bruker overflow-clip
+     (ikke hidden) — hidden ville gjort seksjonen til scroll-container og skrudd av sticky. */
+  useEffect(() => {
+    const el = vaktRef.current;
+    if (!el) return undefined;
+    let raf = 0;
+    const sjekk = () => {
+      raf = 0;
+      const navH = window.innerWidth >= 1024 ? 64 : 72;
+      setFestet(el.getBoundingClientRect().top < navH + 1);
+    };
+    const planlegg = () => { if (!raf) raf = window.requestAnimationFrame(sjekk); };
+    sjekk();
+    window.addEventListener('scroll', planlegg, { passive: true });
+    window.addEventListener('resize', planlegg);
+    return () => {
+      window.removeEventListener('scroll', planlegg);
+      window.removeEventListener('resize', planlegg);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  /* Tabbytte fra festet rad: hold blikket der raden er — scroll produktet inn rett under den. */
+  const bytt = (id) => {
+    setAktiv(id);
+    if (festet && ref.current) {
+      const navH = window.innerWidth >= 1024 ? 64 : 72;
+      const topp = ref.current.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: topp - navH + 40, behavior: 'smooth' });
+    }
+  };
+
   return (
-    <section id="produkt" ref={ref} className="relative overflow-hidden" style={{ background: bg.seksjonBg || tema.seksjonBg, color: tema.tekst }} data-testid="v4-produkt">
+    <section id="produkt" ref={ref} className="relative overflow-clip" style={{ background: bg.seksjonBg || tema.seksjonBg, color: tema.tekst }} data-testid="v4-produkt">
       {/* Verden: bildet er en ramme rundt produktet — produktet står på den roligste delen. */}
       {bg.bilde && bg.modus === 'cover' && (
         <div aria-hidden="true" className="absolute inset-0" style={{ backgroundImage: `url(${bg.bilde})`, backgroundSize: 'cover', backgroundPosition: bg.pos }} />
@@ -147,29 +187,42 @@ export default function ProduktSeksjon() {
       <div aria-hidden="true" className="absolute inset-0" style={{ background: bg.overlay }} />
 
       <div className="relative mx-auto max-w-[1760px] px-5 pb-12 pt-12 sm:px-8 lg:px-10 lg:pb-16 lg:pt-12">
-        {/* Modus — lett mode-switch: tekst + hårlinje under den aktive. Ingen pill-container. */}
-        <div className={`flex ${venstre ? 'justify-start' : 'justify-center'}`}>
-          {/* Retning A — minimal editorial: tekstrekke på én hårlinje, aktiv = full ink + medium + 2 px strek. */}
-          <div role="tablist" aria-label="Produktområder" className="inline-flex max-w-full gap-[18px] overflow-x-auto sm:gap-8 lg:gap-9" style={{ boxShadow: `inset 0 -1px 0 ${tema.tabLinje}` }} data-testid="v4-tabs">
-            {TABS.map((t) => {
-              const er = t.id === aktiv;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={er}
-                  aria-disabled={!t.klar}
-                  onClick={() => { if (t.klar) setAktiv(t.id); }}
-                  className={`relative shrink-0 pb-2.5 pt-1 text-[13.5px] tracking-[-0.005em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 sm:text-[14.5px] ${tema.ring} ${er ? 'font-medium' : t.klar ? tema.tabHover : 'cursor-default'}`}
-                  style={{ color: er ? tema.tabAktiv : tema.tabTekst }}
-                  data-testid={`v4-tab-${t.id}`}
-                >
-                  {t.navn}
-                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[1.5px]" style={{ background: tema.tabAktiv, opacity: er ? 1 : 0, transition: `opacity 200ms ${EASE}` }} />
-                </button>
-              );
-            })}
+        {/* Vakt for sticky-raden */}
+        <div ref={vaktRef} aria-hidden="true" className="h-px w-full" />
+        {/* Modus — lett mode-switch: tekst + hårlinje under den aktive. Klistres under navigasjonen når man
+            skroller i seksjonen, så neste område alltid er ett trykk unna. */}
+        <div className={`sticky top-[72px] z-30 flex lg:top-[64px] ${venstre ? 'justify-start' : 'justify-center'}`} data-testid="v4-tabs-sticky" data-festet={festet ? '1' : '0'}>
+          <div
+            className={`inline-flex max-w-full rounded-full transition-[background-color,box-shadow,padding] duration-300 ${festet ? 'px-3 pt-1.5 sm:px-[18px]' : ''}`}
+            style={{
+              background: festet ? tema.pille : 'transparent',
+              boxShadow: festet ? `inset 0 0 0 1px ${tema.pilleKant}, 0 10px 30px -18px rgba(0,0,0,0.35)` : 'none',
+              backdropFilter: festet ? 'blur(14px)' : 'none',
+              WebkitBackdropFilter: festet ? 'blur(14px)' : 'none',
+            }}
+          >
+            {/* Retning A — minimal editorial: tekstrekke på én hårlinje, aktiv = full ink + medium + 2 px strek. */}
+            <div role="tablist" aria-label="Produktområder" className="inline-flex max-w-full gap-[14px] overflow-x-auto sm:gap-8 lg:gap-9" style={{ boxShadow: festet ? 'none' : `inset 0 -1px 0 ${tema.tabLinje}` }} data-testid="v4-tabs">
+              {TABS.map((t) => {
+                const er = t.id === aktiv;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={er}
+                    aria-disabled={!t.klar}
+                    onClick={() => { if (t.klar) bytt(t.id); }}
+                    className={`relative shrink-0 pb-2.5 pt-1 text-[13.5px] tracking-[-0.005em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 sm:text-[14.5px] ${tema.ring} ${er ? 'font-medium' : t.klar ? tema.tabHover : 'cursor-default'}`}
+                    style={{ color: er ? tema.tabAktiv : tema.tabTekst }}
+                    data-testid={`v4-tab-${t.id}`}
+                  >
+                    {t.navn}
+                    <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[1.5px]" style={{ background: tema.tabAktiv, opacity: er ? 1 : 0, transition: `opacity 200ms ${EASE}` }} />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -188,7 +241,7 @@ export default function ProduktSeksjon() {
           {/* Scenebytte: den nye flaten kommer inn sekvensielt (key → ny montering), ingen overlappende crossfade */}
           <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
             {aktiv === 'drift' && <DriftScene synlig={synlig} tema={bg.tema} />}
-            {aktiv === 'annonse' && <AnnonseScene synlig={synlig} tema={bg.tema} />}
+            {aktiv === 'annonse' && <AnnonseFilm synlig={synlig} tema={bg.tema} />}
           </div>
         </div>
       </div>
