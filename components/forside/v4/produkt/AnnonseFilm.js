@@ -39,17 +39,17 @@ const ADRESSE = 'Nygårdsgaten 5 · Leilighet 2';
 const F = {
   START: 0, PEKER: 1, HOVER: 2, TRYKK_START: 3,
   STABEL: 4, BILDER: 5,
-  LES1: 6, LES2: 7, LES3: 8, FAKTA: 9,
-  STYLE: 10, SKILLE: 11, STYLET: 12,
-  TITTEL: 13, TEKST: 14, PRIS: 15,
-  KLAR: 16, TRYKK: 17, PUBLISERT: 18,
-  INT1: 19, INT2: 20, BOOK1: 21, BOOK2: 22, SPM: 23,
-  ETTER: 24, VELG: 25, VALGT: 26, SLUTT: 27,
+  LES1: 6, LES2: 7, LES3: 8,
+  STYLE: 9, SKILLE: 10, STYLET: 11,
+  TITTEL: 12, TEKST: 13, PRIS: 14,
+  KLAR: 15, TRYKK: 16, PUBLISERT: 17,
+  INT1: 18, INT2: 19, BOOK1: 20, BOOK2: 21, SPM: 22,
+  ETTER: 23, VELG: 24, VALGT: 25, SLUTT: 26,
 };
 const AUTO = {
   [F.START]: 1400, [F.PEKER]: 1350, [F.HOVER]: 420, [F.TRYKK_START]: 380,
   [F.STABEL]: 2050, [F.BILDER]: 2700,
-  [F.LES1]: 3300, [F.LES2]: 2500, [F.LES3]: 2600, [F.FAKTA]: 1600,
+  [F.LES1]: 3300, [F.LES2]: 3000, [F.LES3]: 3200,
   [F.STYLE]: 3400, [F.SKILLE]: 2800, [F.STYLET]: 2000,
   [F.TITTEL]: 1000, [F.TEKST]: 1100, [F.PRIS]: 1700,
   [F.KLAR]: 1700, [F.TRYKK]: 380, [F.PUBLISERT]: 3000,
@@ -69,7 +69,9 @@ const PRESSER = new Set([F.TRYKK_START, F.TRYKK, F.VELG]);
 
 const AKTER = [
   { fra: F.STABEL, tittel: 'Begynn med bildene.', tekst: 'Fem bilder fra mobilen holder. Hvert rom kjennes igjen idet det lastes opp.' },
-  { fra: F.LES1, tittel: 'Detaljene leses ut av bildene.', tekst: 'Parkett, kjøkkenøy, store vinduer. Alt som havner i annonsen, kan spores tilbake til et bilde.' },
+  { fra: F.LES1, tittel: 'Ser hva rommet har.', tekst: 'Parkett, kjøkkenøy, store vinduer. Alt som havner i annonsen, kan spores tilbake til et bilde.' },
+  { fra: F.LES2, tittel: 'Finner det leietakere spør om.', tekst: 'Hvitevarer, spiseplass, oppvaskmaskin. Svarene ligger i bildene — før noen rekker å spørre.' },
+  { fra: F.LES3, tittel: 'Foreslår det som kan bli bedre.', tekst: 'Sengen er uoppredd. Forslaget: re den opp digitalt — resten av rommet får være som det er.' },
   { fra: F.STYLE, tittel: 'Sengen res opp.', tekst: 'Én instruks, avgrenset til sengen. Rommet, lyset og alt som er fast, står urørt — og bildet merkes som redigert.' },
   { fra: F.TITTEL, tittel: 'Utkastet er klart.', tekst: 'Overskrift, tekst og prisforslag — fra bildene og det du allerede vet om boligen. Endre det du vil, eller publiser som det er.' },
   { fra: F.KLAR, tittel: 'Ute på FINN.no.', tekst: 'Samme bilder, samme tekst. Interessentene melder seg med BankID, så du vet hvem du har med å gjøre.' },
@@ -106,11 +108,12 @@ const PINNER = {
     { id: 'parkett', x: 64, y: 84, t: 'Parkett' },
   ],
   kjokken: [
-    { id: 'ovn', x: 31, y: 70, t: 'Integrert ovn' },
-    { id: 'spise', x: 84, y: 74, t: 'Spiseplass' },
+    { id: 'hvitevarer', x: 31, y: 70, t: 'Integrerte hvitevarer' },
+    { id: 'oppvask', x: 22, y: 86, t: 'Oppvaskmaskin' },
+    { id: 'spise', x: 84, y: 74, t: 'Spiseplass til fire' },
   ],
   soverom: [
-    { id: 'seng', x: 42, y: 76, t: 'Dobbeltseng' },
+    { id: 'seng', x: 42, y: 76, t: 'Uoppredd seng', tone: 'forslag', under: 'Forslag: re opp' },
     { id: 'garderobe', x: 92, y: 36, t: 'Garderobe' },
   ],
 };
@@ -133,12 +136,11 @@ function kameraFor(id, fase) {
   return { transform: driftTransform(id), transition: 'none', skala: DRIFT };
 }
 
-/* Brikkene i tekstspalten — det som hentes ut, i takt med nålene */
+/* Brikkene i tekstspalten — det som hentes ut, i takt med nålene. `tone: 'forslag'` = lilla. */
 const FAKTA = [
   { t: 'Store vinduer', fra: F.LES1 }, { t: 'Kjøkkenøy', fra: F.LES1 }, { t: 'Parkett', fra: F.LES1 },
-  { t: 'Integrert ovn', fra: F.LES2 }, { t: 'Spiseplass', fra: F.LES2 },
-  { t: 'Dobbeltseng', fra: F.LES3 }, { t: 'Garderobe', fra: F.LES3 }, { t: '1 soverom', fra: F.LES3 },
-  { t: '54 m²', fra: F.FAKTA, kilde: 'bolig' }, { t: '2. etasje', fra: F.FAKTA, kilde: 'bolig' }, { t: 'Ledig 1. nov', fra: F.FAKTA, kilde: 'avtale' },
+  { t: 'Hvitevarer inkludert', fra: F.LES2 }, { t: 'Oppvaskmaskin', fra: F.LES2 }, { t: 'Spiseplass', fra: F.LES2 },
+  { t: 'Garderobe', fra: F.LES3 }, { t: 'Re opp sengen', fra: F.LES3, tone: 'forslag' },
 ];
 const PIN_DELAY = 620;   // avstand mellom nålene i samme bilde
 
@@ -240,8 +242,9 @@ function viserBilde(fase) {
   return 'stue';
 }
 
-function Pinne({ x, y, t, vis, delay = 0, ov, skala = 1, kamera }) {
+function Pinne({ x, y, t, vis, delay = 0, ov, skala = 1, kamera, tone, under }) {
   const speil = x > 60;
+  const forslag = tone === 'forslag';
   return (
     <span className="pointer-events-none absolute z-[2]" style={{ left: `${x}%`, top: `${y}%`, transform: `scale(${1 / skala})`, transformOrigin: '0 0', transition: kamera || 'none' }}>
       <span
@@ -250,10 +253,13 @@ function Pinne({ x, y, t, vis, delay = 0, ov, skala = 1, kamera }) {
         aria-hidden={!vis}
         data-testid={`v4-pinne-${t}`}
       >
-        <span className="relative h-3 w-3 shrink-0 rounded-full" style={{ background: T.ink, boxShadow: '0 0 0 2.5px rgba(251,250,248,0.96), 0 2px 8px rgba(21,19,15,0.3)' }}>
+        <span className="relative h-3 w-3 shrink-0 rounded-full" style={{ background: forslag ? T.lilla : T.ink, boxShadow: '0 0 0 2.5px rgba(251,250,248,0.96), 0 2px 8px rgba(21,19,15,0.3)' }}>
           {vis && !ov && <span aria-hidden="true" className="absolute inset-0 rounded-full" style={{ boxShadow: '0 0 0 1.5px rgba(251,250,248,0.9)', animation: `v4-ping 900ms cubic-bezier(0.2, 0.6, 0.2, 1) ${delay + 120}ms forwards`, opacity: 0 }} />}
         </span>
-        <span className="whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-medium" style={{ ...GLASS, color: T.ink }}>{t}</span>
+        <span className={`whitespace-nowrap font-medium ${under ? 'rounded-[12px] px-3 py-1.5 text-left' : 'rounded-full px-2.5 py-1'} text-[12px]`} style={{ ...GLASS, color: T.ink }}>
+          {t}
+          {under && <span className="block text-[11px] font-medium" style={{ color: '#7A3FB0' }}>{under}</span>}
+        </span>
       </span>
     </span>
   );
@@ -363,7 +369,7 @@ function Bildeflate({ fase, ov, onHold, liten = false, pos: objPos = '50% 50%', 
                 <img src={liten ? KILDE.soverom.styletLiten : KILDE.soverom.stylet} alt="Soverommet, stylet med KI" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: objPos, clipPath: `inset(0 0 0 ${pos}%)`, transition: ov ? 'none' : `${dur ? `clip-path ${dur}ms ${MORF}, ` : ''}object-position 1100ms ${MORF}` }} draggable={false} data-testid="v4-bilde-stylet" />
               )}
               {PINNER[b.id].map((p, i) => (
-                <Pinne key={p.id} x={p.x} y={p.y} t={p.t} vis={fase === KILDE[b.id].les} delay={520 + i * PIN_DELAY} ov={ov} skala={k.skala} kamera={k.transition} />
+                <Pinne key={p.id} x={p.x} y={p.y} t={p.t} tone={p.tone} under={p.under} vis={fase === KILDE[b.id].les} delay={520 + i * PIN_DELAY} ov={ov} skala={k.skala} kamera={k.transition} />
               ))}
             </div>
           </div>
@@ -409,31 +415,23 @@ function Bildeflate({ fase, ov, onHold, liten = false, pos: objPos = '50% 50%', 
 }
 
 /* ── Brikkene — det som hentes ut ── */
-function Brikke({ tekst, vis, delay = 0, ov, kilde }) {
+function Brikke({ tekst, vis, delay = 0, ov, kilde, tone }) {
+  const forslag = tone === 'forslag';
   return (
-    <span className="inline-flex h-7 items-center whitespace-nowrap rounded-full px-3 text-[12.5px] font-medium" style={{ background: kilde ? 'transparent' : 'rgba(21,19,15,0.06)', boxShadow: kilde ? `inset 0 0 0 1px ${HAIR}` : 'none', color: 'rgba(21,19,15,0.82)', opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', filter: vis ? 'blur(0px)' : 'blur(4px)', transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? delay : 0}ms, transform 420ms ${EASE} ${vis ? delay : 0}ms, filter 420ms ${EASE} ${vis ? delay : 0}ms` }} aria-hidden={!vis}>{tekst}</span>
+    <span className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[12.5px] font-medium" style={{ background: forslag ? 'rgba(212,150,255,0.22)' : kilde ? 'transparent' : 'rgba(21,19,15,0.06)', boxShadow: kilde ? `inset 0 0 0 1px ${HAIR}` : 'none', color: forslag ? T.ink : 'rgba(21,19,15,0.82)', opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', filter: vis ? 'blur(0px)' : 'blur(4px)', transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? delay : 0}ms, transform 420ms ${EASE} ${vis ? delay : 0}ms, filter 420ms ${EASE} ${vis ? delay : 0}ms` }} aria-hidden={!vis}>{forslag && <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />}{tekst}</span>
   );
 }
 
 function Fakta({ fase, ov }) {
-  const bilder = FAKTA.filter((x) => !x.kilde);
-  const bolig = FAKTA.filter((x) => x.kilde);
-  const stagger = (liste) => {
-    const teller = {}; return liste.map((x) => { teller[x.fra] = (teller[x.fra] || 0) + 1; return (teller[x.fra] - 1) * 240; });
-  };
-  const d1 = stagger(bilder); const d2 = stagger(bolig);
+  const teller = {};
+  const delay = FAKTA.map((x) => { teller[x.fra] = (teller[x.fra] || 0) + 1; return 520 + (teller[x.fra] - 1) * PIN_DELAY; });
+  const overskrift = fase >= F.LES3 ? 'Fra bildene · og ett forslag' : 'Fra bildene';
   return (
     <div data-testid="v4-fakta">
-      <p className="text-[12px]" style={{ color: DIM }}>Fra bildene</p>
+      <p className="text-[12px]" style={{ color: DIM }}><span key={overskrift} className="animate-in fade-in-0 duration-300">{overskrift}</span></p>
       <div className="mt-2 flex flex-wrap gap-1.5">
-        {bilder.map((x, i) => <Brikke key={x.t} tekst={x.t} vis={fase >= x.fra} delay={d1[i]} ov={ov} />)}
+        {FAKTA.map((x, i) => <Brikke key={x.t} tekst={x.t} vis={fase >= x.fra} delay={fase === x.fra ? delay[i] : 0} ov={ov} tone={x.tone} />)}
       </div>
-      <Inn vis={fase >= F.FAKTA} ov={ov} className="mt-4" y={6}>
-        <p className="text-[12px]" style={{ color: DIM }}>Fra boligen og leieavtalen</p>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {bolig.map((x, i) => <Brikke key={x.t} tekst={x.t} vis={fase >= x.fra} delay={200 + d2[i]} ov={ov} kilde />)}
-        </div>
-      </Inn>
     </div>
   );
 }
@@ -653,7 +651,7 @@ const BUNKE = {
   stue: { rot: 1.5, dx: 0, dy: 0, delay: 1020 },
 };
 const LANDING = 'cubic-bezier(0.22, 1.08, 0.36, 1)';   // litt overshoot — kortet «setter seg»
-const SKYGGE_LOFT = `0 34px 70px -34px rgba(21,19,15,0.5), 0 0 0 1px rgba(21,19,15,0.06), ${LYSKANT}`;
+const SKYGGE_LOFT = `0 22px 40px -24px rgba(21,19,15,0.45), 0 0 0 1px rgba(21,19,15,0.06), ${LYSKANT}`;
 const SKYGGE_FLAT = `0 0 0 1px ${HAIR}, ${LYSKANT}`;
 
 /* Felles: stilen for et bilde som lander i bunken (STABEL) og glir ut i mosaikken (BILDER). */
@@ -667,15 +665,16 @@ function bunkeStil({ id, fase, L, ov, slot, z }) {
   const t = (p, ms, d = 0) => `${p} ${ms}ms ${EASE} ${d}ms`;
   let overgang = 'none';
   if (!ov) {
-    if (iBunke) overgang = [t('opacity', 420, b.delay), `transform 760ms ${LANDING} ${b.delay}ms`, `top 760ms ${LANDING} ${b.delay}ms`, t('box-shadow', 500, b.delay + 300), t('filter', 600, b.delay)].join(', ');
-    else if (iMosaikk) overgang = [m('left', 950, z * 45), m('top', 950, z * 45), m('width', 950, z * 45), m('height', 950, z * 45), m('transform', 950, z * 45), t('box-shadow', 700, 500), t('border-radius', 600)].join(', ');
+    /* Ytelse: ingen animert blur/skygge på bildene — bare opacity, transform og posisjon. Skyggen bytter i ett steg. */
+    if (iBunke) overgang = [t('opacity', 420, b.delay), `transform 760ms ${LANDING} ${b.delay}ms`, `top 760ms ${LANDING} ${b.delay}ms`].join(', ');
+    else if (iMosaikk) overgang = [m('left', 950, z * 45), m('top', 950, z * 45), m('width', 950, z * 45), m('height', 950, z * 45), m('transform', 950, z * 45), t('border-radius', 600)].join(', ');
     else overgang = [t('opacity', 480, z * 40), t('transform', 600, z * 40)].join(', ');
   }
   const etter = fase > F.BILDER;
   return {
     left: r.x, top: foer ? r.y + 96 : r.y, width: r.w, height: r.h,
     opacity: iBunke || iMosaikk ? 1 : 0,
-    filter: foer ? 'blur(8px)' : 'blur(0px)',
+    willChange: iBunke || iMosaikk ? 'transform, opacity' : 'auto',
     transform: iBunke ? `rotate(${b.rot}deg) scale(1)` : foer ? `rotate(${b.rot - 7}deg) scale(0.9)` : etter ? 'rotate(0deg) scale(0.94)' : 'rotate(0deg) scale(1)',
     boxShadow: iBunke ? SKYGGE_LOFT : SKYGGE_FLAT,
     borderRadius: iBunke ? 12 : 10,
@@ -739,7 +738,7 @@ function Fasade({ fase, L, ov }) {
   const t = (p, ms, d = 0) => `${p} ${ms}ms ${EASE} ${d}ms`;
   const m = (p, ms, d = 0) => `${p} ${ms}ms ${MORF} ${d}ms`;
   const r = start ? L.hel : fase === F.STABEL ? { x: L.stabel.x + k.dx, y: L.stabel.y + k.dy, w: L.stabel.w, h: L.stabel.h } : L.mosaikk.smaa[3];
-  const overgang = ov ? 'none' : [m('left', 1100), m('top', 1100), m('width', 1100), m('height', 1100), m('transform', 1100), t('opacity', 350), t('border-radius', 800), t('box-shadow', 700, fase === F.STABEL ? 500 : 300)].join(', ');
+  const overgang = ov ? 'none' : [m('left', 1100), m('top', 1100), m('width', 1100), m('height', 1100), m('transform', 1100), t('opacity', 350), t('border-radius', 800)].join(', ');
   return (
     <div className="absolute overflow-hidden" style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: start ? 0 : fase === F.STABEL ? 12 : 10, opacity: inne ? 1 : 0, background: 'rgba(21,19,15,0.05)', boxShadow: start ? 'none' : fase === F.STABEL ? SKYGGE_LOFT : SKYGGE_FLAT, transform: fase === F.STABEL ? `rotate(${k.rot}deg)` : 'rotate(0deg)', transition: overgang, zIndex: start ? 3 : 1 }} aria-hidden={!inne} data-testid="v4-fasade" data-start={start ? '1' : '0'}>
       <div className="absolute inset-0" style={{ transform: start ? (zoomet ? 'scale(1)' : 'scale(1.06)') : 'scale(1)', transition: ov ? 'none' : start ? 'transform 3800ms cubic-bezier(0.25, 0.6, 0.3, 1)' : `transform 1100ms ${MORF}` }}>
@@ -782,7 +781,7 @@ function Teller({ fase, L, ov }) {
   const ferdig = fase === F.BILDER;
   return (
     <div className="absolute z-[7]" style={{ left: L.omr.x, top: L.omr.y + L.omr.h - 32, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', filter: vis ? 'blur(0px)' : 'blur(4px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? 250 : 0}ms, transform 400ms ${EASE}, filter 400ms ${EASE}` }} aria-hidden={!vis} data-testid="v4-teller" data-n={n}>
-      <div className="inline-flex h-8 items-center gap-2.5 rounded-full pl-3 pr-3.5 text-[12.5px] font-medium" style={{ ...GLASS, color: T.ink }}>
+      <div className="inline-flex h-8 items-center gap-2.5 rounded-full pl-3 pr-3.5 text-[12.5px] font-medium" style={{ background: 'rgba(251,250,248,0.96)', boxShadow: `inset 0 0 0 1px ${HAIR}, 0 6px 20px -10px rgba(21,19,15,0.3)`, color: T.ink }}>
         {ferdig ? <span style={{ color: '#166B3C' }}><Hake size={13} /></span> : <span className="relative block h-[2px] w-9 overflow-hidden rounded-full" style={{ background: 'rgba(21,19,15,0.12)' }}><span className="absolute inset-y-0 left-0 rounded-full" style={{ background: T.ink, width: `${(n / 5) * 100}%`, transition: ov ? 'none' : `width 350ms ${EASE}` }} /></span>}
         <span key={ferdig ? 'f' : n} className="animate-in fade-in-0 duration-300">{ferdig ? '5 bilder · rom gjenkjent' : `Laster opp · ${n} av 5`}</span>
       </div>
@@ -824,7 +823,7 @@ function Handling({ fase, ov, knapper, neste }) {
   const ref = (navn) => (el) => { if (knapper) knapper.current[navn] = el; };
   return (
     <div className="grid">
-      <Inn vis={fase >= F.LES1 && fase <= F.FAKTA} ov={ov} className="col-start-1 row-start-1"><Fakta fase={fase} ov={ov} /></Inn>
+      <Inn vis={fase >= F.LES1 && fase <= F.LES3} ov={ov} className="col-start-1 row-start-1"><Fakta fase={fase} ov={ov} /></Inn>
       <Inn vis={publiser} ov={ov} delay={200} className="col-start-1 row-start-1">
         <AutoKnapp presser={fase === F.TRYKK} hover={hoverP && !!knapper} trykket={fase >= F.PUBLISERT} etter="Publisert på FINN.no" testid="v4-publiser" stor knappRef={ref('publiser')}>Publiser på <Finn h={18} /></AutoKnapp>
       </Inn>
@@ -987,7 +986,7 @@ function Kompakt({ fase, ov, onAkt, onHold, neste }) {
               );
             }}
           </Tekstbytte>
-          <Vokse vis={fase >= F.LES1 && fase <= F.FAKTA} ov={ov}><div className="pt-5"><Fakta fase={fase} ov={ov} /></div></Vokse>
+          <Vokse vis={fase >= F.LES1 && fase <= F.LES3} ov={ov}><div className="pt-5"><Fakta fase={fase} ov={ov} /></div></Vokse>
           <Vokse vis={fase >= F.KLAR && fase <= F.PUBLISERT} ov={ov}>
             <div className="pt-5"><AutoKnapp presser={fase === F.TRYKK} trykket={fase >= F.PUBLISERT} etter="Publisert på FINN.no" testid="v4-publiser" stor>Publiser på <Finn h={18} /></AutoKnapp></div>
           </Vokse>

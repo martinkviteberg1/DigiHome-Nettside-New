@@ -18,17 +18,17 @@ import { PAPIR, HVIT, STEIN, HAIR, DIM, H, P, MORF, LYSKANT, GLASS, Hake, Portre
 const F = {
   START: 0, PEKER: 1, HOVER: 2, TRYKK1: 3,
   DOK: 4, FYLL1: 5, FYLL2: 6, FYLL3: 7,
-  KLAR2: 8, TRYKK2: 9, SIGN1: 10, SMS1: 11, SIGN2: 12,
-  DEP1: 13, DEP2: 14,
-  OVER1: 15, OVER2: 16, OVER3: 17, KLAR3: 18, TRYKK3: 19, SIGNERT: 20,
-  SLUTT: 21,
+  KLAR2: 8, TRYKK2: 9, SIGN1: 10, SMS1: 11, LEST: 12, SIGN2: 13,
+  DEP1: 14, DEP2: 15,
+  OVER0: 16, OVER1: 17, OVER2: 18, OVER3: 19, KLAR3: 20, TRYKK3: 21, SIGNERT: 22,
+  SLUTT: 23,
 };
 const AUTO = {
   [F.START]: 1300, [F.PEKER]: 1350, [F.HOVER]: 420, [F.TRYKK1]: 380,
-  [F.DOK]: 1300, [F.FYLL1]: 900, [F.FYLL2]: 900, [F.FYLL3]: 1000,
-  [F.KLAR2]: 1700, [F.TRYKK2]: 380, [F.SIGN1]: 1500, [F.SMS1]: 1900, [F.SIGN2]: 2000,
-  [F.DEP1]: 1500, [F.DEP2]: 2100,
-  [F.OVER1]: 1600, [F.OVER2]: 1300, [F.OVER3]: 1300, [F.KLAR3]: 1700, [F.TRYKK3]: 380, [F.SIGNERT]: 2600,
+  [F.DOK]: 1300, [F.FYLL1]: 900, [F.FYLL2]: 900, [F.FYLL3]: 1100,
+  [F.KLAR2]: 1700, [F.TRYKK2]: 380, [F.SIGN1]: 1500, [F.SMS1]: 1700, [F.LEST]: 1300, [F.SIGN2]: 2000,
+  [F.DEP1]: 1600, [F.DEP2]: 2200,
+  [F.OVER0]: 1700, [F.OVER1]: 1500, [F.OVER2]: 1300, [F.OVER3]: 1300, [F.KLAR3]: 1700, [F.TRYKK3]: 380, [F.SIGNERT]: 2600,
   [F.SLUTT]: 4400,
 };
 const SISTE = F.SLUTT;
@@ -44,7 +44,7 @@ const AKTER = [
   { fra: F.DOK, tittel: 'Kontrakten er ferdig utfylt.', tekst: 'Standard husleiekontrakt. Stiplet tekst er hentet fra annonsen og søknaden. Les gjennom, endre om du vil — og signer.' },
   { fra: F.SIGN1, tittel: 'Begge signerer med BankID.', tekst: 'Du signerer først. Emma får en SMS med lenke og signerer på mobilen. Ingen utskrift, ingen skanning.' },
   { fra: F.DEP1, tittel: 'Depositumet står trygt.', tekst: 'Egen depositumskonto i Emmas navn hos Keyhole. Opprettes automatisk — pengene går aldri via din konto.' },
-  { fra: F.OVER1, tittel: 'Overtakelsen tas i døra.', tekst: 'Bilder av hvert rom, målerstand og nøkler i én protokoll. Begge signerer på mobilen før dere går fra hverandre.' },
+  { fra: F.OVER0, tittel: 'Overtakelsen tas i døra.', tekst: 'Bilder av hvert rom, målerstand og nøkler i én protokoll. Begge signerer på mobilen før dere går fra hverandre.' },
 ];
 const SLUTT = { tittel: 'Emma har flyttet inn.', tekst: 'Første husleie forfaller 1. desember og følges opp automatisk. Fra nå handler det om driften.' };
 const aktIndeks = (f) => { let i = 0; AKTER.forEach((a, k) => { if (f >= a.fra) i = k; }); return i; };
@@ -57,7 +57,8 @@ const DEPOSITUM = BOLIG.leie * BOLIG.depositumMnd;
 const FELT = [
   { k: 'Utleier', v: KARI.navn, p: F.FYLL1 },
   { k: 'Leietaker', v: EMMA.navn, p: F.FYLL1, kilde: 'søknad' },
-  { k: 'Bolig', v: `${BOLIG.adresse}, ${BOLIG.enhet.toLowerCase()} · ${BOLIG.prom}`, p: F.FYLL1, kilde: 'annonse' },
+  { k: 'Bolig', v: `${BOLIG.adresse}, ${BOLIG.enhet.toLowerCase()}`, p: F.FYLL1, kilde: 'annonse' },
+  { k: 'Areal', v: `${BOLIG.prom} · 2. etasje`, p: F.FYLL1, kilde: 'annonse' },
   { k: 'Leie', v: `${tall(BOLIG.leie)} kr per måned`, p: F.FYLL2, kilde: 'annonse' },
   { k: 'Depositum', v: `${tall(DEPOSITUM)} kr · ${BOLIG.depositumMnd} måneder`, p: F.FYLL2, kilde: 'annonse' },
   { k: 'Innflytting', v: BOLIG.innflytting, p: F.FYLL2, kilde: 'annonse' },
@@ -68,7 +69,7 @@ const FELT = [
 
 const SMS = [
   { id: 'k1', til: 'Emma', fra: F.SMS1, tilOg: F.DEP1, tid: 'i dag 14:03', tekst: 'Hei Emma! Leiekontrakten for Nygårdsgaten 5 er klar. Les og signer med BankID: digihome.no/s/7ka2 – DigiHome' },
-  { id: 'k2', til: 'Emma', fra: F.DEP1, tilOg: F.OVER1, tid: 'i dag 14:41', tekst: 'Depositumskontoen din er opprettet hos Keyhole. Betal inn 37 500 kr innen 25. oktober — lenke i DigiHome. – DigiHome' },
+  { id: 'k2', til: 'Emma', fra: F.DEP1, tilOg: F.OVER0, tid: 'i dag 14:41', tekst: 'Depositumskontoen din er opprettet hos Keyhole. Betal inn 37 500 kr innen 25. oktober — lenke i DigiHome. – DigiHome' },
   { id: 'k3', til: 'Emma', fra: F.SIGNERT, tilOg: F.SLUTT, tid: '1. nov 12:14', tekst: 'Velkommen hjem, Emma! Overtakelsesprotokollen er signert av begge og ligger i DigiHome. – DigiHome' },
 ];
 
@@ -139,7 +140,7 @@ function Kontrakt({ fase, ov, kompakt = false }) {
           const vis = fase >= f.p;
           const nr = FELT.filter((x) => x.p === f.p).indexOf(f);
           return (
-            <div key={f.k} className={`flex items-baseline justify-between gap-3 border-b py-2 text-[13px] ${kompakt ? '' : i === FELT.length - 1 ? 'col-span-2' : ''}`} style={{ borderColor: HAIR, opacity: vis ? 1 : 0.35, transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? nr * 180 : 0}ms` }}>
+            <div key={f.k} className="flex items-baseline justify-between gap-3 border-b py-2 text-[13px]" style={{ borderColor: HAIR, opacity: vis ? 1 : 0.35, transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? nr * 180 : 0}ms` }}>
               <dt style={{ color: DIM }}>{f.k}</dt>
               <dd className="text-right font-medium" style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(4px)', filter: vis ? 'blur(0px)' : 'blur(4px)', transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? nr * 180 + 80 : 0}ms, transform 420ms ${EASE} ${vis ? nr * 180 + 80 : 0}ms, filter 420ms ${EASE} ${vis ? nr * 180 + 80 : 0}ms` }} aria-hidden={!vis}>
                 {f.kilde ? <Stiplet>{f.v}</Stiplet> : f.v}
@@ -148,11 +149,16 @@ function Kontrakt({ fase, ov, kompakt = false }) {
           );
         })}
       </dl>
+      {/* Vedlegg — følger kontrakten automatisk */}
+      <div className="mt-3 flex flex-wrap items-center gap-1.5" style={{ opacity: fase >= F.FYLL3 ? 1 : 0, transform: fase >= F.FYLL3 ? 'none' : 'translateY(6px)', transition: ov ? 'none' : `opacity 450ms ${EASE} 600ms, transform 450ms ${EASE} 600ms` }} aria-hidden={fase < F.FYLL3}>
+        <span className="mr-1 text-[12px]" style={{ color: DIM }}>Vedlegg</span>
+        {['Husordensregler', 'Sjekkliste ved innflytting', 'Depositumsavtale · Keyhole'].map((v) => <Chip key={v} tekst={v} liten />)}
+      </div>
       <div className={`mt-auto ${kompakt ? 'pt-4' : 'pt-5'}`} style={{ opacity: fase >= F.KLAR2 ? 1 : 0, transform: fase >= F.KLAR2 ? 'none' : 'translateY(8px)', transition: ov ? 'none' : `opacity 500ms ${EASE} 200ms, transform 500ms ${EASE} 200ms` }} aria-hidden={fase < F.KLAR2}>
         <p className="text-[12px] font-medium text-[#15130F]/60">Signaturer</p>
         <div className="mt-1 divide-y" style={{ borderColor: HAIR }}>
           <Signatur p={KARI} rolle="Utleier" signert={fase >= F.SIGN1} tid="14:02" ov={ov} vent="Signerer nå" />
-          <Signatur p={EMMA} rolle="Leietaker" signert={fase >= F.SIGN2} tid="14:37" ov={ov} vent={fase >= F.SMS1 ? 'Har fått SMS' : 'Venter'} />
+          <Signatur p={EMMA} rolle="Leietaker" signert={fase >= F.SIGN2} tid="14:37" ov={ov} vent={fase >= F.LEST ? 'Åpnet kontrakten · 14:31' : fase >= F.SMS1 ? 'Har fått SMS · 14:03' : 'Venter'} />
         </div>
       </div>
     </div>
@@ -268,7 +274,9 @@ function DepositumKort({ fase, ov }) {
 function Side({ fase, ov, kompakt = false }) {
   return (
     <div data-testid="v4-side">
-      <Vokse vis={fase >= F.DEP1 && fase < F.OVER1} ov={ov}><DepositumKort fase={fase} ov={ov} /></Vokse>
+      <Vokse vis={fase >= F.DEP1 && fase <= F.OVER0} ov={ov}>
+        <div style={{ transform: fase >= F.DEP1 && fase <= F.DEP2 && !kompakt ? 'scale(1.03)' : 'none', transformOrigin: '0 50%', transition: ov ? 'none' : `transform 700ms ${MORF}` }}><DepositumKort fase={fase} ov={ov} /></div>
+      </Vokse>
       {SMS.map((s) => <Sms key={s.id} vis={fase >= s.fra && fase <= s.tilOg} til={s.til} tid={s.tid} tekst={s.tekst} ov={ov} delay={fase === s.fra ? 450 : 150} testid={`v4-sms-${s.id}`} className={kompakt ? 'mt-3' : 'mt-3'} />)}
     </div>
   );
@@ -346,7 +354,8 @@ function Desktop({ fase, ov, onAkt, neste }) {
   const L = W ? layout(W) : null;
   const start = fase <= F.TRYKK1;
   const papir = fase >= F.DOK && fase < F.SLUTT;
-  const dempet = fase >= F.DEP1 && fase < F.OVER1;   // depositumet er i fokus — papiret trer et halvt skritt tilbake
+  const dempet = fase >= F.DEP1 && fase <= F.OVER0;  // depositumet (og så datoskiftet) er i fokus — papiret trer et halvt skritt tilbake
+  const datoskift = fase === F.OVER0;                // «1. november» — tidsspranget før overtakelsen
   const slutt = fase >= F.SLUTT;
   const knapper = useRef({});
   const peker = usePeker(fase, ref, knapper, PEKER_MAAL, PRESSER);
@@ -369,13 +378,22 @@ function Desktop({ fase, ov, onAkt, neste }) {
           </div>
 
           {/* Papiret */}
-          <div className="absolute" style={{ left: L.dok.x, top: L.dok.y, width: L.dok.w, height: L.dok.h, opacity: !papir ? 0 : dempet ? 0.5 : 1, transform: papir ? (dempet ? 'scale(0.985)' : 'none') : slutt ? 'translateY(-12px)' : 'translateY(18px)', transition: `opacity ${bt(papir ? 600 : 350, papir ? 250 : 0)}, transform ${bt(papir ? 800 : 350, papir ? 250 : 0)}`, pointerEvents: papir ? 'auto' : 'none' }} aria-hidden={!papir}>
+          <div className="absolute" style={{ left: L.dok.x, top: L.dok.y, width: L.dok.w, height: L.dok.h, opacity: !papir ? 0 : datoskift ? 0.18 : dempet ? 0.5 : 1, transform: papir ? (dempet ? 'scale(0.985)' : 'none') : slutt ? 'translateY(-12px)' : 'translateY(18px)', transition: `opacity ${bt(papir ? 600 : 350, papir ? 250 : 0)}, transform ${bt(papir ? 800 : 350, papir ? 250 : 0)}`, pointerEvents: papir ? 'auto' : 'none' }} aria-hidden={!papir}>
             <Papir fase={fase} ov={ov} className="h-full" />
+          </div>
+
+          {/* Tidsspranget: én stille linje midt i scenen før protokollen */}
+          <div className="pointer-events-none absolute z-[4] flex items-center justify-center" style={{ left: L.omr.x, top: L.omr.y, width: L.omr.w, height: L.omr.h, opacity: datoskift ? 1 : 0, transform: datoskift ? 'none' : 'translateY(8px)', filter: datoskift ? 'blur(0px)' : 'blur(6px)', transition: `opacity ${bt(datoskift ? 600 : 300, datoskift ? 250 : 0)}, transform ${bt(700, datoskift ? 250 : 0)}, filter ${bt(600, datoskift ? 250 : 0)}` }} aria-hidden={!datoskift} data-testid="v4-datoskift">
+            <div className="text-center">
+              <p className="text-[13px]" style={{ color: DIM }}>To uker senere</p>
+              <p className="mt-2 text-[clamp(30px,2.6vw,44px)]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>1. november, kl. 12.</p>
+              <p className="mt-2 text-[14px]" style={{ color: DIM }}>Emma og Kari møtes i {BOLIG.adresse}.</p>
+            </div>
           </div>
 
           {/* Sidespalten: depositum + SMS */}
           <div className="absolute" style={L.side.flytende ? { left: L.side.x, bottom: P, width: L.side.w, zIndex: 3 } : { left: L.side.x, top: L.side.y, width: L.side.w }}>
-            <div style={{ opacity: papir ? 1 : 0, transition: `opacity ${bt(400)}` }}><Side fase={fase} ov={ov} /></div>
+            <div style={{ opacity: !papir ? 0 : datoskift ? 0.2 : 1, transition: `opacity ${bt(400)}` }}><Side fase={fase} ov={ov} /></div>
           </div>
 
           {/* Sluttbildet */}
