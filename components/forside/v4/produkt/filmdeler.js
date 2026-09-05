@@ -22,6 +22,10 @@ export const H = 660;          // rammens høyde (desktop)
 export const P = 48;           // rammens indre marg
 /* Easing for det som FLYTTER seg (kamera-følelse: myk inn, myk landing). EASE (expo-out) for det som kommer inn. */
 export const MORF = 'cubic-bezier(0.65, 0, 0.18, 1)';
+/* Moderne overflater: indre lys-hårlinje på bildefliser, frostet glass på etiketter over bilder, blur-inn på det som kommer inn */
+export const LYSKANT = 'inset 0 0 0 1px rgba(255,255,255,0.32)';
+export const GLASS = { background: 'rgba(251,250,248,0.78)', backdropFilter: 'blur(10px) saturate(1.2)', WebkitBackdropFilter: 'blur(10px) saturate(1.2)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.55), 0 6px 20px -10px rgba(21,19,15,0.35)' };
+export const BLUR_INN = 'blur(6px)';
 
 export const TONE = {
   noytral: { background: 'rgba(21,19,15,0.06)', color: 'rgba(21,19,15,0.72)' },
@@ -73,13 +77,13 @@ export function BankIdMerke({ h = 14, className = '' }) {
 export function Portrett({ src, alt, size = 40, className = '' }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} width={size} height={size} className={`shrink-0 rounded-full object-cover ${className}`} style={{ width: size, height: size, boxShadow: '0 0 0 1px rgba(21,19,15,0.10)' }} draggable={false} />
+    <img src={src} alt={alt} width={size} height={size} className={`shrink-0 rounded-full object-cover ${className}`} style={{ width: size, height: size, boxShadow: '0 0 0 1px rgba(21,19,15,0.10), inset 0 0 0 1px rgba(255,255,255,0.4)' }} draggable={false} />
   );
 }
 
 export function Inn({ vis, delay = 0, y = 10, children, className = '', ov, style }) {
   return (
-    <div className={className} style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : `translateY(${y}px)`, transition: ov ? 'none' : `opacity 500ms ${EASE} ${vis ? delay : 0}ms, transform 500ms ${EASE} ${vis ? delay : 0}ms`, pointerEvents: vis ? 'auto' : 'none', ...style }} aria-hidden={!vis}>
+    <div className={className} style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : `translateY(${y}px)`, filter: vis ? 'blur(0px)' : BLUR_INN, transition: ov ? 'none' : `opacity 500ms ${EASE} ${vis ? delay : 0}ms, transform 500ms ${EASE} ${vis ? delay : 0}ms, filter 500ms ${EASE} ${vis ? delay : 0}ms`, pointerEvents: vis ? 'auto' : 'none', ...style }} aria-hidden={!vis}>
       {children}
     </div>
   );
@@ -89,7 +93,7 @@ export function Vokse({ vis, children, className = '', ov, delay = 150 }) {
   return (
     <div className={`grid ${className}`} style={{ gridTemplateRows: vis ? '1fr' : '0fr', transition: ov ? 'none' : `grid-template-rows 600ms ${EASE}` }} aria-hidden={!vis}>
       <div className="min-h-0 overflow-hidden">
-        <div style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(10px)', transition: ov ? 'none' : `opacity 500ms ${EASE} ${vis ? delay : 0}ms, transform 500ms ${EASE} ${vis ? delay : 0}ms` }}>{children}</div>
+        <div style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(10px)', filter: vis ? 'blur(0px)' : BLUR_INN, transition: ov ? 'none' : `opacity 500ms ${EASE} ${vis ? delay : 0}ms, transform 500ms ${EASE} ${vis ? delay : 0}ms, filter 500ms ${EASE} ${vis ? delay : 0}ms` }}>{children}</div>
       </div>
     </div>
   );
@@ -107,7 +111,7 @@ export function Chip({ tekst, tone = 'noytral', liten = false, className = '', t
 
 export function Lapp({ vis, children, className = '', delay = 0, testid, ov }) {
   return (
-    <span className={`absolute z-[4] inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[11.5px] font-medium ${className}`} style={{ background: 'rgba(251,250,248,0.92)', color: T.ink, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(4px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? delay : 0}ms, transform 400ms ${EASE} ${vis ? delay : 0}ms` }} aria-hidden={!vis} data-testid={testid}>
+    <span className={`absolute z-[4] inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[11.5px] font-medium ${className}`} style={{ ...GLASS, color: T.ink, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(4px)', filter: vis ? 'blur(0px)' : 'blur(4px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? delay : 0}ms, transform 400ms ${EASE} ${vis ? delay : 0}ms, filter 400ms ${EASE} ${vis ? delay : 0}ms` }} aria-hidden={!vis} data-testid={testid}>
       {children}
     </span>
   );
@@ -204,7 +208,7 @@ export function Tekstbytte({ id, ov, children, className = '' }) {
     return () => window.clearTimeout(t);
   }, [id, vist, ov]);
   return (
-    <div className={className} style={{ opacity: ut ? 0 : 1, transform: ut ? 'translateY(-6px)' : 'none', transition: ov ? 'none' : ut ? `opacity 240ms ${EASE}, transform 240ms ${EASE}` : `opacity 560ms ${EASE} 40ms, transform 560ms ${EASE} 40ms` }} data-testid="v4-tekstbytte" data-vist={vist}>
+    <div className={className} style={{ opacity: ut ? 0 : 1, transform: ut ? 'translateY(-6px)' : 'none', filter: ut ? 'blur(5px)' : 'blur(0px)', transition: ov ? 'none' : ut ? `opacity 240ms ${EASE}, transform 240ms ${EASE}, filter 240ms ${EASE}` : `opacity 560ms ${EASE} 40ms, transform 560ms ${EASE} 40ms, filter 560ms ${EASE} 40ms` }} data-testid="v4-tekstbytte" data-vist={vist}>
       {children(vist)}
     </div>
   );
@@ -261,7 +265,7 @@ export function NesteBro({ aktiv, dur, navn, ov }) {
 export function Sms({ vis, til, tid, tekst, ov, delay = 500, testid, className = 'mt-3' }) {
   return (
     <Vokse vis={vis} ov={ov} delay={delay}>
-      <div className={`${className} rounded-[14px] px-3.5 py-3`} style={{ background: 'rgba(21,19,15,0.06)' }} data-testid={testid}>
+      <div className={`${className} rounded-[16px] px-3.5 py-3`} style={{ background: 'rgba(21,19,15,0.05)', boxShadow: `inset 0 0 0 1px ${HAIR}` }} data-testid={testid}>
         <div className="flex items-center justify-between text-[11.5px]" style={{ color: DIM }}>
           <span className="inline-flex items-center gap-1.5">
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 2.5h8a1 1 0 011 1v4a1 1 0 01-1 1H5L2.5 10.5V8.5H2a1 1 0 01-1-1v-4a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" /></svg>
@@ -279,7 +283,7 @@ export function Sms({ vis, til, tid, tekst, ov, delay = 500, testid, className =
 export function ValgtKort({ kompakt = false, status = 'Valgt leietaker', fakta, className = '' }) {
   const rader = fakta || [['Innflytting', BOLIG.innflyttingKort], ['Leie', `${tall(BOLIG.leie)} kr`], ['Ønsker', BOLIG.varighet]];
   return (
-    <div className={`mx-auto w-full rounded-[16px] text-center ${kompakt ? 'max-w-[340px] p-5' : 'max-w-[380px] p-7'} ${className}`} style={{ background: HVIT, boxShadow: `0 0 0 1px ${HAIR}, 0 40px 90px -50px rgba(21,19,15,0.4)` }} data-testid="v4-valgt-kort">
+    <div className={`mx-auto w-full rounded-[20px] text-center ${kompakt ? 'max-w-[340px] p-5' : 'max-w-[380px] p-7'} ${className}`} style={{ background: HVIT, boxShadow: `0 0 0 1px ${HAIR}, 0 40px 90px -50px rgba(21,19,15,0.4)` }} data-testid="v4-valgt-kort">
       <Portrett src={EMMA.bilde} alt={EMMA.navn} size={kompakt ? 64 : 76} className="mx-auto" />
       <p className={`${kompakt ? 'mt-3.5 text-[19px]' : 'mt-4 text-[22px]'} font-medium tracking-[-0.012em]`}>{EMMA.navn}</p>
       <p className="mt-1 text-[13px]" style={{ color: DIM }}>{status} · {BOLIG.adresse}, {BOLIG.enhet.toLowerCase()}</p>
@@ -296,7 +300,7 @@ export function ValgtKort({ kompakt = false, status = 'Valgt leietaker', fakta, 
 /* Bilde i fast forhold som faller inn */
 export function Bilde({ src, alt, pos, vis, delay = 0, ov, className = '', ratio = '3 / 2' }) {
   return (
-    <div className={`relative overflow-hidden ${className}`} style={{ aspectRatio: ratio, background: 'rgba(21,19,15,0.05)', boxShadow: `0 0 0 1px ${HAIR}`, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-14px)', transition: ov ? 'none' : `opacity 500ms ${EASE} ${vis ? delay : 0}ms, transform 700ms ${EASE} ${vis ? delay : 0}ms` }}>
+    <div className={`relative overflow-hidden ${className}`} style={{ aspectRatio: ratio, background: 'rgba(21,19,15,0.05)', boxShadow: `0 0 0 1px ${HAIR}, ${LYSKANT}`, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-14px)', transition: ov ? 'none' : `opacity 500ms ${EASE} ${vis ? delay : 0}ms, transform 700ms ${EASE} ${vis ? delay : 0}ms` }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: pos || '50% 50%' }} draggable={false} />
     </div>
@@ -319,7 +323,14 @@ export function useBredde() {
 }
 
 /* Desktop/kompakt-valg og filmens klokke: går fasene automatisk, looper eller gir fra seg til `onFerdig`. */
-export function useFilm({ synlig, spiller = synlig, AUTO, SISTE, START, HVILE, onFerdig, holdt = false }) {
+/* Andel av filmen som er unnagjort når fasen `fase` er ferdig (0–1) — til kapittel-fremdrift i tab-raden */
+export function fremdriftFor(AUTO, SISTE, fase) {
+  let sum = 0; let til = 0;
+  for (let f = 0; f <= SISTE; f += 1) { sum += AUTO[f] || 0; if (f <= fase) til = sum; }
+  return sum ? til / sum : 0;
+}
+
+export function useFilm({ synlig, spiller = synlig, AUTO, SISTE, START, HVILE, onFerdig, onFremdrift, holdt = false }) {
   const [fase, setFase] = useState(START);
   const [startet, setStartet] = useState(false);
   const [ov, setOv] = useState(false);
@@ -327,6 +338,9 @@ export function useFilm({ synlig, spiller = synlig, AUTO, SISTE, START, HVILE, o
   const [bred, setBred] = useState(null);
   const ferdigRef = useRef(onFerdig);
   useEffect(() => { ferdigRef.current = onFerdig; }, [onFerdig]);
+  const fremRef = useRef(onFremdrift);
+  useEffect(() => { fremRef.current = onFremdrift; }, [onFremdrift]);
+  useEffect(() => { fremRef.current?.({ andel: fremdriftFor(AUTO, SISTE, fase), ms: fase === START ? 0 : AUTO[fase] || 0 }); }, [fase, AUTO, SISTE, START]);
 
   useEffect(() => {
     const r = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;

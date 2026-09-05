@@ -2,7 +2,7 @@
 
 import React, { useRef } from 'react';
 import { EASE, T, display, tall } from '../motion';
-import { PAPIR, HVIT, STEIN, HAIR, DIM, H, P, MORF, Hake, Portrett, Inn, Vokse, Chip, Dok, AutoKnapp, Peker, usePeker, Tekstbytte, Akter, NesteBro, Sms, ValgtKort, BOLIG, EMMA, KARI, BankIdMerke, useBredde, useFilm, Ramme } from './filmdeler';
+import { PAPIR, HVIT, STEIN, HAIR, DIM, H, P, MORF, LYSKANT, GLASS, Hake, Portrett, Inn, Vokse, Chip, Dok, AutoKnapp, Peker, usePeker, Tekstbytte, Akter, NesteBro, Sms, ValgtKort, BOLIG, EMMA, KARI, BankIdMerke, useBredde, useFilm, Ramme } from './filmdeler';
 
 /* ---------------------------------------------------------------------------
    KontraktFilm — kapittel 2. «Fra valgt til innflyttet.»
@@ -141,7 +141,7 @@ function Kontrakt({ fase, ov, kompakt = false }) {
           return (
             <div key={f.k} className={`flex items-baseline justify-between gap-3 border-b py-2 text-[13px] ${kompakt ? '' : i === FELT.length - 1 ? 'col-span-2' : ''}`} style={{ borderColor: HAIR, opacity: vis ? 1 : 0.35, transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? nr * 180 : 0}ms` }}>
               <dt style={{ color: DIM }}>{f.k}</dt>
-              <dd className="text-right font-medium" style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(4px)', transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? nr * 180 + 80 : 0}ms, transform 420ms ${EASE} ${vis ? nr * 180 + 80 : 0}ms` }} aria-hidden={!vis}>
+              <dd className="text-right font-medium" style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(4px)', filter: vis ? 'blur(0px)' : 'blur(4px)', transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? nr * 180 + 80 : 0}ms, transform 420ms ${EASE} ${vis ? nr * 180 + 80 : 0}ms, filter 420ms ${EASE} ${vis ? nr * 180 + 80 : 0}ms` }} aria-hidden={!vis}>
                 {f.kilde ? <Stiplet>{f.v}</Stiplet> : f.v}
               </dd>
             </div>
@@ -178,10 +178,10 @@ function Protokoll({ fase, ov, kompakt = false }) {
         {ROM.map((r, i) => {
           const vis = fase >= F.OVER2;
           return (
-            <div key={r.navn} className="relative overflow-hidden rounded-[8px]" style={{ aspectRatio: kompakt ? '4 / 3' : '3 / 4', background: 'rgba(21,19,15,0.05)', boxShadow: `0 0 0 1px ${HAIR}`, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-10px)', transition: ov ? 'none' : `opacity 450ms ${EASE} ${vis ? i * 140 : 0}ms, transform 600ms ${EASE} ${vis ? i * 140 : 0}ms` }} aria-hidden={!vis}>
+            <div key={r.navn} className="relative overflow-hidden rounded-[10px]" style={{ aspectRatio: kompakt ? '4 / 3' : '3 / 4', background: 'rgba(21,19,15,0.05)', boxShadow: `0 0 0 1px ${HAIR}, ${LYSKANT}`, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-10px)', filter: vis ? 'blur(0px)' : 'blur(6px)', transition: ov ? 'none' : `opacity 450ms ${EASE} ${vis ? i * 140 : 0}ms, transform 600ms ${EASE} ${vis ? i * 140 : 0}ms, filter 500ms ${EASE} ${vis ? i * 140 : 0}ms` }} aria-hidden={!vis}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={r.src} alt={r.navn} className="absolute inset-0 h-full w-full object-cover" draggable={false} />
-              <span className="absolute left-1.5 top-1.5 inline-flex h-5 items-center rounded-full px-2 text-[10.5px] font-medium" style={{ background: 'rgba(251,250,248,0.92)', color: T.ink }}>{r.navn}</span>
+              <span className="absolute left-1.5 top-1.5 inline-flex h-5 items-center rounded-full px-2 text-[10.5px] font-medium" style={{ ...GLASS, color: T.ink }}>{r.navn}</span>
               <span className="absolute bottom-1.5 right-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full" style={{ background: 'rgba(31,157,85,0.92)', color: '#fff', opacity: fase >= F.OVER3 ? 1 : 0, transform: fase >= F.OVER3 ? 'none' : 'scale(0.6)', transition: ov ? 'none' : `opacity 300ms ${EASE} ${i * 120}ms, transform 300ms ${EASE} ${i * 120}ms` }}><Hake size={11} /></span>
             </div>
           );
@@ -220,7 +220,7 @@ function Protokoll({ fase, ov, kompakt = false }) {
 function Papir({ fase, ov, kompakt = false, className = '', style }) {
   const protokoll = fase >= F.OVER1;
   return (
-    <div className={`overflow-hidden rounded-[14px] ${className}`} style={{ background: HVIT, boxShadow: `0 0 0 1px ${HAIR}, 0 30px 80px -50px rgba(21,19,15,0.35)`, ...style }} data-testid="v4-papir" data-protokoll={protokoll ? '1' : '0'}>
+    <div className={`overflow-hidden rounded-[18px] ${className}`} style={{ background: HVIT, boxShadow: `0 0 0 1px ${HAIR}, 0 30px 80px -50px rgba(21,19,15,0.35)`, ...style }} data-testid="v4-papir" data-protokoll={protokoll ? '1' : '0'}>
       <div className={`grid h-full ${kompakt ? 'p-5' : 'p-7'}`}>
         <div className="col-start-1 row-start-1 h-full" style={{ opacity: protokoll ? 0 : 1, transform: protokoll ? 'translateY(-8px)' : 'none', transition: ov ? 'none' : `opacity 320ms ${EASE}, transform 320ms ${EASE}`, pointerEvents: protokoll ? 'none' : 'auto' }} aria-hidden={protokoll}>
           <Kontrakt fase={fase} ov={ov} kompakt={kompakt} />
@@ -241,7 +241,7 @@ function DepositumKort({ fase, ov }) {
     { t: 'Sikret til innflytting', s: `${tall(DEPOSITUM)} kr`, fra: F.DEP2 },
   ];
   return (
-    <div className="rounded-[14px] p-4" style={{ background: STEIN, boxShadow: `inset 0 0 0 1px ${HAIR}` }} data-testid="v4-depositum">
+    <div className="rounded-[16px] p-4" style={{ background: STEIN, boxShadow: `inset 0 0 0 1px ${HAIR}` }} data-testid="v4-depositum">
       <div className="flex items-center justify-between gap-3 text-[13px]">
         <span className="font-medium text-[#15130F]/60">Depositum · {tall(DEPOSITUM)} kr</span>
         <Keyhole h={13} />
@@ -277,7 +277,7 @@ function Side({ fase, ov, kompakt = false }) {
 /* Sluttbildet: Emma har nøklene */
 function InnflyttetKort({ kompakt = false }) {
   return (
-    <div className={`mx-auto w-full rounded-[16px] text-center ${kompakt ? 'max-w-[340px] p-5' : 'max-w-[380px] p-7'}`} style={{ background: T.charcoal, color: T.offwhite, boxShadow: '0 40px 90px -50px rgba(0,0,0,0.6)' }} data-testid="v4-innflyttet">
+    <div className={`mx-auto w-full rounded-[20px] text-center ${kompakt ? 'max-w-[340px] p-5' : 'max-w-[380px] p-7'}`} style={{ background: T.charcoal, color: T.offwhite, boxShadow: 'inset 0 0 0 1px rgba(244,241,234,0.08), 0 40px 90px -50px rgba(0,0,0,0.6)' }} data-testid="v4-innflyttet">
       <Portrett src={EMMA.bilde} alt={EMMA.navn} size={kompakt ? 64 : 76} className="mx-auto" />
       <p className={`${kompakt ? 'mt-3.5 text-[19px]' : 'mt-4 text-[22px]'} font-medium tracking-[-0.012em]`}>{EMMA.navn}</p>
       <p className="mt-1 inline-flex items-center gap-1.5 text-[13px]" style={{ color: 'rgba(244,241,234,0.62)' }}><Nokkel size={13} />Innflyttet 1. november · {BOLIG.adresse}</p>
@@ -413,8 +413,8 @@ function Kompakt({ fase, ov, onAkt, neste }) {
   );
 }
 
-export default function KontraktFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, neste = null }) {
-  const { fase, ov, morkt, bred, hopp } = useFilm({ synlig, spiller, AUTO, SISTE, START: F.START, HVILE: F.SIGN2, onFerdig });
+export default function KontraktFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, onFremdrift, neste = null }) {
+  const { fase, ov, morkt, bred, hopp } = useFilm({ synlig, spiller, AUTO, SISTE, START: F.START, HVILE: F.SIGN2, onFerdig, onFremdrift });
   const tilAkt = (i) => hopp(AKTER[i].fra);
   const felles = { fase, ov, onAkt: tilAkt, neste };
   return (

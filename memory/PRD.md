@@ -1116,3 +1116,6 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   innbetalt → sikret 37 500 kr) → samme papir blir Overtakelsesprotokoll (4 rom stående 3:4 m/ grønn hake, målerstand, 3 nøkler, rengjøring)
   → «Signer protokoll» → InnflyttetKort (charcoal). Sidespalte m/ SMS-er; flytende nederst til høyre når scenen er smal.
 - **Tekstregel (bruker):** ingen «tre trykk», «seks dager», «resten gjorde systemet» — det er AI-slop. Konkret, rolig, menneskelig.
+- **Moderne-pass (bruker: «gjør alt mye mer moderne»):** blur-inn på alt som kommer inn, frostet glass (GLASS i filmdeler) på etiketter over
+  bilder, indre lys-hårlinje (LYSKANT) på bildefliser, hjørnemarkører på utvalget, rundere kort, glass-adressepille i åpningen, kapittel-
+  fremdrift som tynn lilla linje i aktiv tab-pille (onFremdrift). Teller står nederst til venstre i scenen (unngår sticky tab-rad).

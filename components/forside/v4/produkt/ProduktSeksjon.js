@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Layers } from 'lucide-react';
 import { EASE, T, display, useSynlig } from '../motion';
 import DriftScene from './DriftScene';
@@ -202,6 +202,10 @@ export default function ProduktSeksjon() {
   const nesteId = KAPITLER[KAPITLER.indexOf(aktiv) + 1] || null;
   const nesteNavn = nesteId ? TABS.find((t) => t.id === nesteId).navn : null;
   const [bytter, setBytter] = useState(false);       // kapittelbytte: det gamle tones ut før det nye monteres
+  /* Kapittel-fremdrift i den aktive tab-pillen (tynn linje som fylles i takt med filmen) */
+  const [frem, setFrem] = useState({ andel: 0, ms: 0 });
+  const onFremdrift = useCallback((f) => setFrem(f), []);
+  useEffect(() => { setFrem({ andel: 0, ms: 0 }); }, [aktiv]);
   const videre = () => {
     if (!nesteId || !filmSynlig) return false;        // bare når produktflaten faktisk er i bildet — ellers looper filmen
     setBytter(true);
@@ -248,7 +252,12 @@ export default function ProduktSeksjon() {
           >
             <div ref={listeRef} role="tablist" aria-label="Produktområder" className="relative inline-flex max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-testid="v4-tabs">
               {markor && (
-                <span aria-hidden="true" className="absolute top-0 h-full rounded-full" style={{ left: markor.x, width: markor.w, background: tema.markor, boxShadow: tema.markorSkygge, transition: `left 450ms ${EASE}, width 450ms ${EASE}, background-color 300ms ${EASE}` }} data-testid="v4-tabs-markor" />
+                <span aria-hidden="true" className="absolute top-0 h-full overflow-hidden rounded-full" style={{ left: markor.x, width: markor.w, background: tema.markor, boxShadow: tema.markorSkygge, transition: `left 450ms ${EASE}, width 450ms ${EASE}, background-color 300ms ${EASE}` }} data-testid="v4-tabs-markor">
+                  {/* Kapittel-fremdrift: tynn linje langs bunnen av pillen (Annonse/Kontrakt har film; Drift står stille) */}
+                  <span className="absolute inset-x-3 bottom-[5px] h-[2px] overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.14)', opacity: frem.andel > 0 || frem.ms > 0 ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>
+                    <span className="absolute inset-y-0 left-0 rounded-full" style={{ background: T.lilla, width: `${Math.round(frem.andel * 1000) / 10}%`, transition: frem.ms ? `width ${frem.ms}ms linear` : 'none' }} data-testid="v4-tabs-fremdrift" />
+                  </span>
+                </span>
               )}
               {TABS.map((t) => {
                 const er = t.id === aktiv;
@@ -288,8 +297,8 @@ export default function ProduktSeksjon() {
           {/* Scenebytte: den nye flaten kommer inn sekvensielt (key → ny montering), ingen overlappende crossfade */}
           <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500" style={{ opacity: bytter ? 0 : 1, transform: bytter ? 'translateY(-8px)' : 'none', transition: `opacity 340ms ${EASE}, transform 340ms ${EASE}` }}>
             {aktiv === 'drift' && <DriftScene synlig={synlig} tema={bg.tema} />}
-            {aktiv === 'annonse' && <AnnonseFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} neste={nesteNavn} />}
-            {aktiv === 'kontrakt' && <KontraktFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} neste={nesteNavn} />}
+            {aktiv === 'annonse' && <AnnonseFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}
+            {aktiv === 'kontrakt' && <KontraktFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { EASE, T, display, tall } from '../motion';
-import { PAPIR, HVIT, STEIN, HAIR, DIM, OFF, H, P, MORF, FilmStil, Hake, Finn, Portrett, Inn, Vokse, Chip, Lapp, Dok, AutoKnapp, Peker, usePeker, Tekstbytte, Akter, NesteBro, Sms, ValgtKort, Bilde } from './filmdeler';
+import { PAPIR, HVIT, STEIN, HAIR, DIM, OFF, H, P, MORF, LYSKANT, GLASS, BLUR_INN, FilmStil, Hake, Finn, Portrett, Inn, Vokse, Chip, Lapp, Dok, AutoKnapp, Peker, usePeker, Tekstbytte, Akter, NesteBro, Sms, ValgtKort, Bilde, fremdriftFor } from './filmdeler';
 
 /* ---------------------------------------------------------------------------
    AnnonseFilm — konseptfilm i én ramme. «Fra ledig til utleid. Du trykker tre ganger.»
@@ -216,7 +216,7 @@ function StartTekst({ fase, kompakt = false, knappRef }) {
   const hover = fase === F.HOVER || fase === F.TRYKK_START;
   return (
     <div className={kompakt ? 'text-left' : 'text-center'} data-testid="v4-start" style={{ color: OFF }}>
-      <p className={kompakt ? 'text-[12.5px]' : 'text-[14px]'} style={{ color: 'rgba(244,241,234,0.72)' }}>{ADRESSE}</p>
+      <p className={`inline-flex items-center gap-2 rounded-full ${kompakt ? 'h-7 px-3 text-[12px]' : 'h-8 px-3.5 text-[13px]'}`} style={{ color: 'rgba(244,241,234,0.92)', background: 'rgba(21,19,15,0.28)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', boxShadow: 'inset 0 0 0 1px rgba(244,241,234,0.22)' }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />{ADRESSE}</p>
       <h3 className={kompakt ? 'mt-1.5 text-[34px]' : 'mt-2.5 text-[clamp(40px,3.8vw,62px)]'} style={{ ...display, letterSpacing: '-0.03em', lineHeight: 0.98, color: OFF }}>Ledig fra 1. november.</h3>
       <div className={`flex items-center ${kompakt ? 'mt-5' : 'mt-8 justify-center'}`}>
         <AutoKnapp presser={fase === F.TRYKK_START} hover={!kompakt && hover} stor testid="v4-lag-annonse" knappRef={knappRef}>Lag annonse</AutoKnapp>
@@ -246,14 +246,14 @@ function Pinne({ x, y, t, vis, delay = 0, ov, skala = 1, kamera }) {
     <span className="pointer-events-none absolute z-[2]" style={{ left: `${x}%`, top: `${y}%`, transform: `scale(${1 / skala})`, transformOrigin: '0 0', transition: kamera || 'none' }}>
       <span
         className="flex items-center gap-2"
-        style={{ flexDirection: speil ? 'row-reverse' : 'row', transform: `translate(${speil ? 'calc(-100% + 6px)' : '-6px'}, -50%) scale(${vis ? 1 : 0.96})`, opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? delay : 0}ms, transform 420ms ${EASE} ${vis ? delay : 0}ms` }}
+        style={{ flexDirection: speil ? 'row-reverse' : 'row', transform: `translate(${speil ? 'calc(-100% + 6px)' : '-6px'}, -50%) scale(${vis ? 1 : 0.96})`, opacity: vis ? 1 : 0, filter: vis ? 'blur(0px)' : 'blur(4px)', transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? delay : 0}ms, transform 420ms ${EASE} ${vis ? delay : 0}ms, filter 420ms ${EASE} ${vis ? delay : 0}ms` }}
         aria-hidden={!vis}
         data-testid={`v4-pinne-${t}`}
       >
         <span className="relative h-3 w-3 shrink-0 rounded-full" style={{ background: T.ink, boxShadow: '0 0 0 2.5px rgba(251,250,248,0.96), 0 2px 8px rgba(21,19,15,0.3)' }}>
           {vis && !ov && <span aria-hidden="true" className="absolute inset-0 rounded-full" style={{ boxShadow: '0 0 0 1.5px rgba(251,250,248,0.9)', animation: `v4-ping 900ms cubic-bezier(0.2, 0.6, 0.2, 1) ${delay + 120}ms forwards`, opacity: 0 }} />}
         </span>
-        <span className="whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-medium" style={{ background: 'rgba(251,250,248,0.96)', color: T.ink, boxShadow: '0 4px 14px -6px rgba(21,19,15,0.35)' }}>{t}</span>
+        <span className="whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-medium" style={{ ...GLASS, color: T.ink }}>{t}</span>
       </span>
     </span>
   );
@@ -265,8 +265,12 @@ function Utvalg({ fase, ov }) {
   const inn = fase >= F.STYLE;
   return (
     <div className="pointer-events-none absolute z-[3]" style={{ left: `${UTVALG.x}%`, top: `${UTVALG.y}%`, width: `${UTVALG.w}%`, height: `${UTVALG.h}%`, opacity: vis ? 1 : 0, transform: vis ? 'scale(1)' : inn ? 'scale(1.01)' : 'scale(1.03)', transition: ov ? 'none' : vis ? `opacity 600ms ${EASE} 500ms, transform 900ms ${EASE} 500ms` : `opacity 450ms ${EASE}, transform 450ms ${EASE}` }} aria-hidden={!vis} data-testid="v4-utvalg">
-      <div className="absolute inset-0 rounded-[10px]" style={{ boxShadow: 'inset 0 0 0 1.5px rgba(251,250,248,0.95), 0 0 0 1px rgba(21,19,15,0.18), 0 0 0 9999px rgba(21,19,15,0.18)' }} />
-      <span className="absolute left-2.5 top-2.5 inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-medium" style={{ background: 'rgba(251,250,248,0.96)', color: T.ink }}>
+      <div className="absolute inset-0 rounded-[10px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(251,250,248,0.55), 0 0 0 9999px rgba(21,19,15,0.20)' }} />
+      {/* Hjørnemarkører — slik et utvalg ser ut i moderne bilderedigering */}
+      {[['left-[-2px] top-[-2px]', 'border-l-2 border-t-2 rounded-tl-[8px]'], ['right-[-2px] top-[-2px]', 'border-r-2 border-t-2 rounded-tr-[8px]'], ['left-[-2px] bottom-[-2px]', 'border-l-2 border-b-2 rounded-bl-[8px]'], ['right-[-2px] bottom-[-2px]', 'border-r-2 border-b-2 rounded-br-[8px]']].map(([pos, kant]) => (
+        <span key={pos} aria-hidden="true" className={`absolute h-5 w-5 ${pos} ${kant}`} style={{ borderColor: 'rgba(251,250,248,0.98)', filter: 'drop-shadow(0 1px 2px rgba(21,19,15,0.35))' }} />
+      ))}
+      <span className="absolute left-3 top-3 inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-medium" style={{ ...GLASS, color: T.ink }}>
         <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Seng
       </span>
     </div>
@@ -279,8 +283,8 @@ function Prompt({ fase, ov, liten = false }) {
   const ferdig = fase >= F.SKILLE && fase <= F.STYLET;
   return (
     <>
-      <div className={`pointer-events-none absolute inset-x-0 top-0 z-[5] flex justify-center ${liten ? 'px-2.5 pt-10' : 'px-4 pt-12'}`} style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-10px)', transition: ov ? 'none' : vis ? `opacity 550ms ${EASE} 900ms, transform 650ms ${EASE} 900ms` : `opacity 300ms ${EASE}, transform 300ms ${EASE}` }} aria-hidden={!vis} data-testid="v4-prompt">
-        <div className={`w-full rounded-[14px] ${liten ? 'max-w-full px-3.5 py-3' : 'max-w-[440px] px-4 py-3.5'}`} style={{ background: 'rgba(251,250,248,0.96)', color: T.ink, boxShadow: '0 0 0 1px rgba(21,19,15,0.08), 0 24px 60px -24px rgba(21,19,15,0.45)' }}>
+      <div className={`pointer-events-none absolute inset-x-0 top-0 z-[5] flex justify-center ${liten ? 'px-2.5 pt-10' : 'px-4 pt-12'}`} style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-10px)', filter: vis ? 'blur(0px)' : BLUR_INN, transition: ov ? 'none' : vis ? `opacity 550ms ${EASE} 900ms, transform 650ms ${EASE} 900ms, filter 550ms ${EASE} 900ms` : `opacity 300ms ${EASE}, transform 300ms ${EASE}, filter 300ms ${EASE}` }} aria-hidden={!vis} data-testid="v4-prompt">
+        <div className={`w-full rounded-[16px] ${liten ? 'max-w-full px-3.5 py-3' : 'max-w-[440px] px-4 py-3.5'}`} style={{ background: 'rgba(251,250,248,0.84)', backdropFilter: 'blur(14px) saturate(1.2)', WebkitBackdropFilter: 'blur(14px) saturate(1.2)', color: T.ink, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.6), 0 0 0 1px rgba(21,19,15,0.06), 0 24px 60px -24px rgba(21,19,15,0.45)' }}>
           <div className="flex items-center justify-between gap-3 text-[11.5px]">
             <span className="inline-flex items-center gap-1.5 font-medium" style={{ color: DIM }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Instruks til stylingen</span>
             <span className="inline-flex items-center gap-2 font-medium" style={{ color: DIM }}>
@@ -297,7 +301,7 @@ function Prompt({ fase, ov, liten = false }) {
           </p>
         </div>
       </div>
-      <span className="pointer-events-none absolute right-2.5 top-2.5 z-[5] inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full pl-2 pr-2.5 text-[11.5px] font-medium" style={{ background: 'rgba(251,250,248,0.96)', color: T.ink, opacity: ferdig ? 1 : 0, transform: ferdig ? 'none' : 'translateY(-4px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${ferdig ? 350 : 0}ms, transform 400ms ${EASE} ${ferdig ? 350 : 0}ms` }} aria-hidden={!ferdig} data-testid="v4-prompt-ferdig">
+      <span className="pointer-events-none absolute right-2.5 top-2.5 z-[5] inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full pl-2 pr-2.5 text-[11.5px] font-medium" style={{ ...GLASS, color: T.ink, opacity: ferdig ? 1 : 0, transform: ferdig ? 'none' : 'translateY(-4px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${ferdig ? 350 : 0}ms, transform 400ms ${EASE} ${ferdig ? 350 : 0}ms` }} aria-hidden={!ferdig} data-testid="v4-prompt-ferdig">
         <span style={{ color: '#166B3C' }}><Hake size={11} /></span>Sengen er redd opp
       </span>
     </>
@@ -407,7 +411,7 @@ function Bildeflate({ fase, ov, onHold, liten = false, pos: objPos = '50% 50%', 
 /* ── Brikkene — det som hentes ut ── */
 function Brikke({ tekst, vis, delay = 0, ov, kilde }) {
   return (
-    <span className="inline-flex h-7 items-center whitespace-nowrap rounded-full px-3 text-[12.5px] font-medium" style={{ background: kilde ? 'transparent' : 'rgba(21,19,15,0.06)', boxShadow: kilde ? `inset 0 0 0 1px ${HAIR}` : 'none', color: 'rgba(21,19,15,0.82)', opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? delay : 0}ms, transform 420ms ${EASE} ${vis ? delay : 0}ms` }} aria-hidden={!vis}>{tekst}</span>
+    <span className="inline-flex h-7 items-center whitespace-nowrap rounded-full px-3 text-[12.5px] font-medium" style={{ background: kilde ? 'transparent' : 'rgba(21,19,15,0.06)', boxShadow: kilde ? `inset 0 0 0 1px ${HAIR}` : 'none', color: 'rgba(21,19,15,0.82)', opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', filter: vis ? 'blur(0px)' : 'blur(4px)', transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? delay : 0}ms, transform 420ms ${EASE} ${vis ? delay : 0}ms, filter 420ms ${EASE} ${vis ? delay : 0}ms` }} aria-hidden={!vis}>{tekst}</span>
   );
 }
 
@@ -649,8 +653,8 @@ const BUNKE = {
   stue: { rot: 1.5, dx: 0, dy: 0, delay: 1020 },
 };
 const LANDING = 'cubic-bezier(0.22, 1.08, 0.36, 1)';   // litt overshoot — kortet «setter seg»
-const SKYGGE_LOFT = '0 34px 70px -34px rgba(21,19,15,0.5), 0 0 0 1px rgba(21,19,15,0.06)';
-const SKYGGE_FLAT = `0 0 0 1px ${HAIR}`;
+const SKYGGE_LOFT = `0 34px 70px -34px rgba(21,19,15,0.5), 0 0 0 1px rgba(21,19,15,0.06), ${LYSKANT}`;
+const SKYGGE_FLAT = `0 0 0 1px ${HAIR}, ${LYSKANT}`;
 
 /* Felles: stilen for et bilde som lander i bunken (STABEL) og glir ut i mosaikken (BILDER). */
 function bunkeStil({ id, fase, L, ov, slot, z }) {
@@ -663,7 +667,7 @@ function bunkeStil({ id, fase, L, ov, slot, z }) {
   const t = (p, ms, d = 0) => `${p} ${ms}ms ${EASE} ${d}ms`;
   let overgang = 'none';
   if (!ov) {
-    if (iBunke) overgang = [t('opacity', 420, b.delay), `transform 760ms ${LANDING} ${b.delay}ms`, `top 760ms ${LANDING} ${b.delay}ms`, t('box-shadow', 500, b.delay + 300)].join(', ');
+    if (iBunke) overgang = [t('opacity', 420, b.delay), `transform 760ms ${LANDING} ${b.delay}ms`, `top 760ms ${LANDING} ${b.delay}ms`, t('box-shadow', 500, b.delay + 300), t('filter', 600, b.delay)].join(', ');
     else if (iMosaikk) overgang = [m('left', 950, z * 45), m('top', 950, z * 45), m('width', 950, z * 45), m('height', 950, z * 45), m('transform', 950, z * 45), t('box-shadow', 700, 500), t('border-radius', 600)].join(', ');
     else overgang = [t('opacity', 480, z * 40), t('transform', 600, z * 40)].join(', ');
   }
@@ -671,6 +675,7 @@ function bunkeStil({ id, fase, L, ov, slot, z }) {
   return {
     left: r.x, top: foer ? r.y + 96 : r.y, width: r.w, height: r.h,
     opacity: iBunke || iMosaikk ? 1 : 0,
+    filter: foer ? 'blur(8px)' : 'blur(0px)',
     transform: iBunke ? `rotate(${b.rot}deg) scale(1)` : foer ? `rotate(${b.rot - 7}deg) scale(0.9)` : etter ? 'rotate(0deg) scale(0.94)' : 'rotate(0deg) scale(1)',
     boxShadow: iBunke ? SKYGGE_LOFT : SKYGGE_FLAT,
     borderRadius: iBunke ? 12 : 10,
@@ -776,8 +781,8 @@ function Teller({ fase, L, ov }) {
   const vis = fase === F.STABEL || fase === F.BILDER;
   const ferdig = fase === F.BILDER;
   return (
-    <div className="absolute z-[7]" style={{ left: L.omr.x, top: L.omr.y, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-6px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? 250 : 0}ms, transform 400ms ${EASE}` }} aria-hidden={!vis} data-testid="v4-teller" data-n={n}>
-      <div className="inline-flex h-8 items-center gap-2.5 rounded-full pl-3 pr-3.5 text-[12.5px] font-medium" style={{ background: 'rgba(21,19,15,0.06)', color: T.ink }}>
+    <div className="absolute z-[7]" style={{ left: L.omr.x, top: L.omr.y + L.omr.h - 32, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', filter: vis ? 'blur(0px)' : 'blur(4px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? 250 : 0}ms, transform 400ms ${EASE}, filter 400ms ${EASE}` }} aria-hidden={!vis} data-testid="v4-teller" data-n={n}>
+      <div className="inline-flex h-8 items-center gap-2.5 rounded-full pl-3 pr-3.5 text-[12.5px] font-medium" style={{ ...GLASS, color: T.ink }}>
         {ferdig ? <span style={{ color: '#166B3C' }}><Hake size={13} /></span> : <span className="relative block h-[2px] w-9 overflow-hidden rounded-full" style={{ background: 'rgba(21,19,15,0.12)' }}><span className="absolute inset-y-0 left-0 rounded-full" style={{ background: T.ink, width: `${(n / 5) * 100}%`, transition: ov ? 'none' : `width 350ms ${EASE}` }} /></span>}
         <span key={ferdig ? 'f' : n} className="animate-in fade-in-0 duration-300">{ferdig ? '5 bilder · rom gjenkjent' : `Laster opp · ${n} av 5`}</span>
       </div>
@@ -877,7 +882,7 @@ function Desktop({ fase, ov, onAkt, onHold, neste }) {
       {L && <Foto fase={fase} L={L} ov={ov} onHold={onHold} />}
 
       {/* Åpningsteksten — sentrert nederst over bygården. Går raskt ut i trykket; resten kommer inn etterpå. */}
-      <div className="absolute z-[5]" style={{ left: P, bottom: P + 8, right: P, opacity: start ? 1 : 0, transform: start ? 'none' : 'translateY(10px)', transition: ov ? 'none' : start ? `opacity 900ms ${EASE} 300ms, transform 900ms ${EASE} 300ms` : `opacity 260ms ${EASE}, transform 260ms ${EASE}`, pointerEvents: start ? 'auto' : 'none' }} aria-hidden={!start}>
+      <div className="absolute z-[5]" style={{ left: P, bottom: P + 8, right: P, opacity: start ? 1 : 0, transform: start ? 'none' : 'translateY(10px)', filter: start ? 'blur(0px)' : BLUR_INN, transition: ov ? 'none' : start ? `opacity 900ms ${EASE} 300ms, transform 900ms ${EASE} 300ms, filter 900ms ${EASE} 300ms` : `opacity 260ms ${EASE}, transform 260ms ${EASE}, filter 260ms ${EASE}`, pointerEvents: start ? 'auto' : 'none' }} aria-hidden={!start}>
         <StartTekst fase={fase} knappRef={(el) => { knapper.current.start = el; }} />
       </div>
 
@@ -1014,7 +1019,7 @@ function Kompakt({ fase, ov, onAkt, onHold, neste }) {
 /* `onFerdig` — kalles når sluttbildet har stått ferdig. Returnerer den true, tar forelderen over (neste kapittel);
    ellers looper filmen. `neste` = navnet på neste kapittel (vises i broen). */
 /* `synlig` = seksjonen er i bildet (inngang). `spiller` = produktflaten er i bildet — klokken går bare da. */
-export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, neste = null }) {
+export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, onFremdrift, neste = null }) {
   const [fase, setFase] = useState(F.START);
   const [startet, setStartet] = useState(false);
   const [ov, setOv] = useState(false);
@@ -1023,6 +1028,9 @@ export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', o
   const [bred, setBred] = useState(null);         // null før mount → begge varianter med CSS-skjuling
   const ferdigRef = useRef(onFerdig);
   useEffect(() => { ferdigRef.current = onFerdig; }, [onFerdig]);
+  const fremRef = useRef(onFremdrift);
+  useEffect(() => { fremRef.current = onFremdrift; }, [onFremdrift]);
+  useEffect(() => { fremRef.current?.({ andel: fremdriftFor(AUTO, SISTE, fase), ms: fase === F.START ? 0 : AUTO[fase] || 0 }); }, [fase]);
 
   useEffect(() => {
     const r = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
