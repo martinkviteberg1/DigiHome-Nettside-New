@@ -29,7 +29,7 @@ const AUTO = {
   [F.KLAR2]: 1700, [F.TRYKK2]: 380, [F.SIGN1]: 1500, [F.SMS1]: 1900, [F.SIGN2]: 2000,
   [F.DEP1]: 1500, [F.DEP2]: 2100,
   [F.OVER1]: 1600, [F.OVER2]: 1300, [F.OVER3]: 1300, [F.KLAR3]: 1700, [F.TRYKK3]: 380, [F.SIGNERT]: 2600,
-  [F.SLUTT]: 5200,
+  [F.SLUTT]: 4400,
 };
 const SISTE = F.SLUTT;
 const PEKER_MAAL = {
@@ -346,6 +346,7 @@ function Desktop({ fase, ov, onAkt, neste }) {
   const L = W ? layout(W) : null;
   const start = fase <= F.TRYKK1;
   const papir = fase >= F.DOK && fase < F.SLUTT;
+  const dempet = fase >= F.DEP1 && fase < F.OVER1;   // depositumet er i fokus — papiret trer et halvt skritt tilbake
   const slutt = fase >= F.SLUTT;
   const knapper = useRef({});
   const peker = usePeker(fase, ref, knapper, PEKER_MAAL, PRESSER);
@@ -368,7 +369,7 @@ function Desktop({ fase, ov, onAkt, neste }) {
           </div>
 
           {/* Papiret */}
-          <div className="absolute" style={{ left: L.dok.x, top: L.dok.y, width: L.dok.w, height: L.dok.h, opacity: papir ? 1 : 0, transform: papir ? 'none' : slutt ? 'translateY(-12px)' : 'translateY(18px)', transition: `opacity ${bt(papir ? 600 : 350, papir ? 250 : 0)}, transform ${bt(papir ? 800 : 350, papir ? 250 : 0)}`, pointerEvents: papir ? 'auto' : 'none' }} aria-hidden={!papir}>
+          <div className="absolute" style={{ left: L.dok.x, top: L.dok.y, width: L.dok.w, height: L.dok.h, opacity: !papir ? 0 : dempet ? 0.5 : 1, transform: papir ? (dempet ? 'scale(0.985)' : 'none') : slutt ? 'translateY(-12px)' : 'translateY(18px)', transition: `opacity ${bt(papir ? 600 : 350, papir ? 250 : 0)}, transform ${bt(papir ? 800 : 350, papir ? 250 : 0)}`, pointerEvents: papir ? 'auto' : 'none' }} aria-hidden={!papir}>
             <Papir fase={fase} ov={ov} className="h-full" />
           </div>
 
@@ -412,8 +413,8 @@ function Kompakt({ fase, ov, onAkt, neste }) {
   );
 }
 
-export default function KontraktFilm({ synlig, tema = 'mork', onFerdig, neste = null }) {
-  const { fase, ov, morkt, bred, hopp } = useFilm({ synlig, AUTO, SISTE, START: F.START, HVILE: F.SIGN2, onFerdig });
+export default function KontraktFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, neste = null }) {
+  const { fase, ov, morkt, bred, hopp } = useFilm({ synlig, spiller, AUTO, SISTE, START: F.START, HVILE: F.SIGN2, onFerdig });
   const tilAkt = (i) => hopp(AKTER[i].fra);
   const felles = { fase, ov, onAkt: tilAkt, neste };
   return (

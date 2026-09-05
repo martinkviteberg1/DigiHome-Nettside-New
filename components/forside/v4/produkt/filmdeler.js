@@ -319,7 +319,7 @@ export function useBredde() {
 }
 
 /* Desktop/kompakt-valg og filmens klokke: går fasene automatisk, looper eller gir fra seg til `onFerdig`. */
-export function useFilm({ synlig, AUTO, SISTE, START, HVILE, onFerdig, holdt = false }) {
+export function useFilm({ synlig, spiller = synlig, AUTO, SISTE, START, HVILE, onFerdig, holdt = false }) {
   const [fase, setFase] = useState(START);
   const [startet, setStartet] = useState(false);
   const [ov, setOv] = useState(false);
@@ -339,10 +339,10 @@ export function useFilm({ synlig, AUTO, SISTE, START, HVILE, onFerdig, holdt = f
     return () => mq.removeEventListener?.('change', sett);
   }, [HVILE]);
 
-  useEffect(() => { if (synlig && !startet) setStartet(true); }, [synlig, startet]);
+  useEffect(() => { if (spiller && !startet) setStartet(true); }, [spiller, startet]);
 
   useEffect(() => {
-    if (!startet || morkt || holdt || !synlig) return undefined;   // ute av bildet → filmen venter der den er
+    if (!startet || morkt || holdt || !spiller) return undefined;   // ute av bildet → filmen venter der den er
     const ms = AUTO[fase];
     if (ms == null) return undefined;
     const t = window.setTimeout(() => {
@@ -356,7 +356,7 @@ export function useFilm({ synlig, AUTO, SISTE, START, HVILE, onFerdig, holdt = f
       }
     }, ms);
     return () => window.clearTimeout(t);
-  }, [fase, startet, ov, morkt, holdt, synlig, AUTO, SISTE, START, HVILE]);
+  }, [fase, startet, ov, morkt, holdt, spiller, AUTO, SISTE, START, HVILE]);
 
   const hopp = (f) => { setMorkt(false); setStartet(true); setFase(f); };
   return { fase, ov, morkt, bred, hopp };

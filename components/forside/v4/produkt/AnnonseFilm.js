@@ -54,7 +54,7 @@ const AUTO = {
   [F.TITTEL]: 1000, [F.TEKST]: 1100, [F.PRIS]: 1700,
   [F.KLAR]: 1700, [F.TRYKK]: 380, [F.PUBLISERT]: 3000,
   [F.INT1]: 1300, [F.INT2]: 1100, [F.BOOK1]: 1900, [F.BOOK2]: 1800, [F.SPM]: 1500,
-  [F.ETTER]: 1900, [F.VELG]: 380, [F.VALGT]: 2900, [F.SLUTT]: 5200,
+  [F.ETTER]: 1900, [F.VELG]: 380, [F.VALGT]: 2700, [F.SLUTT]: 4400,
 };
 const SISTE = F.SLUTT;
 
@@ -1013,7 +1013,8 @@ function Kompakt({ fase, ov, onAkt, onHold, neste }) {
 
 /* `onFerdig` — kalles når sluttbildet har stått ferdig. Returnerer den true, tar forelderen over (neste kapittel);
    ellers looper filmen. `neste` = navnet på neste kapittel (vises i broen). */
-export default function AnnonseFilm({ synlig, tema = 'mork', onFerdig, neste = null }) {
+/* `synlig` = seksjonen er i bildet (inngang). `spiller` = produktflaten er i bildet — klokken går bare da. */
+export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, neste = null }) {
   const [fase, setFase] = useState(F.START);
   const [startet, setStartet] = useState(false);
   const [ov, setOv] = useState(false);
@@ -1034,10 +1035,10 @@ export default function AnnonseFilm({ synlig, tema = 'mork', onFerdig, neste = n
     return () => mq.removeEventListener?.('change', sett);
   }, []);
 
-  useEffect(() => { if (synlig && !startet) setStartet(true); }, [synlig, startet]);
+  useEffect(() => { if (spiller && !startet) setStartet(true); }, [spiller, startet]);
 
   useEffect(() => {
-    if (!startet || morkt || holdt || !synlig) return undefined;   // ute av bildet → filmen venter der den er
+    if (!startet || morkt || holdt || !spiller) return undefined;   // ute av bildet → filmen venter der den er
     const ms = AUTO[fase];
     if (ms == null) return undefined;
     const t = window.setTimeout(() => {
@@ -1051,7 +1052,7 @@ export default function AnnonseFilm({ synlig, tema = 'mork', onFerdig, neste = n
       }
     }, ms);
     return () => window.clearTimeout(t);
-  }, [fase, startet, ov, morkt, holdt, synlig]);
+  }, [fase, startet, ov, morkt, holdt, spiller]);
 
   const tilAkt = (i) => { setMorkt(false); setStartet(true); setFase(AKTER[i].fra); };
 

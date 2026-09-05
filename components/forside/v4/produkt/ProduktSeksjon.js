@@ -123,7 +123,7 @@ const TEMA = {
 
 export default function ProduktSeksjon() {
   const [aktiv, setAktiv] = useState('annonse');   // starter på Annonse — livssyklusen leses fra venstre
-  const [laast, setLaast] = useState(false);       // brukeren har valgt en tab selv → kapitlene spiller ikke videre av seg selv
+  /* Kapitlene spiller alltid videre av seg selv (Annonse → Kontrakt → Drift). Velger brukeren en tab, fortsetter kjeden derfra. */
   const [bakgrunn, setBakgrunn] = useState('oslo');   // nøkkel i BAKGRUNNER — bygården er standard; 'stue' (interiør) ligger i velgeren
   const [velgerOpen, setVelgerOpen] = useState(false);
   const [festet, setFestet] = useState(false);   // tabs-raden ligger klistret under navigasjonen
@@ -133,6 +133,11 @@ export default function ProduktSeksjon() {
   const listeRef = useRef(null);
   const tabRefs = useRef({});
   const synlig = useSynlig(ref, 0.12);
+  /* Filmene styres av om PRODUKTFLATEN er i bildet (ikke bare seksjonen): starter når rammen sees, pauser når den forlates,
+     og kapittelbyttet skjer bare mens man ser på. */
+  const sceneRef = useRef(null);
+  const sceneSynlig = useSynlig(sceneRef, 0.3);
+  const filmSynlig = synlig && sceneSynlig;
   const scene = SCENER[aktiv] || SCENER.drift;
   const bg = BAKGRUNNER[bakgrunn] || BAKGRUNNER.plomme;
   const tema = TEMA[bg.tema] || TEMA.mork;
@@ -185,7 +190,6 @@ export default function ProduktSeksjon() {
   /* Tabbytte fra festet rad: hold blikket der raden er — scroll produktet inn rett under den. */
   const bytt = (id) => {
     setAktiv(id);
-    setLaast(true);
     if (festet && ref.current) {
       const navH = window.innerWidth >= 1024 ? 64 : 72;
       const topp = ref.current.getBoundingClientRect().top + window.scrollY;
@@ -196,10 +200,10 @@ export default function ProduktSeksjon() {
   /* Kapitlene spiller videre av seg selv (Annonse → Kontrakt → Drift) til brukeren velger en tab. Tab-markøren glir. */
   const KAPITLER = TABS.filter((t) => t.klar).map((t) => t.id);
   const nesteId = KAPITLER[KAPITLER.indexOf(aktiv) + 1] || null;
-  const nesteNavn = !laast && nesteId ? TABS.find((t) => t.id === nesteId).navn : null;
+  const nesteNavn = nesteId ? TABS.find((t) => t.id === nesteId).navn : null;
   const [bytter, setBytter] = useState(false);       // kapittelbytte: det gamle tones ut før det nye monteres
   const videre = () => {
-    if (laast || !nesteId || !synlig) return false;   // bare når seksjonen faktisk er i bildet — ellers looper filmen
+    if (!nesteId || !filmSynlig) return false;        // bare når produktflaten faktisk er i bildet — ellers looper filmen
     setBytter(true);
     window.setTimeout(() => { setAktiv(nesteId); setBytter(false); }, 360);
     return true;
@@ -280,12 +284,12 @@ export default function ProduktSeksjon() {
         </div>
 
         {/* Produktet — alltid sentrert */}
-        <div className="mt-12 lg:mt-20">
+        <div ref={sceneRef} className="mt-12 lg:mt-20">
           {/* Scenebytte: den nye flaten kommer inn sekvensielt (key → ny montering), ingen overlappende crossfade */}
           <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500" style={{ opacity: bytter ? 0 : 1, transform: bytter ? 'translateY(-8px)' : 'none', transition: `opacity 340ms ${EASE}, transform 340ms ${EASE}` }}>
             {aktiv === 'drift' && <DriftScene synlig={synlig} tema={bg.tema} />}
-            {aktiv === 'annonse' && <AnnonseFilm synlig={synlig} tema={bg.tema} onFerdig={videre} neste={nesteNavn} />}
-            {aktiv === 'kontrakt' && <KontraktFilm synlig={synlig} tema={bg.tema} onFerdig={videre} neste={nesteNavn} />}
+            {aktiv === 'annonse' && <AnnonseFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} neste={nesteNavn} />}
+            {aktiv === 'kontrakt' && <KontraktFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} neste={nesteNavn} />}
           </div>
         </div>
       </div>
