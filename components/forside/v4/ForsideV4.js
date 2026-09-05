@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import NavV4 from './NavV4';
 import HeroScene from './HeroScene';
 import HeroStage from './HeroStage';
+import HeroVeksler from './HeroVeksler';
 import ProduktSeksjon from './produkt/ProduktSeksjon';
 import TillitStripe from './TillitStripe';
 import LeietakerSeksjon from './LeietakerSeksjon';
@@ -28,7 +29,7 @@ import { T, display } from './motion';
 
 /* hero: 'side' (to kolonner, dagens) eller 'stage' (sentrert setning + én scene i full bredde — Sana-strukturen).
    bilde: midlertidig scenebilde for 'stage' ('stue' | 'bygg') til footagen finnes. */
-export default function ForsideV4({ hero = 'side', bilde = 'stue' }) {
+export default function ForsideV4({ hero = 'side', bilde = 'stue', veksler = false }) {
   /* Din adresse → din bolig. Valgt adresse personaliserer heroscenen før du går videre. */
   const [eiendom, setEiendom] = useState(null);
   const sceneRef = useRef(null);
@@ -116,6 +117,7 @@ export default function ForsideV4({ hero = 'side', bilde = 'stue' }) {
         <AvslutningSeksjon />
       </main>
       <Footer />
+      {veksler && <HeroVeksler hero={hero} />}
     </div>
   );
 }

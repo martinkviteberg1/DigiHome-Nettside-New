@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import ForsideV4 from '@/components/forside/v4/ForsideV4';
 
 const TITTEL = 'DigiHome — Utleie på autopilot';
@@ -30,14 +31,26 @@ export const metadata = {
 // hero (bolig → DigiHome drifter → én godkjenning) → tillit → produkt →
 // spor (privat / eiendomsselskap / forvaltning) → leietaker → alt samlet →
 // FAQ → finale. Dybden per målgruppe bor på /privat, /bedrift, /forvaltning.
+//
+// Hero-variant under arbeid: cookie dh_hero ('side' | 'stage') settes av den
+// diskrete veksleren nederst til venstre. ?bilde=bygg bytter scenebilde i 'stage'.
 // ---------------------------------------------------------------------------
-export default function ForsidePage() {
+export default function ForsidePage({ searchParams }) {
+  const hero = cookies().get('dh_hero')?.value === 'stage' ? 'stage' : 'side';
+  const bilde = searchParams?.bilde === 'bygg' ? 'bygg' : 'stue';
+  const stageBilde = bilde === 'bygg' ? '/v4/bolig-hero.webp' : '/v4/stue-2000.webp';
   return (
     <>
-      {/* Boligfotoet er LCP. Preload riktig utsnitt per flate; fontene preloades av next/font. */}
-      <link rel="preload" as="image" href="/v4/bolig-hero.webp" media="(min-width: 640px)" fetchPriority="high" />
-      <link rel="preload" as="image" href="/v4/bolig-hero-mobil.webp" media="(max-width: 639px)" fetchPriority="high" />
-      <ForsideV4 />
+      {/* Scenebildet er LCP. Preload riktig utsnitt per flate; fontene preloades av next/font. */}
+      {hero === 'stage' ? (
+        <link rel="preload" as="image" href={stageBilde} media="(min-width: 640px)" fetchPriority="high" />
+      ) : (
+        <>
+          <link rel="preload" as="image" href="/v4/bolig-hero.webp" media="(min-width: 640px)" fetchPriority="high" />
+          <link rel="preload" as="image" href="/v4/bolig-hero-mobil.webp" media="(max-width: 639px)" fetchPriority="high" />
+        </>
+      )}
+      <ForsideV4 hero={hero} bilde={bilde} veksler />
     </>
   );
 }

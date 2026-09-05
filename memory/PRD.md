@@ -967,3 +967,23 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - **Beslutning som venter på bruker:** bytte rot til stage-heroen? Foto stue vs bygg? Filme eget opptak (eier hjemme, 22:41,
   ikke skjermen) — shotliste gitt i chat. Deretter: samme struktur på privat/bedrift/forvaltning.
 - QA: kompilert 200 på alle ruter, screenshots desktop 1440/1920 + mobil 390. Frontend-testagent ikke kjørt (krever tillatelse).
+
+## 5. sep. (forts.) — Hero-veksler på rot + ny sign-up-flyt (/bli-utleier/start)
+- **HeroVeksler** (`components/forside/v4/HeroVeksler.js`): to bittesmå prikker nederst til venstre på `/` (opacity .25).
+  Setter cookie `dh_hero=side|stage` + router.refresh(); `app/page.js` leser cookien server-side → ingen blink. Kun designverktøy;
+  fjernes når formen er valgt. `?bilde=bygg` på rot bytter scenebilde i stage-varianten.
+- **StartV4** (`components/forside/v4/start/{StartV4,AdresseSok,BoligPanel,Felt}.js`) erstatter OwnerOnboarding2026 på
+  `/bli-utleier/start`. Gammel flyt ligger på `/bli-utleier/start-v1`. Konsept «fortsettelsen av heroen»: V4-canvas, PP Right
+  Grotesk/Diatype, ink-knapper, ingen uppercase-eyebrows/ikoner i felt/fake app-kort. Desktop: venstre steg (maks 560) + høyre
+  sticky **BoligPanel** (Street View via /api/streetview når meta OK, ellers AdresseKart; tom: charcoal «Din bolig») med kvittering
+  Bolig · Modell · Kontakt. Mobil: panel som 132px-stripe over stegene når adresse finnes.
+  Steg: Adresse (AdresseSok m/ inline ink-knapp, FINN-lenke/-kode støttes) → Tjeneste («Hvordan vil du leie ut {gate}?», to rader:
+  Lei ut selv [5 % · ingen bindingstid · hele Norge] / Full forvaltning [Én fast forvalter, Sarahs foto som human touch, personlig
+  tilbud · 24 t · Bergen og omegn; utenfor: «Kommer til {by}» + Registrer interesse]) → Kontakt (Segment Privatperson/Bedrift,
+  CompanyPicker gjenbrukt m/ gammel stil, navn/e-post/telefon m/ native landkode-select, avtale-avkryssing for selv, Enter
+  sender, fokus på første feil). Ferdig: selv+konto → «Kontoen er klar.» + redirect 1,4 s; ellers «Takk, {fornavn}.»
+  Logikk 1:1 fra v1: komplettAdresse, erBergen, tier-prefill (hopper over steg 2), FINN via /api/finn-preview, payload til
+  /api/leads (flow-tag 'utleier-v4'), konto-handoff, analytics (form_start/step, tier_*, owner_kind_choice, lead_submit, trackLead).
+- QA: desktop 1440 + mobil 390 screenshots for alle steg, tier-prefill, FINN-lenke, Oslo (utenfor område), valideringsfeil.
+  Ingen ekte innsending testet (unngå falske leads). Frontend-testagent ikke kjørt (krever tillatelse).
+- Åpent: CompanyPicker i V4-stil; tom-tilstand i panelet (charcoal) kan få mer liv; ekte innsending bør testes av bruker.

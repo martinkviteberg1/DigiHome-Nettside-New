@@ -1,7 +1,8 @@
-import OwnerOnboarding2026 from '@/components/dh/OwnerOnboarding2026';
+import StartV4 from '@/components/forside/v4/start/StartV4';
 
-// Mobil-først konverteringsflyt: adresse → tjeneste → kontakt.
-// Ingen global Header/Footer — egen kompakt topplinje uten sticky CTA over tastaturet.
+// Konverteringsflyt: adresse → tjeneste → kontakt. «Fortsettelsen av heroen» —
+// samme canvas, typografi og ink-knapp som forsiden. Boligen din er scenen.
+// Ingen global Header/Footer. Forrige versjon: /bli-utleier/start-v1.
 export const metadata = {
   title: 'Kom i gang | DigiHome',
   description: 'Velg mellom full forvaltning og selvforvaltning, og kom i gang med utleie av boligen din.',
@@ -9,5 +10,5 @@ export const metadata = {
 };
 
 export default function Page() {
-  return <OwnerOnboarding2026 />;
+  return <StartV4 />;
 }
