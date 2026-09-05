@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { EASE, T, display, tall } from '../motion';
+import { PAPIR, HVIT, STEIN, HAIR, DIM, OFF, H, P, MORF, FilmStil, Hake, Finn, Portrett, Inn, Vokse, Chip, Lapp, Dok, AutoKnapp, Peker, usePeker, Tekstbytte, Akter, NesteBro, Sms, ValgtKort, Bilde } from './filmdeler';
 
 /* ---------------------------------------------------------------------------
    AnnonseFilm — konseptfilm i én ramme. «Fra ledig til utleid. Du trykker tre ganger.»
@@ -32,51 +33,50 @@ import { EASE, T, display, tall } from '../motion';
    Ingen skannelinjer, spinnere, cursor, dashbord, telefonrammer.
 --------------------------------------------------------------------------- */
 
-const PAPIR = '#FBFAF8';
-const HVIT = '#FFFFFF';
-const STEIN = '#F3F1EC';
-const HAIR = 'rgba(21,19,15,0.08)';
-const DIM = 'rgba(21,19,15,0.55)';
-const H = 660;          // rammens høyde
-const P = 48;           // rammens indre marg
 const HVIL = 44;        // hvor skillelinjen hviler (prosent fra venstre)
-const KW = 176;         // «Lag annonse»-knappen (åpningen) — bredde
-const KH = 54;          // … og høyde
-const ADRESSE = 'Nygårdsgaten 5, leilighet 2 · ledig fra 1. november';
-const OFF = '#F4F1EA';  // brukes av den gamle åpningen til den nye er på plass
+const ADRESSE = 'Nygårdsgaten 5 · Leilighet 2';
 
 const F = {
-  START: 0, TRYKK_START: 1,
-  BILDER: 2,
-  LES1: 3, LES2: 4, LES3: 5, FAKTA: 6,
-  STYLE: 7, SKILLE: 8, STYLET: 9,
-  TITTEL: 10, TEKST: 11, PRIS: 12,
-  KLAR: 13, TRYKK: 14, PUBLISERT: 15,
-  INT1: 16, INT2: 17, BOOK1: 18, BOOK2: 19, SPM: 20,
-  ETTER: 21, VELG: 22, VALGT: 23, SLUTT: 24,
+  START: 0, PEKER: 1, HOVER: 2, TRYKK_START: 3,
+  STABEL: 4, BILDER: 5,
+  LES1: 6, LES2: 7, LES3: 8, FAKTA: 9,
+  STYLE: 10, SKILLE: 11, STYLET: 12,
+  TITTEL: 13, TEKST: 14, PRIS: 15,
+  KLAR: 16, TRYKK: 17, PUBLISERT: 18,
+  INT1: 19, INT2: 20, BOOK1: 21, BOOK2: 22, SPM: 23,
+  ETTER: 24, VELG: 25, VALGT: 26, SLUTT: 27,
 };
 const AUTO = {
-  [F.START]: 2600, [F.TRYKK_START]: 380,
-  [F.BILDER]: 2700,
-  [F.LES1]: 1900, [F.LES2]: 1600, [F.LES3]: 1600, [F.FAKTA]: 1500,
-  [F.STYLE]: 1200, [F.SKILLE]: 2800, [F.STYLET]: 2000,
+  [F.START]: 1400, [F.PEKER]: 1350, [F.HOVER]: 420, [F.TRYKK_START]: 380,
+  [F.STABEL]: 2050, [F.BILDER]: 2700,
+  [F.LES1]: 3300, [F.LES2]: 2500, [F.LES3]: 2600, [F.FAKTA]: 1600,
+  [F.STYLE]: 3400, [F.SKILLE]: 2800, [F.STYLET]: 2000,
   [F.TITTEL]: 1000, [F.TEKST]: 1100, [F.PRIS]: 1700,
-  [F.KLAR]: 1500, [F.TRYKK]: 300, [F.PUBLISERT]: 3000,
+  [F.KLAR]: 1700, [F.TRYKK]: 380, [F.PUBLISERT]: 3000,
   [F.INT1]: 1300, [F.INT2]: 1100, [F.BOOK1]: 1900, [F.BOOK2]: 1800, [F.SPM]: 1500,
-  [F.ETTER]: 1800, [F.VELG]: 300, [F.VALGT]: 2800, [F.SLUTT]: 2600,
+  [F.ETTER]: 1900, [F.VELG]: 380, [F.VALGT]: 2900, [F.SLUTT]: 5200,
 };
 const SISTE = F.SLUTT;
 
+/* Pekeren: hvilken knapp den sikter på i hver fase (ellers skjult). Trykkfasene presser. */
+const PEKER_MAAL = {
+  [F.PEKER]: 'start', [F.HOVER]: 'start', [F.TRYKK_START]: 'start',
+  [F.KLAR]: 'publiser', [F.TRYKK]: 'publiser',
+  [F.ETTER]: 'velg', [F.VELG]: 'velg',
+};
+const PRESSER = new Set([F.TRYKK_START, F.TRYKK, F.VELG]);
+
+
 const AKTER = [
-  { fra: F.BILDER, tittel: 'Last opp bildene.', tekst: 'Ta dem med mobilen — fem bilder holder. Resten begynner her.' },
-  { fra: F.LES1, tittel: 'Bildene leses — detalj for detalj.', tekst: 'Hver detalj kan spores tilbake til et bilde. Så hentes resten fra boligen og leieavtalen.' },
-  { fra: F.STYLE, tittel: 'Bildene styles.', tekst: 'Sengen res opp og rotet ryddes — samme rom, samme seng, på sitt beste. Merkes alltid som redigert.' },
-  { fra: F.TITTEL, tittel: 'Annonsen skriver seg selv.', tekst: 'Overskrift, tekst og prisforslag — fra det bildene og boligen forteller. Du kan endre alt.' },
-  { fra: F.KLAR, tittel: 'Ett trykk — og den ligger på FINN.', tekst: 'Du ser gjennom og godkjenner. Spørsmål og interessenter går rett inn i DigiHome.' },
-  { fra: F.INT1, tittel: 'Interessentene booker visning selv.', tekst: 'De legitimerer seg med BankID, velger et ledig tidspunkt og får bekreftelse på SMS. Du bare møter opp.' },
-  { fra: F.ETTER, tittel: 'Du velger. Kontrakten går til signering.', tekst: 'Inntekt og referanse er dokumentert. Ett trykk — kontrakten fylles ut fra annonsen og sendes til BankID.' },
+  { fra: F.STABEL, tittel: 'Begynn med bildene.', tekst: 'Fem bilder fra mobilen holder. Hvert rom kjennes igjen idet det lastes opp.' },
+  { fra: F.LES1, tittel: 'Detaljene leses ut av bildene.', tekst: 'Parkett, kjøkkenøy, store vinduer. Alt som havner i annonsen, kan spores tilbake til et bilde.' },
+  { fra: F.STYLE, tittel: 'Sengen res opp.', tekst: 'Én instruks, avgrenset til sengen. Rommet, lyset og alt som er fast, står urørt — og bildet merkes som redigert.' },
+  { fra: F.TITTEL, tittel: 'Utkastet er klart.', tekst: 'Overskrift, tekst og prisforslag — fra bildene og det du allerede vet om boligen. Endre det du vil, eller publiser som det er.' },
+  { fra: F.KLAR, tittel: 'Ute på FINN.no.', tekst: 'Samme bilder, samme tekst. Interessentene melder seg med BankID, så du vet hvem du har med å gjøre.' },
+  { fra: F.INT1, tittel: 'Visningen booker de selv.', tekst: 'Interessentene velger et ledig tidspunkt og får bekreftelsen på SMS. Du møter opp.' },
+  { fra: F.ETTER, tittel: 'Du velger leietaker.', tekst: 'Inntekt og referanse ligger klart. Velg Emma — de andre får beskjed samtidig, uten at du skriver noe.' },
 ];
-const SLUTT = { tittel: 'Fra ledig til utleid.', tekst: 'Seks dager. Tre trykk fra deg — resten gjorde systemet, og du så alt underveis.' };
+const SLUTT = { tittel: 'Boligen har fått leietaker.', tekst: 'Emma flytter inn 1. november. Kontrakten er neste — og den er allerede fylt ut.' };
 const aktIndeks = (f) => { let i = -1; AKTER.forEach((a, k) => { if (f >= a.fra) i = k; }); return i; };
 const varighet = (i) => {
   const fra = AKTER[i].fra; const til = i + 1 < AKTER.length ? AKTER[i + 1].fra : SISTE + 1;
@@ -93,35 +93,58 @@ const FOTOS = [
   { id: 'kjokken', src: '/v4/annonse/kjokken-600.webp', navn: 'Kjøkken', les: F.LES2 },
   { id: 'soverom', src: '/v4/annonse/soverom-useng-1000.webp', liten: '/v4/annonse/soverom-useng-700.webp', stylet: '/v4/annonse/soverom-1000.webp', styletLiten: '/v4/annonse/soverom-700.webp', navn: 'Soverom', les: F.LES3 },
   { id: 'spisestue', src: '/v4/annonse/spisestue-600.webp', navn: 'Spisestue' },
-  { id: 'fasade', src: '/v4/bolig-oslo-1200.webp', navn: 'Fasade', pos: '20% 45%' },
+  { id: 'fasade', src: '/v4/bolig-hero.webp', liten: '/v4/bolig-hero-mobil.webp', navn: 'Fasade', pos: '50% 64%', posLiten: '50% 45%' },
 ];
 const KILDE = Object.fromEntries(FOTOS.map((b) => [b.id, b]));
 const SMAA = ['kjokken', 'soverom', 'spisestue', 'fasade'];
 
-/* Nåler — det systemet ser i hvert bilde. Prosent av bildeflaten (3:2). */
+/* Nåler — det systemet ser i hvert bilde. Prosent av bildeflaten (3:2). Kommer én og én mens kameraet driver. */
 const PINNER = {
   stue: [
-    { x: 30, y: 37, t: 'Store vinduer' },
-    { x: 27, y: 65, t: 'Kjøkkenøy' },
-    { x: 64, y: 84, t: 'Parkett' },
+    { id: 'vinduer', x: 30, y: 37, t: 'Store vinduer' },
+    { id: 'oy', x: 27, y: 65, t: 'Kjøkkenøy' },
+    { id: 'parkett', x: 64, y: 84, t: 'Parkett' },
   ],
   kjokken: [
-    { x: 31, y: 70, t: 'Integrert ovn' },
-    { x: 84, y: 74, t: 'Spiseplass' },
+    { id: 'ovn', x: 31, y: 70, t: 'Integrert ovn' },
+    { id: 'spise', x: 84, y: 74, t: 'Spiseplass' },
   ],
   soverom: [
-    { x: 42, y: 76, t: 'Dobbeltseng' },
-    { x: 92, y: 36, t: 'Garderobe' },
+    { id: 'seng', x: 42, y: 76, t: 'Dobbeltseng' },
+    { id: 'garderobe', x: 92, y: 36, t: 'Garderobe' },
   ],
 };
+/* Kameraet: én rolig bevegelse per bilde — svakt inn (14 %) mot detaljene. Nålene ligger i bildet og følger med. */
+const DRIFT = 1.14;
+const FOKUS = { stue: { x: 40, y: 62 }, kjokken: { x: 52, y: 70 }, soverom: { x: 66, y: 56 } };
+const DRIFT_EASE = 'cubic-bezier(0.3, 0, 0.2, 1)';
+function driftTransform(id) {
+  const f = FOKUS[id]; const maks = (DRIFT - 1) * 50;
+  const tx = Math.max(-maks, Math.min(maks, (50 - f.x) * DRIFT));
+  const ty = Math.max(-maks, Math.min(maks, (50 - f.y) * DRIFT));
+  return `translate(${tx}%, ${ty}%) scale(${DRIFT})`;
+}
+/* Hvor kameraet står for hvert bilde i hver fase: 'ro' (før), 'inn' (leses), 'tilbake' (soverommet før styling) */
+function kameraFor(id, fase) {
+  const les = KILDE[id].les;
+  if (fase < les) return { transform: 'translate(0%, 0%) scale(1)', transition: 'none', skala: 1 };
+  if (fase === les) return { transform: driftTransform(id), transition: `transform ${AUTO[les] + 400}ms ${DRIFT_EASE}`, skala: DRIFT };
+  if (id === 'soverom') return { transform: 'translate(0%, 0%) scale(1)', transition: `transform 1500ms ${MORF}`, skala: 1 };
+  return { transform: driftTransform(id), transition: 'none', skala: DRIFT };
+}
 
-/* Brikkene i tekstspalten — det som hentes ut */
+/* Brikkene i tekstspalten — det som hentes ut, i takt med nålene */
 const FAKTA = [
-  { t: 'Parkett', fra: F.LES1 }, { t: 'Kjøkkenøy', fra: F.LES1 }, { t: 'Store vinduer', fra: F.LES1 },
+  { t: 'Store vinduer', fra: F.LES1 }, { t: 'Kjøkkenøy', fra: F.LES1 }, { t: 'Parkett', fra: F.LES1 },
   { t: 'Integrert ovn', fra: F.LES2 }, { t: 'Spiseplass', fra: F.LES2 },
-  { t: '1 soverom', fra: F.LES3 }, { t: 'Dobbeltseng', fra: F.LES3 }, { t: 'Garderobe', fra: F.LES3 },
+  { t: 'Dobbeltseng', fra: F.LES3 }, { t: 'Garderobe', fra: F.LES3 }, { t: '1 soverom', fra: F.LES3 },
   { t: '54 m²', fra: F.FAKTA, kilde: 'bolig' }, { t: '2. etasje', fra: F.FAKTA, kilde: 'bolig' }, { t: 'Ledig 1. nov', fra: F.FAKTA, kilde: 'avtale' },
 ];
+const PIN_DELAY = 620;   // avstand mellom nålene i samme bilde
+
+/* Styling: utvalget rundt sengen (prosent av bildeflaten) og instruksen — setning for setning. */
+const UTVALG = { x: 3.5, y: 41, w: 75, h: 56.5 };
+const PROMPT = ['Re opp sengen og glatt ut dynen.', 'Legg to puter symmetrisk.', 'Behold rommet, lyset og alt som er fast, nøyaktig som det er.'];
 
 const ANNONSE = {
   tittel: 'Lys 2-roms med åpen kjøkkenløsning i Nygårdsgaten',
@@ -133,19 +156,19 @@ const BRODTEKST_REN = 'Lys 2-roms i klassisk bygård. Åpen kjøkkenløsning med
 const FOLK = [
   {
     n: 'Emma Sørensen', bilde: '/v4/annonse/leietaker-emma.webp', fra: F.INT1,
-    d: (f) => (f >= F.VALGT ? 'Kontrakt sendt · signeres med BankID' : f >= F.ETTER ? 'Visning gjennomført · ønsker 3 års leie' : f >= F.BOOK1 ? 'Visning tirsdag 17:30 · bekreftet på SMS' : 'Meldte interesse via FINN · ønsker fra 1. nov'),
+    d: (f) => (f >= F.VALGT ? 'Valgt · kontrakten forberedes' : f >= F.ETTER ? 'Visning gjennomført · ønsker 3 års leie' : f >= F.BOOK1 ? 'Visning tirsdag 17:30 · bekreftet på SMS' : 'Meldte interesse via FINN · ønsker fra 1. nov'),
     dok: (f) => (f >= F.ETTER ? ['BankID', 'Inntekt', 'Referanse'] : f >= F.BOOK1 ? ['BankID', 'Inntekt'] : ['BankID']),
-    chip: (f) => (f >= F.VALGT ? ['Kontrakt sendt', 'gronn'] : f >= F.ETTER ? ['Anbefalt', 'lilla'] : f >= F.BOOK1 ? ['Visning 17:30', 'noytral'] : null),
+    chip: (f) => (f >= F.VALGT ? ['Valgt', 'lilla'] : f >= F.ETTER ? ['Anbefalt', 'lilla'] : f >= F.BOOK1 ? ['Visning 17:30', 'noytral'] : null),
   },
   {
     n: 'Martin Berg', bilde: '/v4/annonse/leietaker-martin.webp', fra: F.INT2,
-    d: (f) => (f >= F.VALGT ? 'Varslet · boligen er reservert' : f >= F.ETTER ? 'Visning gjennomført' : f >= F.BOOK2 ? 'Visning tirsdag 18:00 · bekreftet på SMS' : 'Meldte interesse via FINN'),
+    d: (f) => (f >= F.VALGT ? 'Varslet på SMS · boligen er utleid' : f >= F.ETTER ? 'Visning gjennomført' : f >= F.BOOK2 ? 'Visning tirsdag 18:00 · bekreftet på SMS' : 'Meldte interesse via FINN'),
     dok: (f) => (f >= F.ETTER ? ['BankID', 'Inntekt'] : ['BankID']),
     chip: (f) => (f >= F.VALGT ? ['Varslet', 'noytral'] : f >= F.BOOK2 ? ['Visning 18:00', 'noytral'] : null),
   },
   {
     n: 'Sara Haugen', bilde: '/v4/annonse/leietaker-sara.webp', fra: F.SPM,
-    d: (f) => (f >= F.VALGT ? 'Varslet · boligen er reservert' : 'Spurte om husdyr via FINN · besvart fra annonsen'),
+    d: (f) => (f >= F.VALGT ? 'Varslet på SMS · boligen er utleid' : 'Spurte om husdyr via FINN · besvart fra annonsen'),
     dok: () => [],
     chip: (f) => (f >= F.VALGT ? ['Varslet', 'noytral'] : ['Besvart', 'noytral']),
   },
@@ -161,104 +184,22 @@ const SLOTS = [
 const SMS = [
   { id: 'e1', til: 'Emma', fra: F.BOOK1, tilOg: F.VELG, tid: 'i dag 17:52', tekst: 'Hei Emma! Visningen i Nygårdsgaten 5 er bekreftet tirsdag kl. 17:30. Svar AVBESTILL om du ikke kan komme. – DigiHome' },
   { id: 'm1', til: 'Martin', fra: F.BOOK2, tilOg: F.VELG, tid: 'i dag 19:14', tekst: 'Hei Martin! Visningen i Nygårdsgaten 5 er bekreftet tirsdag kl. 18:00. Svar AVBESTILL om du ikke kan komme. – DigiHome' },
-  { id: 'e2', til: 'Emma', fra: F.VALGT, tilOg: F.SLUTT, tid: 'i dag 10:05', tekst: 'Gratulerer, Emma! Leiekontrakten for Nygårdsgaten 5 er klar. Signer med BankID i DigiHome. – DigiHome' },
+  { id: 'e2', til: 'Emma', fra: F.VALGT, tilOg: F.VALGT, tid: 'i dag 10:05', tekst: 'Gratulerer, Emma! Du er valgt som leietaker i Nygårdsgaten 5. Leiekontrakten kommer til deg for signering med BankID. – DigiHome' },
 ];
 
-const TONE = {
-  noytral: { background: 'rgba(21,19,15,0.06)', color: 'rgba(21,19,15,0.72)' },
-  lilla: { background: 'rgba(212,150,255,0.22)', color: T.ink },
-  gronn: { background: 'rgba(31,157,85,0.14)', color: '#166B3C' },
-};
 
-/* ── Små byggeklosser ── */
 
-function Hake({ size = 14 }) {
-  return (
-    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 14 14" fill="none">
-      <path d="M2.5 7.5l3 3 6-6.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
-/* FINN-logoen (ekte): mørkeblått blad + lyseblått felt med FINN, hvit kant. viewBox 184×64. */
-function Finn({ h = 16, className = '' }) {
-  const w = Math.round((h * 184) / 64);
-  return (
-    <svg role="img" aria-label="FINN" width={w} height={h} viewBox="0 0 184 64" className={`inline-block shrink-0 align-middle ${className}`}>
-      <path fill="#06bffc" d="M179.8 58V6c0-1-.8-1.9-1.9-1.9H66c-1 0-1.9.8-1.9 1.9v53.8H178c1 0 1.8-.8 1.8-1.8" />
-      <path fill="#0063fc" d="M22.5 4.2H6C5 4.2 4.2 5 4.2 6v52c0 1 .8 1.9 1.9 1.9H60V41.5C59.9 20.9 43.2 4.2 22.5 4.2" />
-      <path fill="#fff" d="M178 0H66c-3.3 0-6 2.7-6 6v17.4C53.2 9.6 38.9 0 22.5 0H6C2.7 0 0 2.7 0 6v52c0 3.3 2.7 6 6 6h172c3.3 0 6-2.7 6-6V6c0-3.3-2.7-6-6-6m1.8 58c0 1-.8 1.9-1.9 1.9H64.1V6c0-1 .8-1.9 1.9-1.9h112c1 0 1.9.8 1.9 1.9v52zM4.2 58V6C4.2 5 5 4.2 6 4.2h16.5c20.6 0 37.4 16.8 37.4 37.4v18.3H6c-1-.1-1.8-.9-1.8-1.9" />
-      <path fill="#fff" d="M110.1 21.1h-4.2c-.7 0-1.2.5-1.2 1.2v19.3c0 .7.5 1.2 1.2 1.2h4.2c.7 0 1.2-.5 1.2-1.2V22.3c0-.6-.6-1.2-1.2-1.2m-12 0H83c-.7 0-1.2.5-1.2 1.2v19.3c0 .7.5 1.2 1.2 1.2h4.2c.7 0 1.2-.5 1.2-1.2v-4h7.7c.7 0 1.2-.5 1.2-1.2v-3.2c0-.7-.5-1.2-1.2-1.2h-7.7v-4.9h9.7c.7 0 1.2-.5 1.2-1.2v-3.7c0-.5-.6-1.1-1.2-1.1m62.8 0h-4.2c-.7 0-1.2.5-1.2 1.2v9.5l-6.6-10c-.3-.4-.8-.7-1.3-.7h-3.2c-.7 0-1.2.5-1.2 1.2v19.3c0 .7.5 1.2 1.2 1.2h4.2c.7 0 1.2-.5 1.2-1.2v-9.4l6.5 9.8c.3.4.8.7 1.3.7h3.4c.7 0 1.2-.5 1.2-1.2V22.3c-.1-.6-.6-1.2-1.3-1.2m-25.4 0h-4.2c-.7 0-1.2.5-1.2 1.2v9.5l-6.6-10c-.3-.4-.8-.7-1.3-.7H119c-.7 0-1.2.5-1.2 1.2v19.3c0 .7.5 1.2 1.2 1.2h4.2c.7 0 1.2-.5 1.2-1.2v-9.4l6.5 9.8c.3.4.8.7 1.3.7h3.4c.7 0 1.2-.5 1.2-1.2V22.3c-.1-.6-.6-1.2-1.3-1.2" />
-    </svg>
-  );
-}
 
-function Portrett({ src, alt, size = 40, className = '' }) {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} width={size} height={size} className={`shrink-0 rounded-full object-cover ${className}`} style={{ width: size, height: size, boxShadow: '0 0 0 1px rgba(21,19,15,0.10)' }} draggable={false} />
-  );
-}
 
-function Inn({ vis, delay = 0, y = 10, children, className = '', ov, style }) {
-  return (
-    <div className={className} style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : `translateY(${y}px)`, transition: ov ? 'none' : `opacity 500ms ${EASE} ${vis ? delay : 0}ms, transform 500ms ${EASE} ${vis ? delay : 0}ms`, pointerEvents: vis ? 'auto' : 'none', ...style }} aria-hidden={!vis}>
-      {children}
-    </div>
-  );
-}
 
-function Vokse({ vis, children, className = '', ov, delay = 150 }) {
-  return (
-    <div className={`grid ${className}`} style={{ gridTemplateRows: vis ? '1fr' : '0fr', transition: ov ? 'none' : `grid-template-rows 600ms ${EASE}` }} aria-hidden={!vis}>
-      <div className="min-h-0 overflow-hidden">
-        <div style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(10px)', transition: ov ? 'none' : `opacity 500ms ${EASE} ${vis ? delay : 0}ms, transform 500ms ${EASE} ${vis ? delay : 0}ms` }}>{children}</div>
-      </div>
-    </div>
-  );
-}
 
-function Chip({ tekst, tone = 'noytral', liten = false, className = '', testid }) {
-  const hake = tone === 'gronn';
-  return (
-    <span key={tekst} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 font-medium animate-in fade-in-0 duration-300 ${liten ? 'text-[11.5px]' : 'text-[12px]'} ${className}`} style={{ ...TONE[tone], height: liten ? 24 : 28 }} data-testid={testid}>
-      {hake ? <Hake size={12} /> : <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone === 'lilla' ? T.lilla : 'rgba(21,19,15,0.35)' }} />}
-      {tekst}
-    </span>
-  );
-}
 
-function Lapp({ vis, children, className = '', delay = 0, testid, ov }) {
-  return (
-    <span className={`absolute z-[4] inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[11.5px] font-medium ${className}`} style={{ background: 'rgba(251,250,248,0.92)', color: T.ink, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(4px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? delay : 0}ms, transform 400ms ${EASE} ${vis ? delay : 0}ms` }} aria-hidden={!vis} data-testid={testid}>
-      {children}
-    </span>
-  );
-}
+/* Knapp som trykkes av seg selv. `hover` = pekeren hviler på den. `knappRef` lar pekeren finne den. */
 
-function Dok({ liste }) {
-  return (
-    <span className="inline-flex flex-wrap items-center gap-1.5">
-      {liste.map((d) => (
-        <span key={d} className="inline-flex h-5 items-center gap-1 rounded-full px-1.5 text-[10.5px] font-medium animate-in fade-in-0 duration-300" style={{ background: 'rgba(31,157,85,0.12)', color: '#166B3C' }}><Hake size={9} />{d}</span>
-      ))}
-    </span>
-  );
-}
+/* Pekeren — glir inn fra nede til høyre, hviler på knappen, trykker (krymper mot spissen + tynn ring), tones bort. */
 
-/* Knapp som trykkes av seg selv */
-function AutoKnapp({ presser, trykket, children, etter, testid, stor = false }) {
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap font-medium ${stor ? 'h-12 rounded-[12px] px-6 text-[15px]' : 'h-10 rounded-[10px] px-4 text-[14px]'}`}
-      style={{ background: trykket ? 'rgba(212,150,255,0.55)' : presser ? T.lillaHover : T.lilla, color: T.ink, transform: presser ? 'scale(0.95)' : 'none', transition: `transform 200ms ${EASE}, background-color 200ms ${EASE}, box-shadow 300ms ${EASE}`, boxShadow: stor && !presser && !trykket ? '0 18px 40px -22px rgba(160,90,220,0.55)' : 'none' }}
-      data-testid={testid}
-      data-trykket={trykket ? '1' : '0'}
-    >
-      {trykket ? <><Hake />{etter}</> : children}
-    </span>
-  );
-}
+/* Peker-logikk: måler målknappen relativt til rammen, kommer inn fra en forskjøvet posisjon og glir til målet. */
 
 function G({ children }) {
   return <span style={{ textDecoration: 'underline dotted', textDecorationColor: 'rgba(160,90,220,0.7)', textUnderlineOffset: 4, textDecorationThickness: 1.5 }}>{children}</span>;
@@ -268,41 +209,27 @@ const Brodtekst = () => (
 );
 
 /* Sekvensielt tekstbytte: det gamle går ut (240 ms), så kommer det nye inn — aldri to tekster samtidig. */
-function Tekstbytte({ id, ov, children, className = '' }) {
-  const [vist, setVist] = useState(id);
-  const [ut, setUt] = useState(false);
-  useEffect(() => {
-    if (id === vist) return undefined;
-    if (ov) { setVist(id); return undefined; }
-    setUt(true);
-    const t = window.setTimeout(() => { setVist(id); setUt(false); }, 240);
-    return () => window.clearTimeout(t);
-  }, [id, vist, ov]);
-  return (
-    <div className={className} style={{ opacity: ut ? 0 : 1, transform: ut ? 'translateY(-6px)' : 'none', transition: ov ? 'none' : ut ? `opacity 240ms ${EASE}, transform 240ms ${EASE}` : `opacity 560ms ${EASE} 40ms, transform 560ms ${EASE} 40ms` }} data-testid="v4-tekstbytte" data-vist={vist}>
-      {children(vist)}
-    </div>
-  );
-}
 
-/* ── Åpningen: boligen fyller rammen, én setning, én knapp ── */
-function StartTekst({ fase, kompakt = false }) {
+/* ── Åpningen: bygården fyller rammen i kveldssol. Sentrert, nederst: adresse, én setning, én knapp.
+   Pekeren glir inn og trykker. Ved trykket krymper bygården til «Fasade»-bildet i mosaikken. ── */
+function StartTekst({ fase, kompakt = false, knappRef }) {
+  const hover = fase === F.HOVER || fase === F.TRYKK_START;
   return (
-    <div data-testid="v4-start" style={{ color: OFF }}>
-      <p className={kompakt ? 'text-[12.5px]' : 'text-[13.5px]'} style={{ color: 'rgba(244,241,234,0.72)' }}>Nygårdsgaten 5 · Leilighet 2</p>
-      <h3 className={kompakt ? 'mt-1.5 text-[34px]' : 'mt-2 text-[clamp(36px,3.4vw,54px)]'} style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.0, color: OFF }}>Ledig fra 1. november.</h3>
-      <div className={`flex items-center gap-4 ${kompakt ? 'mt-5' : 'mt-7'}`}>
-        <AutoKnapp presser={fase === F.TRYKK_START} stor testid="v4-lag-annonse">Lag annonse</AutoKnapp>
-        <span className="text-[12.5px]" style={{ color: 'rgba(244,241,234,0.62)' }}>Trykk 1 av 3</span>
+    <div className={kompakt ? 'text-left' : 'text-center'} data-testid="v4-start" style={{ color: OFF }}>
+      <p className={kompakt ? 'text-[12.5px]' : 'text-[14px]'} style={{ color: 'rgba(244,241,234,0.72)' }}>{ADRESSE}</p>
+      <h3 className={kompakt ? 'mt-1.5 text-[34px]' : 'mt-2.5 text-[clamp(40px,3.8vw,62px)]'} style={{ ...display, letterSpacing: '-0.03em', lineHeight: 0.98, color: OFF }}>Ledig fra 1. november.</h3>
+      <div className={`flex items-center ${kompakt ? 'mt-5' : 'mt-8 justify-center'}`}>
+        <AutoKnapp presser={fase === F.TRYKK_START} hover={!kompakt && hover} stor testid="v4-lag-annonse" knappRef={knappRef}>Lag annonse</AutoKnapp>
       </div>
     </div>
   );
 }
-const START_GRADIENT = 'linear-gradient(180deg, rgba(21,19,15,0.10) 0%, rgba(21,19,15,0.02) 38%, rgba(21,19,15,0.30) 66%, rgba(21,19,15,0.70) 100%)';
+/* Varm, mørk tone nederst så teksten leser — nesten ingenting øverst, så fasaden får lyset */
+const START_GRADIENT = 'linear-gradient(180deg, rgba(21,19,15,0.10) 0%, rgba(21,19,15,0.02) 30%, rgba(21,19,15,0.30) 58%, rgba(21,19,15,0.78) 100%)';
 
 /* ── Bildeflaten — bildene, nålene og før/etter-skillet ── */
 function navnFor(fase) {
-  if (fase === F.LES1) return 'Stue';
+  if (fase >= F.BILDER && fase <= F.LES1) return 'Stue';
   if (fase === F.LES2) return 'Kjøkken';
   if (fase >= F.LES3 && fase <= F.STYLET) return 'Soverom';
   return null;
@@ -313,17 +240,67 @@ function viserBilde(fase) {
   return 'stue';
 }
 
-function Pinne({ x, y, t, vis, delay = 0, ov }) {
+function Pinne({ x, y, t, vis, delay = 0, ov, skala = 1, kamera }) {
   const speil = x > 60;
   return (
-    <span
-      className="pointer-events-none absolute z-[2] flex items-center gap-2"
-      style={{ left: `${x}%`, top: `${y}%`, flexDirection: speil ? 'row-reverse' : 'row', transform: `translate(${speil ? 'calc(-100% + 6px)' : '-6px'}, -50%) scale(${vis ? 1 : 0.96})`, opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? delay : 0}ms, transform 420ms ${EASE} ${vis ? delay : 0}ms` }}
-      aria-hidden={!vis}
-    >
-      <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: T.ink, boxShadow: '0 0 0 2.5px rgba(251,250,248,0.96), 0 2px 8px rgba(21,19,15,0.3)' }} />
-      <span className="inline-flex h-6 items-center whitespace-nowrap rounded-full px-2.5 text-[11.5px] font-medium" style={{ background: 'rgba(251,250,248,0.94)', color: T.ink, boxShadow: '0 1px 6px rgba(21,19,15,0.12)' }}>{t}</span>
+    <span className="pointer-events-none absolute z-[2]" style={{ left: `${x}%`, top: `${y}%`, transform: `scale(${1 / skala})`, transformOrigin: '0 0', transition: kamera || 'none' }}>
+      <span
+        className="flex items-center gap-2"
+        style={{ flexDirection: speil ? 'row-reverse' : 'row', transform: `translate(${speil ? 'calc(-100% + 6px)' : '-6px'}, -50%) scale(${vis ? 1 : 0.96})`, opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? delay : 0}ms, transform 420ms ${EASE} ${vis ? delay : 0}ms` }}
+        aria-hidden={!vis}
+        data-testid={`v4-pinne-${t}`}
+      >
+        <span className="relative h-3 w-3 shrink-0 rounded-full" style={{ background: T.ink, boxShadow: '0 0 0 2.5px rgba(251,250,248,0.96), 0 2px 8px rgba(21,19,15,0.3)' }}>
+          {vis && !ov && <span aria-hidden="true" className="absolute inset-0 rounded-full" style={{ boxShadow: '0 0 0 1.5px rgba(251,250,248,0.9)', animation: `v4-ping 900ms cubic-bezier(0.2, 0.6, 0.2, 1) ${delay + 120}ms forwards`, opacity: 0 }} />}
+        </span>
+        <span className="whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-medium" style={{ background: 'rgba(251,250,248,0.96)', color: T.ink, boxShadow: '0 4px 14px -6px rgba(21,19,15,0.35)' }}>{t}</span>
+      </span>
     </span>
+  );
+}
+
+/* Utvalget — en rolig ramme rundt sengen: dette, og bare dette, skal endres. */
+function Utvalg({ fase, ov }) {
+  const vis = fase === F.STYLE;
+  const inn = fase >= F.STYLE;
+  return (
+    <div className="pointer-events-none absolute z-[3]" style={{ left: `${UTVALG.x}%`, top: `${UTVALG.y}%`, width: `${UTVALG.w}%`, height: `${UTVALG.h}%`, opacity: vis ? 1 : 0, transform: vis ? 'scale(1)' : inn ? 'scale(1.01)' : 'scale(1.03)', transition: ov ? 'none' : vis ? `opacity 600ms ${EASE} 500ms, transform 900ms ${EASE} 500ms` : `opacity 450ms ${EASE}, transform 450ms ${EASE}` }} aria-hidden={!vis} data-testid="v4-utvalg">
+      <div className="absolute inset-0 rounded-[10px]" style={{ boxShadow: 'inset 0 0 0 1.5px rgba(251,250,248,0.95), 0 0 0 1px rgba(21,19,15,0.18), 0 0 0 9999px rgba(21,19,15,0.18)' }} />
+      <span className="absolute left-2.5 top-2.5 inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-medium" style={{ background: 'rgba(251,250,248,0.96)', color: T.ink }}>
+        <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Seng
+      </span>
+    </div>
+  );
+}
+
+/* Instruksen — et stille kort øverst i bildet. Setningene kommer én og én, en tynn strek viser at arbeidet går. */
+function Prompt({ fase, ov, liten = false }) {
+  const vis = fase === F.STYLE;
+  const ferdig = fase >= F.SKILLE && fase <= F.STYLET;
+  return (
+    <>
+      <div className={`pointer-events-none absolute inset-x-0 top-0 z-[5] flex justify-center ${liten ? 'px-2.5 pt-10' : 'px-4 pt-12'}`} style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-10px)', transition: ov ? 'none' : vis ? `opacity 550ms ${EASE} 900ms, transform 650ms ${EASE} 900ms` : `opacity 300ms ${EASE}, transform 300ms ${EASE}` }} aria-hidden={!vis} data-testid="v4-prompt">
+        <div className={`w-full rounded-[14px] ${liten ? 'max-w-full px-3.5 py-3' : 'max-w-[440px] px-4 py-3.5'}`} style={{ background: 'rgba(251,250,248,0.96)', color: T.ink, boxShadow: '0 0 0 1px rgba(21,19,15,0.08), 0 24px 60px -24px rgba(21,19,15,0.45)' }}>
+          <div className="flex items-center justify-between gap-3 text-[11.5px]">
+            <span className="inline-flex items-center gap-1.5 font-medium" style={{ color: DIM }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Instruks til stylingen</span>
+            <span className="inline-flex items-center gap-2 font-medium" style={{ color: DIM }}>
+              Arbeider
+              <span className="relative block h-[2px] w-9 overflow-hidden rounded-full" style={{ background: 'rgba(21,19,15,0.10)' }}>
+                <span className="absolute inset-y-0 left-0 rounded-full" style={{ background: T.ink, width: vis ? '100%' : '0%', transition: ov || !vis ? 'none' : `width ${AUTO[F.STYLE] - 1300}ms linear 1200ms` }} />
+              </span>
+            </span>
+          </div>
+          <p className={`${liten ? 'mt-2 text-[13px] leading-[1.45]' : 'mt-2.5 text-[14.5px] leading-[1.5]'}`} style={{ color: 'rgba(21,19,15,0.86)' }}>
+            {PROMPT.map((setning, i) => (
+              <span key={setning} style={{ opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity 520ms ${EASE} ${vis ? 1150 + i * 560 : 0}ms` }}>{setning}{i < PROMPT.length - 1 ? ' ' : ''}</span>
+            ))}
+          </p>
+        </div>
+      </div>
+      <span className="pointer-events-none absolute right-2.5 top-2.5 z-[5] inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full pl-2 pr-2.5 text-[11.5px] font-medium" style={{ background: 'rgba(251,250,248,0.96)', color: T.ink, opacity: ferdig ? 1 : 0, transform: ferdig ? 'none' : 'translateY(-4px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${ferdig ? 350 : 0}ms, transform 400ms ${EASE} ${ferdig ? 350 : 0}ms` }} aria-hidden={!ferdig} data-testid="v4-prompt-ferdig">
+        <span style={{ color: '#166B3C' }}><Hake size={11} /></span>Sengen er redd opp
+      </span>
+    </>
   );
 }
 
@@ -337,10 +314,11 @@ function Bildeflate({ fase, ov, onHold, liten = false, pos: objPos = '50% 50%', 
   const posAuto = fase < F.SKILLE ? 100 : fase === F.SKILLE ? HVIL : 0;
   const pos = manuell != null ? manuell : posAuto;
   const dur = ov || manuell != null ? 0 : fase === F.SKILLE ? 1800 : 1500;
-  const linje = fase === F.SKILLE || fase === F.STYLET;
+  const linje = fase === F.SKILLE;                 // synlig mens den hviler; glir ut til venstre og tones bort når stylingen er fullført
+  const linjeOvergang = fase === F.STYLET ? `left ${dur}ms ${MORF}, opacity 500ms ${EASE} 1250ms` : `left ${dur}ms ${MORF}, opacity 400ms ${EASE}`;
   const kanDra = fase === F.SKILLE;
   const navn = navnFor(fase);
-  const bildeStil = { objectPosition: objPos, transition: ov ? 'none' : `opacity 550ms ${EASE}, object-position 950ms ${EASE}` };
+  const bildeStil = { objectPosition: objPos, transition: ov ? 'none' : `opacity 550ms ${EASE}, object-position 1100ms ${MORF}` };
 
   const oppdater = (e) => {
     const r = boks.current?.getBoundingClientRect();
@@ -366,21 +344,34 @@ function Bildeflate({ fase, ov, onHold, liten = false, pos: objPos = '50% 50%', 
 
   return (
     <div ref={boks} className="absolute inset-0 select-none" data-testid={testid} data-pos={Math.round(pos)}>
-      {lag.map((b) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img key={b.id} src={b.src} alt={b.alt} className="absolute inset-0 h-full w-full object-cover" style={{ ...bildeStil, opacity: naa === b.id ? 1 : 0 }} draggable={false} data-testid={`v4-bilde-${b.id}`} />
-      ))}
-      {/* Stylet — klippes fra venstre; skillet er kanten */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={liten ? KILDE.soverom.styletLiten : KILDE.soverom.stylet} alt="Soverommet, stylet med KI" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: objPos, clipPath: `inset(0 0 0 ${pos}%)`, transition: ov ? 'none' : `${dur ? `clip-path ${dur}ms ${EASE}, ` : ''}object-position 950ms ${EASE}` }} draggable={false} data-testid="v4-bilde-stylet" />
+      {/* Hvert bilde har sitt eget kamera: én rolig drift inn mens det leses. Nålene ligger i bildet og følger med
+          (motskalert, så de holder størrelsen). Soverommets kamera går tilbake til ro før stylingen. */}
+      {lag.map((b) => {
+        const k = ov ? { transform: 'none', transition: 'none', skala: 1 } : kameraFor(b.id, fase);
+        const aktiv = naa === b.id;
+        return (
+          <div key={b.id} className="absolute inset-0" style={{ opacity: aktiv ? 1 : 0, transition: ov ? 'none' : `opacity 600ms ${EASE}`, pointerEvents: aktiv ? 'auto' : 'none' }} aria-hidden={!aktiv} data-testid={`v4-lag-${b.id}`}>
+            <div className="absolute inset-0" style={{ transform: k.transform, transformOrigin: '50% 50%', transition: k.transition, willChange: 'transform' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={b.src} alt={b.alt} className="absolute inset-0 h-full w-full object-cover" style={bildeStil} draggable={false} data-testid={`v4-bilde-${b.id}`} />
+              {b.id === 'soverom' && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={liten ? KILDE.soverom.styletLiten : KILDE.soverom.stylet} alt="Soverommet, stylet med KI" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: objPos, clipPath: `inset(0 0 0 ${pos}%)`, transition: ov ? 'none' : `${dur ? `clip-path ${dur}ms ${MORF}, ` : ''}object-position 1100ms ${MORF}` }} draggable={false} data-testid="v4-bilde-stylet" />
+              )}
+              {PINNER[b.id].map((p, i) => (
+                <Pinne key={p.id} x={p.x} y={p.y} t={p.t} vis={fase === KILDE[b.id].les} delay={520 + i * PIN_DELAY} ov={ov} skala={k.skala} kamera={k.transition} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
 
-      {/* Nåler */}
-      {Object.entries(PINNER).map(([id, liste]) => liste.map((p, i) => (
-        <Pinne key={`${id}-${i}`} {...p} vis={fase === KILDE[id].les} delay={i * 240} ov={ov} />
-      )))}
+      {/* Styling: utvalget rundt sengen og instruksen — så går skillet */}
+      <Utvalg fase={fase} ov={ov} />
+      <Prompt fase={fase} ov={ov} liten={liten} />
 
       {/* Skillelinjen */}
-      <div className="absolute inset-y-0 z-[3]" style={{ left: `${pos}%`, width: 0, opacity: linje ? 1 : 0, transition: ov ? 'none' : `left ${dur}ms ${EASE}, opacity ${fase === F.STYLET ? `700ms ${EASE} 700ms` : `400ms ${EASE}`}` }} aria-hidden={!linje} data-testid="v4-skille">
+      <div className="absolute inset-y-0 z-[3]" style={{ left: `${pos}%`, width: 0, opacity: linje ? 1 : 0, transition: ov ? 'none' : linjeOvergang }} aria-hidden={!linje} data-testid="v4-skille">
         <span className="absolute inset-y-0 left-[-1px] w-[2px]" style={{ background: 'rgba(251,250,248,0.96)', boxShadow: '0 0 0 0.5px rgba(21,19,15,0.10), 0 0 18px rgba(21,19,15,0.28)' }} />
         <button
           type="button"
@@ -403,11 +394,11 @@ function Bildeflate({ fase, ov, onHold, liten = false, pos: objPos = '50% 50%', 
       </div>
 
       {/* Lapper */}
-      <Lapp vis={!!navn} className="left-2.5 top-2.5" ov={ov}><span key={navn} className="animate-in fade-in-0 duration-300">{navn}</span></Lapp>
+      <Lapp vis={!!navn} delay={fase === F.BILDER ? 1000 : 0} className="left-2.5 top-2.5" ov={ov}><span key={navn} className="animate-in fade-in-0 duration-300">{navn}</span></Lapp>
       <Lapp vis={fase === F.SKILLE && pos > 14} className="bottom-2.5 left-2.5" ov={ov} testid="v4-original-merke">Original</Lapp>
       <Lapp vis={fase >= F.SKILLE && fase <= F.PUBLISERT && pos < 86} className="bottom-2.5 right-2.5" delay={500} ov={ov} testid="v4-ki-merke">
         <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />
-        <span key={fase >= F.STYLET ? 'r' : 's'} className="animate-in fade-in-0 duration-300">{fase >= F.STYLET ? 'Redigert · stylet med KI' : 'Stylet med KI'}</span>
+        <span key={fase >= F.STYLET ? 'r' : 's'} className="animate-in fade-in-0 duration-300">{fase >= F.STYLET ? 'Redigert med KI' : 'Redigert'}</span>
       </Lapp>
     </div>
   );
@@ -584,103 +575,36 @@ function VisningKort({ fase, ov }) {
   );
 }
 
-function SmsBoble({ s, fase, ov, kompakt = false }) {
-  const vis = fase >= s.fra && fase <= s.tilOg;
-  return (
-    <Vokse vis={vis} ov={ov} delay={fase === s.fra ? 500 : 150}>
-      <div className={`${kompakt ? 'mt-3' : 'mt-3'} rounded-[14px] px-3.5 py-3`} style={{ background: 'rgba(21,19,15,0.06)' }} data-testid={`v4-sms-${s.id}`}>
-        <div className="flex items-center justify-between text-[11.5px]" style={{ color: DIM }}>
-          <span className="inline-flex items-center gap-1.5">
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 2.5h8a1 1 0 011 1v4a1 1 0 01-1 1H5L2.5 10.5V8.5H2a1 1 0 01-1-1v-4a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" /></svg>
-            SMS til {s.til}
-          </span>
-          <span>{s.tid}</span>
-        </div>
-        <p className="mt-1.5 text-[13px] leading-[1.45] text-[#15130F]/82">{s.tekst}</p>
-      </div>
-    </Vokse>
-  );
+function SmsBoble({ s, fase, ov }) {
+  return <Sms vis={fase >= s.fra && fase <= s.tilOg} til={s.til} tid={s.tid} tekst={s.tekst} ov={ov} delay={fase === s.fra ? 500 : 150} testid={`v4-sms-${s.id}`} />;
 }
 
-/* Kontrakten — sluttbildet. Utfylt fra annonsen; går til BankID-signering. */
-function KontraktKort({ kompakt = false }) {
-  const dimt = { color: 'rgba(244,241,234,0.62)' };
-  return (
-    <div className={`rounded-[14px] ${kompakt ? 'p-4' : 'p-4'}`} style={{ background: T.charcoal, color: T.offwhite, boxShadow: '0 24px 60px -30px rgba(0,0,0,0.6)' }} data-testid="v4-kontrakt">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]" style={dimt}>
-        <span className="inline-flex items-center gap-1.5 font-medium" style={{ color: '#7DDBA1' }}><Hake />Kontrakt sendt</span>
-        <span>Leilighet 2</span>
-      </div>
-      <div className="mt-3 flex items-center gap-3">
-        <Portrett src={HVEM.Emma.bilde} alt="Emma Sørensen" size={36} />
-        <span><span className="block text-[15px] font-medium">Emma Sørensen</span><span className="block text-[12.5px]" style={dimt}>Signerer med BankID</span></span>
-      </div>
-      <div className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-3">
-        {[['Leie', `${tall(12500)} kr /mnd`], ['Innflytting', '1. november'], ['Varighet', '3 år'], ['Depositum', '3 mnd']].map(([k, v]) => (
-          <div key={k}><p className="text-[12px]" style={dimt}>{k}</p><p className="mt-0.5 text-[14px] font-medium tracking-[-0.005em]">{v}</p></div>
-        ))}
-      </div>
-    </div>
-  );
-}
+/* Emma-kortet — sluttbildet og overleveringsobjektet til neste kapittel (Kontrakt åpner med nøyaktig dette). */
 
-/* Hele akt 6–7 i scenen: liste til venstre, visning/kontrakt + SMS til høyre (stablet når smalt) */
+/* Broen til neste kapittel — stille linje som fylles mens sluttbildet står, så glir tab-markøren videre. */
+
+/* Hele akt 6–7 i scenen: liste til venstre, visning + SMS til høyre (stablet når smalt). Ved «Valgt» folder
+   visningskortet seg sammen og SMS-en til Emma vokser inn. */
 function Leietakere({ fase, ov, smal = false, kompakt = false }) {
-  const slutt = fase >= F.SLUTT;
   return (
     <div className={`flex ${smal ? 'flex-col gap-6' : 'flex-row gap-8'}`} data-testid="v4-leietakere">
-      <div className="min-w-0 flex-1"><Liste fase={fase} ov={ov} kompakt={kompakt} dempet={slutt} /></div>
+      <div className="min-w-0 flex-1"><Liste fase={fase} ov={ov} kompakt={kompakt} /></div>
       <div className={smal ? 'w-full' : 'w-[300px] shrink-0'}>
-        <div className="grid">
-          <div className="col-start-1 row-start-1" style={{ opacity: fase >= F.VALGT ? 0 : 1, transition: ov ? 'none' : `opacity 300ms ${EASE}`, pointerEvents: fase >= F.VALGT ? 'none' : 'auto' }} aria-hidden={fase >= F.VALGT}>
-            <VisningKort fase={fase} ov={ov} />
-          </div>
-          <div className="col-start-1 row-start-1" style={{ opacity: fase >= F.VALGT ? 1 : 0, transform: fase >= F.VALGT ? 'none' : 'translateY(10px)', transition: ov ? 'none' : `opacity 500ms ${EASE} 250ms, transform 500ms ${EASE} 250ms`, pointerEvents: fase >= F.VALGT ? 'auto' : 'none' }} aria-hidden={fase < F.VALGT}>
-            <KontraktKort kompakt={kompakt} />
-          </div>
-        </div>
+        <Vokse vis={fase < F.VALGT} ov={ov} delay={0}><VisningKort fase={fase} ov={ov} /></Vokse>
         {SMS.map((s) => <SmsBoble key={s.id} s={s} fase={fase} ov={ov} kompakt={kompakt} />)}
       </div>
     </div>
   );
 }
 
-/* ── Fremdrift — stille streker ── */
-function Fyll({ aktiv, gjort, dur }) {
-  const [full, setFull] = useState(false);
-  useEffect(() => {
-    if (!aktiv) { setFull(false); return undefined; }
-    let id2 = 0;
-    const id = window.requestAnimationFrame(() => { id2 = window.requestAnimationFrame(() => setFull(true)); });
-    return () => { window.cancelAnimationFrame(id); window.cancelAnimationFrame(id2); };
-  }, [aktiv]);
-  const bredde = gjort ? '100%' : aktiv && full ? '100%' : '0%';
-  return <span className="absolute inset-y-0 left-0 rounded-full" style={{ background: aktiv ? T.lilla : 'rgba(21,19,15,0.35)', width: bredde, transition: aktiv && full ? `width ${dur}ms linear` : 'none' }} />;
-}
-
-function Akter({ fase, onVelg }) {
-  const aktiv = aktIndeks(fase);
-  return (
-    <ol className="flex items-center gap-2" aria-label="Akter" data-testid="v4-akter">
-      {AKTER.map((a, i) => (
-        <li key={a.fra}>
-          <button type="button" onClick={() => onVelg(i)} aria-label={a.tittel} aria-current={i === aktiv ? 'step' : undefined} className="block py-3 focus-visible:outline-none" data-testid={`v4-akt-${i}`}>
-            <span className="relative block h-[2px] w-7 overflow-hidden rounded-full" style={{ background: 'rgba(21,19,15,0.12)' }}>
-              <Fyll aktiv={i === aktiv} gjort={i < aktiv} dur={varighet(i)} />
-            </span>
-          </button>
-        </li>
-      ))}
-    </ol>
-  );
-}
 
 /* ── Desktop: layout ── */
 function layout(W) {
   const TW = Math.round(Math.min(380, Math.max(300, W * 0.3)));
   const vx = P + TW + 48; const vy = P; const VW = W - vx - P; const VH = H - 2 * P;
   const hel = { x: 0, y: 0, w: W, h: H };
-  const tekst = { x: P, y: P, w: TW };
+  /* Tekstspalten starter et stykke ned — leser som sentrert mot scenen, og står stille mellom aktene */
+  const tekst = { x: P, y: P + 96, w: TW };
   const omr = { x: vx, y: vy, w: VW, h: VH };
   /* Mosaikk: ett stort + fire små */
   const gap = 10;
@@ -691,36 +615,114 @@ function layout(W) {
     stor: { x: vx, y: my + Math.round((mh - bh) / 2), w: bw, h: bh },
     smaa: [0, 1, 2, 3].map((i) => ({ x: vx + bw + gap + (i % 2) * (cw + gap), y: my + Math.round((mh - (ch * 2 + gap)) / 2) + Math.floor(i / 2) * (ch + gap), w: cw, h: ch })),
   };
+  /* Bunken: bildene lander løst midt i scenen før de sorterer seg ut i mosaikken */
+  const sbw = Math.round(Math.min(VW * 0.5, VH * 0.95)); const sbh = Math.round(sbw / 1.5);
+  const stabel = { x: vx + Math.round((VW - sbw) / 2), y: vy + Math.round((VH - sbh) / 2) + 8, w: sbw, h: sbh };
   /* Stort: fyller scenen i 3:2 */
   const gw = Math.min(VW, Math.round(VH * 1.5)); const gh = Math.round(gw / 1.5);
   const stor = { x: vx + Math.round((VW - gw) / 2), y: vy + Math.round((VH - gh) / 2), w: gw, h: gh };
   /* Utkast: banner øverst i kortet */
-  const banner = { x: vx, y: vy, w: VW, h: Math.round(VH * 0.42) };
+  const banner = { x: vx, y: vy, w: VW, h: Math.round(VH * 0.47) };
   /* FINN: topplinje, bildet til venstre, teksten til høyre, beskrivelse under */
   const topp = 48; const ip = 20;
   const fw = Math.round((VW - 2 * ip) * 0.52); const fh = Math.round(fw / 1.5);
   const finnBilde = { x: vx + ip, y: vy + topp + 24, w: fw, h: fh };
   const finnTekst = { x: vx + ip + fw + 24, y: finnBilde.y, w: VW - 2 * ip - fw - 24, h: fh };
   const finnBeskrivelse = { x: vx + ip, y: finnBilde.y + fh + 26, w: VW - 2 * ip };
-  return { hel, tekst, omr, mosaikk, stor, banner, finnBilde, finnTekst, finnBeskrivelse, topp, smal: VW < 660 };
+  return { hel, tekst, omr, mosaikk, stabel, stor, banner, finnBilde, finnTekst, finnBeskrivelse, topp, smal: VW < 660 };
 }
 
 function fotoRekt(L, f) {
-  if (f <= F.TRYKK_START) return L.hel;
+  if (f <= F.STABEL) return L.stabel;
   if (f <= F.BILDER) return L.mosaikk.stor;
   if (f <= F.STYLET) return L.stor;
   if (f <= F.TRYKK) return L.banner;
   return L.finnBilde;
 }
 
-/* Bildet — ett element som reiser gjennom aktene. Åpner som hel flate med stille zoom. */
+/* Bunken: hvert bilde har sin egen skjeve landing (grader og små forskyvninger). Rekkefølgen er landingsrekkefølgen. */
+const BUNKE = {
+  fasade: { rot: -5, dx: -12, dy: 10, delay: 0 },
+  kjokken: { rot: 4, dx: 14, dy: -8, delay: 480 },
+  soverom: { rot: -2.5, dx: -6, dy: -12, delay: 660 },
+  spisestue: { rot: 6, dx: 16, dy: 12, delay: 840 },
+  stue: { rot: 1.5, dx: 0, dy: 0, delay: 1020 },
+};
+const LANDING = 'cubic-bezier(0.22, 1.08, 0.36, 1)';   // litt overshoot — kortet «setter seg»
+const SKYGGE_LOFT = '0 34px 70px -34px rgba(21,19,15,0.5), 0 0 0 1px rgba(21,19,15,0.06)';
+const SKYGGE_FLAT = `0 0 0 1px ${HAIR}`;
+
+/* Felles: stilen for et bilde som lander i bunken (STABEL) og glir ut i mosaikken (BILDER). */
+function bunkeStil({ id, fase, L, ov, slot, z }) {
+  const b = BUNKE[id];
+  const iBunke = fase === F.STABEL;
+  const iMosaikk = fase === F.BILDER;
+  const foer = fase < F.STABEL;
+  const r = iBunke || foer ? { x: L.stabel.x + b.dx, y: L.stabel.y + b.dy, w: L.stabel.w, h: L.stabel.h } : slot;
+  const m = (p, ms, d = 0) => `${p} ${ms}ms ${MORF} ${d}ms`;
+  const t = (p, ms, d = 0) => `${p} ${ms}ms ${EASE} ${d}ms`;
+  let overgang = 'none';
+  if (!ov) {
+    if (iBunke) overgang = [t('opacity', 420, b.delay), `transform 760ms ${LANDING} ${b.delay}ms`, `top 760ms ${LANDING} ${b.delay}ms`, t('box-shadow', 500, b.delay + 300)].join(', ');
+    else if (iMosaikk) overgang = [m('left', 950, z * 45), m('top', 950, z * 45), m('width', 950, z * 45), m('height', 950, z * 45), m('transform', 950, z * 45), t('box-shadow', 700, 500), t('border-radius', 600)].join(', ');
+    else overgang = [t('opacity', 480, z * 40), t('transform', 600, z * 40)].join(', ');
+  }
+  const etter = fase > F.BILDER;
+  return {
+    left: r.x, top: foer ? r.y + 96 : r.y, width: r.w, height: r.h,
+    opacity: iBunke || iMosaikk ? 1 : 0,
+    transform: iBunke ? `rotate(${b.rot}deg) scale(1)` : foer ? `rotate(${b.rot - 7}deg) scale(0.9)` : etter ? 'rotate(0deg) scale(0.94)' : 'rotate(0deg) scale(1)',
+    boxShadow: iBunke ? SKYGGE_LOFT : SKYGGE_FLAT,
+    borderRadius: iBunke ? 12 : 10,
+    background: 'rgba(21,19,15,0.05)',
+    transition: overgang,
+    zIndex: z,
+  };
+}
+
+/* Romnavn på flisen — kommer etter at bunken har sortert seg */
+function Romlapp({ navn, vis, delay, ov }) {
+  return <Lapp vis={vis} delay={delay} ov={ov} className="left-2.5 top-2.5">{navn}</Lapp>;
+}
+
+/* Bildet — ett element som reiser gjennom aktene: lander sist i bunken (øverst), blir det store i mosaikken,
+   så det store bildet som leses og styles, så banner i utkastet, så bildet på FINN-siden. */
 function Foto({ fase, L, ov, onHold }) {
   const r = fotoRekt(L, fase);
-  const start = fase <= F.TRYKK_START;
-  const inne = fase <= F.PUBLISERT;
+  const inne = fase >= F.STABEL && fase <= F.PUBLISERT;
   const stor = fase >= F.LES1 && fase <= F.STYLET;
   const banner = fase >= F.TITTEL && fase <= F.TRYKK;
   const finn = fase === F.PUBLISERT;
+  const t = (p, ms, d = 0) => `${p} ${ms}ms ${EASE} ${d}ms`;
+  const m = (p, ms, d = 0) => `${p} ${ms}ms ${MORF} ${d}ms`;
+  if (fase <= F.BILDER) {
+    const st = bunkeStil({ id: 'stue', fase, L, ov, slot: L.mosaikk.stor, z: 6 });
+    return (
+      <div className="absolute overflow-hidden" style={st} aria-hidden={!inne} data-testid="v4-foto" data-bilde="stue">
+        <Bildeflate fase={fase} ov={ov} onHold={onHold} pos="50% 50%" />
+      </div>
+    );
+  }
+  const overgang = ov ? 'none' : [m('left', 1100), m('top', 1100), m('width', 1100), m('height', 1100), t('opacity', 500), t('box-shadow', 700), t('border-radius', 800)].join(', ');
+  return (
+    <div
+      className="absolute overflow-hidden"
+      style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: banner ? '14px 14px 0 0' : finn ? 10 : 14, opacity: inne ? 1 : 0, background: 'rgba(21,19,15,0.05)', boxShadow: stor ? '0 40px 90px -40px rgba(21,19,15,0.45)' : banner || finn ? 'none' : SKYGGE_FLAT, transition: overgang, zIndex: 2, transform: 'rotate(0deg)' }}
+      aria-hidden={!inne}
+      data-testid="v4-foto"
+      data-bilde={fase >= F.STYLET ? 'stylet' : viserBilde(fase)}
+    >
+      <Bildeflate fase={fase} ov={ov} onHold={onHold} pos={banner ? '50% 55%' : '50% 50%'} />
+    </div>
+  );
+}
+
+/* Bygården — fyller rammen i åpningen (stille zoom), krymper ned i bunken som det første bildet, glir så til
+   «Fasade»-plassen i mosaikken og følger de andre små ut. */
+function Fasade({ fase, L, ov }) {
+  const start = fase <= F.TRYKK_START;
+  const inne = fase <= F.BILDER;
+  const b = KILDE.fasade; const k = BUNKE.fasade;
   const [zoomet, setZoomet] = useState(false);
   useEffect(() => {
     if (fase !== F.START) return undefined;
@@ -730,31 +732,57 @@ function Foto({ fase, L, ov, onHold }) {
     return () => { window.cancelAnimationFrame(id); window.cancelAnimationFrame(id2); };
   }, [fase]);
   const t = (p, ms, d = 0) => `${p} ${ms}ms ${EASE} ${d}ms`;
-  const overgang = ov ? 'none' : [t('left', 950), t('top', 950), t('width', 950), t('height', 950), t('opacity', 500), t('box-shadow', 600), t('border-radius', 700)].join(', ');
-  const skala = start ? (zoomet ? 'scale(1)' : 'scale(1.07)') : 'scale(1)';
+  const m = (p, ms, d = 0) => `${p} ${ms}ms ${MORF} ${d}ms`;
+  const r = start ? L.hel : fase === F.STABEL ? { x: L.stabel.x + k.dx, y: L.stabel.y + k.dy, w: L.stabel.w, h: L.stabel.h } : L.mosaikk.smaa[3];
+  const overgang = ov ? 'none' : [m('left', 1100), m('top', 1100), m('width', 1100), m('height', 1100), m('transform', 1100), t('opacity', 350), t('border-radius', 800), t('box-shadow', 700, fase === F.STABEL ? 500 : 300)].join(', ');
   return (
-    <div className="absolute overflow-hidden" style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: start ? 0 : banner ? '14px 14px 0 0' : finn ? 10 : 14, opacity: inne ? 1 : 0, background: 'rgba(21,19,15,0.05)', boxShadow: stor ? '0 40px 90px -40px rgba(21,19,15,0.45)' : banner || finn || start ? 'none' : `0 0 0 1px ${HAIR}`, transition: overgang, zIndex: 2 }} aria-hidden={!inne} data-testid="v4-foto" data-bilde={fase >= F.STYLET ? 'stylet' : viserBilde(fase)}>
-      <div className="absolute inset-0" style={{ transform: skala, transition: ov ? 'none' : start ? 'transform 3400ms cubic-bezier(0.25, 0.6, 0.3, 1)' : `transform 950ms ${EASE}` }}>
-        <Bildeflate fase={fase} ov={ov} onHold={onHold} pos={start ? '50% 60%' : banner ? '50% 55%' : '50% 50%'} />
+    <div className="absolute overflow-hidden" style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: start ? 0 : fase === F.STABEL ? 12 : 10, opacity: inne ? 1 : 0, background: 'rgba(21,19,15,0.05)', boxShadow: start ? 'none' : fase === F.STABEL ? SKYGGE_LOFT : SKYGGE_FLAT, transform: fase === F.STABEL ? `rotate(${k.rot}deg)` : 'rotate(0deg)', transition: overgang, zIndex: start ? 3 : 1 }} aria-hidden={!inne} data-testid="v4-fasade" data-start={start ? '1' : '0'}>
+      <div className="absolute inset-0" style={{ transform: start ? (zoomet ? 'scale(1)' : 'scale(1.06)') : 'scale(1)', transition: ov ? 'none' : start ? 'transform 3800ms cubic-bezier(0.25, 0.6, 0.3, 1)' : `transform 1100ms ${MORF}` }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={b.src} alt="Bygården i Nygårdsgaten" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: start ? b.pos : '50% 72%', transition: ov ? 'none' : `object-position 1100ms ${MORF}` }} draggable={false} />
       </div>
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[3]" style={{ background: START_GRADIENT, opacity: start ? 1 : 0, transition: ov ? 'none' : `opacity ${start ? 600 : 700}ms ${EASE}` }} />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: START_GRADIENT, opacity: start ? 1 : 0, transition: ov ? 'none' : `opacity ${start ? 600 : 500}ms ${EASE}` }} />
+      <Romlapp navn="Fasade" vis={fase === F.BILDER} delay={1000 + 4 * 110} ov={ov} />
     </div>
   );
 }
 
-/* De fire små i mosaikken */
+/* De tre andre små (fasaden er sitt eget element). Lander i bunken, glir ut i mosaikken. */
 function Smaa({ fase, L, ov }) {
-  const inne = fase === F.BILDER;
-  const kommet = fase >= F.BILDER;
-  return SMAA.map((id, i) => {
-    const r = L.mosaikk.smaa[i]; const b = KILDE[id];
+  const inne = fase === F.STABEL || fase === F.BILDER;
+  return SMAA.filter((id) => id !== 'fasade').map((id, i) => {
+    const b = KILDE[id];
+    const st = bunkeStil({ id, fase, L, ov, slot: L.mosaikk.smaa[i], z: 2 + i });
     return (
-      <div key={id} className="absolute overflow-hidden rounded-[10px]" style={{ left: r.x, top: kommet ? r.y : r.y - 22, width: r.w, height: r.h, opacity: inne ? 1 : 0, background: 'rgba(21,19,15,0.05)', boxShadow: `0 0 0 1px ${HAIR}`, transition: ov ? 'none' : `opacity ${inne ? 500 : 350}ms ${EASE} ${inne ? 420 + i * 90 : 0}ms, top 700ms ${EASE} ${inne ? 420 + i * 90 : 0}ms` }} aria-hidden={!inne} data-testid={`v4-mosaikk-${id}`}>
+      <div key={id} className="absolute overflow-hidden" style={st} aria-hidden={!inne} data-testid={`v4-mosaikk-${id}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={b.liten || b.src} alt={b.navn} className="h-full w-full object-cover" style={{ objectPosition: b.pos || '50% 50%' }} draggable={false} />
+        <img src={b.src} alt={b.navn} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: b.pos || '50% 50%' }} draggable={false} />
+        <Romlapp navn={b.navn} vis={fase === F.BILDER} delay={1000 + (i + 1) * 110} ov={ov} />
       </div>
     );
   });
+}
+
+/* Telleren — «Laster opp · 3 av 5» mens bildene lander, «5 bilder · rom gjenkjent» når de har sortert seg */
+function Teller({ fase, L, ov }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (fase !== F.STABEL) { setN(fase > F.STABEL ? 5 : 0); return undefined; }
+    setN(0);
+    const tider = [1000, BUNKE.kjokken.delay + 700, BUNKE.soverom.delay + 700, BUNKE.spisestue.delay + 700, BUNKE.stue.delay + 700];
+    const ids = tider.map((ms, i) => window.setTimeout(() => setN(i + 1), ms));
+    return () => ids.forEach((id) => window.clearTimeout(id));
+  }, [fase]);
+  const vis = fase === F.STABEL || fase === F.BILDER;
+  const ferdig = fase === F.BILDER;
+  return (
+    <div className="absolute z-[7]" style={{ left: L.omr.x, top: L.omr.y, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-6px)', transition: ov ? 'none' : `opacity 400ms ${EASE} ${vis ? 250 : 0}ms, transform 400ms ${EASE}` }} aria-hidden={!vis} data-testid="v4-teller" data-n={n}>
+      <div className="inline-flex h-8 items-center gap-2.5 rounded-full pl-3 pr-3.5 text-[12.5px] font-medium" style={{ background: 'rgba(21,19,15,0.06)', color: T.ink }}>
+        {ferdig ? <span style={{ color: '#166B3C' }}><Hake size={13} /></span> : <span className="relative block h-[2px] w-9 overflow-hidden rounded-full" style={{ background: 'rgba(21,19,15,0.12)' }}><span className="absolute inset-y-0 left-0 rounded-full" style={{ background: T.ink, width: `${(n / 5) * 100}%`, transition: ov ? 'none' : `width 350ms ${EASE}` }} /></span>}
+        <span key={ferdig ? 'f' : n} className="animate-in fade-in-0 duration-300">{ferdig ? '5 bilder · rom gjenkjent' : `Laster opp · ${n} av 5`}</span>
+      </div>
+    </div>
+  );
 }
 
 /* Kortet — utkastet som blir FINN-siden */
@@ -783,25 +811,27 @@ function KortLag({ fase, L, ov }) {
 }
 
 /* Tekstspalten — én setning per akt, brikker, handling, fremdrift */
-function Handling({ fase, ov }) {
+function Handling({ fase, ov, knapper, neste }) {
   const publiser = fase >= F.KLAR && fase <= F.PUBLISERT;
-  const velg = fase >= F.ETTER;
+  const velg = fase >= F.ETTER && fase < F.SLUTT;
+  const hoverP = fase === F.KLAR || fase === F.TRYKK;
+  const hoverV = fase === F.ETTER || fase === F.VELG;
+  const ref = (navn) => (el) => { if (knapper) knapper.current[navn] = el; };
   return (
     <div className="grid">
       <Inn vis={fase >= F.LES1 && fase <= F.FAKTA} ov={ov} className="col-start-1 row-start-1"><Fakta fase={fase} ov={ov} /></Inn>
       <Inn vis={publiser} ov={ov} delay={200} className="col-start-1 row-start-1">
-        <p className="mb-2.5 text-[12px]" style={{ color: 'rgba(21,19,15,0.42)' }}>Trykk 2 av 3</p>
-        <AutoKnapp presser={fase === F.TRYKK} trykket={fase >= F.PUBLISERT} etter="Publisert på FINN.no" testid="v4-publiser" stor>Publiser på <Finn h={18} /></AutoKnapp>
+        <AutoKnapp presser={fase === F.TRYKK} hover={hoverP && !!knapper} trykket={fase >= F.PUBLISERT} etter="Publisert på FINN.no" testid="v4-publiser" stor knappRef={ref('publiser')}>Publiser på <Finn h={18} /></AutoKnapp>
       </Inn>
       <Inn vis={velg} ov={ov} delay={200} className="col-start-1 row-start-1">
-        <p className="mb-2.5 text-[12px]" style={{ color: 'rgba(21,19,15,0.42)' }}>Trykk 3 av 3</p>
-        <AutoKnapp presser={fase === F.VELG} trykket={fase >= F.VALGT} etter="Kontrakt sendt" testid="v4-velg" stor>Velg Emma</AutoKnapp>
+        <AutoKnapp presser={fase === F.VELG} hover={hoverV && !!knapper} trykket={fase >= F.VALGT} etter="Emma er valgt" testid="v4-velg" stor knappRef={ref('velg')}>Velg Emma</AutoKnapp>
       </Inn>
+      <Inn vis={fase >= F.SLUTT} ov={ov} delay={350} className="col-start-1 row-start-1"><NesteBro aktiv={fase >= F.SLUTT} dur={AUTO[F.SLUTT] - 200} navn={neste} ov={ov} /></Inn>
     </div>
   );
 }
 
-function Tekstspalte({ fase, L, ov, onAkt }) {
+function Tekstspalte({ fase, L, ov, onAkt, knapper, neste }) {
   const akt = aktTekst(fase);
   return (
     <div className="absolute" style={{ left: L.tekst.x, top: L.tekst.y, width: L.tekst.w, bottom: P }} data-testid="v4-tekstspalte">
@@ -816,13 +846,13 @@ function Tekstspalte({ fase, L, ov, onAkt }) {
           );
         }}
       </Tekstbytte>
-      <div className="mt-7"><Handling fase={fase} ov={ov} /></div>
-      <div className="absolute bottom-0 left-0"><Akter fase={fase} onVelg={onAkt} /></div>
+      <div className="mt-7"><Handling fase={fase} ov={ov} knapper={knapper} neste={neste} /></div>
+      <div className="absolute bottom-0 left-0"><Akter antall={AKTER.length} aktiv={Math.max(0, aktIndeks(fase))} varighet={varighet} onVelg={onAkt} navn={(i) => AKTER[i].tittel} /></div>
     </div>
   );
 }
 
-function Desktop({ fase, ov, onAkt, onHold }) {
+function Desktop({ fase, ov, onAkt, onHold, neste }) {
   const ref = useRef(null);
   const [W, setW] = useState(0);
   useEffect(() => {
@@ -835,41 +865,44 @@ function Desktop({ fase, ov, onAkt, onHold }) {
   }, []);
   const L = W ? layout(W) : null;
   const start = fase <= F.TRYKK_START;
-  const folk = fase >= F.INT1;
+  const folk = fase >= F.INT1 && fase < F.SLUTT;
+  const slutt = fase >= F.SLUTT;
   const bt = (ms, d = 0) => (ov ? 'none' : `${ms}ms ${EASE} ${d}ms`);
+  const knapper = useRef({});
+  const peker = usePeker(fase, ref, knapper, PEKER_MAAL, PRESSER);
 
   return (
     <div ref={ref} className="relative overflow-hidden text-[#15130F]" style={{ height: H, background: PAPIR }} data-testid="v4-annonse-desktop">
+      {L && <Fasade fase={fase} L={L} ov={ov} />}
       {L && <Foto fase={fase} L={L} ov={ov} onHold={onHold} />}
 
-      {/* Åpningsteksten — nede til venstre over bildet. Går raskt ut; resten kommer inn etterpå. */}
-      <div className="absolute z-[5]" style={{ left: P, bottom: P, right: P, opacity: start ? 1 : 0, transform: start ? 'none' : 'translateY(8px)', transition: ov ? 'none' : start ? `opacity 700ms ${EASE} 250ms, transform 700ms ${EASE} 250ms` : `opacity 260ms ${EASE}, transform 260ms ${EASE}`, pointerEvents: start ? 'auto' : 'none' }} aria-hidden={!start}>
-        <StartTekst fase={fase} />
+      {/* Åpningsteksten — sentrert nederst over bygården. Går raskt ut i trykket; resten kommer inn etterpå. */}
+      <div className="absolute z-[5]" style={{ left: P, bottom: P + 8, right: P, opacity: start ? 1 : 0, transform: start ? 'none' : 'translateY(10px)', transition: ov ? 'none' : start ? `opacity 900ms ${EASE} 300ms, transform 900ms ${EASE} 300ms` : `opacity 260ms ${EASE}, transform 260ms ${EASE}`, pointerEvents: start ? 'auto' : 'none' }} aria-hidden={!start}>
+        <StartTekst fase={fase} knappRef={(el) => { knapper.current.start = el; }} />
       </div>
 
       {L && (
-        <div style={{ opacity: start ? 0 : 1, transition: `opacity ${bt(600, start ? 0 : 320)}` }} aria-hidden={start}>
-          <Tekstspalte fase={fase} L={L} ov={ov} onAkt={onAkt} />
+        <div style={{ opacity: start ? 0 : 1, transition: `opacity ${bt(700, start ? 0 : 420)}` }} aria-hidden={start}>
+          <Tekstspalte fase={fase} L={L} ov={ov} onAkt={onAkt} knapper={knapper} neste={neste} />
           <KortLag fase={fase} L={L} ov={ov} />
           <Smaa fase={fase} L={L} ov={ov} />
-          <div className="absolute" style={{ left: L.omr.x, top: L.omr.y + 6, width: L.omr.w, opacity: folk ? 1 : 0, transform: folk ? 'none' : 'translateY(14px)', transition: `opacity ${bt(500, folk ? 250 : 0)}, transform ${bt(600, folk ? 250 : 0)}`, pointerEvents: folk ? 'auto' : 'none' }} aria-hidden={!folk}>
+          <Teller fase={fase} L={L} ov={ov} />
+          <div className="absolute" style={{ left: L.omr.x, top: L.omr.y + 22, width: L.omr.w, opacity: folk ? 1 : 0, transform: folk ? 'none' : slutt ? 'translateY(-10px)' : 'translateY(14px)', transition: `opacity ${bt(folk ? 500 : 350, folk ? 250 : 0)}, transform ${bt(600, folk ? 250 : 0)}`, pointerEvents: folk ? 'auto' : 'none' }} aria-hidden={!folk}>
             <Leietakere fase={fase} ov={ov} smal={L.smal} />
+          </div>
+          {/* Sluttbildet: Emma-kortet midt i scenen — det Kontrakt-kapittelet åpner med */}
+          <div className="absolute flex items-center justify-center" style={{ left: L.omr.x, top: L.omr.y, width: L.omr.w, height: L.omr.h, opacity: slutt ? 1 : 0, transform: slutt ? 'none' : 'translateY(16px) scale(0.985)', transition: `opacity ${bt(650, slutt ? 380 : 0)}, transform ${bt(800, slutt ? 380 : 0)}`, pointerEvents: slutt ? 'auto' : 'none' }} aria-hidden={!slutt}>
+            <ValgtKort />
           </div>
         </div>
       )}
+
+      {!ov && <Peker pos={peker} vis={peker.vis} presser={peker.presser} hopp={peker.hopp} ring={peker.ring} />}
     </div>
   );
 }
 
 /* ── Under lg: samme akter, stablet ── */
-function Bilde({ src, alt, pos, vis, delay = 0, ov, className = '', ratio = '3 / 2' }) {
-  return (
-    <div className={`relative overflow-hidden ${className}`} style={{ aspectRatio: ratio, background: 'rgba(21,19,15,0.05)', boxShadow: `0 0 0 1px ${HAIR}`, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-14px)', transition: ov ? 'none' : `opacity 500ms ${EASE} ${vis ? delay : 0}ms, transform 700ms ${EASE} ${vis ? delay : 0}ms` }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: pos || '50% 50%' }} draggable={false} />
-    </div>
-  );
-}
 
 function StartKompakt({ fase, ov }) {
   const [zoomet, setZoomet] = useState(false);
@@ -883,7 +916,7 @@ function StartKompakt({ fase, ov }) {
   return (
     <div className="relative overflow-hidden" style={{ aspectRatio: '4 / 5' }} data-testid="v4-start-kompakt">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={KILDE.stue.liten} alt="Stuen" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: '40% 60%', transform: zoomet ? 'scale(1)' : 'scale(1.07)', transition: ov ? 'none' : 'transform 3400ms cubic-bezier(0.25, 0.6, 0.3, 1)' }} draggable={false} />
+      <img src={KILDE.fasade.liten} alt="Bygården i Nygårdsgaten" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: KILDE.fasade.posLiten, transform: zoomet ? 'scale(1)' : 'scale(1.06)', transition: ov ? 'none' : 'transform 3600ms cubic-bezier(0.25, 0.6, 0.3, 1)' }} draggable={false} />
       <div aria-hidden="true" className="absolute inset-0" style={{ background: START_GRADIENT }} />
       <div className="absolute inset-x-0 bottom-0 p-5"><StartTekst fase={fase} kompakt /></div>
     </div>
@@ -891,12 +924,12 @@ function StartKompakt({ fase, ov }) {
 }
 
 function MosaikkKompakt({ fase, ov }) {
-  const inne = fase === F.BILDER;
+  const inne = fase === F.STABEL || fase === F.BILDER;
   return (
     <div data-testid="v4-mosaikk-kompakt">
       <Bilde src={KILDE.stue.liten} alt="Stue" vis={inne} ov={ov} className="rounded-[12px]" />
       <div className="mt-2 grid grid-cols-4 gap-2">
-        {SMAA.map((id, i) => <Bilde key={id} src={KILDE[id].liten || KILDE[id].src} alt={KILDE[id].navn} pos={KILDE[id].pos} vis={inne} delay={120 + i * 90} ov={ov} className="rounded-[8px]" />)}
+        {SMAA.map((id, i) => <Bilde key={id} src={KILDE[id].liten || KILDE[id].src} alt={KILDE[id].navn} pos={KILDE[id].posLiten || KILDE[id].pos} vis={inne} delay={120 + i * 90} ov={ov} className="rounded-[8px]" />)}
       </div>
     </div>
   );
@@ -929,7 +962,7 @@ function FinnKortKompakt({ ov }) {
   );
 }
 
-function Kompakt({ fase, ov, onAkt, onHold }) {
+function Kompakt({ fase, ov, onAkt, onHold, neste }) {
   const start = fase <= F.TRYKK_START;
   const akt = aktTekst(fase);
   return (
@@ -951,21 +984,16 @@ function Kompakt({ fase, ov, onAkt, onHold }) {
           </Tekstbytte>
           <Vokse vis={fase >= F.LES1 && fase <= F.FAKTA} ov={ov}><div className="pt-5"><Fakta fase={fase} ov={ov} /></div></Vokse>
           <Vokse vis={fase >= F.KLAR && fase <= F.PUBLISERT} ov={ov}>
-            <div className="pt-5">
-              <p className="mb-2.5 text-[12px]" style={{ color: 'rgba(21,19,15,0.42)' }}>Trykk 2 av 3</p>
-              <AutoKnapp presser={fase === F.TRYKK} trykket={fase >= F.PUBLISERT} etter="Publisert på FINN.no" testid="v4-publiser" stor>Publiser på <Finn h={18} /></AutoKnapp>
-            </div>
+            <div className="pt-5"><AutoKnapp presser={fase === F.TRYKK} trykket={fase >= F.PUBLISERT} etter="Publisert på FINN.no" testid="v4-publiser" stor>Publiser på <Finn h={18} /></AutoKnapp></div>
           </Vokse>
-          <Vokse vis={fase >= F.ETTER} ov={ov}>
-            <div className="pt-5">
-              <p className="mb-2.5 text-[12px]" style={{ color: 'rgba(21,19,15,0.42)' }}>Trykk 3 av 3</p>
-              <AutoKnapp presser={fase === F.VELG} trykket={fase >= F.VALGT} etter="Kontrakt sendt" testid="v4-velg" stor>Velg Emma</AutoKnapp>
-            </div>
+          <Vokse vis={fase >= F.ETTER && fase < F.SLUTT} ov={ov}>
+            <div className="pt-5"><AutoKnapp presser={fase === F.VELG} trykket={fase >= F.VALGT} etter="Emma er valgt" testid="v4-velg" stor>Velg Emma</AutoKnapp></div>
           </Vokse>
+          <Vokse vis={fase >= F.SLUTT && !!neste} ov={ov}><div className="pt-5"><NesteBro aktiv={fase >= F.SLUTT} dur={AUTO[F.SLUTT] - 200} navn={neste} ov={ov} /></div></Vokse>
         </div>
 
         <div className="px-5 pt-6">
-          <Vokse vis={fase === F.BILDER} ov={ov}><MosaikkKompakt fase={fase} ov={ov} /></Vokse>
+          <Vokse vis={fase === F.STABEL || fase === F.BILDER} ov={ov}><MosaikkKompakt fase={fase} ov={ov} /></Vokse>
           <Vokse vis={fase >= F.LES1 && fase <= F.STYLET} ov={ov}>
             <div className="relative overflow-hidden rounded-[12px]" style={{ aspectRatio: '3 / 2', background: 'rgba(21,19,15,0.05)' }} data-testid="v4-viser-kompakt">
               <Bildeflate fase={fase} ov={ov} onHold={onHold} liten testid="v4-bildeflate-kompakt" />
@@ -973,22 +1001,27 @@ function Kompakt({ fase, ov, onAkt, onHold }) {
           </Vokse>
           <Vokse vis={fase >= F.TITTEL && fase <= F.TRYKK} ov={ov}><UtkastKort fase={fase} ov={ov} /></Vokse>
           <Vokse vis={fase === F.PUBLISERT} ov={ov}><FinnKortKompakt ov={ov} /></Vokse>
-          <Vokse vis={fase >= F.INT1} ov={ov}><Leietakere fase={fase} ov={ov} smal kompakt /></Vokse>
+          <Vokse vis={fase >= F.INT1 && fase < F.SLUTT} ov={ov}><Leietakere fase={fase} ov={ov} smal kompakt /></Vokse>
+          <Vokse vis={fase >= F.SLUTT} ov={ov}><div className="py-2"><ValgtKort kompakt /></div></Vokse>
         </div>
 
-        <div className="px-5 pb-4 pt-4"><Akter fase={fase} onVelg={onAkt} /></div>
+        <div className="px-5 pb-4 pt-4"><Akter antall={AKTER.length} aktiv={Math.max(0, aktIndeks(fase))} varighet={varighet} onVelg={onAkt} navn={(i) => AKTER[i].tittel} /></div>
       </Vokse>
     </div>
   );
 }
 
-export default function AnnonseFilm({ synlig, tema = 'mork' }) {
+/* `onFerdig` — kalles når sluttbildet har stått ferdig. Returnerer den true, tar forelderen over (neste kapittel);
+   ellers looper filmen. `neste` = navnet på neste kapittel (vises i broen). */
+export default function AnnonseFilm({ synlig, tema = 'mork', onFerdig, neste = null }) {
   const [fase, setFase] = useState(F.START);
   const [startet, setStartet] = useState(false);
   const [ov, setOv] = useState(false);
   const [morkt, setMorkt] = useState(false);
   const [holdt, setHoldt] = useState(false);      // brukeren holder i skillelinjen — filmen venter
   const [bred, setBred] = useState(null);         // null før mount → begge varianter med CSS-skjuling
+  const ferdigRef = useRef(onFerdig);
+  useEffect(() => { ferdigRef.current = onFerdig; }, [onFerdig]);
 
   useEffect(() => {
     const r = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -1004,12 +1037,13 @@ export default function AnnonseFilm({ synlig, tema = 'mork' }) {
   useEffect(() => { if (synlig && !startet) setStartet(true); }, [synlig, startet]);
 
   useEffect(() => {
-    if (!startet || morkt || holdt) return undefined;
+    if (!startet || morkt || holdt || !synlig) return undefined;   // ute av bildet → filmen venter der den er
     const ms = AUTO[fase];
     if (ms == null) return undefined;
     const t = window.setTimeout(() => {
       if (fase >= SISTE) {
         if (ov) { setFase(F.PRIS); return; }
+        if (ferdigRef.current?.()) return;           // forelderen tar over — neste kapittel
         setMorkt(true);
         window.setTimeout(() => { setFase(F.START); window.setTimeout(() => setMorkt(false), 700); }, 500);
       } else {
@@ -1017,7 +1051,7 @@ export default function AnnonseFilm({ synlig, tema = 'mork' }) {
       }
     }, ms);
     return () => window.clearTimeout(t);
-  }, [fase, startet, ov, morkt, holdt]);
+  }, [fase, startet, ov, morkt, holdt, synlig]);
 
   const tilAkt = (i) => { setMorkt(false); setStartet(true); setFase(AKTER[i].fra); };
 
@@ -1026,11 +1060,12 @@ export default function AnnonseFilm({ synlig, tema = 'mork' }) {
   const skygge = lys
     ? '0 0 0 1px rgba(21,19,15,0.08), 0 60px 120px -40px rgba(21,19,15,0.35)'
     : '0 0 0 1px rgba(244,241,234,0.12), 0 70px 120px -50px rgba(0,0,0,0.75)';
-  const felles = { fase, ov, onAkt: tilAkt, onHold: setHoldt };
+  const felles = { fase, ov, onAkt: tilAkt, onHold: setHoldt, neste };
   const blend = { opacity: morkt ? 0 : 1, transition: ov ? 'none' : `opacity 450ms ${EASE}` };
 
   return (
     <div className="relative mx-auto w-full max-w-[min(1400px,86vw)]" data-testid="v4-annonse-scene" data-fase={fase} data-holdt={holdt ? '1' : '0'}>
+      <FilmStil />
       {bred !== false && (
         <div className={`overflow-hidden rounded-[18px] ${bred === null ? 'hidden lg:block' : ''}`} style={{ boxShadow: skygge, background: PAPIR, ...inn }}>
           <div style={blend}><Desktop {...felles} /></div>

@@ -1093,3 +1093,26 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - **Bilder**: `/public/v4/annonse/` — `stue-tom-{1200,700}.webp` er GENERERT (Gemini 2.5 Flash Image via Emergent-nøkkel, to pass,
   `scripts/generer-tomt-rom.py`) fra det ekte `interior-openplan.webp` (= `stue-moblert`). Kjøkken/soverom/spisestue/bar er ekte
   showcase-bilder. FINN-publisering vises som produktløfte etter brukerens ønske — må være/bli reelt før produksjon.
+
+## Produktseksjonen som KAPITLER (Annonse → Kontrakt → Drift) — juni 2025
+- **Ett løfte per tab.** Annonse = «Fra fem bilder til valgt leietaker.» Kontrakt = «Fra valgt leietaker til nøklene i hånden.»
+  (signering + depositum + overtakelse hører i Kontrakt — ikke i Annonse; ingen egen Overtakelse-tab.) Kapitlene spiller videre av seg selv
+  (`videre()` i ProduktSeksjon; `laast` når brukeren velger tab; kun når seksjonen er synlig). Filmene pauser når seksjonen er ute av bildet.
+- **Overleveringsobjekt:** Emma-kortet (`ValgtKort` i filmdeler) er sluttbildet i Annonse og åpningsbildet i Kontrakt — samme plass i scenen.
+  «Neste kapittel»-bro (NesteBro) med stille fyll-linje før byttet; 360 ms utfading av gammel scene før ny monteres.
+- **filmdeler.js** = felles byggeklosser for alle filmer (peker/usePeker, AutoKnapp m/ hover, Sms, Chip/Lapp/Dok, Akter/Fyll, Tekstbytte, Ramme,
+  useFilm, ekte FINN- og BankID-svg, BOLIG/EMMA/KARI-fakta). Nye filmer (Økonomi, Leietaker) skal bygges av disse.
+- **AnnonseFilm — scenene:** (1) Kveldsåpning: bygården (`/v4/bolig-hero.webp`, kun brukt her) fyller rammen, sentrert adresse + «Ledig fra
+  1. november.» + «Lag annonse»; pekeren glir inn og trykker (ring). Bruker avviste ren «knapp midt på tom flate» — bildet må være der.
+  (2) BUNKE → mosaikk: bygården krymper ned i en løs bunke midt i scenen, fire bilder lander skjevt oppå (LANDING-ease, løftet skygge),
+  teller «Laster opp · n av 5», så sorterer bunken seg ut i mosaikken (MORF), skygger flater ut, romnavn kommer. (3) Lesing: rolig
+  kamera-drift 14 % per bilde (ikke zoom — bruker sa «for mye zoom»), nåler ligger i kameraet og motskaleres. (4) Styling: Utvalg rundt sengen
+  (spotlight-dim utenfor) + instruksjonskort øverst («Instruks til stylingen · Arbeider» m/ fyll-linje, setningene kommer én og én) → skille
+  høyre→venstre til 44 % (draggbart) → helt stylet; «Sengen er redd opp»-pille. Kun re opp seng — aldri møbler. (5) Utkast (banner 47 %),
+  (6) FINN (ekte logo), (7) interessenter m/ portretter (`leietaker-{emma,martin,sara}.webp`), visningsslots, SMS-bobler, (8) Velg Emma →
+  «Emma er valgt» → Emma-kortet. Easing: MORF (in-out) for alt som flytter seg, EASE (expo-out) for det som kommer inn.
+- **KontraktFilm:** ett papir (Papir) reiser: Leiekontrakt (felt fylles i tre puljer, stiplet = hentet fra annonse/søknad) → signaturer
+  (Kari 14:02, SMS til Emma, Emma 14:37, «Signert av begge») → DepositumKort (Keyhole-logo `/v4/logo/keyhole.svg`: konto i Emmas navn →
+  innbetalt → sikret 37 500 kr) → samme papir blir Overtakelsesprotokoll (4 rom stående 3:4 m/ grønn hake, målerstand, 3 nøkler, rengjøring)
+  → «Signer protokoll» → InnflyttetKort (charcoal). Sidespalte m/ SMS-er; flytende nederst til høyre når scenen er smal.
+- **Tekstregel (bruker):** ingen «tre trykk», «seks dager», «resten gjorde systemet» — det er AI-slop. Konkret, rolig, menneskelig.

@@ -5,6 +5,7 @@ import { Layers } from 'lucide-react';
 import { EASE, T, display, useSynlig } from '../motion';
 import DriftScene from './DriftScene';
 import AnnonseFilm from './AnnonseFilm';
+import KontraktFilm from './KontraktFilm';
 
 /* ---------------------------------------------------------------------------
    ProduktSeksjon — «Se hele DigiHome i arbeid.» En scene, ikke et skjermbilde.
@@ -22,7 +23,7 @@ import AnnonseFilm from './AnnonseFilm';
 
 const TABS = [
   { id: 'annonse', navn: 'Annonse', klar: true },
-  { id: 'kontrakt', navn: 'Kontrakt', klar: false },
+  { id: 'kontrakt', navn: 'Kontrakt', klar: true },
   { id: 'okonomi', navn: 'Økonomi', klar: false },
   { id: 'leietaker', navn: 'Leietaker', klar: false },
   { id: 'drift', navn: 'Drift', klar: true },
@@ -30,8 +31,12 @@ const TABS = [
 
 const SCENER = {
   annonse: {
-    tittel: ['Fra ledig til utleid.', 'Du trykker tre ganger.'],
-    ingress: 'Ett trykk lager annonsen, ett publiserer den på FINN.no, ett velger leietaker. Alt imellom gjør systemet — du ser og godkjenner underveis.',
+    tittel: ['Fra fem bilder', 'til valgt leietaker.'],
+    ingress: 'Du tar bildene. DigiHome leser detaljene, skriver annonsen og legger den ut på FINN.no. Interessentene legitimerer seg og booker visning selv — du velger hvem som får boligen.',
+  },
+  kontrakt: {
+    tittel: ['Fra valgt leietaker', 'til nøklene i hånden.'],
+    ingress: 'Kontrakten er fylt ut fra annonsen og signeres med BankID av begge. Depositumet står på egen konto hos Keyhole, og overtakelsen dokumenteres i en protokoll dere signerer i døra.',
   },
   drift: {
     tittel: ['Fra melding til løst.', 'Systemet gjør resten.'],
@@ -118,6 +123,7 @@ const TEMA = {
 
 export default function ProduktSeksjon() {
   const [aktiv, setAktiv] = useState('annonse');   // starter på Annonse — livssyklusen leses fra venstre
+  const [laast, setLaast] = useState(false);       // brukeren har valgt en tab selv → kapitlene spiller ikke videre av seg selv
   const [bakgrunn, setBakgrunn] = useState('oslo');   // nøkkel i BAKGRUNNER — bygården er standard; 'stue' (interiør) ligger i velgeren
   const [velgerOpen, setVelgerOpen] = useState(false);
   const [festet, setFestet] = useState(false);   // tabs-raden ligger klistret under navigasjonen
@@ -179,11 +185,24 @@ export default function ProduktSeksjon() {
   /* Tabbytte fra festet rad: hold blikket der raden er — scroll produktet inn rett under den. */
   const bytt = (id) => {
     setAktiv(id);
+    setLaast(true);
     if (festet && ref.current) {
       const navH = window.innerWidth >= 1024 ? 64 : 72;
       const topp = ref.current.getBoundingClientRect().top + window.scrollY;
       window.scrollTo({ top: topp - navH + 40, behavior: 'smooth' });
     }
+  };
+
+  /* Kapitlene spiller videre av seg selv (Annonse → Kontrakt → Drift) til brukeren velger en tab. Tab-markøren glir. */
+  const KAPITLER = TABS.filter((t) => t.klar).map((t) => t.id);
+  const nesteId = KAPITLER[KAPITLER.indexOf(aktiv) + 1] || null;
+  const nesteNavn = !laast && nesteId ? TABS.find((t) => t.id === nesteId).navn : null;
+  const [bytter, setBytter] = useState(false);       // kapittelbytte: det gamle tones ut før det nye monteres
+  const videre = () => {
+    if (laast || !nesteId || !synlig) return false;   // bare når seksjonen faktisk er i bildet — ellers looper filmen
+    setBytter(true);
+    window.setTimeout(() => { setAktiv(nesteId); setBytter(false); }, 360);
+    return true;
   };
 
   return (
@@ -252,7 +271,7 @@ export default function ProduktSeksjon() {
 
         {/* Statement — bytter med scenen (key → sekvensiell inngang) */}
         <div className={`mt-10 max-w-[820px] lg:mt-10 ${venstre ? 'text-left' : 'mx-auto text-center'}`} style={{ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(16px)', transition: `opacity 700ms ${EASE}, transform 700ms ${EASE}` }}>
-          <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-1 duration-500">
+          <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-1 duration-500" style={{ opacity: bytter ? 0 : 1, transition: `opacity 340ms ${EASE}` }}>
             <h2 className="text-[clamp(40px,4.8vw,78px)]" style={{ ...display, color: tema.tekst }} data-testid="v4-produkt-tittel">
               {scene.tittel[0]}<br />{scene.tittel[1]}
             </h2>
@@ -263,9 +282,10 @@ export default function ProduktSeksjon() {
         {/* Produktet — alltid sentrert */}
         <div className="mt-12 lg:mt-20">
           {/* Scenebytte: den nye flaten kommer inn sekvensielt (key → ny montering), ingen overlappende crossfade */}
-          <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
+          <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500" style={{ opacity: bytter ? 0 : 1, transform: bytter ? 'translateY(-8px)' : 'none', transition: `opacity 340ms ${EASE}, transform 340ms ${EASE}` }}>
             {aktiv === 'drift' && <DriftScene synlig={synlig} tema={bg.tema} />}
-            {aktiv === 'annonse' && <AnnonseFilm synlig={synlig} tema={bg.tema} />}
+            {aktiv === 'annonse' && <AnnonseFilm synlig={synlig} tema={bg.tema} onFerdig={videre} neste={nesteNavn} />}
+            {aktiv === 'kontrakt' && <KontraktFilm synlig={synlig} tema={bg.tema} onFerdig={videre} neste={nesteNavn} />}
           </div>
         </div>
       </div>
