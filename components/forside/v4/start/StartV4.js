@@ -88,7 +88,7 @@ const gateAv = (address = '', postal = '', city = '') => {
 
 /* ── Topplinje: wordmark · steg · telefon · lukk ── */
 function Topplinje({ steg, onTil }) {
-  const i = STEG.findIndex((s) => s.id === steg);
+  const i = steg === 'ferdig' ? STEG.length : STEG.findIndex((s) => s.id === steg);
   return (
     <header className="sticky top-0 z-40" style={{ background: 'rgba(243,241,236,0.92)', backdropFilter: 'saturate(1.2) blur(8px)' }}>
       <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-5 sm:px-8 lg:px-10">
@@ -118,7 +118,7 @@ function Topplinje({ steg, onTil }) {
         </div>
       </div>
       <div className="h-px" style={{ background: 'rgba(21,19,15,0.08)' }} aria-hidden="true">
-        <div className="h-full" style={{ width: `${((i + 1) / STEG.length) * 100}%`, background: T.ink, transition: `width 600ms ${EASE}` }} />
+        <div className="h-full" style={{ width: `${(Math.min(i + 1, STEG.length) / STEG.length) * 100}%`, background: T.ink, transition: `width 600ms ${EASE}` }} />
       </div>
     </header>
   );
@@ -359,52 +359,45 @@ export default function StartV4() {
 
   const erSelv = form.service === 'selvforvaltning';
   const kontaktTekst = form.name.trim() ? [form.name.trim(), form.email.trim()].filter(Boolean).join(' · ') : '';
-  const panel = <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} modell={form.service} kontakt={sendt ? kontaktTekst : ''} />;
+  const panel = <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} modell={form.service} kontakt={sendt ? kontaktTekst : ''} ferdig={sendt} />;
   const panelKompakt = (form.address || pos) ? <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} modell={form.service} kompakt /> : null;
 
-  /* ── Ferdig ── */
-  if (sendt) {
-    const fornavn = form.name.trim().split(' ')[0];
-    return (
-      <div className="min-h-[100svh] antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="start-ferdig">
-        <Topplinje steg="kontakt" />
-        <main className="mx-auto flex min-h-[calc(100svh-65px)] w-full max-w-[680px] flex-col items-center justify-center px-5 py-14 text-center sm:px-8">
-          <div className="dh-cover-inn w-full">
-            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full" style={{ background: erSelv && accountUrl ? T.ink : T.gronn }}>
-              {erSelv && accountUrl ? <Loader2 className="h-5 w-5 animate-spin text-[#F4F1EA]" /> : <Check className="h-5 w-5 text-white" strokeWidth={2.4} />}
-            </span>
-            <h1 className="mt-7 text-[40px] sm:text-[56px]" style={{ ...display, color: T.ink }} data-testid="start-ferdig-tittel">
-              {erSelv && accountUrl ? 'Kontoen er klar.' : `Takk, ${fornavn}.`}
-            </h1>
-            <p className="mx-auto mt-4 max-w-[44ch] text-[16px] leading-[1.5] text-[#15130F]/65 sm:text-[17px]">
-              {erSelv
-                ? accountUrl ? 'Vi åpner portalen og tar deg rett til boligen din.' : 'Vi setter opp kontoen din og sender tilgang til e-posten din.'
-                : utenforOmrade ? `Vi har registrert interessen din. Du får beskjed når full forvaltning kommer til ${form.city || 'ditt område'}.` : 'En lokal rådgiver ser på boligen og tar kontakt innen 24 timer.'}
-            </p>
-            <p className="mt-5 text-[14px] text-[#15130F]/55">Bekreftelse er sendt til {form.email.trim()}.</p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              {accountUrl ? (
-                <button type="button" onClick={() => window.location.assign(accountUrl)} className="inline-flex h-[52px] items-center justify-center gap-2 rounded-[12px] px-7 text-[15px] font-medium" style={{ background: T.ink, color: '#F4F1EA' }} data-testid="start-konto-knapp">Åpne portalen <ArrowRight className="h-4 w-4" strokeWidth={1.8} /></button>
-              ) : null}
-              <Link href="/" className="inline-flex h-[52px] items-center justify-center rounded-[12px] px-7 text-[15px] font-medium text-[#15130F]" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.14)' }}>Til forsiden</Link>
-            </div>
-          </div>
-        </main>
+  const fornavn = form.name.trim().split(' ')[0];
+  const ferdigInnhold = sendt ? (
+    <section key="ferdig" className="dh-cover-inn" data-testid="start-ferdig">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: erSelv && accountUrl ? T.ink : T.gronn }}>
+        {erSelv && accountUrl ? <Loader2 className="h-5 w-5 animate-spin text-[#F4F1EA]" /> : <Check className="h-5 w-5 text-white" strokeWidth={2.4} />}
+      </span>
+      <h1 className="mt-7 text-[40px] sm:text-[52px]" style={{ ...display, color: T.ink, maxWidth: '14ch' }} data-testid="start-ferdig-tittel">
+        {erSelv && accountUrl ? 'Kontoen er klar.' : `Takk, ${fornavn}.`}
+      </h1>
+      <p className="mt-4 max-w-[44ch] text-[16px] leading-[1.5] text-[#15130F]/65 sm:text-[17px]">
+        {erSelv
+          ? accountUrl ? 'Vi åpner portalen og tar deg rett til boligen din.' : 'Vi setter opp kontoen din og sender tilgang til e-posten din.'
+          : utenforOmrade ? `Vi har registrert interessen din. Du får beskjed når full forvaltning kommer til ${form.city || 'ditt område'}.` : 'En lokal rådgiver ser på boligen og tar kontakt innen 24 timer.'}
+      </p>
+      <p className="mt-4 text-[14px] text-[#15130F]/55">Bekreftelse er sendt til {form.email.trim()}.</p>
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+        {accountUrl ? (
+          <button type="button" onClick={() => window.location.assign(accountUrl)} className="inline-flex h-[52px] items-center justify-center gap-2 rounded-[12px] px-7 text-[15px] font-medium" style={{ background: T.ink, color: '#F4F1EA' }} data-testid="start-konto-knapp">Åpne portalen <ArrowRight className="h-4 w-4" strokeWidth={1.8} /></button>
+        ) : null}
+        <Link href="/" className="inline-flex h-[52px] items-center justify-center rounded-[12px] px-7 text-[15px] font-medium text-[#15130F]" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.14)' }}>Til forsiden</Link>
       </div>
-    );
-  }
+    </section>
+  ) : null;
 
   return (
     <div className="min-h-[100svh] antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="start-v4">
-      <Topplinje steg={steg} onTil={(s) => setSteg(s)} />
+      <Topplinje steg={sendt ? 'ferdig' : steg} onTil={sendt ? undefined : (s) => setSteg(s)} />
       <div className="mx-auto grid w-full max-w-[1600px] lg:min-h-[calc(100svh-65px)] lg:grid-cols-[minmax(0,1fr)_minmax(400px,44%)]">
         {/* ── Venstre: stegene ── */}
         <main className="flex min-w-0 flex-col px-5 pb-16 pt-8 sm:px-8 sm:pt-12 lg:justify-center lg:px-14 lg:py-14 xl:px-20">
           {/* Mobil: boligen som stripe over stegene */}
           {panelKompakt ? <div className="mb-8 lg:hidden">{panelKompakt}</div> : null}
 
-          <div className="mx-auto w-full max-w-[560px] lg:mx-0" style={{ opacity: prefillFerdig ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>
-            {steg === 'adresse' ? (
+          <div className={`mx-auto w-full lg:mx-0 ${steg === 'tjeneste' && !sendt ? 'max-w-[720px]' : 'max-w-[560px]'}`} style={{ opacity: prefillFerdig ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>
+            {ferdigInnhold}
+            {!sendt && steg === 'adresse' ? (
               <section key="adresse" className="dh-cover-inn" data-testid="start-steg-adresse">
                 <Tittel tittel="Hvor ligger boligen?" tekst="Skriv inn adressen — eller lim inn FINN-annonsen." testId="start-h1" />
                 <div className="mt-9">
@@ -442,7 +435,7 @@ export default function StartV4() {
               </section>
             ) : null}
 
-            {steg === 'tjeneste' ? (
+            {!sendt && steg === 'tjeneste' ? (
               <section key="tjeneste" className="dh-cover-inn" data-testid="start-steg-tjeneste">
                 <Tilbake onClick={() => setSteg('adresse')} />
                 <Tittel
@@ -452,48 +445,79 @@ export default function StartV4() {
                 />
                 {finnUrl && finnNotat ? <p className="mt-4 text-[13.5px] text-[#15130F]/55" data-testid="start-finn-notat">{finnNotat}</p> : null}
 
-                <ol className="mt-9 flex flex-col gap-3" data-testid="start-tjenester">
-                  {/* Lei ut selv — systemet */}
-                  <li>
-                    <button type="button" onClick={() => velgTjeneste('selvforvaltning')} className="group flex w-full items-stretch gap-5 rounded-[18px] p-5 text-left transition-[background-color,box-shadow] duration-200 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30 sm:p-6" style={{ background: '#FBFAF8', boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.10)' }} data-testid="service-selvforvaltning">
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-baseline justify-between gap-4">
-                          <span className="text-[24px] sm:text-[26px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.ink }}>Lei ut selv</span>
-                          <span className="hidden shrink-0 text-[13px] text-[#15130F]/50 sm:inline">Hele Norge</span>
-                        </span>
-                        <span className="mt-2 block text-[14.5px] leading-[1.5] text-[#15130F]/65">Kontrakt med BankID, husleie med oppfølging og saker der du bare godkjenner. Du styrer — systemet gjør jobben.</span>
-                        <span className="mt-4 flex items-center justify-between gap-4">
-                          <span className="text-[13.5px] text-[#15130F]/60"><span className="font-medium text-[#15130F]">5 % av husleien</span> · ingen bindingstid · konto på ett minutt</span>
-                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-transform duration-200 group-hover:translate-x-0.5" style={{ background: T.ink, color: '#F4F1EA' }}><ArrowRight className="h-4 w-4" strokeWidth={1.8} /></span>
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                  {/* Full forvaltning — menneskene */}
-                  <li>
-                    <button type="button" onClick={() => velgTjeneste('full_forvaltning')} className="group flex w-full items-stretch gap-5 rounded-[18px] p-5 text-left transition-[background-color,box-shadow] duration-200 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30 sm:p-6" style={{ background: '#FBFAF8', boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.10)' }} data-testid="service-full_forvaltning">
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-baseline justify-between gap-4">
-                          <span className="text-[24px] sm:text-[26px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.ink }}>Full forvaltning</span>
-                          <span className="hidden shrink-0 text-[13px] text-[#15130F]/50 sm:inline">{fullUtilgjengelig ? `Kommer til ${form.city || 'ditt område'}` : 'Bergen og omegn'}</span>
-                        </span>
-                        <span className="mt-2 block text-[14.5px] leading-[1.5] text-[#15130F]/65">Én fast forvalter tar visninger, leietakervalg, kontrakt og oppfølging. Du får rapporten — og siste ord.</span>
-                        <span className="mt-4 flex items-center justify-between gap-4">
-                          <span className="flex min-w-0 items-center gap-2.5 text-[13.5px] text-[#15130F]/60">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src="/brand/sarah-sleeman-360.webp" alt="" width={28} height={28} className="h-7 w-7 shrink-0 rounded-full object-cover" style={{ boxShadow: '0 0 0 1px rgba(21,19,15,0.10)' }} />
-                            <span className="sm:truncate">{fullUtilgjengelig ? 'Registrer interesse — vi sier fra når vi lanserer' : <><span className="font-medium text-[#15130F]">Personlig tilbud</span> · svar innen 24 timer · ingen bindingstid</>}</span>
-                          </span>
-                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-transform duration-200 group-hover:translate-x-0.5" style={{ background: T.ink, color: '#F4F1EA' }}><ArrowRight className="h-4 w-4" strokeWidth={1.8} /></span>
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                </ol>
+                {/* Valget handler om arbeidsdeling. Så vi viser akkurat det: hvem gjør hva. */}
+                <div className="mt-9 grid overflow-hidden rounded-[20px] md:grid-cols-2" style={{ background: '#FBFAF8', boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.10)' }} data-testid="start-tjenester">
+                  {[
+                    {
+                      id: 'selvforvaltning', tittel: 'Lei ut selv', omrade: 'Hele Norge',
+                      ingress: 'Systemet gjør jobben. Du godkjenner.',
+                      rader: [
+                        ['Annonse og visninger', 'Du'],
+                        ['Kontrakt, husleie og purring', 'DigiHome'],
+                        ['Saker og leverandører', 'DigiHome foreslår · du godkjenner'],
+                      ],
+                      meta: <><span className="font-medium text-[#15130F]">5 % av husleien</span> · ingen bindingstid</>,
+                      knapp: 'Lei ut selv', testId: 'service-selvforvaltning',
+                    },
+                    {
+                      id: 'full_forvaltning', tittel: 'Full forvaltning', omrade: fullUtilgjengelig ? `Kommer til ${form.city || 'ditt område'}` : 'Bergen og omegn',
+                      ingress: 'Én fast forvalter gjør jobben. Du har siste ord.',
+                      rader: [
+                        ['Annonse og visninger', 'Forvalteren din'],
+                        ['Leietaker', 'Forvalteren anbefaler · du godkjenner'],
+                        ['Kontrakt, husleie og saker', 'DigiHome'],
+                      ],
+                      meta: fullUtilgjengelig ? 'Vi sier fra når vi lanserer' : <><span className="font-medium text-[#15130F]">Personlig tilbud</span> · svar innen 24 timer</>,
+                      knapp: fullUtilgjengelig ? 'Registrer interesse' : 'Få et tilbud', testId: 'service-full_forvaltning', person: true,
+                    },
+                  ].map((o, i) => (
+                    <div
+                      key={o.id}
+                      role="presentation"
+                      onClick={() => velgTjeneste(o.id)}
+                      className={`group flex cursor-pointer flex-col p-6 transition-colors duration-200 hover:bg-white sm:p-7 ${i > 0 ? 'border-t md:border-l md:border-t-0' : ''}`}
+                      style={{ borderColor: 'rgba(21,19,15,0.10)' }}
+                      data-testid={`${o.testId}-kolonne`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <h2 className="text-[26px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.ink }}>{o.tittel}</h2>
+                        {o.person ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src="/brand/sarah-sleeman-360.webp" alt="" width={36} height={36} className="h-9 w-9 shrink-0 rounded-full object-cover" style={{ boxShadow: '0 0 0 1px rgba(21,19,15,0.10)' }} />
+                        ) : null}
+                      </div>
+                      <p className="mt-2 text-[14.5px] leading-[1.45] text-[#15130F]/65">{o.ingress}</p>
+                      <ul className="mt-5 flex flex-col">
+                        {o.rader.map(([hva, hvem], n) => (
+                          <li key={hva} className={`py-2.5 ${n > 0 ? 'border-t' : ''}`} style={{ borderColor: 'rgba(21,19,15,0.07)' }}>
+                            <span className="block text-[12.5px] text-[#15130F]/50">{hva}</span>
+                            <span className="mt-0.5 flex items-center gap-2 text-[14px] font-medium" style={{ color: 'rgba(21,19,15,0.85)' }}>
+                              {/^du\b/i.test(hvem) || /\bdu\b/.test(hvem) ? <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.lilla }} /> : null}
+                              {hvem}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-auto pt-6">
+                        <p className="text-[13px] text-[#15130F]/55">{o.meta}<span className="text-[#15130F]/35"> · {o.omrade}</span></p>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); velgTjeneste(o.id); }}
+                          className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14.5px] font-medium transition-[background-color,transform] duration-200 group-hover:bg-[#2A2620] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
+                          style={{ background: T.ink, color: '#F4F1EA' }}
+                          data-testid={o.testId}
+                        >
+                          {o.knapp} <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-5 text-[13px] text-[#15130F]/45">Begge kan endres senere. Ingenting sendes før du sier ja.</p>
               </section>
             ) : null}
 
-            {steg === 'kontakt' ? (
+            {!sendt && steg === 'kontakt' ? (
               <section key="kontakt" className="dh-cover-inn" data-testid="start-steg-kontakt">
                 <Tilbake onClick={() => setSteg('tjeneste')} />
                 <Tittel
@@ -529,7 +553,7 @@ export default function StartV4() {
                     </div>
                   ) : null}
                   <TekstFelt id="owner-name-input" label={form.ownerKind === 'business' ? 'Kontaktperson' : 'Fullt navn'} value={form.name} onChange={(e) => setField('name', e.target.value)} autoComplete="name" placeholder="Ola Nordmann" feil={errors.name} autoFokus />
-                  <TekstFelt id="owner-email-input" label="E-post" type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} autoComplete="email" inputMode="email" placeholder="ola@eksempel.no" feil={errors.email} />
+                  <TekstFelt id="owner-email-input" label="E-post" hint="Bekreftelsen sendes hit" type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} autoComplete="email" inputMode="email" placeholder="ola@eksempel.no" feil={errors.email} />
                   <TelefonFelt id="owner-phone-input" land={landIso} onLand={(iso) => { setLandIso(iso); setField('phone', bareSiffer(form.phone, landFor(iso).max + (iso === 'NO' ? 0 : 1))); }} landListe={LAND} flagg={flagg} value={form.phone} feil={errors.phone}
                     onChange={(e) => {
                       const raw = String(e.target.value || '').trim();

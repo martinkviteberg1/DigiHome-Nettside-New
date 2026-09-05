@@ -987,3 +987,8 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - QA: desktop 1440 + mobil 390 screenshots for alle steg, tier-prefill, FINN-lenke, Oslo (utenfor område), valideringsfeil.
   Ingen ekte innsending testet (unngå falske leads). Frontend-testagent ikke kjørt (krever tillatelse).
 - Åpent: CompanyPicker i V4-stil; tom-tilstand i panelet (charcoal) kan få mer liv; ekte innsending bør testes av bruker.
+- **Løft (verdensklasse-runde):** BoligPanel har nå tre tilstander — TOM = papir «Tre steg. Ingen forpliktelse.» m/ stegliste
+  og «Under ett minutt»; BOLIG = Street View m/ 18 s drift + «✓ Boligen er funnet»; kvittering m/ glidende verdier + «Registrert».
+  Steg 2 er et triptyk i én flate: to kolonner (Lei ut selv / Full forvaltning) med **«hvem gjør hva»-ledger** (3 rader, lilla
+  prikk der du er involvert), meta + ink-knapp per kolonne; kolonnen er klikkbar. Ferdig-tilstanden beholder layouten m/ panelet
+  fylt ut; topplinjen viser alle steg fullført. Testet m/ mocket /api/leads (ingen ekte lead).
