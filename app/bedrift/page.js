@@ -1,11 +1,17 @@
-import BedriftLanding from '@/components/bedrift/BedriftLanding';
+import BedriftV4 from '@/components/forside/v4/bedrift/BedriftV4';
+
+const TITTEL = 'For eiendomsselskap — Porteføljen på autopilot';
+const BESKRIVELSE = 'Saker, husleie og leietakere på tvers av alle bygg. Systemet drifter — teamet godkjenner, med roller og full historikk.';
 
 export const metadata = {
-  title: 'DigiHome for bedrifter — driftssystemet for eiendomsporteføljer',
-  description: 'Leieforhold, BankID-signering, saker, dokumenter og økonomi i én flate. Bygget av forvaltere og brukt hver dag på vår egen portefølje. For selskaper med 5–1000 enheter.',
+  title: TITTEL,
+  description: BESKRIVELSE,
   alternates: { canonical: '/bedrift' },
+  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/bedrift' },
+  twitter: { card: 'summary_large_image', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE },
 };
 
+// Bedrift — eiendomsselskap med portefølje. Første akt: hero (kun hero inntil videre).
 export default function BedriftPage() {
-  return <BedriftLanding />;
+  return <BedriftV4 />;
 }

@@ -51,8 +51,8 @@ const SPOR = [
     tittel: ['Overlat jobben', 'til oss'],
     tekst: 'Du vil slippe det praktiske helt. DigiHome forvalter boligen — du beholder oversikten og siste ord.',
     punkter: ['Vi finner og følger opp leietaker', 'Vi håndterer drift og leverandører', 'Du får oversikten — og siste ord'],
-    handling: 'Book en samtale',
-    href: '/book-mote',
+    handling: 'Se full forvaltning',
+    href: '/forvaltning',
     tjeneste: true,
   },
 ];

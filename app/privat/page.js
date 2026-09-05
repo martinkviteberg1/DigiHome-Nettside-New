@@ -1,53 +1,17 @@
-import Header from '@/components/dh/Header';
-import Hero from '@/components/hjem/Hero';
-import ProofBand from '@/components/hjem/ProofBand';
-import ToVeier from '@/components/hjem/ToVeier';
-import SlikFungerer from '@/components/hjem/SlikFungerer';
-import Boligene from '@/components/hjem/Boligene';
-import Stemmer from '@/components/hjem/Stemmer';
-import Sporsmal from '@/components/hjem/Sporsmal';
-import Avslutning from '@/components/hjem/Avslutning';
-import ServiceModelsSection from '@/components/dh/ServiceModelsSection';
-import DynamicRentalSection from '@/components/dh/DynamicRentalSection';
-import ShowcaseSection from '@/components/dh/ShowcaseSection';
-import AboutCEOSection from '@/components/dh/AboutCEOSection';
-import Footer from '@/components/dh/Footer';
-import MobileCTA from '@/components/dh/MobileCTA';
-import StructuredData from '@/components/dh/StructuredData';
+import PrivatV4 from '@/components/forside/v4/privat/PrivatV4';
+
+const TITTEL = 'For private huseiere — Boligen på autopilot';
+const BESKRIVELSE = 'Lei ut selv — uten å gjøre alt selv. Kontrakt med BankID, husleie med oppfølging og saker der du bare godkjenner. Hele Norge, ingen bindingstid.';
 
 export const metadata = {
-  title: 'Automatisert utleie i Bergen og hele Norge | DigiHome',
-  description: 'DigiHome automatiserer utleien: annonsering, leiekontrakt med BankID, depositumskonto og husleieinnkreving. Velg full forvaltning i Bergen — eller gjør jobben selv i plattformen.',
+  title: TITTEL,
+  description: BESKRIVELSE,
   alternates: { canonical: '/privat' },
+  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/privat' },
+  twitter: { card: 'summary_large_image', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE },
 };
 
-// ---------------------------------------------------------------------------
-// Privat-siden — forbrukerhjemmet.
-//
-// Dette var tidligere forsiden (/). Roten er nå DigiHome-coveret der man
-// velger privat eller bedrift; alt forbrukerinnhold bor uendret her.
-// Argumentrekken: hva du kan velge → hvordan det fungerer → se det → hva det
-// kan gi → standarden → boligene → eierne → menneskene → spørsmålene → handling.
-// ---------------------------------------------------------------------------
+// Privat — huseiere med én eller noen få boliger. Første akt: hero (kun hero inntil videre).
 export default function PrivatPage() {
-  return (
-    <div>
-      <StructuredData />
-      <Header />
-      <Hero />
-      <ProofBand />
-      <ToVeier />
-      <SlikFungerer />
-      <ServiceModelsSection />
-      <DynamicRentalSection />
-      <Boligene />
-      <ShowcaseSection />
-      <Stemmer />
-      <AboutCEOSection />
-      <Sporsmal />
-      <Avslutning />
-      <Footer />
-      <MobileCTA />
-    </div>
-  );
+  return <PrivatV4 />;
 }

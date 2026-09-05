@@ -1,13 +1,9 @@
-import { renderOg, OG_SIZE, OG_CONTENT_TYPE, OG_ALT } from '@/lib/og';
+import { renderOgV4, OG_V4_SIZE } from '@/lib/og-v4';
 
-export const alt = OG_ALT;
-export const size = OG_SIZE;
-export const contentType = OG_CONTENT_TYPE;
+export const alt = 'DigiHome full forvaltning — Vi tar jobben. Du bestemmer.';
+export const size = OG_V4_SIZE;
+export const contentType = 'image/png';
 
 export default async function Image() {
-  return renderOg({
-    eyebrow: 'Forvaltning',
-    title: 'Full forvaltning av utleieboligen din',
-    subtitle: 'Annonsering, prising, kontrakter, husleie og vedlikehold — vi håndterer alt.',
-  });
+  return renderOgV4({ tittel: ['Vi tar jobben.', 'Du bestemmer'], under: 'Full forvaltning i Bergen. Vi finner leietaker, tar drift og oppfølging — du ser alt og har siste ord.', str: 92 });
 }

@@ -1,13 +1,9 @@
-import { renderOg, OG_SIZE, OG_CONTENT_TYPE, OG_ALT } from '@/lib/og';
+import { renderOgV4, OG_V4_SIZE, OG_V4_ALT } from '@/lib/og-v4';
 
-export const alt = OG_ALT;
-export const size = OG_SIZE;
-export const contentType = OG_CONTENT_TYPE;
+export const alt = OG_V4_ALT;
+export const size = OG_V4_SIZE;
+export const contentType = 'image/png';
 
 export default async function Image() {
-  return renderOg({
-    eyebrow: 'Eiendomsforvaltning · Bergen',
-    title: 'Utleie som går av seg selv.',
-    subtitle: 'Automatisert utleie i Bergen og hele Norge — med eller uten forvalter.',
-  });
+  return renderOgV4({});
 }

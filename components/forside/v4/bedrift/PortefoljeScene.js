@@ -21,20 +21,31 @@ import { EASE, T, display, tall, useSekvens, useSmal, useSynlig } from '../motio
    Størrelsen (10–50 · 50–250 · 250+) bytter data og spiller fra frame 1.
 --------------------------------------------------------------------------- */
 
+const BILDE = {
+  'Nygårdsgaten 5': '/v4/bygg/nygardsgaten.webp',
+  'Strandgaten 12': '/v4/bygg/strandgaten.webp',
+  'Solheimsgaten 8': '/v4/bygg/solheimsgaten.webp',
+  'Kong Oscars gate 3': '/v4/bygg/kongoscars.webp',
+  'Damsgårdsveien 41': '/v4/bygg/damsgardsveien.webp',
+  'Michael Krohns gate 9': '/v4/bygg/michaelkrohns.webp',
+  'Løkkeveien 14': '/v4/bygg/michaelkrohns.webp',
+  'Pedersgata 22': '/v4/bygg/kongoscars.webp',
+};
+
 export const STORRELSER = {
   liten: {
-    navn: '10–50', selskap: 'Vestland Eiendom AS', by: 'Bergen', bygg: 3, enheter: 38,
-    husleie: `${tall(494000)} kr`, innbetalt: '38 av 38', purringer: 0, saker: 6, lost: 5,
+    navn: '10–50', selskap: 'Vestland Eiendom AS', initialer: 'VE', by: 'Bergen', bygg: 3, enheter: 38,
+    husleieTall: 494000, husleieFmt: (n) => `${tall(Math.round(n))} kr`, innbetalt: '38 av 38', purringer: 0, saker: 6, lost: 5,
     byggListe: [['Nygårdsgaten 5', 8], ['Strandgaten 12', 14], ['Solheimsgaten 8', 16]], flere: 0,
   },
   mellom: {
-    navn: '50–250', selskap: 'Bergen Bolig AS', by: 'Bergen', bygg: 9, enheter: 214,
-    husleie: '2,78 mill.', innbetalt: '211 av 214', purringer: 3, saker: 14, lost: 11,
+    navn: '50–250', selskap: 'Bergen Bolig AS', initialer: 'BB', by: 'Bergen', bygg: 9, enheter: 214,
+    husleieTall: 2.78, husleieFmt: (n) => `${n.toFixed(2).replace('.', ',')} mill.`, innbetalt: '211 av 214', purringer: 3, saker: 14, lost: 11,
     byggListe: [['Nygårdsgaten 5', 8], ['Strandgaten 12', 24], ['Solheimsgaten 8', 32], ['Kong Oscars gate 3', 18], ['Damsgårdsveien 41', 40], ['Michael Krohns gate 9', 28]], flere: 3,
   },
   stor: {
-    navn: '250+', selskap: 'Nordvest Eiendom', by: 'Bergen · Stavanger', bygg: 31, enheter: 640,
-    husleie: '8,3 mill.', innbetalt: '632 av 640', purringer: 8, saker: 41, lost: 36,
+    navn: '250+', selskap: 'Nordvest Eiendom', initialer: 'NE', by: 'Bergen · Stavanger', bygg: 31, enheter: 640,
+    husleieTall: 8.3, husleieFmt: (n) => `${n.toFixed(1).replace('.', ',')} mill.`, innbetalt: '632 av 640', purringer: 8, saker: 41, lost: 36,
     byggListe: [['Nygårdsgaten 5', 8], ['Strandgaten 12', 24], ['Solheimsgaten 8', 32], ['Damsgårdsveien 41', 40], ['Løkkeveien 14', 36], ['Pedersgata 22', 22]], flere: 25,
   },
 };
@@ -58,6 +69,25 @@ const AUTO_MS = 5000;
 const SCENE_H = 'clamp(620px, 70vh, 700px)';
 const SCENE_H_SMAL = 'clamp(560px, 72vh, 640px)';
 const HAIR = 'rgba(21,19,15,0.08)';
+const PAPIR = '#FBFAF8';
+
+/* Tall som teller opp når raden kommer (expo-out, ~1,1 s). Systemet jobber — du ser det. */
+function Teller({ vis, til, fmt }) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (!vis) { setV(0); return undefined; }
+    let raf; const t0 = performance.now(); const dur = 1100;
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(2, -10 * p);
+      setV(til * (p >= 1 ? 1 : e));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [vis, til]);
+  return <span>{fmt(v)}</span>;
+}
 
 function Avatar({ src, alt, size = 22 }) {
   return (
@@ -90,7 +120,7 @@ function HakeIkon({ className = '' }) {
 /* Dagens rader — per størrelse. Den siste er saken som venter. */
 function rader(d) {
   return [
-    { fase: 'rad1', tid: '08:00', t: 'Husleie registrert', s: `${d.husleie} · ${d.innbetalt}${d.purringer ? ` · ${d.purringer} purringer sendt` : ''}` },
+    { fase: 'rad1', tid: '08:00', t: 'Husleie registrert', teller: true, s: `${d.innbetalt}${d.purringer ? ` · ${d.purringer} purringer sendt` : ''}` },
     { fase: 'rad2', tid: '09:12', t: 'Saker i dag', s: `${d.saker} nye · ${d.lost} rutinesaker løst` },
     { fase: 'rad3', tid: '11:40', t: 'Leiekontrakt signert', s: 'Solheimsgaten 8 · leil. 12 · BankID' },
     { fase: 'rad4', tid: '13:05', t: 'Låsbytte godkjent', s: `Nora · økonomi · ${tall(6200)} kr · Solheimsgaten 8`, avatar: { src: '/v4/kari.webp', alt: 'Nora' } },
@@ -193,7 +223,7 @@ export default function PortefoljeScene({ storrelse = 'mellom' }) {
       const fig = figRef.current.getBoundingClientRect();
       const rad = radRef.current.getBoundingClientRect();
       const kortH = kortRef.current.offsetHeight;
-      const midt = rad.top - fig.top + rad.height / 2 - kortH / 2;
+      const midt = rad.top - fig.top - 6;   // topp-justert mot saksraden, så raden over (Nora · økonomi) holdes synlig
       const maks = ref.current.offsetHeight - kortH - 20;
       setKortTop(Math.round(Math.max(24, Math.min(midt, maks))));
     };
@@ -211,24 +241,38 @@ export default function PortefoljeScene({ storrelse = 'mellom' }) {
       <div
         ref={ref}
         className="relative overflow-hidden rounded-[20px]"
-        style={{ height: sceneH, background: T.flate, boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.06)', opacity: skifter ? 0 : 1, transition: `opacity 300ms ${EASE}` }}
+        style={{ height: sceneH, background: PAPIR, boxShadow: '0 0 0 1px rgba(21,19,15,0.07), 0 40px 90px -50px rgba(21,19,15,0.35)', opacity: skifter ? 0 : 1, transition: `opacity 300ms ${EASE}` }}
         role="img"
         aria-label={`Animert eksempel: en dag i ${d.selskap} med DigiHome — ${d.bygg} bygg og ${d.enheter} enheter. Husleie registrert på tvers, saker løst, en kontrakt signert, en kollega godkjenner et låsbytte, og en fasadevask venter på driftssjefens godkjenning.`}
         data-testid="v4b-scene"
       >
-        {/* ── Header: selskapet ── */}
-        <div className="flex flex-col gap-3 px-6 pt-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4 sm:px-7" style={{ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'translateY(8px)', transition: `opacity 600ms ${EASE}, transform 600ms ${EASE}` }}>
-          <div className="min-w-0">
-            <p className="truncate text-[24px] sm:text-[30px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.ink }} data-testid="v4b-selskap">{d.selskap}</p>
-            <p className="mt-1 text-[13.5px] text-[#15130F]/60 sm:text-[14px]" data-testid="v4b-sum">{d.bygg} bygg · {d.enheter} enheter · {d.by}</p>
+        {/* ── Header: selskapet · dagens tall ── */}
+        <div className="flex flex-col gap-3 px-6 pt-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-7 sm:pt-6" style={{ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'translateY(8px)', transition: `opacity 600ms ${EASE}, transform 600ms ${EASE}` }}>
+          <div className="flex min-w-0 items-center gap-3.5">
+            <span aria-hidden="true" className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] text-[13px] font-medium" style={{ background: T.flate, color: T.ink, boxShadow: `inset 0 0 0 1px ${HAIR}` }}>{d.initialer}</span>
+            <div className="min-w-0">
+              <p className="truncate text-[22px] sm:text-[26px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.ink }} data-testid="v4b-selskap">{d.selskap}</p>
+              <p className="mt-0.5 text-[13px] text-[#15130F]/55 sm:text-[13.5px]" data-testid="v4b-sum">{d.bygg} bygg · {d.enheter} enheter · {d.by}{dato && <span className="hidden sm:inline"> · {dato}</span>}</p>
+            </div>
           </div>
-          <div className="flex shrink-0 items-center justify-between gap-3 text-[13px] sm:block sm:text-right sm:text-[13.5px]">
-            <p className="text-[#15130F]">I dag{dato && <span className="text-[#15130F]/45"> · {dato}</span>}</p>
-            <p className="flex items-center justify-end gap-2 text-[#15130F]/60 sm:mt-1">
+          {/* Dagens beslutninger — det tallet en driftssjef bryr seg om */}
+          <div className="flex shrink-0 items-center gap-5 sm:gap-6">
+            <div className="text-left sm:text-right">
+              <p className="text-[12px] text-[#15130F]/50">Godkjenninger i dag</p>
+              <p className="mt-0.5 flex items-baseline gap-1.5 sm:justify-end">
+                <span className="inline-grid text-[22px] leading-none" style={{ ...display, letterSpacing: '-0.02em', color: T.ink }}>
+                  <span className="col-start-1 row-start-1" style={{ opacity: godkjent ? 0 : 1, transition: `opacity 200ms ${EASE}` }}>{er('rad4') ? 1 : 0}</span>
+                  <span className="col-start-1 row-start-1" style={{ opacity: godkjent ? 1 : 0, transition: `opacity 300ms ${EASE} 200ms` }}>2</span>
+                </span>
+                <span className="text-[12.5px] text-[#15130F]/45">av {d.saker} saker</span>
+              </p>
+            </div>
+            <div className="hidden h-8 w-px sm:block" style={{ background: HAIR }} />
+            <p className="flex items-center gap-2 text-[13px] text-[#15130F]/60">
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: aktiv ? T.lilla : T.gronn, transition: 'background 400ms' }} />
               <span className="inline-grid">
                 <span className="col-start-1 row-start-1 whitespace-nowrap" style={{ opacity: aktiv ? 0 : 1, transition: `opacity 300ms ${EASE}` }}>Alt i orden</span>
-                <span className="col-start-1 row-start-1 whitespace-nowrap" style={{ opacity: aktiv ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>{smal ? '1 venter på driftssjef' : statusTekst}</span>
+                <span className="col-start-1 row-start-1 whitespace-nowrap" style={{ opacity: aktiv ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>{smal ? '1 venter' : '1 venter på driftssjef'}</span>
               </span>
             </p>
           </div>
@@ -236,26 +280,34 @@ export default function PortefoljeScene({ storrelse = 'mellom' }) {
 
         {/* ── To kolonner: bygg (venstre, ikke på mobil) · dagens drift (høyre) ── */}
         <div className="mt-4 grid h-[calc(100%-124px)] grid-cols-1 sm:mt-6 sm:h-[calc(100%-96px)] lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]">
-          {/* Byggene */}
-          <div className="hidden min-w-0 flex-col border-r pl-7 pr-6 pt-4 lg:flex" style={{ borderColor: HAIR }}>
+          {/* Byggene — stein-kolonne med miniatyrer. Hendelsene i feeden treffer byggene her: én hendelse, flere flater. */}
+          <div className="hidden min-w-0 flex-col pl-7 pr-6 pt-4 lg:flex" style={{ background: T.flate, borderRight: `1px solid ${HAIR}` }}>
             <p className="text-[13px] text-[#15130F]/45" style={{ opacity: bygg ? 1 : 0, transition: `opacity 500ms ${EASE}` }}>Bygg</p>
             <ul className="mt-2" data-testid="v4b-bygg">
               {d.byggListe.map(([navn, enh], i) => {
                 const erSak = navn === 'Strandgaten 12';
-                const tilstand = erSak && aktiv ? 'aktiv' : erSak && godkjent ? 'godkjent' : 'ok';
+                const erSol = navn === 'Solheimsgaten 8';
+                let tilstand = 'ok';
+                let etikett = null;
+                if (erSak && aktiv) { tilstand = 'aktiv'; etikett = '1 sak venter på deg'; }
+                else if (erSak && godkjent) { tilstand = 'godkjent'; etikett = 'Bestilt · uke 46'; }
+                else if (erSol && er('rad4')) { tilstand = 'hendelse'; etikett = 'Låsbytte · Nora'; }
+                else if (erSol && er('rad3')) { tilstand = 'hendelse'; etikett = 'Kontrakt signert'; }
+                const farge = tilstand === 'aktiv' ? T.lilla : tilstand === 'godkjent' ? T.gronn : tilstand === 'hendelse' ? 'rgba(21,19,15,0.55)' : 'rgba(21,19,15,0.22)';
                 return (
-                  <li key={navn} className="flex items-center justify-between gap-3 py-[9px] text-[14px]" style={{ borderTop: i ? `1px solid ${HAIR}` : 'none', opacity: bygg ? 1 : 0, transform: bygg ? 'none' : 'translateY(8px)', transition: `opacity 460ms ${EASE} ${i * 70}ms, transform 460ms ${EASE} ${i * 70}ms` }}>
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: tilstand === 'aktiv' ? T.lilla : tilstand === 'godkjent' ? T.gronn : 'rgba(21,19,15,0.22)', transition: 'background 400ms' }} />
-                      <span className="truncate" style={{ color: tilstand === 'aktiv' ? T.ink : 'rgba(21,19,15,0.78)' }}>{navn}</span>
-                    </span>
-                    <span className="shrink-0 text-[13px] tabular-nums text-[#15130F]/45">
-                      <span className="inline-grid">
-                        <span className="col-start-1 row-start-1 text-right" style={{ opacity: tilstand === 'ok' ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>{enh} enh.</span>
-                        <span className="col-start-1 row-start-1 whitespace-nowrap text-right" style={{ color: T.ink, opacity: tilstand === 'aktiv' ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>1 venter</span>
-                        <span className="col-start-1 row-start-1 whitespace-nowrap text-right" style={{ color: T.gronn, opacity: tilstand === 'godkjent' ? 1 : 0, transition: `opacity 300ms ${EASE} 200ms` }}>Bestilt</span>
+                  <li key={navn} className="flex items-center justify-between gap-3 py-[7px] text-[14px]" style={{ borderTop: i ? `1px solid ${HAIR}` : 'none', opacity: bygg ? 1 : 0, transform: bygg ? 'none' : 'translateY(8px)', transition: `opacity 460ms ${EASE} ${i * 70}ms, transform 460ms ${EASE} ${i * 70}ms` }}>
+                    <span className="flex min-w-0 items-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={BILDE[navn]} alt="" width={36} height={36} className="h-9 w-9 shrink-0 rounded-[8px] object-cover" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.08)' }} />
+                      <span className="min-w-0">
+                        <span className="block truncate" style={{ color: tilstand === 'aktiv' ? T.ink : 'rgba(21,19,15,0.82)' }}>{navn}</span>
+                        <span className="inline-grid text-[12px]">
+                          <span className="col-start-1 row-start-1 whitespace-nowrap text-[#15130F]/45" style={{ opacity: etikett ? 0 : 1, transition: `opacity 260ms ${EASE}` }}>{enh} enheter</span>
+                          <span className="col-start-1 row-start-1 whitespace-nowrap font-medium" style={{ color: tilstand === 'aktiv' ? T.ink : tilstand === 'godkjent' ? T.gronn : 'rgba(21,19,15,0.62)', opacity: etikett ? 1 : 0, transform: etikett ? 'none' : 'translateY(3px)', transition: `opacity 320ms ${EASE} 120ms, transform 320ms ${EASE} 120ms, color 300ms` }}>{etikett || ''}</span>
+                        </span>
                       </span>
                     </span>
+                    <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: farge, transition: 'background 400ms' }} />
                   </li>
                 );
               })}
@@ -290,7 +342,9 @@ export default function PortefoljeScene({ storrelse = 'mellom' }) {
                           {r.t}
                           {r.avatar && <Avatar src={r.avatar.src} alt={r.avatar.alt} size={20} />}
                         </span>
-                        <span className="mt-0.5 block text-[13.5px] sm:truncate" style={{ color: dempet ? 'rgba(21,19,15,0.42)' : 'rgba(21,19,15,0.62)' }}>{r.s}</span>
+                        <span className="mt-0.5 block text-[13.5px] sm:truncate" style={{ color: dempet ? 'rgba(21,19,15,0.42)' : 'rgba(21,19,15,0.62)' }}>
+                          {r.teller && <><span style={{ color: 'rgba(21,19,15,0.72)' }}><Teller vis={vis} til={d.husleieTall} fmt={d.husleieFmt} /></span> · </>}{r.s}
+                        </span>
 
                         {r.sak && (
                           <span className="grid" style={{ gridTemplateRows: visSpor ? '1fr' : '0fr', transition: `grid-template-rows 450ms ${EASE}` }}>
@@ -382,7 +436,12 @@ export default function PortefoljeScene({ storrelse = 'mellom' }) {
             <button type="button" onClick={() => godkjenn('deg')} tabIndex={visKort ? 0 : -1} aria-label={`Godkjenn fasadevask, ${tall(48000)} kroner`} className={`mt-4 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[10px] text-[14px] font-medium transition-[background-color,transform] duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${venter && !trykket ? 'v4-puls' : ''}`} style={{ background: trykket ? T.gronn : T.lilla, color: trykket ? '#fff' : T.ink }} data-testid="v4b-godkjenn">
               {trykket && <HakeIkon />}{knappTekst}
             </button>
-            <p className="mt-2.5 text-[11.5px] text-white/45">Sak opprettet automatisk · krever rollen driftssjef</p>
+            {/* Rollekjeden — hvem gjorde hva før det landet hos deg */}
+            <ol className="mt-3.5 flex flex-col gap-1 border-t pt-3 text-[11.5px] text-white/50" style={{ borderColor: 'rgba(255,255,255,0.10)' }}>
+              <li className="flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-white/35" />Vaktmester meldte · 14:02</li>
+              <li className="flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-white/35" />DigiHome fant leverandør og pris</li>
+              <li className="flex items-center gap-2" style={{ color: 'rgba(244,241,234,0.85)' }}><span className="h-1 w-1 rounded-full" style={{ background: T.lilla }} />Krever driftssjef — deg</li>
+            </ol>
           </div>
         )}
       </div>
