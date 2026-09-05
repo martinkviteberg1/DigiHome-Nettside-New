@@ -21,12 +21,13 @@ import KontraktFilm from './KontraktFilm';
    Drift er én sak med én godkjenning. De andre er synlige, dempet og ikke klikkbare.
 --------------------------------------------------------------------------- */
 
+/* Fire kapitler i den rekkefølgen et leieforhold lever: fra ledig til valgt (Annonse), fra valgt til innflyttet
+   (Kontrakt), hverdagen med leietaker og leverandør (Drift), og pengene (Økonomi). */
 const TABS = [
   { id: 'annonse', navn: 'Annonse', klar: true },
   { id: 'kontrakt', navn: 'Kontrakt', klar: true },
-  { id: 'okonomi', navn: 'Økonomi', klar: false },
-  { id: 'leietaker', navn: 'Leietaker', klar: false },
   { id: 'drift', navn: 'Drift', klar: true },
+  { id: 'okonomi', navn: 'Økonomi', klar: false },
 ];
 
 const SCENER = {

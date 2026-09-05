@@ -1011,5 +1011,12 @@ html.dh-tour-snap.dh-tour-flyt { scroll-snap-type: none; }
   100% { opacity: 0; }
 }
 
+/* V4 Annonse-film, kameraet: utløserblink, søkeren som «finner rammen», og håndholdt drift i bildet du tar */
+@keyframes v4-blink { 0% { opacity: 0; } 14% { opacity: 0.46; } 100% { opacity: 0; } }
+@keyframes v4-soker-inn { from { transform: scale(1.035); opacity: 0.55; } to { transform: scale(1); opacity: 1; } }
+@keyframes v4-kamera { from { transform: translate(0.9%, 0.5%) scale(1.04); } to { transform: translate(0%, 0%) scale(1); } }
+@keyframes v4-blink-sort { 0% { opacity: 0; } 25% { opacity: 1; } 55% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes v4-utloser { 0% { transform: scale(1); } 35% { transform: scale(0.82); } 100% { transform: scale(1); } }
+
 /* V4: boligkort i bevegelse (BoligerSeksjon). Halve sporet = én runde, sporet er duplisert. */
 @keyframes v4-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
