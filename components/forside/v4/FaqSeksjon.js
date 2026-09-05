@@ -40,7 +40,7 @@ const SPORSMAL = [
   },
 ];
 
-export default function FaqSeksjon() {
+export default function FaqSeksjon({ sporsmal = SPORSMAL, prisSvar = null }) {
   const ref = useRef(null);
   const synlig = useSynlig(ref, 0.2);
   const inn = (i) => ({ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(16px)', transition: `opacity 700ms ${EASE} ${i * 80}ms, transform 800ms ${EASE} ${i * 80}ms` });
@@ -63,7 +63,7 @@ export default function FaqSeksjon() {
 
           <div className="lg:col-span-7 lg:col-start-6" style={inn(1)}>
             <Accordion type="single" collapsible className="border-t border-[#15130F]/10" data-testid="v4-faq-liste">
-              {SPORSMAL.map((s, i) => (
+              {sporsmal.map((s, i) => (
                 <AccordionItem key={s.q} value={`q${i}`} className="border-[#15130F]/10" data-testid={`v4-faq-${i}`}>
                   <AccordionTrigger className="py-5 text-left text-[17px] font-medium text-[#15130F] hover:no-underline sm:py-6 sm:text-[18px] [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:text-[#15130F]/55">
                     {s.q}
@@ -71,7 +71,7 @@ export default function FaqSeksjon() {
                   <AccordionContent className="pb-6 pr-8 text-[16px] leading-[1.55] sm:text-[16.5px]">
                     {s.a ? (
                       <p className="max-w-[60ch]" style={{ color: 'rgba(21,19,15,0.66)' }}>{s.a}</p>
-                    ) : (
+                    ) : prisSvar ? prisSvar : (
                       <p className="max-w-[60ch]" style={{ color: 'rgba(21,19,15,0.66)' }}>
                         Prisen følger måten du leier ut på — antall enheter og hva du vil ha på autopilot. Private kan bruke{' '}
                         <Link href="/priskalkulator" className={LINK} style={{ color: T.ink }} data-testid="v4-faq-kalkulator">priskalkulatoren</Link>. Selskaper får et konkret forslag etter en{' '}

@@ -24,13 +24,13 @@ const SPOR = [
   {
     id: 'selv',
     nr: '01',
-    merke: 'Privat huseier',
+    merke: 'Boligeier',
     meta: '1–5 boliger',
     tittel: ['Lei ut', 'selv'],
     tekst: 'Du eier én eller noen få boliger og vil ha det ryddig uten å bruke kveldene på det.',
     punkter: ['Leiekontrakt signert med BankID', 'Husleie med oppfølging og purring', 'Saker: leverandør og pris — du godkjenner'],
     handling: 'Start med adressen din',
-    href: '/privat',
+    href: '/boligeiere',
   },
   {
     id: 'skaler',
@@ -141,7 +141,7 @@ export default function SporSeksjon() {
             Autopilot, tilpasset<br />måten du leier ut på.
           </h2>
           <p className="max-w-[34ch] text-[17px] leading-[1.5] sm:text-[18px] lg:col-span-4 lg:pb-2" style={{ color: 'rgba(21,19,15,0.62)' }}>
-            Privat huseier, eiendomsselskap — eller la oss ta jobben. Samme motor, tre måter å bruke den.
+            Boligeier, eiendomsselskap — eller la oss ta jobben. Samme motor, tre måter å bruke den.
           </p>
         </div>
 

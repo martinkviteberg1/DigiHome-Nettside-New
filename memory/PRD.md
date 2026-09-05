@@ -1055,3 +1055,14 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   (1) Filmen hentes som blob og spilles fra minnet. (2) **Ingen transform/zoom på `<video>` noen gang** («push-in» fjernet).
   (3) Dissolven til stua starter ved `hjemVed = 11,45 s` (siste 0,6 s av filmen ligger under overgangen, 1,3 s), `ended` er reserve.
   (4) `loopWebm` (VP9 1280) velges automatisk når nettleseren ikke kan H.264 (`canPlayType`).
+
+## For boligeiere (`/boligeiere`) — erstatter «For private» (`/privat` → 308)
+- Navn: «For boligeiere» (dekker leilighet + hus; speiler «For eiendomsselskaper»). Nav, SporSeksjon (merke «Boligeier») og redirect oppdatert.
+  «Forvaltning» beholdt som eget nav-punkt/side. Filer flyttet: `components/forside/v4/boligeiere/` (BoligScene, BoligeiereV4,
+  VeiskilleSeksjon, SammenligningSeksjon, StegSeksjon), `app/boligeiere/{page,opengraph-image}.js`. `privat/`-mappen fjernet.
+- Dramaturgi: nøytral hero («Boligen på autopilot.» + adressefelt + BoligScene) → **Veiskillet** (to flater: Selvforvaltning lys /
+  Full forvaltning charcoal, samme oppbygning, pris 5 % av husleien vs. «Etter omfang · en andel av husleien») → **Sammenligningen**
+  («Samme leieår. Hvem gjør hva?» — 7 hendelser, kolonner Du/DigiHome, bryter Selv/Full med sekvensert bytte) → LeietakerSeksjon →
+  **Slik kommer du i gang** (4 steg + Sarah som fast forvalter) → FAQ (boligeier-spørsmål, `FaqSeksjon` har nå `sporsmal`/`prisSvar`-props)
+  → AvslutningSeksjon (`tittel`/`under`-props). Innholdet holder seg til avtalen (selv: kontrakt/husleie/saker/dokumenter — ikke annonse/visning)
+  og sidens løfter for full (annonse, visning, leietakervalg, kontrakt, depositum, drift, rapport). Ingen tall for full forvaltning finnes publisert.

@@ -12,7 +12,7 @@ import { Knapp } from './motion';
 
 const LENKER = [
   ['Produkt', '/#produkt'],
-  ['For private', '/privat'],
+  ['For boligeiere', '/boligeiere'],
   ['For eiendomsselskaper', '/bedrift'],
   ['Forvaltning', '/forvaltning'],
   ['Priser', '/priser'],

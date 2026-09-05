@@ -20,7 +20,7 @@ const STEG = [
   ['3', 'Autopilot på', 'Husleie, oppfølging og saker går av seg selv — du godkjenner det som koster.'],
 ];
 
-export default function AvslutningSeksjon() {
+export default function AvslutningSeksjon({ tittel = 'Utleie på autopilot', under = 'Start med adressen din. Resten setter vi opp sammen — på ti minutter.' }) {
   const ref = useRef(null);
   const synlig = useSynlig(ref, 0.25);
   const inn = (i) => ({ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(18px)', transition: `opacity 800ms ${EASE} ${i * 100}ms, transform 900ms ${EASE} ${i * 100}ms` });
@@ -45,10 +45,10 @@ export default function AvslutningSeksjon() {
       <div className="relative mx-auto w-full max-w-[1360px] px-5 pb-24 pt-24 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-32 lg:pt-36">
         <div className="max-w-[880px]">
           <h2 className="text-[clamp(52px,6.2vw,104px)]" style={{ ...display, color: T.offwhite, ...inn(0) }} data-testid="v4-avslutning-tittel">
-            Utleie på autopilot<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+            {tittel}<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
           </h2>
           <p className="mt-6 max-w-[36ch] text-[18px] leading-[1.45] sm:text-[21px]" style={{ color: 'rgba(244,241,234,0.78)', ...inn(1) }}>
-            Start med adressen din. Resten setter vi opp sammen — på ti minutter.
+            {under}
           </p>
           <div className="relative z-20 mt-9 w-full sm:max-w-[520px]" style={inn(2)}>
             <AdresseFelt />

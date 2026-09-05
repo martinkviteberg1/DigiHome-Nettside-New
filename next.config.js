@@ -14,6 +14,7 @@ const nextConfig = {
   // sitemap.js aldri lister en URL som redirigerer.
   async redirects() {
     return [
+      { source: '/privat', destination: '/boligeiere', permanent: true },
       { source: '/blogg', destination: '/nyheter', permanent: true },
       { source: '/blogg/:slug*', destination: '/nyheter/:slug*', permanent: true },
       { source: '/nyheter/skatt-pa-utleieinntekt-2026', destination: '/guider/skatt-pa-utleie', permanent: true },
