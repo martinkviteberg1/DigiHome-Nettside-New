@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EASE, T, display, tall, useRedusert, useSekvens, useSmal, useSynlig } from './motion';
+import AdresseFelt from './AdresseFelt';
 
 /* ---------------------------------------------------------------------------
    HeroStage — én scene i full bredde. Sana-strukturen, DigiHomes innhold.
@@ -39,7 +40,9 @@ export const FILM = {
   /* Sekundet der han fortsatt leser — rett før telefonen går i lommen. Har du ikke trykket, trykker historien her. */
   trykkVed: 7.4,
   /* Sekundet der han går inn: her begynner overgangen til stua — mens filmen fortsatt beveger seg. Aldri på et frosset bilde. */
-  hjemVed: 11.5,
+  hjemVed: 11.95,
+  /* Litt før: kameraet begynner å gå sakte inn mot døren — bevegelsen fortsetter uavbrutt gjennom klippet til stua. */
+  pushVed: 10.8,
   once: true,
 };
 
@@ -93,7 +96,7 @@ function HakeIkon({ className = '' }) {
 /* Virkeligheten: film hvis den finnes, ellers foto. Ett bilde/én film i DOM — pluss stillbildet
    filmen glir over i når historien er ferdig (han hjemme). Filmen spiller én gang, fra det
    historien starter, og hviler på siste bilde (han ved døren) til du har godkjent. Aldri frys midt i. */
-function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, hjemme, onFilmFerdig, onTid }) {
+function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, hjemme, pusher, onFilmFerdig, onTid }) {
   const vidRef = useRef(null);
 
   /* Filmen starter når historien starter — ikke før (så bilde og tekst følger hverandre). */
@@ -128,7 +131,7 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
         <video
           ref={vidRef}
           {...felles}
-          style={{ ...felles.style, transform: hjemme ? 'scale(1.07)' : 'scale(1)', transition: hjemme ? `transform 3200ms ${EASE}` : 'transform 0ms linear' }}
+          style={{ ...felles.style, transform: (hjemme || pusher) ? 'scale(1.07)' : 'scale(1)', transition: (hjemme || pusher) ? 'transform 4400ms cubic-bezier(0.25, 0.1, 0.25, 1)' : 'transform 0ms linear' }}
           poster={smal && film.posterSmal ? film.posterSmal : film.poster}
           muted
           loop={!film.once}
@@ -143,7 +146,7 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
           <source src={smal && film.loopSmal ? film.loopSmal : film.loop} type="video/mp4" />
         </video>
         {/* Fargebro: filmens kjølige kveld glir mot stuas varme før bildet kommer — det er slik en overgang blir usynlig. */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#E2C6A5', opacity: hjemme ? 0.5 : 0, transition: hjemme ? `opacity 700ms ${EASE}` : 'opacity 0ms linear' }} />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#E2C6A5', opacity: hjemme ? 0.5 : 0, transition: hjemme ? `opacity 900ms ${EASE}` : 'opacity 0ms linear' }} />
         {/* Stillbildet: han hjemme. Samme bevegelse gjennom klippet (inn, inn) — så pittelitt, nesten umerkelig drift. */}
         {hjem ? (
           <div
@@ -151,8 +154,8 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
             className="pointer-events-none absolute inset-0 will-change-transform"
             style={{
               opacity: hjemme ? 1 : 0,
-              transform: hjemme ? 'scale(1.04)' : 'scale(1)',
-              transition: hjemme ? `opacity 1300ms ${EASE} 100ms, transform 3200ms ${EASE} 100ms` : 'opacity 240ms linear, transform 0ms linear 240ms',
+              transform: hjemme ? 'scale(1.03)' : 'scale(1)',
+              transition: hjemme ? `opacity 1600ms ${EASE}, transform 3600ms ${EASE}` : 'opacity 240ms linear, transform 0ms linear 240ms',
             }}
             data-testid="v4-film-hjem-ramme"
           >
@@ -161,7 +164,7 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
               src={hjem}
               alt=""
               className="absolute inset-0 h-full w-full object-cover will-change-transform"
-              style={{ objectPosition: '50% 50%', transform: hjemme ? 'scale(1.02)' : 'scale(1)', transition: hjemme ? 'transform 42000ms linear 3200ms' : 'transform 0ms linear' }}
+              style={{ objectPosition: '50% 50%', transform: hjemme ? 'scale(1.055)' : 'scale(1)', transition: hjemme ? 'transform 16000ms cubic-bezier(0.22, 0.61, 0.36, 1) 200ms' : 'transform 0ms linear' }}
               data-testid="v4-film-hjem"
             />
             {/* Subtil overlay: myk vignett + hint av kveldslys — bildet får dybde, teksten står roligere. */}
@@ -255,6 +258,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   const [filmFerdig, setFilmFerdig] = useState(false);
   const onFilmFerdig = useCallback(() => setFilmFerdig(true), []);
   const [hjemme, setHjemme] = useState(false);
+  const [pusher, setPusher] = useState(false);   // kameraet går sakte inn mot døren før klippet
   const kanHjem = !!film && !egen;   // uten film (eller med din egen bolig fra Street View) blir panelet stående
   useEffect(() => {
     if (!ferdig || !kanHjem) return undefined;
@@ -293,12 +297,13 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
     window.setTimeout(() => { setPresser(false); setTrykket(true); }, 180);
     window.setTimeout(() => { videre(); }, 180 + 900);
   }, [trykket, presser, venter, videre]);
-  useEffect(() => { if (fase === 'foto') { setTrykket(false); setPresser(false); setHvem(null); setFilmFerdig(false); setHjemme(false); } }, [fase]);
+  useEffect(() => { if (fase === 'foto') { setTrykket(false); setPresser(false); setHvem(null); setFilmFerdig(false); setHjemme(false); setPusher(false); } }, [fase]);
 
   /* Filmen bestemmer når: rett før han legger telefonen i lommen trykker historien — hvis du ikke har gjort det. */
   const onTid = useCallback((t) => {
     if (film && film.trykkVed && t >= film.trykkVed) godkjenn('kari');
-    /* Overgangen hjem starter mens han går inn — filmen løper under hele dissolven. */
+    if (film && film.pushVed && kanHjem && ferdig && t >= film.pushVed) setPusher(true);
+    /* Overgangen hjem starter i det han går inn — bevegelsen fortsetter gjennom klippet. */
     if (film && film.hjemVed && kanHjem && ferdig && t >= film.hjemVed) setHjemme(true);
   }, [film, godkjenn, kanHjem, ferdig]);
   /* Uten film (eller om autoplay er blokkert) trykker historien selv etter en liten stund i hold. */
@@ -307,14 +312,6 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
     const id = window.setTimeout(() => godkjenn('kari'), kanHjem ? 6500 : 2400);
     return () => window.clearTimeout(id);
   }, [venter, trykket, presser, godkjenn, kanHjem]);
-
-  /* Sluttbildets «Prøv med din adresse» → opp til adressefeltet. */
-  const tilAdresse = useCallback(() => {
-    const felt = document.querySelector('[data-testid="v4-adressefelt"] input');
-    if (!felt) return;
-    try { felt.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { felt.scrollIntoView(); }
-    window.setTimeout(() => { try { felt.focus({ preventScroll: true }); } catch (e) { /* ok */ } }, 450);
-  }, []);
 
   const knappTekst = trykket ? 'Godkjent' : 'Godkjenn';
   const godkjentAv = hvem === 'deg' ? 'Godkjent av deg · nå' : 'Godkjent · 08:02';
@@ -327,24 +324,24 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
         ref={ref}
         className="relative w-full overflow-hidden rounded-[20px] sm:rounded-[24px]"
         style={{ aspectRatio: smal ? '4 / 5.6' : '1.92 / 1', minHeight: smal ? 600 : 520, maxHeight: smal ? undefined : 'min(880px, calc(100svh - 124px))', background: T.charcoal, boxShadow: '0 0 0 1px rgba(21,19,15,0.08)', opacity: skifter ? 0 : 1, transition: `opacity 320ms ${EASE}` }}
-        role="img"
+        role="group"
         aria-label={`Animert eksempel: en dag i ${adresse} med DigiHome — husleie registrert, kontrakt signert, et spørsmål fra leietaker besvart fra kontrakten, og et varmtvannsproblem løst med én godkjenning fra eier.`}
         data-testid="v4-scene"
       >
         {/* ── Virkeligheten ── */}
-        <Virkelighet film={film} bilde={bildet} smal={smal} kjorer={kjorer} ferdig={ferdig} redusert={redusert} egen={egen} fase={fase} hjemme={hjemme} onFilmFerdig={onFilmFerdig} onTid={onTid} />
+        <Virkelighet film={film} bilde={bildet} smal={smal} kjorer={kjorer} ferdig={ferdig} redusert={redusert} egen={egen} fase={fase} hjemme={hjemme} pusher={pusher} onFilmFerdig={onFilmFerdig} onTid={onTid} />
 
         {/* Filmen vises først helt ren. Når dagen begynner, dempes bildet — lett, filmen skal fortsatt sees. Slipper igjen hjemme. */}
         <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.38) 0%, rgba(21,18,15,0.14) 40%, rgba(21,18,15,0.02) 62%, rgba(21,18,15,0.24) 100%)', opacity: inne ? 1 : 0, transition: `opacity ${hjemme ? 900 : 1400}ms ${EASE}` }} />
 
-        {/* ── Slutten: han hjemme. Setningen står på den lyse veggen til høyre (ink på lys flate, som resten av siden),
-              dagen ligger under som et lett papirkort — og én rolig handling. Aldri over ham. ── */}
+        {/* ── Slutten: han hjemme. Alt står rett på den lyse veggen — ingen boks. Status · setningen · tre tall fra
+              dagen · og adressefeltet, så neste steg er ett felt unna. Aldri over ham. ── */}
         <div
           className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-24' : 'absolute flex flex-col justify-start'}
           style={{
-            ...(smal ? {} : { left: '63%', right: '4%', top: '11%', bottom: '10%' }),
+            ...(smal ? {} : { left: '62%', right: '4.5%', top: '11%', bottom: '8%' }),
             color: T.ink,
-            background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 32%, rgba(243,241,236,0.98) 100%)' : 'none',
+            background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 30%, rgba(243,241,236,0.98) 100%)' : 'none',
             opacity: hjemme ? 1 : 0,
             pointerEvents: hjemme ? 'auto' : 'none',
             transition: `opacity 500ms ${EASE} ${hjemme ? 400 : 0}ms`,
@@ -353,61 +350,41 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
           data-testid="v4-slutt"
         >
           {(() => {
-            /* Teksten kommer når bildet har landet (≈1,3 s), én linje om gangen, nedenfra og opp i rolig takt. */
-            const linje = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(14px)', transition: `opacity 800ms ${EASE} ${hjemme ? 1300 + i * 110 : 0}ms, transform 800ms ${EASE} ${hjemme ? 1300 + i * 110 : 0}ms` });
-            const rader = [
-              ['Husleie registrert', vist ? `${tall(18500)}\u00A0kr` : `${tall(64500)}\u00A0kr`],
-              ['Leiekontrakt signert', 'Emma Sørensen'],
-              ['Rørlegger bestilt', 'torsdag 09:00'],
-              ...(smal ? [] : [['Ida har fått beskjed', '22:42']]),
+            /* Teksten kommer når bildet har landet (≈1,4 s), én linje om gangen. */
+            const linje = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(14px)', transition: `opacity 900ms ${EASE} ${hjemme ? 1400 + i * 120 : 0}ms, transform 900ms ${EASE} ${hjemme ? 1400 + i * 120 : 0}ms` });
+            const tallene = [
+              [vist ? `${tall(18500)}\u00A0kr` : `${tall(64500)}\u00A0kr`, vist || smal ? 'Husleie inn' : 'Husleie inn · 8 av 8'],
+              ['1 min', smal ? 'Fra melding til rørlegger' : 'Fra Idas melding til rørlegger bestilt'],
+              ['1', smal ? 'Godkjenning' : hvem === 'deg' ? 'Godkjenning — din' : 'Godkjenning — alt annet gikk av seg selv'],
             ];
-            const HAIR_INK = 'rgba(21,19,15,0.08)';
             return (
               <>
-                <h3 style={{ ...display, fontSize: smal ? 38 : 'clamp(44px, 6.4svh, 72px)', lineHeight: 0.96, ...linje(0) }} data-testid="v4-slutt-tittel">
+                <p className="flex items-center gap-2 text-[13px] sm:text-[13.5px]" style={{ ...linje(0), color: 'rgba(21,19,15,0.58)' }} data-testid="v4-slutt-status">
+                  <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55' }} />
+                  Alt i orden<span className="opacity-50"> · </span>{adresse}<span className="hidden opacity-50 sm:inline"> · </span><span className="hidden sm:inline">22:42</span>
+                </p>
+                <h3 className="mt-3 sm:mt-4" style={{ ...display, fontSize: smal ? 38 : 'clamp(44px, 6.6svh, 76px)', lineHeight: 0.95, ...linje(1) }} data-testid="v4-slutt-tittel">
                   Én godkjenning<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
                 </h3>
-                <p className="mt-3 max-w-[30ch] text-[15.5px] leading-[1.4] sm:mt-3.5 sm:text-[17px]" style={{ ...linje(1), color: 'rgba(21,19,15,0.62)' }}>Resten skjedde mens du gikk hjem.</p>
+                <p className="mt-3 max-w-[32ch] text-[15.5px] leading-[1.4] sm:mt-3.5 sm:text-[17px]" style={{ ...linje(2), color: 'rgba(21,19,15,0.62)' }}>Resten skjedde mens du gikk hjem.</p>
 
-                {/* Papirkortet: lett, presist, én hårlinje mellom radene. */}
-                <div
-                  className="mt-5 w-full max-w-[440px] rounded-[16px] sm:mt-7 sm:rounded-[18px]"
-                  style={{ background: 'rgba(251,249,245,0.94)', boxShadow: '0 0 0 1px rgba(21,19,15,0.07), 0 30px 60px -30px rgba(21,19,15,0.38)', ...linje(2) }}
-                  data-testid="v4-slutt-kort"
-                >
-                  <div className="flex items-center justify-between gap-4 px-4 pb-2.5 pt-3.5 sm:px-5 sm:pt-4">
-                    <p className="truncate text-[14.5px] font-medium sm:text-[15px]">{adresse}</p>
-                    <p className="flex shrink-0 items-center gap-2 text-[12.5px]" style={{ color: 'rgba(21,19,15,0.6)' }}>
-                      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55' }} />Alt i orden
-                    </p>
-                  </div>
-                  <ul className="px-4 sm:px-5">
-                    {rader.map(([t, d], i) => (
-                      <li key={t} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 border-t py-[9px] text-[13.5px] sm:py-2.5 sm:text-[14px]" style={{ borderColor: HAIR_INK, ...linje(2.7 + i * 0.5) }}>
-                        <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full" style={{ background: '#1F9D55', color: '#fff' }}><HakeIkon className="h-[11px] w-[11px]" /></span>
-                        <span className="truncate font-medium">{t}</span>
-                        <span className="truncate text-right" style={{ color: 'rgba(21,19,15,0.52)' }}>{d}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="hidden items-center gap-2 border-t px-5 py-3 text-[12.5px] sm:flex" style={{ borderColor: HAIR_INK, color: 'rgba(21,19,15,0.55)', ...linje(5) }}>
-                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />
-                    {hvem === 'deg' ? 'Godkjent av deg' : 'Godkjent'} · 22:41 · {tall(3450)}&nbsp;kr
-                  </div>
-                </div>
+                {/* Tre tall — rett på veggen, hårlinje over. */}
+                <dl className="mt-6 grid grid-cols-3 gap-x-5 border-t pt-4 sm:mt-8 sm:gap-x-8 sm:pt-5" style={{ borderColor: 'rgba(21,19,15,0.14)' }} data-testid="v4-slutt-tall">
+                  {tallene.map(([v, l], i) => (
+                    <div key={l} className="min-w-0" style={linje(3 + i * 0.6)}>
+                      <dd className="m-0 text-[24px] sm:text-[30px] lg:text-[34px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>{v}</dd>
+                      <dt className="mt-1.5 text-[12px] leading-[1.35] sm:mt-2 sm:text-[13px]" style={{ color: 'rgba(21,19,15,0.55)' }}>{l}</dt>
+                    </div>
+                  ))}
+                </dl>
 
-                <div className="mt-5 flex items-center gap-5 sm:mt-6" style={linje(6)}>
-                  <button
-                    type="button"
-                    onClick={tilAdresse}
-                    className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-[14px] font-medium transition-[transform,opacity] duration-200 hover:opacity-90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
-                    style={{ background: T.ink, color: T.canvas }}
-                    tabIndex={hjemme ? 0 : -1}
-                    data-testid="v4-slutt-cta"
-                  >
-                    Prøv med din adresse<span aria-hidden="true" className="-translate-y-px">↑</span>
-                  </button>
-                  <button type="button" onClick={replay} className="text-[14px] underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" style={{ color: 'rgba(21,19,15,0.62)' }} tabIndex={hjemme ? 0 : -1} data-testid="v4-replay">Spill igjen</button>
+                {/* Neste steg er ett felt unna. */}
+                <div className="mt-6 max-w-[520px] sm:mt-8" style={linje(5.5)}>
+                  <AdresseFelt variant="ink" />
+                  <div className="mt-3 flex items-center justify-between gap-4 text-[13px]" style={{ color: 'rgba(21,19,15,0.55)' }}>
+                    <span className="hidden sm:inline">Se hva DigiHome gjør for din bolig.</span>
+                    <button type="button" onClick={replay} className="underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" tabIndex={hjemme ? 0 : -1} data-testid="v4-replay">Spill igjen</button>
+                  </div>
                 </div>
               </>
             );

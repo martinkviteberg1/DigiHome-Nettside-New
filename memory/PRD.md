@@ -1032,3 +1032,8 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   bilde alene + caption under (sted · sov/m²/modell · pris). Data: `/api/public/properties` dedupet på bilde; < 4 unike → UTVALG
   (8 lokale interiørbilder, Bergen-strøk). Redusert bevegelse → horisontal rulling m/ snap.
 - Verifisert i nettleser: avtalen åpner som ark (ingen ny tab), Brønnøysund-søk + valg fyller panelet.
+- **Slutten v3 (moderne, uten boks):** status «● Alt i orden · adresse · 22:42» → «Én godkjenning.» (opptil 76 px) → «Resten skjedde
+  mens du gikk hjem.» → tre tall på hårlinje (64 500 kr · 1 min · 1) → **AdresseFelt (variant ink)** rett i sluttbildet + «Spill igjen».
+  Blokk fra 62 % av bredden (den lyse veggen). Kamera: `pushVed 10.8 s` (filmen skalerer 1→1.07 over 4,4 s) → `hjemVed 11.95 s`/`ended`
+  → stua inn (opacity 1,6 s, ramme 1→1.03) → **Ken Burns 1→1.055 over 16 s (ease-out)**. Scenen har `role="group"` (ikke img) fordi den
+  inneholder knapp og adressefelt. Nav-innholdet følger scenens kanter på desktop (`lg:w-[calc(100%-64px)] lg:px-0`).
