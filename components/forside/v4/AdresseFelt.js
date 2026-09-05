@@ -27,7 +27,9 @@ function postFraSub(sub = '') {
   return m ? { postal: m[1], city: m[2] } : { postal: '', city: '' };
 }
 
-export default function AdresseFelt({ className = '', onValgt }) {
+/* variant: 'lilla' (standard) eller 'ink' — mørk knapp, så lilla kan reserveres for «Godkjenn». */
+export default function AdresseFelt({ className = '', onValgt, variant = 'lilla' }) {
+  const ink = variant === 'ink';
   const router = useRouter();
   const [verdi, setVerdi] = useState('');
   const [valgt, setValgt] = useState(null);       // { address, postal, city } etter valg (kun med onValgt)
@@ -131,7 +133,7 @@ export default function AdresseFelt({ className = '', onValgt }) {
   };
 
   const ring = fokus
-    ? `0 0 0 1px ${T.lilla}, 0 0 0 4px rgba(212,150,255,0.22)`
+    ? (ink ? '0 0 0 1px rgba(21,19,15,0.55), 0 0 0 4px rgba(21,19,15,0.10)' : `0 0 0 1px ${T.lilla}, 0 0 0 4px rgba(212,150,255,0.22)`)
     : 'inset 0 0 0 1px rgba(21,19,15,0.12)';
 
   return (
@@ -168,7 +170,7 @@ export default function AdresseFelt({ className = '', onValgt }) {
             disabled={sender}
             aria-label="Start"
             className="ml-2 inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[10px] px-3.5 text-[15px] font-medium transition-[background-color,transform,opacity] duration-200 active:scale-[0.98] sm:px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
-            style={{ background: sender ? T.lillaHover : T.lilla, color: T.ink, opacity: sender ? 0.8 : 1 }}
+            style={ink ? { background: sender ? '#2A2620' : T.ink, color: '#F4F1EA', opacity: sender ? 0.85 : 1 } : { background: sender ? T.lillaHover : T.lilla, color: T.ink, opacity: sender ? 0.8 : 1 }}
             data-testid="v4-adresse-start"
           >
             <span className={valgt ? 'inline' : 'hidden sm:inline'}>{valgt ? 'Fortsett' : 'Start'}</span>

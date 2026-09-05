@@ -938,3 +938,32 @@ kollega (Nora · økonomi) godkjenner et låsbytte, fasadevask 48 000 kr venter 
 godkjenninger i dag. Resten gjorde DigiHome.» CTA: Book en demo (/book-mote). Sannhetsvalg: ingen terskelbeløp, ingen
 regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under heroen (alle bygg/én oversikt, roller & godkjenning,
 økonomi per bygg, leietaker i skala, integrasjoner, pris → demo, FAQ, finale). `/bedrift` (gammel) står urørt.
+
+## 5. sep. — V4 er rot. Nye heroer. /v5 = Sana-struktur (eksperiment)
+- **Rot-bytte:** `/` → ForsideV4 (indekserbar, canonical /, OG fra lib/og-v4). `/bedrift` → BedriftV4, `/privat` → PrivatV4,
+  `/forvaltning` → ForvaltningV4 (alle kun hero inntil videre; egne OG-bilder via renderOgV4 m/ `str`-param). `/v4` og
+  `/v4/bedrift` redirecter (307) til rot/`/bedrift`. NavV4 «Produkt» → `/#produkt` (virker fra undersider). SporSeksjon
+  forvaltning → `/forvaltning` («Se full forvaltning»). Layout themeColor → #F3F1EC. Gamle komponenter (Forside2026,
+  BedriftLanding, hjem/*) ligger urørt i repoet men er ikke rutet.
+- **/privat hero** (`components/forside/v4/privat/{PrivatV4,BoligScene}.js`): «Boligen på autopilot.» Scene = ETT LEIEÅR
+  (aug–jul): 12-måneders rad (grønn = husleie inn, lilla = deg), ledger m/ måned i margen, varmtvann i nov → kort → året
+  fortsetter (Emma sier opp i mai, ny leietaker Sander Lie i jun). Teller «Du gjorde 0→3 ting i år». Slutt: «Tolv måneder. Tre
+  ting du gjorde. Resten gjorde DigiHome.» Adressefelt personaliserer (kun adresse, ingen Street View). Thumb:
+  /v4/privat/bolig-thumb.webp. Underlinje: «Hele Norge · ingen bindingstid · klar på ti minutter».
+- **/forvaltning hero** (`components/forside/v4/forvaltning/{ForvaltningV4,ForvaltningScene}.js`): «Vi tar jobben. Du
+  bestemmer.» Label «Full forvaltning · Bergen og omegn». Scene = ÉN MÅNED med avsender per rad (Nora = din forvalter
+  /v4/kari.webp, vaktmester, DH): visning → søkere vurdert → anbefalt leietaker (KORT: «Godkjenn leietaker», Emma Sørensen
+  14 500 kr/mnd) → kontrakt BankID · depositum → klargjort → husleie + månedsrapport. Slutt: «Én måned. Ett valg var ditt.
+  Resten gjorde DigiHome.» CTA: «Få et uforpliktende tilbud» → /bli-utleier/start?tier=full_forvaltning + lenke Book en
+  samtale. Sannhet: ingen pris, ingen avkastningsløfter, «Personlig tilbud innen 24 timer · ingen oppstartskostnad · ingen
+  bindingstid» (fra onboardingens SERVICES).
+- **/v5 (eksperiment, noindex):** ForsideV4 m/ `hero="stage"` — Sana-struktur: sentrert «Utleie på autopilot.» (én linje
+  desktop) + ingress + adressefelt m/ **ink-knapp** (lilla reservert for «Godkjenn») → ÉN scene i full bredde
+  (`HeroStage.js`, flex-1, min 620/560, maks 900, radius 24). Virkeligheten fyller scenen (foto nå; `FILM`-slot for eget
+  opptak: loop + exit-klipp som kuttes inn når du godkjenner + poster). Produktlaget øverst til venstre (adresse · status,
+  dagen som stille linjer, Idas melding som sitat, spor, sluttlinje), kortet bryter ut til høyre på saksraden. Vignett topp/
+  venstre-tung så bildet puster nederst/høyre. `?bilde=bygg` = fasaden (bolig-hero) i stedet for stuen (stue-2000). Street
+  View-personalisering fungerer i full bredde (testet: Kong Oscars gate 3). Resten av siden identisk med rot.
+- **Beslutning som venter på bruker:** bytte rot til stage-heroen? Foto stue vs bygg? Filme eget opptak (eier hjemme, 22:41,
+  ikke skjermen) — shotliste gitt i chat. Deretter: samme struktur på privat/bedrift/forvaltning.
+- QA: kompilert 200 på alle ruter, screenshots desktop 1440/1920 + mobil 390. Frontend-testagent ikke kjørt (krever tillatelse).
