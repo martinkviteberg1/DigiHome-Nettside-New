@@ -145,7 +145,7 @@ export default function AvtaleArk({ apen, onLukk, onGodta, godtatt = false, paVe
               </li>
             ))}
           </ol>
-          <p className="mt-2 text-[12.5px] text-[#15130F]/45">Avtale-ID {A.id}. Du får en kopi på e-post når registreringen er fullført.</p>
+          <p className="mt-2 text-[12.5px] text-[#15130F]/45">Avtale-ID {A.id}. Du får en kopi på e-post når registreringen er fullført. <a href="/avtale/selvforvaltning" className="underline decoration-[#15130F]/25 underline-offset-4 hover:text-[#15130F]" data-testid="avtale-egen-side">Åpne som egen side</a></p>
         </div>
 
         {/* Fot — sticky */}
@@ -160,7 +160,7 @@ export default function AvtaleArk({ apen, onLukk, onGodta, godtatt = false, paVe
             >
               {godtatt ? <><Check className="h-4 w-4" strokeWidth={2.4} /> Godtatt</> : 'Jeg har lest og godtar avtalen'}
             </button>
-            <a href="/avtale/selvforvaltning" target="_blank" rel="noopener noreferrer" className="text-[13.5px] text-[#15130F]/60 underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F]" data-testid="avtale-egen-side">Åpne som egen side</a>
+            <button type="button" onClick={onLukk} className="text-[13.5px] text-[#15130F]/60 underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F]" data-testid="avtale-lukk-2">Lukk uten å godta</button>
           </div>
           {paVegneAv ? <p className="mt-2.5 text-[12.5px] text-[#15130F]/50">På vegne av <span className="font-medium text-[#15130F]/75">{paVegneAv}</span>, som du har signaturrett for.</p> : null}
         </footer>

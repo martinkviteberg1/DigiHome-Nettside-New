@@ -32,13 +32,14 @@ export const metadata = {
 // spor (privat / eiendomsselskap / forvaltning) → leietaker → alt samlet →
 // FAQ → finale. Dybden per målgruppe bor på /privat, /bedrift, /forvaltning.
 //
-// Hero-variant under arbeid: cookie dh_hero ('side' | 'stage') settes av den
-// diskrete veksleren nederst til venstre. ?bilde=bygg bytter scenebilde i 'stage'.
+// Hero-variant: 'stage' (sentrert setning + én scene med film) er standard.
+// 'side' (to kolonner) er alternativ 2 — cookie dh_hero settes av den diskrete
+// veksleren nederst til venstre. ?bilde=bygg|stue bytter scenebilde i 'stage'.
 // ---------------------------------------------------------------------------
 export default function ForsidePage({ searchParams }) {
-  const hero = cookies().get('dh_hero')?.value === 'stage' ? 'stage' : 'side';
-  const bilde = searchParams?.bilde === 'bygg' ? 'bygg' : 'stue';
-  const stageBilde = bilde === 'bygg' ? '/v4/bolig-hero.webp' : '/v4/stue-2000.webp';
+  const hero = cookies().get('dh_hero')?.value === 'side' ? 'side' : 'stage';
+  const bilde = searchParams?.bilde === 'bygg' ? 'bygg' : searchParams?.bilde === 'stue' ? 'stue' : null;
+  const stageBilde = bilde === 'bygg' ? '/v4/bolig-hero.webp' : bilde === 'stue' ? '/v4/stue-2000.webp' : '/v4/video/eier-poster.webp';
   return (
     <>
       {/* Scenebildet er LCP. Preload riktig utsnitt per flate; fontene preloades av next/font. */}

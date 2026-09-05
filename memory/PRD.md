@@ -1008,3 +1008,27 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   språk basert på det tjenesten lover (5 %, ingen bindingstid, BankID-kontrakt, husleieoppfølging, godkjenning før kostnader,
   Bergen tingrett, personvern). MÅ gjennomgås juridisk før produksjon.
 - Blur-validering justert: tomme felt rødmerkes kun etter send-forsøk (autofokus + klikk på «Les avtalen» ga falsk feil).
+
+## Forside V4 — hero-scene (film) og «Boliger på autopilot» (denne runden)
+- **Root `/` = én-scene-hero med film (standard).** To-kolonner-hero er alternativ 2 via veksleren (`dh_hero=side`).
+- **Scenen:** 1.92:1, `max-w-[1600px]`, `lg:w-[calc(100%-64px)]`, høyde `min(880px, 100svh − 124px)`. Eksplisitt `w-full` på
+  scenen — uten den overførte `aspect-ratio + max-height` seg til bredden og scenen ble «kuttet» på høyre side (Chrome).
+- **Historien (HeroStage):** filmen vises ren først (1,4 s) → bildet dempes og ETT charcoal-panel (topp/venstre) leser dagen rad for rad
+  (08:14 husleie · 10:32 kontrakt · 17:46 spørsmål · 22:41 melding fra Ida → ✓ sak opprettet ✓ rørlegger funnet → blokk «Til
+  godkjenning 3 450 kr [Godkjenn]»). Handlingen ligger i panelet der hendelsen er — ikke i et separat kort.
+  **Godkjenningen styres av filmen:** ved `FILM.trykkVed = 7.9 s` (rett før han legger telefonen i lommen) trykker historien synlig
+  (knappen går ned → grønn «✓ Godkjent») hvis du ikke har trykket selv. Ingen hover-avbrudd, filmen fryses aldri. Fallback uten
+  film/autoplay: 6,5 s (film) / 2,4 s (foto) i hold.
+- **Slutten («hjemme»):** når historien er ferdig OG filmen er ute (`ended`, fallback 5,2 s) → panelet trekker seg, filmen pusher inn
+  (1→1.06), varm fargebro (#E2C6A5 @ 0.5), stillbildet `eier-hjemme-*.webp` (han i sofaen) glir inn med samme retning (1→1.04) og
+  deretter 42 s umerkelig drift (1.02). Subtil vignett-overlay på stillbildet. Tekst på den tomme veggen (57 %→95 %, over sofaryggen):
+  «Én godkjenning.» / «Resten skjedde mens du gikk hjem.» + kompakt charcoal dagskort (adresse · Alt i orden · 4 rader) +
+  «Prøv med din adresse ↑» (scroller/fokuserer adressefeltet) · «Spill igjen». Mobil: bunnblokk på lys gradient, 3 rader.
+  Egen bolig (Street View) / uten film: panelet blir stående med sluttlinje.
+- **Assets:** `/public/v4/video/eier-1920.mp4`, `eier-1280.mp4`, `eier-poster*.webp`, `eier-hjemme-1920/1280/mobil.webp`
+  (brukerens sofabilde). Må lastes til object storage før prod (scripts/upload_public_to_storage.mjs).
+- **BoligerSeksjon (ny):** rAF-motor (ikke CSS-marquee): rolig drift 26 px/s som eases, scroll-koblet gliding (0.28), dra med
+  etterslep, myk stopp ved hover, piler (←/→). Galleri-rytme: ulik bredde (4/5 · 3/2 · 5/4 · 16/10) i én høyde (420/300),
+  bilde alene + caption under (sted · sov/m²/modell · pris). Data: `/api/public/properties` dedupet på bilde; < 4 unike → UTVALG
+  (8 lokale interiørbilder, Bergen-strøk). Redusert bevegelse → horisontal rulling m/ snap.
+- Verifisert i nettleser: avtalen åpner som ark (ingen ny tab), Brønnøysund-søk + valg fyller panelet.

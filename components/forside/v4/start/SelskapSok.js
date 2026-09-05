@@ -176,7 +176,8 @@ export default function SelskapSok({ verdi, onVelg, onNullstill, feil, statusAck
           })}
         </ul>
       </div>
-      {notat ? <p className="mt-2 text-[13px] text-[#15130F]/55" data-testid="company-note">{notat}</p> : null}
+      {laster && !liste.length ? <p className="mt-2 text-[13px] text-[#15130F]/55" data-testid="company-loading">Søker i Enhetsregisteret …</p>
+        : notat ? <p className="mt-2 text-[13px] text-[#15130F]/55" data-testid="company-note">{notat}</p> : null}
       <Feilmelding id="company-feil">{feil}</Feilmelding>
 
       {!manuell ? (

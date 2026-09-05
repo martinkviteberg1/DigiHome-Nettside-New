@@ -10,10 +10,10 @@ export const metadata = {
 
 export default async function V5Page({ searchParams }) {
   const sp = (await searchParams) || {};
-  const bilde = sp.bilde === 'bygg' ? 'bygg' : 'stue';
+  const bilde = sp.bilde === 'bygg' ? 'bygg' : sp.bilde === 'stue' ? 'stue' : null;
   return (
     <>
-      <link rel="preload" as="image" href={bilde === 'bygg' ? '/v4/bolig-hero.webp' : '/v4/stue-2000.webp'} media="(min-width: 640px)" fetchPriority="high" />
+      <link rel="preload" as="image" href={bilde === 'bygg' ? '/v4/bolig-hero.webp' : bilde === 'stue' ? '/v4/stue-2000.webp' : '/v4/video/eier-poster.webp'} media="(min-width: 640px)" fetchPriority="high" />
       <ForsideV4 hero="stage" bilde={bilde} />
     </>
   );

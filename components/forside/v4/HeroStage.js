@@ -23,10 +23,23 @@ import { EASE, T, display, tall, useRedusert, useSekvens, useSmal, useSynlig } f
    Kun opacity/transform i overlaget. Kun ett bilde/én video i DOM om gangen.
 --------------------------------------------------------------------------- */
 
-/* Sett når footagen er filmet. Eksempel:
-   { loop: '/v4/video/eier-kveld.mp4', loopWebm: '/v4/video/eier-kveld.webm', exit: '/v4/video/eier-kveld-exit.mp4',
-     poster: '/v4/video/eier-kveld.webp', posterSmal: '/v4/video/eier-kveld-mobil.webp' } */
-export const FILM = null;
+/* Filmen: eieren utenfor boligen om kvelden. Han leser på telefonen — og går inn.
+   · Første sekundene vises filmen alene, uten lag. Så dempes bildet og dagen begynner.
+   · Filmen spiller én gang. Godkjenningen skjer rett før han legger telefonen i lommen (`trykkVed`),
+     så det han gjør på skjermen og det som skjer i filmen er én bevegelse.
+   · `hjem`: stillbildet filmen glir over i når historien er ferdig — han hjemme i sofaen,
+     kvelden er hans igjen. Høyre side av bildet er tom vegg: der står sluttteksten. */
+export const FILM = {
+  loop: '/v4/video/eier-1920.mp4',
+  loopSmal: '/v4/video/eier-1280.mp4',
+  poster: '/v4/video/eier-poster.webp',
+  posterSmal: '/v4/video/eier-poster-mobil.webp',
+  hjem: '/v4/video/eier-hjemme-1920.webp',
+  hjemSmal: '/v4/video/eier-hjemme-mobil.webp',
+  /* Sekundet der han fortsatt leser — rett før telefonen går i lommen. Har du ikke trykket, trykker historien her. */
+  trykkVed: 7.9,
+  once: true,
+};
 
 /* Midlertidig scene til footagen finnes. 'stue' = hjemme hos eieren (nærmest filmkonseptet). 'bygg' = boligen. */
 const BILDER = {
@@ -34,37 +47,38 @@ const BILDER = {
   bygg: { src: '/v4/bolig-hero.webp', srcSet: null, smal: '/v4/bolig-hero-mobil.webp', pos: '50% 62%', posSmal: '50% 55%' },
 };
 
+/* Fasene. 'foto' = filmen alene. Så dempes bildet, panelet kommer, og dagen leses én rad om gangen. */
 const FASER = [
-  { navn: 'foto', ms: 1800 },
-  { navn: 'rad1', ms: 480 },
-  { navn: 'rad2', ms: 480 },
-  { navn: 'rad3', ms: 480 },
-  { navn: 'rad4', ms: 950 },     // Idas melding får litt tid
-  { navn: 'sak', ms: 320 },
-  { navn: 'lev', ms: 320 },
-  { navn: 'krev', ms: 520 },
+  { navn: 'foto', ms: 1400 },
+  { navn: 'rad1', ms: 700 },
+  { navn: 'rad2', ms: 700 },
+  { navn: 'rad3', ms: 700 },
+  { navn: 'rad4', ms: 1000 },    // Idas melding får litt tid
+  { navn: 'sak', ms: 480 },
+  { navn: 'lev', ms: 600 },
+  { navn: 'krev', ms: 220 },
   { navn: 'kort', ms: null },    // HOLD — venter på deg
-  { navn: 'godkjent', ms: 1000 },
+  { navn: 'godkjent', ms: 1400 },
   { navn: 'ferdig', ms: 0 },
 ];
 
+/* Dagen. Tre stille rader — og én som trenger deg. `h` = verdi til høyre. */
 const RADER = [
-  { fase: 'rad1', tid: '08:14', t: 'Husleie registrert', s: `${tall(64500)} kr · 8 av 8` },
-  { fase: 'rad2', tid: '10:32', t: 'Leiekontrakt signert', s: 'Emma Sørensen · Nygårdsgaten 5A' },
-  { fase: 'rad3', tid: '17:46', t: 'Spørsmål fra Ida løst', s: 'Besvart fra leiekontrakten', skjulMobil: true },
-  { fase: 'rad4', tid: '22:41', t: 'Varmtvann', s: '«Varmtvannet er borte i hele bygget» — Ida', sMobil: '«Varmtvannet er borte» — Ida', s2: 'Rørlegger AS bestilt · torsdag 09:00 · Ida varslet', s2Mobil: 'Rørlegger bestilt · torsdag 09:00', sak: true },
+  { fase: 'rad1', tid: '08:14', t: 'Husleie registrert', s: '8 av 8 betalt', h: `${tall(64500)}\u00A0kr`, kompaktMobil: true },
+  { fase: 'rad2', tid: '10:32', t: 'Leiekontrakt signert', s: 'Emma Sørensen · Nygårdsgaten 5A', kompaktMobil: true },
+  { fase: 'rad3', tid: '17:46', t: 'Spørsmål fra Jonas besvart', s: 'Om oppsigelsestid · svart fra leiekontrakten', skjulMobil: true },
+  { fase: 'rad4', tid: '22:41', t: 'Melding fra Ida', s: '«Varmtvannet er borte i hele bygget»', s2: 'Rørlegger AS bestilt · torsdag 09:00 · Ida har fått beskjed', s2Mobil: 'Rørlegger bestilt · torsdag 09:00 · Ida varslet', sak: true },
 ];
 
-/* Utførte systemhandlinger — ikke tankeprosess. Dette skjedde. */
+/* Det systemet gjorde — utført, ikke tankeprosess. */
 const SPOR = [
-  { fase: 'sak', t: 'Sak opprettet', d: 'Varmtvann · hele bygget' },
-  { fase: 'lev', t: 'Leverandør funnet', d: 'Rørlegger AS · ledig torsdag' },
-  { fase: 'krev', t: 'Krever godkjenning', d: `${tall(3450)} kr` },
+  { fase: 'sak', t: 'Sak opprettet', d: 'Varmtvann · hele bygget', dMobil: 'hele bygget' },
+  { fase: 'lev', t: 'Rørlegger funnet', d: 'Rørlegger AS · ledig torsdag 09:00', dMobil: 'torsdag 09:00' },
 ];
 
-const AUTO_MS = 5000;
 const OFF = '#F4F1EA';
-const HAIR = 'rgba(244,241,234,0.16)';
+const DIM = 'rgba(244,241,234,0.58)';
+const HAIR = 'rgba(244,241,234,0.10)';
 
 function HakeIkon({ className = '' }) {
   return (
@@ -74,56 +88,86 @@ function HakeIkon({ className = '' }) {
   );
 }
 
-function Prikk({ tilstand }) {
-  const fylt = tilstand !== 'ferdig';
-  return (
-    <span aria-hidden="true" className="block h-[7px] w-[7px] rounded-full" style={{ background: tilstand === 'aktiv' ? T.lilla : tilstand === 'godkjent' ? '#5FCB8A' : 'transparent', boxShadow: fylt ? 'none' : 'inset 0 0 0 1px rgba(244,241,234,0.5)', transition: 'background 400ms, box-shadow 400ms' }} />
-  );
-}
-
-/* Virkeligheten: film hvis den finnes, ellers foto. Ett element i DOM. */
-function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, godkjent, egen }) {
+/* Virkeligheten: film hvis den finnes, ellers foto. Ett bilde/én film i DOM — pluss stillbildet
+   filmen glir over i når historien er ferdig (han hjemme). Filmen spiller én gang, fra det
+   historien starter, og hviler på siste bilde (han ved døren) til du har godkjent. Aldri frys midt i. */
+function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, hjemme, onFilmFerdig, onTid }) {
   const vidRef = useRef(null);
-  const exit = !!(film && film.exit && godkjent);
+
+  /* Filmen starter når historien starter — ikke før (så bilde og tekst følger hverandre). */
   useEffect(() => {
     const v = vidRef.current;
     if (!v || !film) return;
-    try { v.load(); v.play().catch(() => {}); } catch (e) { /* ok */ }
-  }, [exit, film]);
+    if (fase === 'foto' && kjorer) {
+      try { v.currentTime = 0; v.play().catch(() => {}); } catch (e) { /* ok */ }
+    }
+  }, [fase, kjorer, film]);
 
+  const pos = egen ? '50% 50%' : (smal ? bilde.posSmal : bilde.pos);
   const felles = {
     className: 'absolute inset-0 h-full w-full object-cover will-change-transform',
     style: {
-      objectPosition: egen ? '50% 50%' : (smal ? bilde.posSmal : bilde.pos),
-      /* Hvile → svakt innpust (1.035) → langsom drift ut (20 s). Puster uten å loope. */
-      transform: ferdig ? 'scale(1.0)' : kjorer ? 'scale(1.035)' : 'scale(1)',
+      objectPosition: pos,
+      /* Foto: hvile → svakt innpust (1.035) → langsom drift ut (20 s). Film beveger seg selv — ingen ekstra skala. */
+      transform: film && !egen ? 'scale(1)' : ferdig ? 'scale(1.0)' : kjorer ? 'scale(1.035)' : 'scale(1)',
       transition: ferdig ? 'transform 20000ms linear' : 'transform 2600ms cubic-bezier(0.25, 0.1, 0.25, 1)',
       filter: egen ? 'saturate(0.88) contrast(0.97)' : 'none',
     },
   };
 
-  if (film && !redusert && !egen) {
-    return (
-      <video
-        key={exit ? 'exit' : 'loop'}
-        ref={vidRef}
-        {...felles}
-        poster={smal && film.posterSmal ? film.posterSmal : film.poster}
-        autoPlay
-        muted
-        loop={!exit}
-        playsInline
-        preload="metadata"
-        aria-hidden="true"
-      >
-        {!exit && film.loopWebm && <source src={film.loopWebm} type="video/webm" />}
-        <source src={exit ? film.exit : film.loop} type="video/mp4" />
-      </video>
-    );
-  }
   if (film && !egen) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={smal && film.posterSmal ? film.posterSmal : film.poster} alt="" {...felles} />;
+    const hjem = smal && film.hjemSmal ? film.hjemSmal : film.hjem;
+    if (redusert) {
+      // eslint-disable-next-line @next/next/no-img-element
+      return <img src={hjem || film.poster} alt="" {...felles} style={{ ...felles.style, objectPosition: '50% 50%' }} />;
+    }
+    return (
+      <>
+        <video
+          ref={vidRef}
+          {...felles}
+          style={{ ...felles.style, transform: hjemme ? 'scale(1.06)' : 'scale(1)', transition: hjemme ? `transform 3000ms ${EASE}` : 'transform 0ms linear' }}
+          poster={smal && film.posterSmal ? film.posterSmal : film.poster}
+          muted
+          loop={!film.once}
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+          onTimeUpdate={onTid ? (e) => onTid(e.currentTarget.currentTime) : undefined}
+          onEnded={onFilmFerdig}
+          data-testid="v4-film"
+        >
+          {film.loopWebm && <source src={film.loopWebm} type="video/webm" />}
+          <source src={smal && film.loopSmal ? film.loopSmal : film.loop} type="video/mp4" />
+        </video>
+        {/* Fargebro: filmens kjølige kveld glir mot stuas varme før bildet kommer — det er slik en overgang blir usynlig. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#E2C6A5', opacity: hjemme ? 0.5 : 0, transition: hjemme ? `opacity 1100ms ${EASE}` : 'opacity 0ms linear' }} />
+        {/* Stillbildet: han hjemme. Samme bevegelse gjennom klippet (inn, inn) — så pittelitt, nesten umerkelig drift. */}
+        {hjem ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 will-change-transform"
+            style={{
+              opacity: hjemme ? 1 : 0,
+              transform: hjemme ? 'scale(1.04)' : 'scale(1)',
+              transition: hjemme ? `opacity 1900ms ${EASE} 450ms, transform 3000ms ${EASE} 450ms` : 'opacity 240ms linear, transform 0ms linear 240ms',
+            }}
+            data-testid="v4-film-hjem-ramme"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={hjem}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover will-change-transform"
+              style={{ objectPosition: '50% 50%', transform: hjemme ? 'scale(1.02)' : 'scale(1)', transition: hjemme ? 'transform 42000ms linear 3200ms' : 'transform 0ms linear' }}
+              data-testid="v4-film-hjem"
+            />
+            {/* Subtil overlay: myk vignett + hint av kveldslys — bildet får dybde, teksten står roligere. */}
+            <div aria-hidden="true" className="absolute inset-0" style={{ background: 'radial-gradient(115% 105% at 50% 50%, rgba(21,18,15,0) 52%, rgba(21,18,15,0.22) 100%), linear-gradient(180deg, rgba(21,18,15,0.10) 0%, rgba(21,18,15,0) 28%, rgba(21,18,15,0) 72%, rgba(21,18,15,0.12) 100%)' }} />
+          </div>
+        ) : null}
+      </>
+    );
   }
   if (egen) {
     // eslint-disable-next-line @next/next/no-img-element
@@ -141,7 +185,6 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, godkjent, eg
 export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   const ref = useRef(null);
   const figRef = useRef(null);
-  const radRef = useRef(null);
   const smal = useSmal();
   const redusert = useRedusert();
   const bildet = BILDER[bilde] || BILDER.stue;
@@ -194,15 +237,37 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   const adresse = vist ? vist.adresse : 'Nygårdsgaten 5';
   const under = vist ? (vist.by || 'Norge') : 'Bergen · 8 leiligheter';
   const rader = useMemo(() => (vist
-    ? RADER.map((r) => (r.fase === 'rad1' ? { ...r, s: `${tall(18500)} kr · på konto` } : r.fase === 'rad2' ? { ...r, s: `Emma Sørensen · ${adresse}` } : r))
+    ? RADER.map((r) => (r.fase === 'rad1' ? { ...r, s: 'Betalt · på konto', h: `${tall(18500)}\u00A0kr` } : r.fase === 'rad2' ? { ...r, s: `Emma Sørensen · ${adresse}` } : r))
     : RADER), [vist, adresse]);
 
-  const inne = er('foto');
+  /* Første fase er filmen alene. Fra første rad dempes bildet og panelet er inne. */
   const godkjent = er('godkjent');
   const aktiv = er('rad4') && !godkjent;
   const visKort = er('kort') && !godkjent;
   const venter = holder && fase === 'kort';
-  const visSpor = er('sak') && !godkjent;
+  const visSpor = er('sak');
+
+  /* Slutten: historien er ferdig OG filmen har gått ut (han har gått inn) → bildet glir over
+     i ham hjemme, panelet trekker seg tilbake og sluttteksten står på veggen til høyre.
+     Kommer ikke filmen i mål (nettverk, autoplay blokkert), går vi videre etter en stund. */
+  const [filmFerdig, setFilmFerdig] = useState(false);
+  const onFilmFerdig = useCallback(() => setFilmFerdig(true), []);
+  const [hjemme, setHjemme] = useState(false);
+  const kanHjem = !!film && !egen;   // uten film (eller med din egen bolig fra Street View) blir panelet stående
+  useEffect(() => {
+    if (!ferdig || !kanHjem) return undefined;
+    if (redusert || filmFerdig) { const t = window.setTimeout(() => setHjemme(true), redusert ? 0 : 350); return () => window.clearTimeout(t); }
+    const t = window.setTimeout(() => setHjemme(true), 5200);
+    return () => window.clearTimeout(t);
+  }, [ferdig, filmFerdig, kanHjem, redusert]);
+  const inne = er('rad1') && !hjemme;
+
+  /* Sluttbildet hentes i det saken venter — så overgangen aldri må vente på nettet. */
+  useEffect(() => {
+    if (!film || !er('rad4')) return;
+    try { const im = new Image(); im.src = smal && film.hjemSmal ? film.hjemSmal : film.hjem; } catch (e) { /* ok */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fase, film, smal]);
 
   const [dato, setDato] = useState('');
   useEffect(() => {
@@ -212,208 +277,268 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   /* Hvem godkjente? 'deg' når du trykket, 'kari' når historien løste seg selv. */
   const [hvem, setHvem] = useState(null);
   const [trykket, setTrykket] = useState(false);
-  const harRort = useRef(false);
+  const [presser, setPresser] = useState(false);   // knappen trykkes ned — synlig også når historien trykker for deg
   const godkjenn = useCallback((av) => {
-    if (trykket || !venter) return;
+    if (trykket || presser || !venter) return;
     setHvem(av);
-    setTrykket(true);
-    window.setTimeout(() => { videre(); }, 340);
-  }, [trykket, venter, videre]);
-  useEffect(() => { if (fase === 'foto') { setTrykket(false); setHvem(null); } }, [fase]);
+    if (av === 'deg') {
+      setTrykket(true);
+      window.setTimeout(() => { videre(); }, 700);
+      return;
+    }
+    /* Historien trykker: ned (180 ms) → slipp, grønn «Godkjent» (900 ms) → videre. */
+    setPresser(true);
+    window.setTimeout(() => { setPresser(false); setTrykket(true); }, 180);
+    window.setTimeout(() => { videre(); }, 180 + 900);
+  }, [trykket, presser, venter, videre]);
+  useEffect(() => { if (fase === 'foto') { setTrykket(false); setPresser(false); setHvem(null); setFilmFerdig(false); setHjemme(false); } }, [fase]);
 
+  /* Filmen bestemmer når: rett før han legger telefonen i lommen trykker historien — hvis du ikke har gjort det. */
+  const onTid = useCallback((t) => { if (film && film.trykkVed && t >= film.trykkVed) godkjenn('kari'); }, [film, godkjenn]);
+  /* Uten film (eller om autoplay er blokkert) trykker historien selv etter en liten stund i hold. */
   useEffect(() => {
-    const el = figRef.current;
-    if (!el) return undefined;
-    const f = () => { harRort.current = true; };
-    el.addEventListener('pointerenter', f);
-    el.addEventListener('pointermove', f, { passive: true });
-    el.addEventListener('pointerdown', f);
-    el.addEventListener('touchstart', f, { passive: true });
-    el.addEventListener('focusin', f);
-    return () => {
-      el.removeEventListener('pointerenter', f);
-      el.removeEventListener('pointermove', f);
-      el.removeEventListener('pointerdown', f);
-      el.removeEventListener('touchstart', f);
-      el.removeEventListener('focusin', f);
-    };
+    if (!venter || trykket || presser) return undefined;
+    const id = window.setTimeout(() => godkjenn('kari'), kanHjem ? 6500 : 2400);
+    return () => window.clearTimeout(id);
+  }, [venter, trykket, presser, godkjenn, kanHjem]);
+
+  /* Sluttbildets «Prøv med din adresse» → opp til adressefeltet. */
+  const tilAdresse = useCallback(() => {
+    const felt = document.querySelector('[data-testid="v4-adressefelt"] input');
+    if (!felt) return;
+    try { felt.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { felt.scrollIntoView(); }
+    window.setTimeout(() => { try { felt.focus({ preventScroll: true }); } catch (e) { /* ok */ } }, 450);
   }, []);
-
-  useEffect(() => {
-    if (!venter || trykket) return undefined;
-    const el = figRef.current;
-    try { if (el && el.matches(':hover')) harRort.current = true; } catch (e) { /* ok */ }
-    if (harRort.current) return undefined;
-    let t = window.setTimeout(() => { if (!harRort.current) godkjenn('kari'); }, AUTO_MS);
-    const avbryt = () => { harRort.current = true; if (t) { window.clearTimeout(t); t = null; } };
-    el?.addEventListener('pointerenter', avbryt);
-    el?.addEventListener('pointermove', avbryt, { passive: true });
-    el?.addEventListener('touchstart', avbryt, { passive: true });
-    return () => { if (t) window.clearTimeout(t); el?.removeEventListener('pointerenter', avbryt); el?.removeEventListener('pointermove', avbryt); el?.removeEventListener('touchstart', avbryt); };
-  }, [venter, trykket, godkjenn]);
-
-  /* Kortet legger seg på linje med saksraden (desktop). */
-  const kortRef = useRef(null);
-  const [kortTop, setKortTop] = useState(null);
-  useEffect(() => {
-    if (!er('kort')) return undefined;
-    const mal = () => {
-      if (!radRef.current || !figRef.current || !kortRef.current) return;
-      const fig = figRef.current.getBoundingClientRect();
-      const rad = radRef.current.getBoundingClientRect();
-      const kortH = kortRef.current.offsetHeight;
-      const midt = rad.top - fig.top + rad.height / 2 - kortH / 2;   // sentrert på raden
-      setKortTop(Math.round(Math.max(24, Math.min(midt, fig.height - kortH - 24))));
-    };
-    mal();
-    window.addEventListener('resize', mal);
-    return () => window.removeEventListener('resize', mal);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fase]);
 
   const knappTekst = trykket ? 'Godkjent' : 'Godkjenn';
   const godkjentAv = hvem === 'deg' ? 'Godkjent av deg · nå' : 'Godkjent · 08:02';
+  const sporListe = vist ? SPOR.map((sp) => (sp.fase === 'sak' ? { ...sp, d: `Varmtvann · ${adresse}` } : sp)) : SPOR;
+  const radT = `opacity 520ms ${EASE} 120ms, transform 520ms ${EASE} 120ms`;
 
   return (
-    <figure ref={figRef} className="relative m-0 flex min-h-0 flex-1 flex-col" data-testid="v4-scene-wrap">
+    <figure ref={figRef} className="relative m-0" data-testid="v4-scene-wrap">
       <div
         ref={ref}
-        className="relative flex-1 overflow-hidden rounded-[20px] sm:rounded-[24px]"
-        style={{ minHeight: smal ? 560 : 620, maxHeight: 900, background: T.charcoal, boxShadow: '0 0 0 1px rgba(21,19,15,0.08)', opacity: skifter ? 0 : 1, transition: `opacity 320ms ${EASE}` }}
+        className="relative w-full overflow-hidden rounded-[20px] sm:rounded-[24px]"
+        style={{ aspectRatio: smal ? '4 / 5.6' : '1.92 / 1', minHeight: smal ? 600 : 520, maxHeight: smal ? undefined : 'min(880px, calc(100svh - 124px))', background: T.charcoal, boxShadow: '0 0 0 1px rgba(21,19,15,0.08)', opacity: skifter ? 0 : 1, transition: `opacity 320ms ${EASE}` }}
         role="img"
         aria-label={`Animert eksempel: en dag i ${adresse} med DigiHome — husleie registrert, kontrakt signert, et spørsmål fra leietaker besvart fra kontrakten, og et varmtvannsproblem løst med én godkjenning fra eier.`}
         data-testid="v4-scene"
       >
         {/* ── Virkeligheten ── */}
-        <Virkelighet film={film} bilde={bildet} smal={smal} kjorer={kjorer} ferdig={ferdig} redusert={redusert} godkjent={godkjent} egen={egen} />
-        {/* Kinematisk vignett: mørkere topp og bunn, fotoet fritt i midten */}
-        <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.80) 0%, rgba(21,18,15,0.70) 30%, rgba(21,18,15,0.40) 54%, rgba(21,18,15,0.06) 76%, rgba(21,18,15,0.18) 100%)' }} />
-        <div aria-hidden="true" className="absolute inset-0 hidden sm:block" style={{ background: 'linear-gradient(90deg, rgba(21,18,15,0.42) 0%, rgba(21,18,15,0.18) 40%, rgba(21,18,15,0) 62%)' }} />
+        <Virkelighet film={film} bilde={bildet} smal={smal} kjorer={kjorer} ferdig={ferdig} redusert={redusert} egen={egen} fase={fase} hjemme={hjemme} onFilmFerdig={onFilmFerdig} onTid={onTid} />
 
-        {/* ── Produktlaget: boligen · status øverst, dagen som stille linjer under. Bildet får puste nederst. ── */}
-        <div className="absolute inset-x-0 top-0 p-5 sm:p-7" style={{ color: OFF }}>
-        <div className="flex items-start justify-between gap-4" style={{ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'translateY(6px)', transition: `opacity 700ms ${EASE} 200ms, transform 700ms ${EASE} 200ms` }}>
-          <div className="min-w-0">
-            <p className={`truncate ${adresse.length > 18 ? 'text-[20px] sm:text-[24px]' : 'text-[22px] sm:text-[26px]'}`} style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, textWrap: 'nowrap' }} data-testid="v4-stage-adresse">{adresse}</p>
-            <p className="mt-1 text-[13px] sm:text-[13.5px]" style={{ color: 'rgba(244,241,234,0.72)' }}>{under}{dato && <span> · I dag, {dato}</span>}</p>
-          </div>
-          <p className="hidden shrink-0 items-center gap-2 pt-1 text-[13px] sm:flex" style={{ color: 'rgba(244,241,234,0.78)' }}>
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: aktiv ? T.lilla : '#5FCB8A', transition: 'background 400ms' }} />
-            <span className="inline-grid">
-              <span className="col-start-1 row-start-1 whitespace-nowrap" style={{ opacity: aktiv ? 0 : 1, transition: `opacity 300ms ${EASE}` }}>Alt i orden</span>
-              <span className="col-start-1 row-start-1 whitespace-nowrap" style={{ opacity: aktiv ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>Én ting venter på deg</span>
-            </span>
-          </p>
-        </div>
+        {/* Filmen vises først helt ren. Når dagen begynner, dempes bildet — lett, filmen skal fortsatt sees. Slipper igjen hjemme. */}
+        <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.38) 0%, rgba(21,18,15,0.14) 40%, rgba(21,18,15,0.02) 62%, rgba(21,18,15,0.24) 100%)', opacity: inne ? 1 : 0, transition: `opacity ${hjemme ? 900 : 1400}ms ${EASE}` }} />
 
-        {/* Dagen — rader fader inn på plass (layouten er stabil, ingenting hopper). */}
-          <ul className="relative mt-5 max-w-[600px] sm:mt-6" data-testid="v4-stage-dag" aria-hidden={!er('rad1')}>
-            {rader.map((r) => {
-              const vis = er(r.fase);
-              const dempet = !r.sak;
-              const tilstand = r.sak ? (godkjent ? 'godkjent' : 'aktiv') : 'ferdig';
-              return (
-                <li key={r.tid} ref={r.sak ? radRef : undefined} className={`relative ${r.skjulMobil ? 'hidden sm:block' : ''}`} style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(8px)', transition: `opacity 560ms ${EASE}, transform 560ms ${EASE}` }}>
-                  <div className="grid grid-cols-[16px_minmax(0,1fr)] items-start gap-x-3 py-2 sm:grid-cols-[44px_16px_minmax(0,1fr)_auto] sm:py-2.5">
-                    <span className="hidden pt-[3px] text-[13px] tabular-nums sm:block" style={{ color: 'rgba(244,241,234,0.55)' }}>{r.tid}</span>
-                    <span className="flex justify-center pt-[7px]"><Prikk tilstand={tilstand} /></span>
-                    <span className="min-w-0">
-                      <span className="block text-[15px] font-medium sm:text-[15.5px]" style={{ color: dempet ? 'rgba(244,241,234,0.72)' : OFF, transition: 'color 400ms' }}>
-                        {r.t}<span className="ml-2 text-[12.5px] font-normal sm:hidden" style={{ color: 'rgba(244,241,234,0.5)' }}>{r.tid}</span>
-                      </span>
-                      <span className="mt-0.5 block text-[13.5px] sm:truncate" style={{ color: dempet ? 'rgba(244,241,234,0.52)' : 'rgba(244,241,234,0.78)' }}>{smal && r.sMobil ? r.sMobil : r.s}</span>
+        {/* ── Slutten: han hjemme. Én setning på den tomme veggen (ink på lys vegg, som resten av siden) —
+              og dagen som et kompakt kort under: panelet fra gaten har kommet hjem med ham. ── */}
+        <div
+          className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-24' : 'absolute flex flex-col justify-start'}
+          style={{
+            ...(smal ? {} : { left: '57%', right: '5%', top: '12%', bottom: '34%' }),
+            color: T.ink,
+            background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.88) 34%, rgba(243,241,236,0.97) 100%)' : 'none',
+            opacity: hjemme ? 1 : 0,
+            pointerEvents: hjemme ? 'auto' : 'none',
+            transition: `opacity 500ms ${EASE} ${hjemme ? 400 : 0}ms`,
+          }}
+          aria-hidden={!hjemme}
+          data-testid="v4-slutt"
+        >
+          {(() => {
+            /* Linjene kommer én og én, nedenfra og opp i rolig takt. */
+            /* Teksten kommer først når bildet har landet (≈1,5 s), én linje om gangen. */
+            const linje = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(14px)', transition: `opacity 800ms ${EASE} ${hjemme ? 1500 + i * 110 : 0}ms, transform 800ms ${EASE} ${hjemme ? 1500 + i * 110 : 0}ms` });
+            const rader = [
+              ['Husleie registrert', vist ? `${tall(18500)}\u00A0kr` : `${tall(64500)}\u00A0kr`],
+              ['Leiekontrakt signert', 'Emma Sørensen'],
+              ['Rørlegger bestilt', 'torsdag 09:00'],
+              ...(smal ? [] : [['Ida har fått beskjed', '22:42']]),
+            ];
+            return (
+              <>
+                <h3 style={{ ...display, fontSize: smal ? 36 : 'clamp(40px, 6svh, 66px)', lineHeight: 0.98, ...linje(0) }} data-testid="v4-slutt-tittel">
+                  Én godkjenning<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+                </h3>
+                <p className="mt-2.5 max-w-[30ch] text-[15.5px] leading-[1.4] sm:mt-3 sm:text-[17px]" style={{ ...linje(1), color: 'rgba(21,19,15,0.62)' }}>Resten skjedde mens du gikk hjem.</p>
 
-                      {r.sak && (
-                        <span className="grid" style={{ gridTemplateRows: visSpor ? '1fr' : '0fr', transition: `grid-template-rows 450ms ${EASE}` }}>
-                          <span className="block min-h-0 overflow-hidden">
-                            <span className="mt-2 block" data-testid="v4-spor">
-                              {SPOR.map((sp0) => {
-                                const sp = vist && sp0.fase === 'sak' ? { ...sp0, d: `Varmtvann · ${adresse}` } : sp0;
-                                const v = er(sp.fase) && !godkjent;
-                                return (
-                                  <span key={sp.fase} className="flex items-baseline gap-2 py-[3px] text-[13px]" style={{ opacity: v ? 1 : 0, transform: v ? 'none' : 'translateY(4px)', transition: `opacity 260ms ${EASE}, transform 260ms ${EASE}` }}>
-                                    <span className="shrink-0 font-medium" style={{ color: 'rgba(244,241,234,0.9)' }}>{sp.t}</span>
-                                    <span className="min-w-0 truncate" style={{ color: 'rgba(244,241,234,0.55)' }}>{sp.d}</span>
-                                  </span>
-                                );
-                              })}
-                            </span>
-                          </span>
-                        </span>
-                      )}
-
-                      {r.sak && (
-                        <span className="grid" style={{ gridTemplateRows: godkjent ? '1fr' : '0fr', transition: `grid-template-rows 500ms ${EASE}` }}>
-                          <span className="block min-h-0 overflow-hidden">
-                            <span className="mt-1 block text-[13.5px] sm:truncate" style={{ color: OFF, opacity: godkjent ? 1 : 0, transition: `opacity 400ms ${EASE} 250ms` }}>{smal && r.s2Mobil ? r.s2Mobil : r.s2}</span>
-                            <span className="mt-2 inline-flex items-center gap-2 text-[12.5px] sm:hidden" style={{ color: 'rgba(244,241,234,0.7)', opacity: godkjent ? 1 : 0, transition: `opacity 400ms ${EASE} 300ms` }}>
-                              <HakeIkon className="text-[#5FCB8A]" /><span>{godkjentAv}</span>
-                            </span>
-                          </span>
-                        </span>
-                      )}
-                    </span>
-                    {r.sak && (
-                      <span className="hidden items-center gap-2 pt-[2px] text-[12.5px] sm:inline-flex" style={{ color: 'rgba(244,241,234,0.7)', opacity: godkjent ? 1 : 0, transform: godkjent ? 'none' : 'translateY(4px)', transition: `opacity 400ms ${EASE} 200ms, transform 400ms ${EASE} 200ms` }} data-testid="v4-godkjent">
-                        <HakeIkon className="text-[#5FCB8A]" /><span className="whitespace-nowrap">{godkjentAv}</span>
-                      </span>
-                    )}
+                <div className="mt-4 w-full max-w-[420px] rounded-[14px] sm:mt-6 sm:rounded-[16px]" style={{ background: 'rgba(24,21,18,0.92)', color: OFF, boxShadow: '0 0 0 1px rgba(244,241,234,0.08), 0 30px 60px -32px rgba(0,0,0,0.6)', ...linje(2) }} data-testid="v4-slutt-kort">
+                  <div className="flex items-center justify-between gap-4 px-4 pb-2 pt-3 sm:px-5 sm:pt-3.5">
+                    <p className="truncate text-[14.5px] font-medium sm:text-[15px]">{adresse}</p>
+                    <p className="flex shrink-0 items-center gap-2 text-[12.5px]" style={{ color: 'rgba(244,241,234,0.78)' }}>
+                      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#5FCB8A' }} />Alt i orden
+                    </p>
                   </div>
-                  <span aria-hidden="true" className="block h-px" style={{ background: HAIR }} />
-                </li>
-              );
-            })}
-          </ul>
+                  <ul className="px-4 pb-2.5 sm:px-5 sm:pb-3">
+                    {rader.map(([t, d], i) => (
+                      <li key={t} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-baseline gap-x-2.5 border-t py-[7px] text-[13.5px] sm:py-2 sm:text-[14px]" style={{ borderColor: HAIR, ...linje(2.7 + i * 0.5) }}>
+                        <HakeIkon className="translate-y-[2px] text-[#5FCB8A]" />
+                        <span className="truncate font-medium">{t}</span>
+                        <span className="truncate text-right" style={{ color: DIM }}>{d}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
-          <div className="mt-3 flex max-w-[600px] items-center justify-between gap-4 text-[13.5px]" style={{ color: 'rgba(244,241,234,0.62)', opacity: ferdig ? 1 : 0, transition: `opacity 600ms ${EASE}` }} aria-hidden={!ferdig}>
-            <span data-testid="v4-scene-tekst">Én godkjenning. Resten gjorde DigiHome.</span>
-            <button type="button" onClick={replay} className="shrink-0 underline decoration-[#F4F1EA]/30 underline-offset-4 transition-colors hover:text-[#F4F1EA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40" style={{ pointerEvents: ferdig ? 'auto' : 'none' }} tabIndex={ferdig ? 0 : -1} data-testid="v4-replay">Spill igjen</button>
+                <div className="mt-4 flex items-center gap-5 text-[14px] sm:mt-5" style={linje(5)}>
+                  <button type="button" onClick={tilAdresse} className="inline-flex items-center gap-1.5 font-medium transition-colors hover:text-[#15130F]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" tabIndex={hjemme ? 0 : -1} data-testid="v4-slutt-cta">
+                    Prøv med din adresse<span aria-hidden="true">↑</span>
+                  </button>
+                  <button type="button" onClick={replay} className="underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" style={{ color: 'rgba(21,19,15,0.62)' }} tabIndex={hjemme ? 0 : -1} data-testid="v4-replay">Spill igjen</button>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+
+        {/* ── Dagen: ett panel. Alt som skjedde, i rekkefølge — og handlingen der hendelsen er. ── */}
+        <div
+          className="absolute rounded-[18px] sm:rounded-[20px]"
+          style={{
+            ...(smal ? { left: 12, right: 12, top: 12 } : { left: 28, top: 28, width: 472 }),
+            background: 'rgba(24,21,18,0.90)',
+            color: OFF,
+            boxShadow: '0 0 0 1px rgba(244,241,234,0.08), 0 40px 80px -40px rgba(0,0,0,0.6)',
+            opacity: inne ? 1 : 0,
+            transform: inne ? 'none' : hjemme ? 'translateY(-10px) scale(0.985)' : 'translateY(10px)',
+            transition: hjemme ? `opacity 450ms ${EASE}, transform 450ms ${EASE}` : `opacity 700ms ${EASE} 200ms, transform 700ms ${EASE} 200ms`,
+            pointerEvents: inne ? 'auto' : 'none',
+          }}
+          aria-hidden={!inne}
+          data-testid="v4-stage-dag"
+        >
+          <div className="p-5 sm:p-6">
+            {/* Boligen · status */}
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className={`truncate ${adresse.length > 18 ? 'text-[20px] sm:text-[22px]' : 'text-[22px] sm:text-[24px]'}`} style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, textWrap: 'nowrap' }} data-testid="v4-stage-adresse">{adresse}</p>
+                <p className="mt-1 truncate text-[13px]" style={{ color: DIM }}>{under}{dato && <span className="hidden sm:inline"> · I dag, {dato}</span>}</p>
+              </div>
+              <p className="flex shrink-0 items-center gap-2 pt-1.5 text-[12.5px]" style={{ color: 'rgba(244,241,234,0.78)' }} data-testid="v4-stage-status">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: aktiv ? T.lilla : '#5FCB8A', transition: 'background 400ms' }} />
+                <span className="inline-grid">
+                  <span className="col-start-1 row-start-1 whitespace-nowrap" style={{ opacity: aktiv ? 0 : 1, transition: `opacity 300ms ${EASE}` }}>Alt i orden</span>
+                  <span className="col-start-1 row-start-1 whitespace-nowrap" style={{ opacity: aktiv ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>Venter på deg</span>
+                </span>
+              </p>
+            </div>
+
+            {/* Dagen — radene kommer én og én; panelet vokser rolig med dem. Ingenting hopper. */}
+            <ul className="mt-4 sm:mt-5" aria-hidden={!er('rad1')}>
+              {rader.map((r) => {
+                const vis = er(r.fase);
+                return (
+                  <li key={r.tid} className={r.skjulMobil ? 'hidden sm:grid' : 'grid'} style={{ gridTemplateRows: vis ? '1fr' : '0fr', transition: `grid-template-rows 520ms ${EASE}` }}>
+                    <div className="min-h-0 overflow-hidden">
+                      <div className="border-t py-3 sm:py-3.5" style={{ borderColor: HAIR, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', transition: radT }}>
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 sm:grid-cols-[44px_minmax(0,1fr)_auto]">
+                          <span className="hidden pt-[2px] text-[13px] tabular-nums sm:block" style={{ color: 'rgba(244,241,234,0.45)' }}>{r.tid}</span>
+                          <span className="min-w-0">
+                            <span className="block text-[15px] font-medium leading-[1.3]" style={{ color: r.sak ? OFF : 'rgba(244,241,234,0.9)' }}>
+                              {r.t}<span className="ml-2 text-[12px] font-normal tabular-nums sm:hidden" style={{ color: 'rgba(244,241,234,0.45)' }}>{r.tid}</span>
+                            </span>
+                            <span className={`mt-0.5 block text-[13.5px] leading-[1.4] ${r.kompaktMobil ? 'hidden sm:block' : ''}`} style={{ color: DIM }}>{smal && r.sMobil ? r.sMobil : r.s}</span>
+                          </span>
+                          <span className="shrink-0 pt-[2px] text-right text-[13.5px] tabular-nums" style={{ color: 'rgba(244,241,234,0.82)' }}>
+                            {r.sak ? (
+                              <span className="inline-grid">
+                                <span className="col-start-1 row-start-1 inline-flex items-center justify-end gap-1.5 whitespace-nowrap" style={{ color: T.lilla, opacity: godkjent ? 0 : 1, transition: `opacity 300ms ${EASE}` }}>
+                                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} /><span className="hidden sm:inline">Venter</span>
+                                </span>
+                                <span className="col-start-1 row-start-1 inline-flex items-center justify-end whitespace-nowrap" style={{ color: '#5FCB8A', opacity: godkjent ? 1 : 0, transition: `opacity 300ms ${EASE} 300ms` }}>
+                                  <HakeIkon />
+                                </span>
+                              </span>
+                            ) : r.h ? <span>{r.h}</span> : <HakeIkon className="text-[#5FCB8A]" />}
+                          </span>
+                        </div>
+
+                        {r.sak ? (
+                          <div className="sm:pl-[60px]">
+                            {/* Det systemet gjorde — utført. */}
+                            <div className="grid" style={{ gridTemplateRows: visSpor ? '1fr' : '0fr', transition: `grid-template-rows 450ms ${EASE}` }}>
+                              <div className="min-h-0 overflow-hidden">
+                                <ul className="mt-3 flex flex-col gap-1.5" data-testid="v4-spor">
+                                  {sporListe.map((sp) => {
+                                    const v = er(sp.fase);
+                                    return (
+                                      <li key={sp.fase} className="flex items-center gap-2.5 text-[13px]" style={{ opacity: v ? 1 : 0, transform: v ? 'none' : 'translateY(4px)', transition: `opacity 320ms ${EASE}, transform 320ms ${EASE}` }}>
+                                        <HakeIkon className="shrink-0 text-[#5FCB8A]" />
+                                        <span className="shrink-0 font-medium" style={{ color: 'rgba(244,241,234,0.9)' }}>{sp.t}</span>
+                                        <span className="min-w-0 truncate" style={{ color: DIM }}>{smal && sp.dMobil ? sp.dMobil : sp.d}</span>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </div>
+                            </div>
+
+                            {/* Handlingen — der hendelsen er. Systemet har stoppet. Knappen venter på deg. */}
+                            <div className="grid" style={{ gridTemplateRows: er('krev') ? '1fr' : '0fr', transition: `grid-template-rows 500ms ${EASE}` }}>
+                              <div className="min-h-0 overflow-hidden">
+                                <div
+                                  className="mt-3.5 rounded-[12px] p-3.5 sm:p-4"
+                                  style={{
+                                    background: godkjent ? 'rgba(95,203,138,0.10)' : 'rgba(244,241,234,0.06)',
+                                    boxShadow: `inset 0 0 0 1px ${godkjent ? 'rgba(95,203,138,0.24)' : 'rgba(244,241,234,0.08)'}`,
+                                    opacity: er('krev') ? 1 : 0,
+                                    transform: er('krev') ? 'none' : 'translateY(6px)',
+                                    transition: `opacity 480ms ${EASE} 100ms, transform 480ms ${EASE} 100ms, background 600ms ${EASE}, box-shadow 600ms ${EASE}`,
+                                  }}
+                                  data-testid="v4-kort"
+                                >
+                                  <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1fr)' }}>
+                                    {/* Før: pris + Godkjenn */}
+                                    <div className="col-start-1 row-start-1 flex min-w-0 items-center justify-between gap-4" style={{ opacity: godkjent ? 0 : 1, transform: godkjent ? 'translateY(-4px)' : 'none', pointerEvents: godkjent ? 'none' : 'auto', transition: `opacity 260ms ${EASE}, transform 260ms ${EASE}` }} aria-hidden={godkjent}>
+                                      <div className="min-w-0">
+                                        <p className="truncate text-[12.5px]" style={{ color: DIM }}>Til godkjenning<span className="hidden sm:inline"> · Rørlegger AS, torsdag 09:00</span></p>
+                                        <p className="mt-1 text-[26px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>{tall(3450)} kr</p>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => godkjenn('deg')}
+                                        tabIndex={visKort ? 0 : -1}
+                                        aria-label={`Godkjenn rørlegger, ${tall(3450)} kroner`}
+                                        className={`inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-[10px] px-5 text-[14px] font-medium transition-[background-color,transform] duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${venter && !trykket ? 'v4-puls' : ''}`}
+                                        style={{ background: trykket ? T.gronn : T.lilla, color: trykket ? '#fff' : T.ink, transform: presser ? 'scale(0.93)' : 'none', transition: `background-color 200ms, transform ${presser ? 160 : 260}ms ${EASE}` }}
+                                        data-testid="v4-godkjenn"
+                                      >
+                                        {trykket && <HakeIkon />}{knappTekst}
+                                      </button>
+                                    </div>
+                                    {/* Etter: godkjent · bestilt · varslet */}
+                                    <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-3" style={{ opacity: godkjent ? 1 : 0, transform: godkjent ? 'none' : 'translateY(6px)', transition: `opacity 420ms ${EASE} 280ms, transform 420ms ${EASE} 280ms` }} aria-hidden={!godkjent} data-testid="v4-godkjent">
+                                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style={{ background: T.gronn, color: '#fff' }}><HakeIkon /></span>
+                                      <span className="min-w-0">
+                                        <span className="block text-[14px] font-medium">{godkjentAv}</span>
+                                        <span className="mt-0.5 block truncate text-[13px]" style={{ color: DIM }}>{smal && r.s2Mobil ? r.s2Mobil : r.s2}</span>
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Sluttlinje i panelet — bare når scenen ikke går hjem (egen bolig fra Street View / uten film). */}
+            <div className="grid" style={{ gridTemplateRows: ferdig && !kanHjem ? '1fr' : '0fr', transition: `grid-template-rows 500ms ${EASE}` }} aria-hidden={!(ferdig && !kanHjem)}>
+              <div className="min-h-0 overflow-hidden">
+                <div className="mt-3.5 flex items-center justify-between gap-4 border-t pt-4 text-[13px]" style={{ borderColor: HAIR, color: DIM, opacity: ferdig && !kanHjem ? 1 : 0, transition: `opacity 500ms ${EASE} 200ms` }}>
+                  <span>Én godkjenning. Resten gjorde DigiHome.</span>
+                  <button type="button" onClick={replay} className="shrink-0 underline decoration-[#F4F1EA]/30 underline-offset-4 transition-colors hover:text-[#F4F1EA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40" tabIndex={ferdig && !kanHjem ? 0 : -1} data-testid="v4-replay-panel">Spill igjen</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* ── Det ene kortet. Charcoal, én skygge, bryter ut av høyre kant. Systemet har stoppet. Knappen venter på deg. ── */}
-      <div
-        ref={kortRef}
-        aria-hidden={!visKort}
-        className="absolute z-10 rounded-[18px] text-[#F4F1EA]"
-        style={{
-          background: T.charcoal,
-          boxShadow: '0 30px 60px -28px rgba(21,19,15,0.7), 0 0 0 1px rgba(244,241,234,0.06)',
-          ...(smal ? { left: 16, right: 16, bottom: 16 } : { right: -24, width: 296, top: kortTop == null ? '30%' : kortTop }),
-          opacity: visKort ? 1 : 0,
-          pointerEvents: visKort ? 'auto' : 'none',
-          transform: visKort ? 'none' : godkjent ? 'translate(-14px, -6px) scale(0.96)' : 'translateX(28px)',
-          transition: visKort ? `opacity 520ms ${EASE}, transform 520ms ${EASE}` : `opacity 380ms ${EASE}, transform 380ms ${EASE}`,
-        }}
-        data-testid="v4-kort"
-      >
-        {smal ? (
-          <div className="flex items-center justify-between gap-4 p-3.5 pl-4">
-            <div className="min-w-0">
-              <p className="flex items-center gap-2 text-[12px] text-white/60"><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Venter på deg</p>
-              <p className="mt-1 truncate text-[14px] font-medium">Rørlegger AS</p>
-              <p className="text-[13px] text-white/60">Torsdag 09:00 · {tall(3450)} kr</p>
-            </div>
-            <button type="button" onClick={() => godkjenn('deg')} tabIndex={visKort ? 0 : -1} aria-label={`Godkjenn rørlegger, ${tall(3450)} kroner`} className={`inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-[10px] px-4 text-[14px] font-medium transition-[background-color,transform] duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${venter && !trykket ? 'v4-puls' : ''}`} style={{ background: trykket ? T.gronn : T.lilla, color: trykket ? '#fff' : T.ink }} data-testid="v4-godkjenn">
-              {trykket && <HakeIkon />}{knappTekst}
-            </button>
-          </div>
-        ) : (
-          <div className="p-[18px]">
-            <div className="flex items-center justify-between text-[12.5px] text-white/60">
-              <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Venter på deg</span>
-              <span className="tabular-nums">22:41</span>
-            </div>
-            <p className="mt-3.5 text-[15px] font-medium">Rørlegger AS</p>
-            <p className="text-[13.5px] text-white/60">Torsdag 09:00 · varmtvann, hele bygget</p>
-            <p className="mt-3 text-[30px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>{tall(3450)} kr</p>
-            <button type="button" onClick={() => godkjenn('deg')} tabIndex={visKort ? 0 : -1} aria-label={`Godkjenn rørlegger, ${tall(3450)} kroner`} className={`mt-4 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[10px] text-[14px] font-medium transition-[background-color,transform] duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${venter && !trykket ? 'v4-puls' : ''}`} style={{ background: trykket ? T.gronn : T.lilla, color: trykket ? '#fff' : T.ink }} data-testid="v4-godkjenn">
-              {trykket && <HakeIkon />}{knappTekst}
-            </button>
-            <p className="mt-2.5 text-[11.5px] text-white/45">Sak opprettet automatisk · sendt til deg</p>
-          </div>
-        )}
       </div>
     </figure>
   );

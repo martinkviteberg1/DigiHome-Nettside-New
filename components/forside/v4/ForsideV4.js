@@ -3,7 +3,8 @@
 import React, { useCallback, useRef, useState } from 'react';
 import NavV4 from './NavV4';
 import HeroScene from './HeroScene';
-import HeroStage from './HeroStage';
+import HeroStage, { FILM } from './HeroStage';
+import BoligerSeksjon from './BoligerSeksjon';
 import HeroVeksler from './HeroVeksler';
 import ProduktSeksjon from './produkt/ProduktSeksjon';
 import TillitStripe from './TillitStripe';
@@ -29,7 +30,7 @@ import { T, display } from './motion';
 
 /* hero: 'side' (to kolonner, dagens) eller 'stage' (sentrert setning + én scene i full bredde — Sana-strukturen).
    bilde: midlertidig scenebilde for 'stage' ('stue' | 'bygg') til footagen finnes. */
-export default function ForsideV4({ hero = 'side', bilde = 'stue', veksler = false }) {
+export default function ForsideV4({ hero = 'side', bilde = null, veksler = false }) {
   /* Din adresse → din bolig. Valgt adresse personaliserer heroscenen før du går videre. */
   const [eiendom, setEiendom] = useState(null);
   const sceneRef = useRef(null);
@@ -50,7 +51,7 @@ export default function ForsideV4({ hero = 'side', bilde = 'stue', veksler = fal
       <NavV4 />
       <main>
         {hero === 'stage' ? (
-          <section className="relative flex flex-col lg:min-h-[calc(100svh-64px)]" data-testid="v4-hero">
+          <section className="relative flex flex-col" data-testid="v4-hero">
             {/* Én setning. Én linje. Én handling — sentrert, ingenting konkurrerer. */}
             <div className="mx-auto w-full max-w-[1100px] px-5 pb-9 pt-10 text-center sm:px-8 sm:pt-14 lg:pb-11 lg:pt-16">
               <h1
@@ -69,9 +70,9 @@ export default function ForsideV4({ hero = 'side', bilde = 'stue', veksler = fal
                 <AdresseFelt onValgt={valgt} variant="ink" />
               </div>
             </div>
-            {/* Scenen: én flate i full bredde. Fyller resten av skjermen. */}
-            <div ref={sceneRef} className="dh-cover-inn mx-auto flex w-[calc(100%-32px)] min-w-0 flex-1 flex-col pb-5 sm:w-[calc(100%-64px)] sm:pb-6 lg:w-[calc(100%-80px)] lg:max-w-[1600px] lg:pb-8" style={{ animationDelay: '.12s' }}>
-              <HeroStage eiendom={eiendom} bilde={bilde} />
+            {/* Scenen: én flate, litt bredere enn seksjonene under, 16:9 (filmens eget format — ingen beskjæring). */}
+            <div ref={sceneRef} className="dh-cover-inn mx-auto w-full max-w-[1600px] min-w-0 px-4 pb-6 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0 lg:pb-8" style={{ animationDelay: '.12s' }}>
+              <HeroStage eiendom={eiendom} bilde={bilde || 'stue'} film={bilde ? null : FILM} />
             </div>
           </section>
         ) : (
@@ -105,6 +106,8 @@ export default function ForsideV4({ hero = 'side', bilde = 'stue', veksler = fal
         {/* Tillit: heroens fot — før produktet. */}
         <TillitStripe />
         <ProduktSeksjon />
+        {/* Bevis: boligene som driftes gjennom DigiHome — kort i bevegelse. */}
+        <BoligerSeksjon />
         {/* Spor: soft gate rett etter produktet — «autopilot for hvem?» */}
         <SporSeksjon />
         {/* Leietakerens vinkel — AI som forstår boligen. */}

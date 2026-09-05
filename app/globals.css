@@ -1003,3 +1003,6 @@ html.dh-tour-snap.dh-tour-flyt { scroll-snap-type: none; }
 }
 .v4-puls { animation: v4puls 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
 @media (prefers-reduced-motion: reduce) { .v4-puls { animation: none; } }
+
+/* V4: boligkort i bevegelse (BoligerSeksjon). Halve sporet = én runde, sporet er duplisert. */
+@keyframes v4-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }

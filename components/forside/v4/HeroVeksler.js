@@ -25,7 +25,7 @@ export default function HeroVeksler({ hero }) {
       aria-label="Bytt hero-variant"
       data-testid="hero-veksler"
     >
-      {[['side', 'Hero: to kolonner'], ['stage', 'Hero: én scene']].map(([v, tittel]) => (
+      {[['stage', 'Hero: én scene (standard)'], ['side', 'Hero: to kolonner']].map(([v, tittel]) => (
         <button
           key={v}
           type="button"

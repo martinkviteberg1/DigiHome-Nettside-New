@@ -131,16 +131,34 @@ export function Segment({ label, verdi, onChange, valg, testId = 'start-segment'
   );
 }
 
-/* Avkryssing: én setning, ett kryss. */
+/* Avkryssing: én setning, ett kryss. Boksen er knappen (role=checkbox); teksten er klikkbar flate.
+   Lenker/knapper inni teksten er egne elementer — aldri knapp-i-knapp. */
 export function Avkryssing({ id, checked, onChange, children, feil }) {
   return (
     <div>
-      <button type="button" role="checkbox" aria-checked={checked} onClick={() => onChange(!checked)} className="flex w-full items-start gap-3 rounded-[10px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" data-testid={id}>
-        <span className="mt-[3px] flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px]" style={{ background: checked ? T.ink : '#FBFAF8', boxShadow: checked ? 'none' : feil ? RING_FEIL : 'inset 0 0 0 1px rgba(21,19,15,0.30)', transition: `background 160ms ${EASE}` }}>
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          id={id}
+          role="checkbox"
+          aria-checked={checked}
+          aria-labelledby={`${id}-tekst`}
+          onClick={() => onChange(!checked)}
+          className="mt-[3px] flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
+          style={{ background: checked ? T.ink : '#FBFAF8', boxShadow: checked ? 'none' : feil ? RING_FEIL : 'inset 0 0 0 1px rgba(21,19,15,0.30)', transition: `background 160ms ${EASE}` }}
+          data-testid={id}
+        >
           {checked ? <Check className="h-3 w-3 text-[#F4F1EA]" strokeWidth={3} /> : null}
+        </button>
+        {/* Klikk på teksten = kryss av. Knapper/lenker inni stopper propagering selv. */}
+        <span
+          id={`${id}-tekst`}
+          onClick={(e) => { if (e.target.closest && e.target.closest('a,button')) return; onChange(!checked); }}
+          className="cursor-pointer select-none text-[14px] leading-[1.5] text-[#15130F]/75"
+        >
+          {children}
         </span>
-        <span className="text-[14px] leading-[1.5] text-[#15130F]/75">{children}</span>
-      </button>
+      </div>
       <Feilmelding id={`${id}-feil`}>{feil}</Feilmelding>
     </div>
   );
