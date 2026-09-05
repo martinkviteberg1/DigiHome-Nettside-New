@@ -999,3 +999,12 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   **Inline-validering:** feil vises først etter blur (beroert) eller etter send-forsøk; grønn hake når feltet er gyldig.
   Telefon vises formatert for NO (909 58 313), lagres som siffer. `?kind=business` forhåndsvelger Bedrift. Kvitteringen får
   «Selskap»-rad for bedrift. Testet mot ekte Enhetsregisteret (DIGIHOME AS) — ingen lead sendt.
+- **Avtalevisning (AvtaleArk):** Avtalen åpnes som dokument i et ark (desktop: fra høyre 560px; mobil: bunn-ark 94svh m/ håndtak),
+  ikke ny fane. Innhold: tittel · versjon · «Kort fortalt» (pris, bindingstid, hva du får, hva som er ditt) · 9 nummererte seksjoner
+  · leseindikator · sticky fot «Jeg har lest og godtar avtalen» (krysser av + lukker, analytics terms_read_accept) + «Åpne som egen
+  side» → `/avtale/selvforvaltning` (noindex). Esc lukker, body-scroll låses, fokus inn i arket. Innhold i én kilde:
+  `lib/avtale-selvforvaltning.js` (AVTALE_VERSJON = 'selvforvaltning-2025-06' = backend-kontrakten).
+  **VIKTIG:** Det fantes INGEN avtaletekst før — checkboxen lenket til /vilkar (generelle brukervilkår). Teksten er et utkast i klart
+  språk basert på det tjenesten lover (5 %, ingen bindingstid, BankID-kontrakt, husleieoppfølging, godkjenning før kostnader,
+  Bergen tingrett, personvern). MÅ gjennomgås juridisk før produksjon.
+- Blur-validering justert: tomme felt rødmerkes kun etter send-forsøk (autofokus + klikk på «Les avtalen» ga falsk feil).

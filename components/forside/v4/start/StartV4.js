@@ -11,6 +11,8 @@ import { EASE, T, display } from '../motion';
 import AdresseSok from './AdresseSok';
 import BoligPanel from './BoligPanel';
 import SelskapSok from './SelskapSok';
+import AvtaleArk from './AvtaleArk';
+import { AVTALE_VERSJON } from '@/lib/avtale-selvforvaltning';
 import { Avkryssing, Segment, StegKnapp, TekstFelt, TelefonFelt } from './Felt';
 
 /* ---------------------------------------------------------------------------
@@ -29,7 +31,7 @@ import { Avkryssing, Segment, StegKnapp, TekstFelt, TelefonFelt } from './Felt';
    · konto-handoff (onboarding_url) for selvforvaltning · analytics
 --------------------------------------------------------------------------- */
 
-const SELF_TERMS_VERSION = 'selvforvaltning-2025-06';
+const SELF_TERMS_VERSION = AVTALE_VERSJON; // 'selvforvaltning-2025-06' — kontrakten mot backend
 
 const STEG = [
   { id: 'adresse', label: 'Adresse' },
@@ -169,6 +171,8 @@ export default function StartV4() {
   const [forsokt, setForsokt] = useState(false); // etter første send-forsøk vises alle feil
   const [landIso, setLandIso] = useState('NO');
   const [terms, setTerms] = useState(false);
+  const [avtaleApen, setAvtaleApen] = useState(false);
+  const [godtattNaar, setGodtattNaar] = useState('');
   const [errors, setErrors] = useState({});
   const [laster, setLaster] = useState(false);
   const [sendt, setSendt] = useState(false);
@@ -382,7 +386,9 @@ export default function StartV4() {
   /* Feil vises når feltet er forlatt (blur) eller etter første send-forsøk — aldri mens du skriver første gang. */
   const feilFor = (k) => ((beroert[k] || forsokt) ? (kontaktFeil[k] || '') : '');
   const okFor = (k) => !!(form[k] || '').trim() && !kontaktFeil[k];
-  const rort = (k) => setBeroert((c) => (c[k] ? c : { ...c, [k]: true }));
+  /* Et felt regnes som «forlatt» først når det har innhold — tomme felter feilmarkeres bare etter send-forsøk.
+     (Ellers ville et klikk på «Les avtalen» rødmerke navnefeltet som autofokus la deg i.) */
+  const rort = (k) => { if (['name', 'email', 'phone'].includes(k) && !String(form[k] || '').trim()) return; setBeroert((c) => (c[k] ? c : { ...c, [k]: true })); };
   const kontaktTekst = form.name.trim() ? [form.name.trim(), form.email.trim()].filter(Boolean).join(' · ') : '';
   const panel = <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} modell={form.service} selskap={bedrift ? (company?.name || '') : undefined} kontakt={sendt ? kontaktTekst : ''} ferdig={sendt} />;
   const panelKompakt = (form.address || pos) ? <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} modell={form.service} kompakt /> : null;
@@ -607,10 +613,16 @@ export default function StartV4() {
                   </div>
 
                   {erSelv ? (
-                    <Avkryssing id="owner-terms-checkbox" checked={terms} onChange={(v) => { setTerms(v); setErrors((c) => ({ ...c, terms: '' })); rort('terms'); }} feil={feilFor('terms')}>
-                      Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="font-medium text-[#15130F] underline decoration-[#15130F]/30 underline-offset-4">avtalen om selvforvaltning</a> (5 % av husleien, ingen bindingstid)
-                      {bedrift ? <> — på vegne av <strong className="font-medium text-[#15130F]">{company?.name || 'selskapet'}</strong>, som jeg har signaturrett for.</> : '.'}
-                    </Avkryssing>
+                    <div className="rounded-[14px] p-4 sm:p-5" style={{ background: 'rgba(21,19,15,0.035)' }} data-testid="start-avtale">
+                      <Avkryssing id="owner-terms-checkbox" checked={terms} onChange={(v) => { setTerms(v); setGodtattNaar(v ? 'nå' : ''); setErrors((c) => ({ ...c, terms: '' })); rort('terms'); }} feil={feilFor('terms')}>
+                        Jeg godtar <button type="button" onClick={(e) => { e.stopPropagation(); setAvtaleApen(true); }} className="font-medium text-[#15130F] underline decoration-[#15130F]/30 underline-offset-4 hover:decoration-[#15130F]" data-testid="start-les-avtale">avtalen om selvforvaltning</button> (5 % av husleien, ingen bindingstid)
+                        {bedrift ? <> — på vegne av <strong className="font-medium text-[#15130F]">{company?.name || 'selskapet'}</strong>, som jeg har signaturrett for.</> : '.'}
+                      </Avkryssing>
+                      <div className="mt-3 flex items-center justify-between gap-4 pl-[30px] text-[13px]">
+                        <button type="button" onClick={() => setAvtaleApen(true)} className="text-[#15130F]/60 underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F]" data-testid="start-les-avtale-2">Les avtalen — tar to minutter</button>
+                        <span className="inline-flex items-center gap-1.5 text-[#15130F]/55" style={{ opacity: terms ? 1 : 0, transition: `opacity 300ms ${EASE}` }}><Check className="h-3.5 w-3.5 text-[#1F9D55]" strokeWidth={2.4} /> Godtatt {godtattNaar || 'nå'}</span>
+                      </div>
+                    </div>
                   ) : (
                     <p className="text-[13.5px] leading-[1.5] text-[#15130F]/55">{utenforOmrade ? 'Uforpliktende. Vi kontakter deg kun om lansering i ditt område.' : bedrift ? 'Gratis og uforpliktende. En rådgiver kontakter dere innen 24 timer — gjerne med et forslag tilpasset porteføljen.' : 'Gratis og uforpliktende. En lokal rådgiver kontakter deg innen 24 timer.'}</p>
                   )}
@@ -636,6 +648,15 @@ export default function StartV4() {
           <div className="sticky top-[88px] h-[calc(100svh-113px)]">{panel}</div>
         </aside>
       </div>
+
+      {/* Avtalen — som et dokument, ikke en ny fane */}
+      <AvtaleArk
+        apen={avtaleApen}
+        onLukk={() => setAvtaleApen(false)}
+        onGodta={() => { setTerms(true); setGodtattNaar('nå'); setErrors((c) => ({ ...c, terms: '' })); rort('terms'); try { track('terms_read_accept', { form: 'utleier-start', version: SELF_TERMS_VERSION }); } catch (e) { /* ok */ } }}
+        godtatt={terms}
+        paVegneAv={bedrift ? (company?.name || '') : ''}
+      />
     </div>
   );
 }
