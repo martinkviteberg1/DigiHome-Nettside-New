@@ -43,7 +43,8 @@ export default function NavV4() {
   return (
     <>
       <header className={`sticky top-0 z-50 border-b bg-[#F3F1EC]/85 backdrop-blur-md transition-colors duration-300 ${scrolled || apen ? 'border-[#15130F]/[0.08]' : 'border-transparent'}`} data-testid="v4-nav">
-        <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-6 px-5 sm:px-8 lg:h-[64px] lg:px-10">
+        {/* Samme kanter som scenen på forsiden: 1600 maks, 32 px marg på desktop. */}
+        <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-6 px-5 sm:px-8 lg:h-[64px] lg:w-[calc(100%-64px)] lg:px-0">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" onClick={() => setApen(false)} data-testid="v4-logo">
               {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -39,7 +39,7 @@ export const FILM = {
   /* Sekundet der han fortsatt leser — rett før telefonen går i lommen. Har du ikke trykket, trykker historien her. */
   trykkVed: 7.4,
   /* Sekundet der han går inn: her begynner overgangen til stua — mens filmen fortsatt beveger seg. Aldri på et frosset bilde. */
-  hjemVed: 10.2,
+  hjemVed: 11.5,
   once: true,
 };
 
@@ -128,7 +128,7 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
         <video
           ref={vidRef}
           {...felles}
-          style={{ ...felles.style, transform: hjemme ? 'scale(1.06)' : 'scale(1)', transition: hjemme ? `transform 3000ms ${EASE}` : 'transform 0ms linear' }}
+          style={{ ...felles.style, transform: hjemme ? 'scale(1.07)' : 'scale(1)', transition: hjemme ? `transform 3200ms ${EASE}` : 'transform 0ms linear' }}
           poster={smal && film.posterSmal ? film.posterSmal : film.poster}
           muted
           loop={!film.once}
@@ -143,7 +143,7 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
           <source src={smal && film.loopSmal ? film.loopSmal : film.loop} type="video/mp4" />
         </video>
         {/* Fargebro: filmens kjølige kveld glir mot stuas varme før bildet kommer — det er slik en overgang blir usynlig. */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#E2C6A5', opacity: hjemme ? 0.5 : 0, transition: hjemme ? `opacity 1100ms ${EASE}` : 'opacity 0ms linear' }} />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#E2C6A5', opacity: hjemme ? 0.5 : 0, transition: hjemme ? `opacity 700ms ${EASE}` : 'opacity 0ms linear' }} />
         {/* Stillbildet: han hjemme. Samme bevegelse gjennom klippet (inn, inn) — så pittelitt, nesten umerkelig drift. */}
         {hjem ? (
           <div
@@ -152,7 +152,7 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
             style={{
               opacity: hjemme ? 1 : 0,
               transform: hjemme ? 'scale(1.04)' : 'scale(1)',
-              transition: hjemme ? `opacity 1800ms ${EASE} 300ms, transform 3000ms ${EASE} 300ms` : 'opacity 240ms linear, transform 0ms linear 240ms',
+              transition: hjemme ? `opacity 1300ms ${EASE} 100ms, transform 3200ms ${EASE} 100ms` : 'opacity 240ms linear, transform 0ms linear 240ms',
             }}
             data-testid="v4-film-hjem-ramme"
           >
@@ -337,14 +337,14 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
         {/* Filmen vises først helt ren. Når dagen begynner, dempes bildet — lett, filmen skal fortsatt sees. Slipper igjen hjemme. */}
         <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.38) 0%, rgba(21,18,15,0.14) 40%, rgba(21,18,15,0.02) 62%, rgba(21,18,15,0.24) 100%)', opacity: inne ? 1 : 0, transition: `opacity ${hjemme ? 900 : 1400}ms ${EASE}` }} />
 
-        {/* ── Slutten: han hjemme. Én setning på den tomme veggen (ink på lys vegg, som resten av siden) —
-              og dagen som et kompakt kort under: panelet fra gaten har kommet hjem med ham. ── */}
+        {/* ── Slutten: han hjemme. Setningen står på den lyse veggen til høyre (ink på lys flate, som resten av siden),
+              dagen ligger under som et lett papirkort — og én rolig handling. Aldri over ham. ── */}
         <div
           className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-24' : 'absolute flex flex-col justify-start'}
           style={{
-            ...(smal ? {} : { left: '57%', right: '5%', top: '12%', bottom: '34%' }),
+            ...(smal ? {} : { left: '63%', right: '4%', top: '11%', bottom: '10%' }),
             color: T.ink,
-            background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.88) 34%, rgba(243,241,236,0.97) 100%)' : 'none',
+            background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 32%, rgba(243,241,236,0.98) 100%)' : 'none',
             opacity: hjemme ? 1 : 0,
             pointerEvents: hjemme ? 'auto' : 'none',
             transition: `opacity 500ms ${EASE} ${hjemme ? 400 : 0}ms`,
@@ -353,45 +353,61 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
           data-testid="v4-slutt"
         >
           {(() => {
-            /* Linjene kommer én og én, nedenfra og opp i rolig takt. */
-            /* Teksten kommer først når bildet har landet (≈1,5 s), én linje om gangen. */
-            const linje = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(14px)', transition: `opacity 800ms ${EASE} ${hjemme ? 1500 + i * 110 : 0}ms, transform 800ms ${EASE} ${hjemme ? 1500 + i * 110 : 0}ms` });
+            /* Teksten kommer når bildet har landet (≈1,3 s), én linje om gangen, nedenfra og opp i rolig takt. */
+            const linje = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(14px)', transition: `opacity 800ms ${EASE} ${hjemme ? 1300 + i * 110 : 0}ms, transform 800ms ${EASE} ${hjemme ? 1300 + i * 110 : 0}ms` });
             const rader = [
               ['Husleie registrert', vist ? `${tall(18500)}\u00A0kr` : `${tall(64500)}\u00A0kr`],
               ['Leiekontrakt signert', 'Emma Sørensen'],
               ['Rørlegger bestilt', 'torsdag 09:00'],
               ...(smal ? [] : [['Ida har fått beskjed', '22:42']]),
             ];
+            const HAIR_INK = 'rgba(21,19,15,0.08)';
             return (
               <>
-                <h3 style={{ ...display, fontSize: smal ? 36 : 'clamp(40px, 6svh, 66px)', lineHeight: 0.98, ...linje(0) }} data-testid="v4-slutt-tittel">
+                <h3 style={{ ...display, fontSize: smal ? 38 : 'clamp(44px, 6.4svh, 72px)', lineHeight: 0.96, ...linje(0) }} data-testid="v4-slutt-tittel">
                   Én godkjenning<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
                 </h3>
-                <p className="mt-2.5 max-w-[30ch] text-[15.5px] leading-[1.4] sm:mt-3 sm:text-[17px]" style={{ ...linje(1), color: 'rgba(21,19,15,0.62)' }}>Resten skjedde mens du gikk hjem.</p>
+                <p className="mt-3 max-w-[30ch] text-[15.5px] leading-[1.4] sm:mt-3.5 sm:text-[17px]" style={{ ...linje(1), color: 'rgba(21,19,15,0.62)' }}>Resten skjedde mens du gikk hjem.</p>
 
-                <div className="mt-4 w-full max-w-[420px] rounded-[14px] sm:mt-6 sm:rounded-[16px]" style={{ background: 'rgba(24,21,18,0.92)', color: OFF, boxShadow: '0 0 0 1px rgba(244,241,234,0.08), 0 30px 60px -32px rgba(0,0,0,0.6)', ...linje(2) }} data-testid="v4-slutt-kort">
-                  <div className="flex items-center justify-between gap-4 px-4 pb-2 pt-3 sm:px-5 sm:pt-3.5">
+                {/* Papirkortet: lett, presist, én hårlinje mellom radene. */}
+                <div
+                  className="mt-5 w-full max-w-[440px] rounded-[16px] sm:mt-7 sm:rounded-[18px]"
+                  style={{ background: 'rgba(251,249,245,0.94)', boxShadow: '0 0 0 1px rgba(21,19,15,0.07), 0 30px 60px -30px rgba(21,19,15,0.38)', ...linje(2) }}
+                  data-testid="v4-slutt-kort"
+                >
+                  <div className="flex items-center justify-between gap-4 px-4 pb-2.5 pt-3.5 sm:px-5 sm:pt-4">
                     <p className="truncate text-[14.5px] font-medium sm:text-[15px]">{adresse}</p>
-                    <p className="flex shrink-0 items-center gap-2 text-[12.5px]" style={{ color: 'rgba(244,241,234,0.78)' }}>
-                      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#5FCB8A' }} />Alt i orden
+                    <p className="flex shrink-0 items-center gap-2 text-[12.5px]" style={{ color: 'rgba(21,19,15,0.6)' }}>
+                      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55' }} />Alt i orden
                     </p>
                   </div>
-                  <ul className="px-4 pb-2.5 sm:px-5 sm:pb-3">
+                  <ul className="px-4 sm:px-5">
                     {rader.map(([t, d], i) => (
-                      <li key={t} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-baseline gap-x-2.5 border-t py-[7px] text-[13.5px] sm:py-2 sm:text-[14px]" style={{ borderColor: HAIR, ...linje(2.7 + i * 0.5) }}>
-                        <HakeIkon className="translate-y-[2px] text-[#5FCB8A]" />
+                      <li key={t} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 border-t py-[9px] text-[13.5px] sm:py-2.5 sm:text-[14px]" style={{ borderColor: HAIR_INK, ...linje(2.7 + i * 0.5) }}>
+                        <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full" style={{ background: '#1F9D55', color: '#fff' }}><HakeIkon className="h-[11px] w-[11px]" /></span>
                         <span className="truncate font-medium">{t}</span>
-                        <span className="truncate text-right" style={{ color: DIM }}>{d}</span>
+                        <span className="truncate text-right" style={{ color: 'rgba(21,19,15,0.52)' }}>{d}</span>
                       </li>
                     ))}
                   </ul>
+                  <div className="hidden items-center gap-2 border-t px-5 py-3 text-[12.5px] sm:flex" style={{ borderColor: HAIR_INK, color: 'rgba(21,19,15,0.55)', ...linje(5) }}>
+                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />
+                    {hvem === 'deg' ? 'Godkjent av deg' : 'Godkjent'} · 22:41 · {tall(3450)}&nbsp;kr
+                  </div>
                 </div>
 
-                <div className="mt-4 flex items-center gap-5 text-[14px] sm:mt-5" style={linje(5)}>
-                  <button type="button" onClick={tilAdresse} className="inline-flex items-center gap-1.5 font-medium transition-colors hover:text-[#15130F]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" tabIndex={hjemme ? 0 : -1} data-testid="v4-slutt-cta">
-                    Prøv med din adresse<span aria-hidden="true">↑</span>
+                <div className="mt-5 flex items-center gap-5 sm:mt-6" style={linje(6)}>
+                  <button
+                    type="button"
+                    onClick={tilAdresse}
+                    className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-[14px] font-medium transition-[transform,opacity] duration-200 hover:opacity-90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
+                    style={{ background: T.ink, color: T.canvas }}
+                    tabIndex={hjemme ? 0 : -1}
+                    data-testid="v4-slutt-cta"
+                  >
+                    Prøv med din adresse<span aria-hidden="true" className="-translate-y-px">↑</span>
                   </button>
-                  <button type="button" onClick={replay} className="underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" style={{ color: 'rgba(21,19,15,0.62)' }} tabIndex={hjemme ? 0 : -1} data-testid="v4-replay">Spill igjen</button>
+                  <button type="button" onClick={replay} className="text-[14px] underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" style={{ color: 'rgba(21,19,15,0.62)' }} tabIndex={hjemme ? 0 : -1} data-testid="v4-replay">Spill igjen</button>
                 </div>
               </>
             );
