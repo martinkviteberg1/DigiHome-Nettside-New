@@ -376,13 +376,51 @@ export function useFilm({ synlig, spiller = synlig, AUTO, SISTE, START, HVILE, o
   return { fase, ov, morkt, bred, hopp };
 }
 
-/* Ytre ramme — samme skygge/radius i alle kapitler */
-export function Ramme({ synlig, tema, ov, morkt, bred, desktop, kompakt, testid, fase, ekstra }) {
+/* Full bleed-stage: filmen er laget for W × 660. Her fyller den hele bredden og (nesten) hele skjermhøyden — rammen får
+   høyden clamp(660, 100svh − nav, 960), og filmen rendres i bredden W/k og skaleres opp med k = høyde/660 (transform,
+   origo øverst til venstre). Alt inne i filmen (layout, tekst, bilder) følger — 1920-kildene holder til k ≈ 1,45. */
+function FullStage({ bred, inn, blend, children }) {
+  const ref = useRef(null);
+  const [m, setM] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const maal = () => setM({ w: el.clientWidth, h: el.clientHeight });
+    maal();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(maal) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', maal);
+    return () => { ro?.disconnect(); window.removeEventListener('resize', maal); };
+  }, []);
+  const k = m.h ? m.h / H : 1;
+  const w = m.w ? Math.round(m.w / k) : null;
+  return (
+    <div ref={ref} className={`relative w-full overflow-hidden ${bred === null ? 'hidden lg:block' : ''}`} style={{ height: 'clamp(660px, calc(100svh - 64px), 960px)', background: PAPIR, ...inn }} data-testid="v4-fullstage" data-k={k.toFixed(3)}>
+      <div style={{ width: w ? `${w}px` : '100%', height: H, transform: `scale(${k})`, transformOrigin: '0 0', ...blend }}>{children}</div>
+    </div>
+  );
+}
+
+/* Ytre ramme — samme skygge/radius i alle kapitler. `full`: rammeløs, full bredde, skjermhøy (FullStage). */
+export function Ramme({ synlig, tema, ov, morkt, bred, desktop, kompakt, testid, fase, ekstra, full = false }) {
   const inn = { opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(28px)', transition: ov ? 'none' : `opacity 800ms ${EASE}, transform 800ms ${EASE}` };
   const skygge = tema === 'lys'
     ? '0 0 0 1px rgba(21,19,15,0.08), 0 60px 120px -40px rgba(21,19,15,0.35)'
     : '0 0 0 1px rgba(244,241,234,0.12), 0 70px 120px -50px rgba(0,0,0,0.75)';
   const blend = { opacity: morkt ? 0 : 1, transition: ov ? 'none' : `opacity 450ms ${EASE}` };
+  if (full) {
+    return (
+      <div className="relative w-full" data-testid={testid} data-fase={fase} data-full="1" {...ekstra}>
+        <FilmStil />
+        {bred !== false && <FullStage bred={bred} inn={inn} blend={blend}>{desktop}</FullStage>}
+        {bred !== true && (
+          <div className={`w-full overflow-hidden ${bred === null ? 'lg:hidden' : ''}`} style={{ background: PAPIR, ...inn }}>
+            <div style={blend}>{kompakt}</div>
+          </div>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="relative mx-auto w-full max-w-[min(1400px,86vw)]" data-testid={testid} data-fase={fase} {...ekstra}>
       <FilmStil />

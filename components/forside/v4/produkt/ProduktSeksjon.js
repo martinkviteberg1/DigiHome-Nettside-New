@@ -127,7 +127,10 @@ const TEMA = {
   },
 };
 
-export default function ProduktSeksjon() {
+/* variant: 'ramme' (standard — produktflaten som kort på bakgrunn) eller 'full' (full bleed: bildet ER scenen, ingen kort,
+   ingen bakgrunnsfoto, teksttabs med lilla underline over stagen, seksjonsoverskriften står inne i filmens åpning). */
+export default function ProduktSeksjon({ variant = 'ramme' }) {
+  const full = variant === 'full';
   const [aktiv, setAktiv] = useState('annonse');   // starter på Annonse — livssyklusen leses fra venstre
   /* Kapitlene spiller alltid videre av seg selv (Annonse → Kontrakt → Drift). Velger brukeren en tab, fortsetter kjeden derfra. */
   const [bakgrunn, setBakgrunn] = useState('oslo');   // nøkkel i BAKGRUNNER — bygården er standard; 'stue' (interiør) ligger i velgeren
@@ -219,6 +222,52 @@ export default function ProduktSeksjon() {
     window.setTimeout(() => { setAktiv(nesteId); setBytter(false); }, 360);
     return true;
   };
+
+  if (full) {
+    const lys = TEMA.lys;
+    return (
+      <section id="produkt" ref={ref} className="relative overflow-clip" style={{ background: IVORY, color: INK }} data-testid="v4-produkt" data-variant="full">
+        <div className="relative mx-auto max-w-[1760px] px-5 pt-10 sm:px-8 lg:px-10 lg:pt-12">
+          <div ref={vaktRef} aria-hidden="true" className="h-px w-full" />
+          {/* Teksttabs — ord, ingen kapsel. Den lilla linjen under det aktive ordet er også kapittelets fremdrift. */}
+          <div ref={listeRef} role="tablist" aria-label="Produktområder" className="flex justify-center gap-6 sm:gap-9" data-testid="v4-tabs" data-variant="tekst">
+            {TABS.map((t) => {
+              const er = t.id === aktiv;
+              return (
+                <button
+                  key={t.id}
+                  ref={(el) => { tabRefs.current[t.id] = el; }}
+                  type="button"
+                  role="tab"
+                  aria-selected={er}
+                  aria-disabled={!t.klar}
+                  onClick={() => { if (t.klar) setAktiv(t.id); }}
+                  className={`relative pb-2.5 text-[14px] tracking-[-0.005em] transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 sm:text-[15px] ${lys.ring} ${er ? 'font-medium' : t.klar ? 'hover:text-[#15130F]' : 'cursor-default'}`}
+                  style={{ color: er ? INK : t.klar ? 'rgba(21,19,15,0.48)' : 'rgba(21,19,15,0.28)' }}
+                  data-testid={`v4-tab-${t.id}`}
+                >
+                  {t.navn}
+                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[2px] overflow-hidden rounded-full" style={{ background: er ? 'rgba(21,19,15,0.10)' : 'transparent', transition: `background-color 300ms ${EASE}` }}>
+                    <span className="absolute inset-y-0 left-0 rounded-full" style={{ background: T.lilla, width: er ? `${Math.max(6, Math.round(frem.andel * 1000) / 10)}%` : '0%', transition: er && frem.ms ? `width ${frem.ms}ms linear` : `width 300ms ${EASE}` }} data-testid={er ? 'v4-tabs-fremdrift' : undefined} />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <h2 className="sr-only" data-testid="v4-produkt-tittel">{scene.tittel[0]} {scene.tittel[1]}</h2>
+        </div>
+        {/* Stagen — full bredde, skjermhøy. Bildet er scenen; teksten står på den. */}
+        <div ref={sceneRef} className="mt-7 lg:mt-9">
+          <div key={aktiv} className="animate-in fade-in-0 duration-500" style={{ opacity: bytter ? 0 : 1, transition: `opacity 340ms ${EASE}` }}>
+            {aktiv === 'drift' && <DriftFilm synlig={synlig} spiller={filmSynlig} tema="lys" onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} full />}
+            {aktiv === 'annonse' && <AnnonseFilm synlig={synlig} spiller={filmSynlig} tema="lys" onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} full tittel={scene.tittel} ingress={scene.ingress} />}
+            {aktiv === 'kontrakt' && <KontraktFilm synlig={synlig} spiller={filmSynlig} tema="lys" onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} full />}
+            {aktiv === 'okonomi' && <OkonomiFilm synlig={synlig} spiller={filmSynlig} tema="lys" onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} full />}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="produkt" ref={ref} className="relative overflow-clip" style={{ background: bg.seksjonBg || tema.seksjonBg, color: tema.tekst }} data-testid="v4-produkt">

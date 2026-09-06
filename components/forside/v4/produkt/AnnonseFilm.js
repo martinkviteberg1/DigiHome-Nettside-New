@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { EASE, T, display, tall } from '../motion';
-import { PAPIR, HVIT, STEIN, HAIR, DIM, OFF, H, P, MORF, LYSKANT, GLASS, BLUR_INN, FilmStil, Hake, Finn, Portrett, Inn, Vokse, Chip, Lapp, Dok, AutoKnapp, Peker, usePeker, Tekstbytte, Akter, NesteBro, Sms, ValgtKort, Bilde, fremdriftFor } from './filmdeler';
+import { PAPIR, HVIT, STEIN, HAIR, DIM, OFF, H, P, MORF, LYSKANT, GLASS, BLUR_INN, FilmStil, Hake, Finn, Portrett, Inn, Vokse, Chip, Lapp, Dok, AutoKnapp, Peker, usePeker, Tekstbytte, Akter, NesteBro, Sms, ValgtKort, Bilde, fremdriftFor, Ramme } from './filmdeler';
 
 /* ---------------------------------------------------------------------------
    AnnonseFilm — konseptfilm i én ramme. «Fra ledig til utleid. Du trykker tre ganger.»
@@ -243,23 +243,38 @@ const Brodtekst = () => (
    Teksten står i venstre spalte, på samme sted som aktenes tekst: adresse, én setning i to linjer, én knapp.
    Pekeren glir inn og trykker. Ved trykket krymper bygården til «Fasade»-bildet i mosaikken — og teksten
    bytter til første akt på samme sted. ── */
-function StartTekst({ fase, kompakt = false, knappRef, inne = true, ov = false }) {
+function StartTekst({ fase, kompakt = false, knappRef, inne = true, ov = false, tittel = null, ingress = null }) {
   const hover = fase === F.HOVER || fase === F.TRYKK_START;
-  const ord = ['Fra', 'ledig', 'til', 'utleid'];
+  /* Full bleed-varianten: seksjonens overskrift står HER, på fasaden (to linjer) med ingressen under — én overskrift,
+     ikke to. Standard: «Fra ledig til utleid.» på én linje. */
+  const linjer = tittel ? tittel.map((l) => l.replace(/\.$/, '').split(' ')) : [['Fra', 'ledig', 'til', 'utleid']];
+  const antall = linjer.reduce((n, l) => n + l.length, 0);
   const vis = inne && fase >= F.OPP;   // bildet står rent først — så kommer teksten
   const steg = (i) => ({ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(18px)', filter: vis ? 'blur(0px)' : 'blur(8px)', transition: ov ? 'none' : vis ? `opacity 700ms ${EASE} ${i}ms, transform 900ms ${EASE} ${i}ms, filter 700ms ${EASE} ${i}ms` : `opacity 220ms ${EASE}, transform 220ms ${EASE}, filter 220ms ${EASE}` });
+  let n = 0;
   return (
     <div className="text-left" data-testid="v4-start" style={{ color: OFF }}>
       <p className={`inline-flex items-center gap-2 rounded-full ${kompakt ? 'h-7 px-3 text-[12px]' : 'h-8 px-3.5 text-[13px]'}`} style={{ color: 'rgba(244,241,234,0.92)', background: 'rgba(21,19,15,0.30)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', boxShadow: 'inset 0 0 0 1px rgba(244,241,234,0.20)', ...steg(100) }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />{kompakt ? ADRESSE : 'Nygårdsgaten 5 · Bergen'}</p>
-      {/* Én linje, stor — setningen er hele kapittelet */}
-      <h3 className={kompakt ? 'mt-3 text-[40px]' : 'mt-4 text-[clamp(52px,5.6vw,98px)]'} style={{ ...display, letterSpacing: '-0.04em', lineHeight: 0.94, color: OFF, textWrap: kompakt ? 'balance' : 'nowrap' }}>
-        {ord.map((o, i) => (
-          <span key={o} className="inline-block" style={{ ...steg(240 + i * 90), marginRight: i < ord.length - 1 ? '0.22em' : 0 }}>
-            {o}{i === ord.length - 1 ? <span style={{ color: T.lilla }}>.</span> : null}
+      {/* Én setning, stor — setningen er hele kapittelet (to linjer når seksjonsoverskriften står her) */}
+      <h3 className={kompakt ? 'mt-3 text-[40px]' : tittel ? 'mt-4 text-[clamp(44px,4.6vw,82px)]' : 'mt-4 text-[clamp(52px,5.6vw,98px)]'} style={{ ...display, letterSpacing: '-0.04em', lineHeight: 0.94, color: OFF, textWrap: kompakt ? 'balance' : 'nowrap' }}>
+        {linjer.map((ord, li) => (
+          <span key={li} className={kompakt ? 'inline' : 'block'}>
+            {ord.map((o, i) => {
+              const idx = n; n += 1;
+              const siste = li === linjer.length - 1 && i === ord.length - 1;
+              return (
+                <span key={`${li}-${i}`} className="inline-block" style={{ ...steg(240 + idx * 90), marginRight: siste ? 0 : '0.22em' }}>
+                  {o}{siste ? <span style={{ color: T.lilla }}>.</span> : null}
+                </span>
+              );
+            })}
           </span>
         ))}
       </h3>
-      <div className={`flex items-center ${kompakt ? 'mt-5' : 'mt-7'}`} style={steg(720)}>
+      {ingress && (
+        <p className={kompakt ? 'mt-3 text-[14.5px] leading-[1.5]' : 'mt-5 max-w-[46ch] text-[clamp(15px,1.15vw,19px)] leading-[1.5]'} style={{ color: 'rgba(244,241,234,0.78)', ...steg(240 + antall * 90 + 120) }} data-testid="v4-start-ingress">{ingress}</p>
+      )}
+      <div className={`flex items-center ${kompakt ? 'mt-5' : 'mt-7'}`} style={steg(240 + antall * 90 + (ingress ? 360 : 120))}>
         <AutoKnapp presser={fase === F.TRYKK_START} hover={!kompakt && hover} stor testid="v4-lag-annonse" knappRef={knappRef}>Lag annonse</AutoKnapp>
       </div>
     </div>
@@ -1180,7 +1195,7 @@ function Tekstspalte({ fase, L, ov, onAkt, knapper, neste }) {
   );
 }
 
-function Desktop({ fase, ov, onAkt, onHold, neste, startet }) {
+function Desktop({ fase, ov, onAkt, onHold, neste, startet, tittel, ingress }) {
   const ref = useRef(null);
   const [W, setW] = useState(0);
   useEffect(() => {
@@ -1214,7 +1229,7 @@ function Desktop({ fase, ov, onAkt, onHold, neste, startet }) {
 
       {/* Åpningsteksten — i venstre spalte, der aktenes tekst står. Kommer inn ord for ord; går raskt ut i trykket. */}
       <div className="absolute z-[5]" style={{ left: P, right: P, bottom: P + 6, pointerEvents: start ? 'auto' : 'none' }} aria-hidden={!start}>
-        <StartTekst fase={fase} inne={start} ov={ov} knappRef={(el) => { knapper.current.start = el; }} />
+        <StartTekst fase={fase} inne={start} ov={ov} knappRef={(el) => { knapper.current.start = el; }} tittel={tittel} ingress={ingress} />
       </div>
 
       {L && (
@@ -1240,14 +1255,14 @@ function Desktop({ fase, ov, onAkt, onHold, neste, startet }) {
 
 /* ── Under lg: samme akter, stablet ── */
 
-function StartKompakt({ fase, ov, startet }) {
+function StartKompakt({ fase, ov, startet, tittel, ingress }) {
   const zoomet = useAapning(fase, startet);
   return (
     <div className="relative overflow-hidden" style={{ aspectRatio: '4 / 5' }} data-testid="v4-start-kompakt">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={KILDE.fasade.liten} alt="Bygården i Nygårdsgaten" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: KILDE.fasade.posLiten, transform: zoomet ? 'scale(1)' : 'scale(1.06)', transition: ov ? 'none' : 'transform 3600ms cubic-bezier(0.25, 0.6, 0.3, 1)' }} draggable={false} />
       <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,19,15,0.12) 0%, rgba(21,19,15,0.04) 34%, rgba(21,19,15,0.52) 68%, rgba(21,19,15,0.84) 100%)' }} />
-      <div className="absolute inset-x-0 bottom-0 p-5"><StartTekst fase={fase} kompakt inne={zoomet} ov={ov} /></div>
+      <div className="absolute inset-x-0 bottom-0 p-5"><StartTekst fase={fase} kompakt inne={zoomet} ov={ov} tittel={tittel} ingress={ingress} /></div>
     </div>
   );
 }
@@ -1370,13 +1385,13 @@ function FinnKortKompakt({ ov }) {
   );
 }
 
-function Kompakt({ fase, ov, onAkt, onHold, neste, startet }) {
+function Kompakt({ fase, ov, onAkt, onHold, neste, startet, tittel, ingress }) {
   const start = fase <= F.TRYKK_START;
   const kamera = iSoker(fase) || fase === F.STABEL;
   const akt = aktTekst(fase);
   return (
     <div className="flex flex-col text-[#15130F]" style={{ background: PAPIR }} data-testid="v4-annonse-kompakt">
-      <Vokse vis={start || kamera} ov={ov}>{kamera ? <KameraKompakt fase={fase} ov={ov} /> : <StartKompakt fase={fase} ov={ov} startet={startet} />}</Vokse>
+      <Vokse vis={start || kamera} ov={ov}>{kamera ? <KameraKompakt fase={fase} ov={ov} /> : <StartKompakt fase={fase} ov={ov} startet={startet} tittel={tittel} ingress={ingress} />}</Vokse>
 
       <Vokse vis={!start && !kamera} ov={ov}>
         <div className="px-5 pt-6">
@@ -1423,7 +1438,7 @@ function Kompakt({ fase, ov, onAkt, onHold, neste, startet }) {
 /* `onFerdig` — kalles når sluttbildet har stått ferdig. Returnerer den true, tar forelderen over (neste kapittel);
    ellers looper filmen. `neste` = navnet på neste kapittel (vises i broen). */
 /* `synlig` = seksjonen er i bildet (inngang). `spiller` = produktflaten er i bildet — klokken går bare da. */
-export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, onFremdrift, neste = null }) {
+export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, onFremdrift, neste = null, full = false, tittel = null, ingress = null }) {
   const [fase, setFase] = useState(F.START);
   const [startet, setStartet] = useState(false);
   const [ov, setOv] = useState(false);
@@ -1473,8 +1488,13 @@ export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', o
   const skygge = lys
     ? '0 0 0 1px rgba(21,19,15,0.08), 0 60px 120px -40px rgba(21,19,15,0.35)'
     : '0 0 0 1px rgba(244,241,234,0.12), 0 70px 120px -50px rgba(0,0,0,0.75)';
-  const felles = { fase, ov, startet, onAkt: tilAkt, onHold: setHoldt, neste };
+  const felles = { fase, ov, startet, onAkt: tilAkt, onHold: setHoldt, neste, tittel, ingress };
   const blend = { opacity: morkt ? 0 : 1, transition: ov ? 'none' : `opacity 450ms ${EASE}` };
+
+  /* Full bleed: filmen i den felles rammeløse stagen (FullStage i filmdeler) */
+  if (full) {
+    return <Ramme synlig={synlig} tema={tema} ov={ov} morkt={morkt} bred={bred} fase={fase} testid="v4-annonse-scene" full ekstra={{ 'data-holdt': holdt ? '1' : '0' }} desktop={<Desktop {...felles} />} kompakt={<Kompakt {...felles} />} />;
+  }
 
   return (
     <div className="relative mx-auto w-full max-w-[min(1400px,86vw)]" data-testid="v4-annonse-scene" data-fase={fase} data-holdt={holdt ? '1' : '0'}>

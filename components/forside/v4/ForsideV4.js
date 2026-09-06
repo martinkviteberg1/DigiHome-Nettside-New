@@ -33,7 +33,7 @@ import { T, display } from './motion';
 /* hero: 'side' (to kolonner), 'stage' (sentrert setning + én scene i full bredde — Sana-strukturen) eller
    'zoom' (som stage, men scenen vokser til fullskjerm når du scroller — HeroZoom).
    bilde: midlertidig scenebilde for 'stage' ('stue' | 'bygg') til footagen finnes. */
-export default function ForsideV4({ hero = 'side', bilde = null, veksler = false }) {
+export default function ForsideV4({ hero = 'side', bilde = null, veksler = false, produkt = 'ramme' }) {
   /* Din adresse → din bolig. Valgt adresse personaliserer heroscenen før du går videre. */
   const [eiendom, setEiendom] = useState(null);
   const sceneRef = useRef(null);
@@ -118,7 +118,7 @@ export default function ForsideV4({ hero = 'side', bilde = null, veksler = false
         <TillitStripe />
         {/* Systemet i ro: portalen (eier) + appen (leietaker) — før filmene viser det i arbeid. */}
         <SystemSeksjon />
-        <ProduktSeksjon />
+        <ProduktSeksjon variant={produkt} />
         {/* Bevis: boligene som driftes gjennom DigiHome — kort i bevegelse. */}
         <BoligerSeksjon />
         {/* Spor: soft gate rett etter produktet — «autopilot for hvem?» */}
@@ -133,7 +133,7 @@ export default function ForsideV4({ hero = 'side', bilde = null, veksler = false
         <AvslutningSeksjon />
       </main>
       <Footer />
-      {veksler && <HeroVeksler hero={hero} />}
+      {veksler && <HeroVeksler hero={hero} produkt={produkt} />}
     </div>
   );
 }

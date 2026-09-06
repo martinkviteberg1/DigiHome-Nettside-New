@@ -1191,3 +1191,13 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   opacity = --dh-p). Nav slipper platen ved e ≥ 0.2 (aldri blur over video i bevegelse). Veggteksten redusert til: overskrift (76px, 2-linjers boks)
   · én linje (20px/0.60) · hårlinje · meta-linje (adresse · torsdag 20:4x · ● Alt i orden). Indeksraden (Annonse/Kontrakt/…) FJERNET. Siste beat:
   stats-kolonner. Blekk rgba(21,19,15,0.94). Chip: solid ivory 0.94, ingen blur.
+
+## Produktseksjon full bleed-variant — sept 2025 (agent-testet, ikke brukergodkjent)
+- **Toggle:** ny lilla prikkegruppe i HeroVeksler (cookie `dh_produkt` = `ramme` | `full`), page.js → ForsideV4 `produkt` → `ProduktSeksjon variant`.
+- **`full`:** ivory canvas, ingen bakgrunnsfoto/overlay, ingen overskriftblokk (H2 sr-only). Teksttabs uten kapsel (ord, 14–15px; aktivt ord i
+  blekk med lilla underline som også er kapittelets fremdrift — `frem.andel/ms`), ikke sticky. Stagen = `FullStage` i filmdeler: full bredde,
+  høyde clamp(660px, 100svh − 64px, 960px); filmen rendres i W/k og skaleres med k = høyde/660 (transform-origin 0 0) — layout/tekst/bilder
+  følger (k ≈ 1,42 på 1920×1000). `Ramme` har `full`-prop; alle fire filmer tar `full` (AnnonseFilm bruker Ramme kun i full-modus).
+- **Én overskrift:** AnnonseFilm får `tittel`/`ingress` (SCENER.annonse) → `StartTekst` viser seksjonsoverskriften på fasaden i to linjer
+  (clamp(44px, 4.6vw, 82px)) + ingress (≤ 46ch) + «Lag annonse». Standardvarianten viser fortsatt «Fra ledig til utleid.».
+- Kompakt (<lg): full bredde uten radius. Kjent: kamerascenen (uskarp fasade + skarpt utsnitt) står fortsatt — kan oppleves som «kopi i kopi».

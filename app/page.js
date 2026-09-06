@@ -46,6 +46,7 @@ export const metadata = {
 export default function ForsidePage({ searchParams }) {
   const valg = cookies().get('dh_hero')?.value;
   const hero = valg === 'side' ? 'side' : valg === 'zoom' ? 'zoom' : valg === 'zoomfull' ? 'zoomfull' : 'stage';
+  const produkt = cookies().get('dh_produkt')?.value === 'full' ? 'full' : 'ramme';
   const bilde = searchParams?.bilde === 'bygg' ? 'bygg' : searchParams?.bilde === 'stue' ? 'stue' : null;
   const stageBilde = bilde === 'bygg' ? '/v4/bolig-hero.webp' : bilde === 'stue' ? '/v4/stue-2000.webp' : '/v4/video/eier-poster.webp';
   return (
@@ -59,7 +60,7 @@ export default function ForsidePage({ searchParams }) {
           <link rel="preload" as="image" href="/v4/bolig-hero-mobil.webp" media="(max-width: 639px)" fetchPriority="high" />
         </>
       )}
-      <ForsideV4 hero={hero} bilde={bilde} veksler />
+      <ForsideV4 hero={hero} bilde={bilde} veksler  produkt={produkt} />
     </>
   );
 }
