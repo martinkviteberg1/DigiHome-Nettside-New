@@ -1675,6 +1675,18 @@ agent_communication:
 
 
 frontend:
+  - task: "Produktseksjon full bleed (KINO-modus): ny rendringsmotor for variant 'full' (cookie dh_produkt=full) — hele stagen er et fullskjermsfoto per scene, all animasjon/tekst/UI ligger direkte på fotoet (ingen kort, ingen papir). Fire kapitler i /app/components/forside/v4/produkt/kino/: AnnonseKino (hele skjermen er kameraet: fasade → kjøkken → soverom → spisestue → stue, bildene krymper ned i bunken; etiketter i fotoet; wipe re opp sengen; annonse + FINN; interessenter; Emma valgt), KontraktKino, DriftKino (natt → morgen, sone forankret ved vinduet), OkonomiKino (vinduene lyser). Motor: Kino.js (KinoStage m/ dissolve + svak driv, scrim per tema, KinoTekst, Etikett, Sone, Rad, Fold, KinoKnapp, KinoSms). Tabs som ord øverst på stagen m/ lilla fremdrift; farge følger scenetema via onTema."
+    implemented: true
+    working: "NA"
+    file: "/app/components/forside/v4/produkt/kino/Kino.js, AnnonseKino.js, KontraktKino.js, DriftKino.js, OkonomiKino.js, /app/components/forside/v4/produkt/ProduktSeksjon.js (full-gren)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Kun screenshot-QA (1920×800/900, 1440×900, 390×800/700) av alle fire kapitler i mange faser; auto-progresjon Annonse→Kontrakt verifisert tidligere i samme mekanisme (useFilm/onFerdig uendret). Ingen console-feil (kun preload-advarsler fra layout). Variant 'ramme' (standard) urørt. data-testid: v4-produkt[data-variant=full], v4-kino-stage, v4-kino-annonse/-kontrakt/-drift/-okonomi[data-fase,data-bilde,data-tema], v4-kino-tekst[data-akt], v4-kino-soker, v4-kino-klone-*, v4-kino-pin-*, v4-kino-wipe, v4-kino-publiser, v4-kino-velg, v4-kino-neste, v4-tabs[data-variant=tekst], v4-tab-*."
+
   - task: "AdDetailModal responsiv: to-kolonners layout på store skjermer (lg+) — KPI/graf/handlinger venstre, dagstabell høyre"
     implemented: true
     working: true
@@ -7667,3 +7679,5 @@ agent_communication:
     -message: "Moderne-pass: blur-inn på Inn/Vokse/Tekstbytte/Lapp/Brikke/Pinne/Prompt/kontraktfelt, frostet glass (GLASS) på etiketter over bilder (romnavn, nåler, teller, prompt, «Seng»), indre lys-hårlinje (LYSKANT) på alle bildefliser, hjørnemarkører på utvalget, rundere kort (18–20px), glass-adressepille i åpningen. Kapittel-fremdrift: filmene kaller onFremdrift({andel, ms}) per fase → tynn lilla linje i aktiv tab-pille (v4-tabs-fremdrift) som fylles lineært. Teller flyttet til nederst i scenen (lå under sticky tab-rad). Skjermbilder OK, ingen pageerrors."
     -agent: "main"
     -message: "Lagg-fiks bunke-scenen: fjernet animert filter:blur og box-shadow-overganger på bildeflisene/fasaden, lettere skygge, will-change transform/opacity, teller uten backdrop-filter. Lese-scenen omskrevet til tre ulike evner: LES1 «Ser hva rommet har» (kvaliteter), LES2 «Finner det leietakere spør om» (hvitevarer/oppvaskmaskin/spiseplass), LES3 «Foreslår det som kan bli bedre» (lilla forslagsnål «Uoppredd seng · Forslag: re opp» → leder inn i styling). FAKTA-fasen fjernet (fase-nummer endret: STYLE=9 … SLUTT=26). Kontrakt: LEST-fase (Emma «Åpnet kontrakten · 14:31»), Vedlegg-chips (Husordensregler, Sjekkliste, Depositumsavtale · Keyhole), Areal-felt, depositumkort skaleres 1.03 i fokus, ny OVER0-fase = tidssprang «To uker senere / 1. november, kl. 12.» med papir og sidespalte dempet (v4-datoskift). Kontrakt-faser: LEST=12, SIGN2=13, DEP1=14, DEP2=15, OVER0=16 … SLUTT=23."
+    -agent: "main"
+    -message: "Produktseksjon full bleed bygget på nytt som KINO-modus (variant 'full', cookie dh_produkt=full; standard 'ramme' urørt). Ny motor /app/components/forside/v4/produkt/kino/Kino.js + fire kapitler AnnonseKino/KontraktKino/DriftKino/OkonomiKino. Hele stagen (clamp 640–1100 px, 100svh) er et fullskjermsfoto per scene med dissolve; tekst nede til venstre («01 · Annonsen», tittel ord for ord), produktsone til høyre (desktop) / øverst (mobil), alt rett på fotoet med scrim — ingen kort/papir. Kun transform/opacity i bevegelse. Tabs = ord øverst m/ lilla fremdrift, farge følger scenetema (onTema). Ingen backend-endringer. Kun screenshot-QA; ved ev. frontend-test: sett cookie dh_produkt=full, sjekk data-fase øker automatisk i v4-kino-annonse, at v4-tab-kontrakt får aria-selected etter ~56 s uten klikk, at klikk på tabs bytter kapittel, ingen pageerrors, mobil 390 uten horisontal scroll."

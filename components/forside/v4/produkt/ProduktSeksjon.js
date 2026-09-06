@@ -7,6 +7,10 @@ import DriftFilm from './DriftFilm';
 import OkonomiFilm from './OkonomiFilm';
 import AnnonseFilm from './AnnonseFilm';
 import KontraktFilm from './KontraktFilm';
+import AnnonseKino from './kino/AnnonseKino';
+import KontraktKino from './kino/KontraktKino';
+import DriftKino from './kino/DriftKino';
+import OkonomiKino from './kino/OkonomiKino';
 
 /* ---------------------------------------------------------------------------
    ProduktSeksjon — «Se hele DigiHome i arbeid.» En scene, ikke et skjermbilde.
@@ -223,47 +227,53 @@ export default function ProduktSeksjon({ variant = 'ramme' }) {
     return true;
   };
 
+  /* Kino (full bleed): filmen melder hvilket tema scenen har (mørk scrim/offwhite eller lys scrim/blekk) — tabs følger. */
+  const [kinoTema, setKinoTema] = useState('mork');
+  const onTema = useCallback((t) => setKinoTema(t), []);
+
   if (full) {
-    const lys = TEMA.lys;
+    const ink = kinoTema === 'lys';
+    const tekst = ink ? INK : IVORY;
+    const filmProps = { synlig, spiller: filmSynlig, onFerdig: videre, onFremdrift, neste: nesteNavn, onTema };
     return (
-      <section id="produkt" ref={ref} className="relative overflow-clip" style={{ background: IVORY, color: INK }} data-testid="v4-produkt" data-variant="full">
-        <div className="relative mx-auto max-w-[1760px] px-5 pt-10 sm:px-8 lg:px-10 lg:pt-12">
-          <div ref={vaktRef} aria-hidden="true" className="h-px w-full" />
-          {/* Teksttabs — ord, ingen kapsel. Den lilla linjen under det aktive ordet er også kapittelets fremdrift. */}
-          <div ref={listeRef} role="tablist" aria-label="Produktområder" className="flex justify-center gap-6 sm:gap-9" data-testid="v4-tabs" data-variant="tekst">
-            {TABS.map((t) => {
-              const er = t.id === aktiv;
-              return (
-                <button
-                  key={t.id}
-                  ref={(el) => { tabRefs.current[t.id] = el; }}
-                  type="button"
-                  role="tab"
-                  aria-selected={er}
-                  aria-disabled={!t.klar}
-                  onClick={() => { if (t.klar) setAktiv(t.id); }}
-                  className={`relative pb-2.5 text-[14px] tracking-[-0.005em] transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 sm:text-[15px] ${lys.ring} ${er ? 'font-medium' : t.klar ? 'hover:text-[#15130F]' : 'cursor-default'}`}
-                  style={{ color: er ? INK : t.klar ? 'rgba(21,19,15,0.48)' : 'rgba(21,19,15,0.28)' }}
-                  data-testid={`v4-tab-${t.id}`}
-                >
-                  {t.navn}
-                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[2px] overflow-hidden rounded-full" style={{ background: er ? 'rgba(21,19,15,0.10)' : 'transparent', transition: `background-color 300ms ${EASE}` }}>
-                    <span className="absolute inset-y-0 left-0 rounded-full" style={{ background: T.lilla, width: er ? `${Math.max(6, Math.round(frem.andel * 1000) / 10)}%` : '0%', transition: er && frem.ms ? `width ${frem.ms}ms linear` : `width 300ms ${EASE}` }} data-testid={er ? 'v4-tabs-fremdrift' : undefined} />
-                  </span>
-                </button>
-              );
-            })}
+      <section id="produkt" ref={ref} className="relative overflow-clip" style={{ background: '#0E0D0B', color: tekst }} data-testid="v4-produkt" data-variant="full">
+        <div ref={vaktRef} aria-hidden="true" className="h-px w-full" />
+        {/* Stagen — hele bredden, skjermhøy. Navigasjonen flyter over de øverste 64/72 px når seksjonen står øverst; tabs og innhold ligger under den sonen. */}
+        <div ref={sceneRef} className="relative h-[clamp(640px,100svh,1100px)]" data-testid="v4-kino-stage">
+          <div key={aktiv} className="absolute inset-0" style={{ opacity: bytter ? 0 : 1, transition: `opacity 340ms ${EASE}` }}>
+            {aktiv === 'annonse' && <AnnonseKino {...filmProps} />}
+            {aktiv === 'kontrakt' && <KontraktKino {...filmProps} />}
+            {aktiv === 'drift' && <DriftKino {...filmProps} />}
+            {aktiv === 'okonomi' && <OkonomiKino {...filmProps} />}
+          </div>
+          {/* Kapitlene — ord rett på fotoet, øverst. Den lilla linjen under det aktive ordet er kapittelets fremdrift. */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center pt-[92px] lg:pt-[86px]" style={{ color: tekst, transition: `color 900ms ${EASE}` }}>
+            <div ref={listeRef} role="tablist" aria-label="Produktområder" className="pointer-events-auto flex gap-5 sm:gap-9" data-testid="v4-tabs" data-variant="tekst">
+              {TABS.map((t) => {
+                const er = t.id === aktiv;
+                return (
+                  <button
+                    key={t.id}
+                    ref={(el) => { tabRefs.current[t.id] = el; }}
+                    type="button"
+                    role="tab"
+                    aria-selected={er}
+                    aria-disabled={!t.klar}
+                    onClick={() => { if (t.klar) setAktiv(t.id); }}
+                    className={`relative pb-2.5 text-[13.5px] tracking-[-0.005em] transition-opacity duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/40 sm:text-[15px] ${er ? 'font-medium' : t.klar ? 'hover:opacity-100' : 'cursor-default'}`}
+                    style={{ color: 'currentColor', opacity: er ? 1 : t.klar ? 0.56 : 0.3 }}
+                    data-testid={`v4-tab-${t.id}`}
+                  >
+                    {t.navn}
+                    <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[2px] overflow-hidden rounded-full" style={{ background: er ? (ink ? 'rgba(21,19,15,0.12)' : 'rgba(244,241,234,0.18)') : 'transparent', transition: `background-color 300ms ${EASE}` }}>
+                      <span className="absolute inset-y-0 left-0 rounded-full" style={{ background: T.lilla, width: er ? `${Math.max(4, Math.round(frem.andel * 1000) / 10)}%` : '0%', transition: er && frem.ms ? `width ${frem.ms}ms linear` : `width 300ms ${EASE}` }} data-testid={er ? 'v4-tabs-fremdrift' : undefined} />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <h2 className="sr-only" data-testid="v4-produkt-tittel">{scene.tittel[0]} {scene.tittel[1]}</h2>
-        </div>
-        {/* Stagen — full bredde, skjermhøy. Bildet er scenen; teksten står på den. */}
-        <div ref={sceneRef} className="mt-7 lg:mt-9">
-          <div key={aktiv} className="animate-in fade-in-0 duration-500" style={{ opacity: bytter ? 0 : 1, transition: `opacity 340ms ${EASE}` }}>
-            {aktiv === 'drift' && <DriftFilm synlig={synlig} spiller={filmSynlig} tema="lys" onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} full />}
-            {aktiv === 'annonse' && <AnnonseFilm synlig={synlig} spiller={filmSynlig} tema="lys" onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} full tittel={scene.tittel} ingress={scene.ingress} />}
-            {aktiv === 'kontrakt' && <KontraktFilm synlig={synlig} spiller={filmSynlig} tema="lys" onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} full />}
-            {aktiv === 'okonomi' && <OkonomiFilm synlig={synlig} spiller={filmSynlig} tema="lys" onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} full />}
-          </div>
         </div>
       </section>
     );

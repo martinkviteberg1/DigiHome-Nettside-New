@@ -1201,3 +1201,31 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - **Én overskrift:** AnnonseFilm får `tittel`/`ingress` (SCENER.annonse) → `StartTekst` viser seksjonsoverskriften på fasaden i to linjer
   (clamp(44px, 4.6vw, 82px)) + ingress (≤ 46ch) + «Lag annonse». Standardvarianten viser fortsatt «Fra ledig til utleid.».
 - Kompakt (<lg): full bredde uten radius. Kjent: kamerascenen (uskarp fasade + skarpt utsnitt) står fortsatt — kan oppleves som «kopi i kopi».
+
+## Produktseksjon full bleed → KINO-modus — (agent-testet, ikke brukergodkjent)
+- **Brukerens klargjøring:** «ulikt bakgrunnsbilde for hver scene, animasjonene skjer på bildene» — ingen kort inni foto, ingen ivory-scener.
+  Den første full bleed-varianten (FullStage-skalering av kortfilmen) er FORKASTET som konsept; koden (`FullStage`, `Ramme full`) ligger igjen ubrukt.
+- **Ny motor** `/components/forside/v4/produkt/kino/Kino.js`: `KinoStage` (absolute inset-0; alle scenefotoer montert, dissolve: nytt bilde
+  remountes UNDER det gamle som tones ut — nøkkel = aktiveringsteller; svak driv 1→1.045 over 18 s, av der etiketter er festet i fotoet;
+  scrim per tema `mork`/`lys` + ekstra sone-scrim; `lag`-slot under scrimmen), `KinoTekst` (nede til venstre: «01 · Annonsen», tittel ord
+  for ord via keyframes, én setning ELLER liste én og én), `Sone` (høyre/midtstilt på desktop, `anker` = forankret ved punkt i fotoet, øverst
+  148px på mobil), `Etikett` (pille festet til bildepunkt, dot + ping), `Autofokus`/`Fokus` (fire hjørner), `Rad` (hårlinje), `Fold`
+  (grid-rows kollaps), `Merke`, `KinoDok`, `KinoKnapp` (trykker seg selv), `KinoSms`, `KinoNeste`. `dekk()` = cover-geometri (bildeandel → px)
+  så etiketter følger fotoet på alle skjermstørrelser; `bilde()` har `posLiten` for mobilutsnitt.
+- **AnnonseKino** (32 faser, ~56 s): hele skjermen er kameraet (hjørner, svakt nett, «Fasade · 1 av 5», utløser høyre-midt, blits); per rom
+  ligger en fullskjerms-kopi av fotoet over scenen og krymper (transform, origo 0 0) ned i bunken (5 plasser nede til høyre / oppe til høyre på
+  mobil) mens neste rom allerede står bak — kopien bærer scrimmen til den løsner. LES1–3: etiketter + autofokus i fotoet (mobil: piller i sonen).
+  STYLE: wipe (bredde 0→100 %, skillelinje) avdekker ryddet soverom i `lag`-slot; STYLET bytter bg til ryddet. Annonse skriver seg i sonen
+  (FINN-knapp trykkes), interessenter som rader (Emma valgt), slutt = Emma + fakta. Bakgrunn: fasade-kveld → kjøkken → soverom-useng → spisestue →
+  stue → (kjøkken, soverom) → stue → fasade-kveld.
+- **KontraktKino** (27 faser, ~42 s): fasade-kveld (Emma valgt, Lag kontrakt) → stue-tom (felt m/ stiplet «hentet», signaturer, SMS) → soverom
+  (depositum: Keyhole valgt av Emma) → fasade-morgen `lys` (tider 10/12/14, SMS) → kjøkken (protokoll, Signer) → stue-moblert (flyttet inn).
+- **DriftKino** (18 faser, ~32 s): fasade-natt → fasade-morgen (`lys`). Etikett på vinduet (Leilighet 2 · Emma → «Passer fint.» → «Varmt vann
+  igjen» → «Løst · torsdag 09:58»); sonen forankres til venstre for vinduet (desktop). Chat-bobler → sak → Jonas → Godkjenn → SMS → utført/faktura.
+- **OkonomiKino** (17 faser, ~30 s): fasade-morgen (`lys`) → fasade-kveld. Vinduer lyser (radial glorie + kjerne m/ statisk blur, screen-blend)
+  i takt med listen til høyre; etikett kun på sist tente vindu (x < 0.7 så den ikke krasjer med sonen); Mikkel purres m/ Vipps; kveld: faktura →
+  bokført/PowerOffice. `driv` av (etiketter/lys festet).
+- **ProduktSeksjon full-gren:** section bg #0E0D0B, stage `h-[clamp(640px,100svh,1100px)]`, filmen absolute inset-0, tabs = ord øverst
+  (pt 92/86 px — under navsonen), farge følger `onTema` fra filmen. Chapter-bytte: 340 ms fade til bunnfarge (uendret mekanisme).
+- **Ikke brukergodkjent.** Kjente avveininger: fasade-morgen er blek → lys scrim kan virke tåkete; nav dekker øverste 64/72 px når seksjonen
+  står øverst (designet slik). Standardvarianten `ramme` er urørt.
