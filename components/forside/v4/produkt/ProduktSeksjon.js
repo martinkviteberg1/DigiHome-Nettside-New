@@ -239,7 +239,7 @@ export default function ProduktSeksjon({ variant = 'ramme' }) {
       <section id="produkt" ref={ref} className="relative overflow-clip" style={{ background: '#0E0D0B', color: tekst }} data-testid="v4-produkt" data-variant="full">
         <div ref={vaktRef} aria-hidden="true" className="h-px w-full" />
         {/* Stagen — hele bredden, skjermhøy. Navigasjonen flyter over de øverste 64/72 px når seksjonen står øverst; tabs og innhold ligger under den sonen. */}
-        <div ref={sceneRef} className="relative h-[clamp(640px,100svh,1100px)]" data-testid="v4-kino-stage">
+        <div ref={sceneRef} className="relative h-[clamp(640px,100svh,1100px)]" data-testid="v4-kino-stage" data-spiller={filmSynlig ? '1' : '0'} data-synlig={synlig ? '1' : '0'} data-scene-synlig={sceneSynlig ? '1' : '0'}>
           <div key={aktiv} className="absolute inset-0" style={{ opacity: bytter ? 0 : 1, transition: `opacity 340ms ${EASE}` }}>
             {aktiv === 'annonse' && <AnnonseKino {...filmProps} />}
             {aktiv === 'kontrakt' && <KontraktKino {...filmProps} />}

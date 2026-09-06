@@ -118,7 +118,7 @@ export default function ForsideV4({ hero = 'side', bilde = null, veksler = false
         <TillitStripe />
         {/* Systemet i ro: portalen (eier) + appen (leietaker) — før filmene viser det i arbeid. */}
         <SystemSeksjon />
-        <ProduktSeksjon variant={produkt} />
+        <ProduktSeksjon key={produkt} variant={produkt} />
         {/* Bevis: boligene som driftes gjennom DigiHome — kort i bevegelse. */}
         <BoligerSeksjon />
         {/* Spor: soft gate rett etter produktet — «autopilot for hvem?» */}
