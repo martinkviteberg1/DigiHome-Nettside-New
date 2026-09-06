@@ -25,7 +25,7 @@ export default function HeroVeksler({ hero }) {
       aria-label="Bytt hero-variant"
       data-testid="hero-veksler"
     >
-      {[['stage', 'Hero: én scene (standard)'], ['side', 'Hero: to kolonner']].map(([v, tittel]) => (
+      {[['stage', 'Hero: én scene (standard)'], ['zoom', 'Hero: scenen vokser til fullskjerm ved scroll'], ['side', 'Hero: to kolonner']].map(([v, tittel]) => (
         <button
           key={v}
           type="button"

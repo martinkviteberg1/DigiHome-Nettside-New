@@ -44,13 +44,14 @@ export const metadata = {
 // veksleren nederst til venstre. ?bilde=bygg|stue bytter scenebilde i 'stage'.
 // ---------------------------------------------------------------------------
 export default function ForsidePage({ searchParams }) {
-  const hero = cookies().get('dh_hero')?.value === 'side' ? 'side' : 'stage';
+  const valg = cookies().get('dh_hero')?.value;
+  const hero = valg === 'side' ? 'side' : valg === 'zoom' ? 'zoom' : 'stage';
   const bilde = searchParams?.bilde === 'bygg' ? 'bygg' : searchParams?.bilde === 'stue' ? 'stue' : null;
   const stageBilde = bilde === 'bygg' ? '/v4/bolig-hero.webp' : bilde === 'stue' ? '/v4/stue-2000.webp' : '/v4/video/eier-poster.webp';
   return (
     <>
       {/* Scenebildet er LCP. Preload riktig utsnitt per flate; fontene preloades av next/font. */}
-      {hero === 'stage' ? (
+      {hero === 'stage' || hero === 'zoom' ? (
         <link rel="preload" as="image" href={stageBilde} media="(min-width: 640px)" fetchPriority="high" />
       ) : (
         <>

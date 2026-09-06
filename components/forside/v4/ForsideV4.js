@@ -6,6 +6,7 @@ import HeroScene from './HeroScene';
 import HeroStage, { FILM } from './HeroStage';
 import BoligerSeksjon from './BoligerSeksjon';
 import HeroVeksler from './HeroVeksler';
+import HeroZoom from './HeroZoom';
 import ProduktSeksjon from './produkt/ProduktSeksjon';
 import TillitStripe from './TillitStripe';
 import SystemSeksjon from './SystemSeksjon';
@@ -29,7 +30,8 @@ import { T, display } from './motion';
    · Siste akt er brukerens: adressefeltet i heroen ER første steg i onboardingen.
 --------------------------------------------------------------------------- */
 
-/* hero: 'side' (to kolonner, dagens) eller 'stage' (sentrert setning + én scene i full bredde — Sana-strukturen).
+/* hero: 'side' (to kolonner), 'stage' (sentrert setning + én scene i full bredde — Sana-strukturen) eller
+   'zoom' (som stage, men scenen vokser til fullskjerm når du scroller — HeroZoom).
    bilde: midlertidig scenebilde for 'stage' ('stue' | 'bygg') til footagen finnes. */
 export default function ForsideV4({ hero = 'side', bilde = null, veksler = false }) {
   /* Din adresse → din bolig. Valgt adresse personaliserer heroscenen før du går videre. */
@@ -51,7 +53,7 @@ export default function ForsideV4({ hero = 'side', bilde = null, veksler = false
     <div className="min-h-screen overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="forside-v4">
       <NavV4 />
       <main>
-        {hero === 'stage' ? (
+        {hero === 'stage' || hero === 'zoom' ? (
           <section className="relative flex flex-col" data-testid="v4-hero">
             {/* Én setning. Én linje. Én handling — sentrert, ingenting konkurrerer. */}
             <div className="mx-auto w-full max-w-[1100px] px-5 pb-9 pt-10 text-center sm:px-8 sm:pt-14 lg:pb-11 lg:pt-16">
@@ -72,9 +74,16 @@ export default function ForsideV4({ hero = 'side', bilde = null, veksler = false
               </div>
             </div>
             {/* Scenen: én flate, litt bredere enn seksjonene under, 16:9 (filmens eget format — ingen beskjæring). */}
-            <div ref={sceneRef} className="dh-cover-inn mx-auto w-full max-w-[1600px] min-w-0 px-4 pb-6 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0 lg:pb-8" style={{ animationDelay: '.12s' }}>
-              <HeroStage eiendom={eiendom} bilde={bilde || 'stue'} film={bilde ? null : FILM} />
-            </div>
+            {hero === 'zoom' ? (
+              /* lg+: scenen pinnes og vokser til fullskjerm ved scroll (HeroZoom). Under lg: vanlig kort (ren CSS). */
+              <div ref={sceneRef} className="dh-cover-inn w-full" style={{ animationDelay: '.12s' }}>
+                <HeroZoom><HeroStage eiendom={eiendom} bilde={bilde || 'stue'} film={bilde ? null : FILM} zoom /></HeroZoom>
+              </div>
+            ) : (
+              <div ref={sceneRef} className="dh-cover-inn mx-auto w-full max-w-[1600px] min-w-0 px-4 pb-6 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0 lg:pb-8" style={{ animationDelay: '.12s' }}>
+                <HeroStage eiendom={eiendom} bilde={bilde || 'stue'} film={bilde ? null : FILM} />
+              </div>
+            )}
           </section>
         ) : (
         <section className="relative lg:flex lg:min-h-[calc(100svh-64px)] lg:flex-col lg:justify-center" data-testid="v4-hero">

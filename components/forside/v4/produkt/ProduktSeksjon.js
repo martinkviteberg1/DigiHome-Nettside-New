@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Layers } from 'lucide-react';
 import { EASE, T, display, useSynlig } from '../motion';
 import DriftFilm from './DriftFilm';
+import OkonomiFilm from './OkonomiFilm';
 import AnnonseFilm from './AnnonseFilm';
 import KontraktFilm from './KontraktFilm';
 
@@ -27,7 +28,7 @@ const TABS = [
   { id: 'annonse', navn: 'Annonse', klar: true },
   { id: 'kontrakt', navn: 'Kontrakt', klar: true },
   { id: 'drift', navn: 'Drift', klar: true },
-  { id: 'okonomi', navn: 'Økonomi', klar: false },
+  { id: 'okonomi', navn: 'Økonomi', klar: true },
 ];
 
 const SCENER = {
@@ -42,6 +43,10 @@ const SCENER = {
   drift: {
     tittel: ['Fra melding til løst.', 'Du trykker én gang.'],
     ingress: 'Emma melder i chatten at varmtvannet er borte. Saken sorterer seg selv, rørleggeren svarer med tidspunkt og pris — du godkjenner med ett trykk. Torsdag er det fikset, og fakturaen ligger i regnskapet.',
+  },
+  okonomi: {
+    tittel: ['Fra husleie', 'til ferdig regnskap.'],
+    ingress: 'Den første i måneden kommer husleien inn — leilighet for leilighet. Den som mangler får en vennlig påminnelse med Vipps. Ved månedsslutt er alt bokført, og fakturaen fra rørleggeren ligger på riktig leilighet.',
   },
 };
 
@@ -200,7 +205,8 @@ export default function ProduktSeksjon() {
 
   /* Kapitlene spiller videre av seg selv (Annonse → Kontrakt → Drift) til brukeren velger en tab. Tab-markøren glir. */
   const KAPITLER = TABS.filter((t) => t.klar).map((t) => t.id);
-  const nesteId = KAPITLER[KAPITLER.indexOf(aktiv) + 1] || null;
+  /* Siste kapittel (Økonomi) går tilbake til første — livssyklusen er en sirkel */
+  const nesteId = KAPITLER[(KAPITLER.indexOf(aktiv) + 1) % KAPITLER.length] || null;
   const nesteNavn = nesteId ? TABS.find((t) => t.id === nesteId).navn : null;
   const [bytter, setBytter] = useState(false);       // kapittelbytte: det gamle tones ut før det nye monteres
   /* Kapittel-fremdrift i den aktive tab-pillen (tynn linje som fylles i takt med filmen) */
@@ -300,6 +306,7 @@ export default function ProduktSeksjon() {
             {aktiv === 'drift' && <DriftFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}
             {aktiv === 'annonse' && <AnnonseFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}
             {aktiv === 'kontrakt' && <KontraktFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}
+            {aktiv === 'okonomi' && <OkonomiFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}
           </div>
         </div>
       </div>

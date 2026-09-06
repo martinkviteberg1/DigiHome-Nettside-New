@@ -1139,3 +1139,24 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   «01 Annonse · 02 Kontrakt · 03 Økonomi · 04 Drift» (aktivt i blekk) → dagens tall i siste beat. **Telefonstrømmen følger veggen:** `puls`
   (én per beat) → hendelsen kommer 1,3 s etter at veggen har sagt det. STROM = Visning booket → Kontrakt signert → Regnskapet er ført →
   Emma bekreftet. «Husleie mottatt» og alle kr-beløp fjernet (brukerkrav). `puls === undefined` = egen takt (Street View-flyten), `null` = vent.
+
+## Hero-video ved lasting, Hero «zoom»-variant, Økonomi-film — sept 2025 (agent-testet, ikke brukergodkjent)
+- **Hero-video synlig fra første paint (fiks):** scenen hadde `opacity: 0` til React var hydrert + 350 ms (`direkteInne`) — blank hero på treg
+  lasting. Fjernet JS-porten (wrapperen har allerede CSS-inngangen `dh-cover-inn`); SSR-HTML har nå `opacity:1`, video har poster + autoPlay.
+  Verifisert: video spiller 0,7 s etter navigasjon.
+- **Hero-variant `zoom` (HeroZoom.js + dh-zoom-* i globals.css):** tredje prikk i HeroVeksler (cookie `dh_hero=zoom`). Scenen rendres alltid
+  i fullskjermstørrelse (bredde × 100svh−64) og beskjæres med `clip-path: inset(var(--dh-iy) var(--dh-ix) round var(--dh-r))` til dagens
+  kortgeometri (maks 1600, 1.92:1, r 24). Utvidelsen skjer *mens kortet stiger* (p = scrollY / avstand til pinning) og er fullført nøyaktig
+  når rammen pinner seg under navbaren — aldri tom canvas. HOLD 60svh i fullskjerm, så slipper den. Bildet skalerer ikke (rommet avdekkes).
+  Veggteksten følger det synlige kortet (`.dh-zoom-vegg`: left calc(61% − ix·0.22), fast bredde). Kun lg+ (ren CSS-media query — ingen
+  SSR-flash); under lg vanlig kort. Én HeroStage rendres. `stage` er fortsatt standard.
+- **ØkonomiFilm.js (kapittel 4, tab aktivert):** «Fra husleie til ferdig regnskap.» Bygården ER regnskapet: morgenfasade (Drift-asset),
+  vinduene lyser (Lys: halo + myk kjerne i kameralaget) ett og ett idet husleien registreres, etikett per vindu («Leilighet 3 · 7 400 kr»),
+  Leilighet 5 venter → etikettene flyr fra vinduene og blir linjene i listen (Pille: basis i listen, translate til vinduet; MORF) → dag 3:
+  SMS til Mikkel med Vipps → betalt (3. nov) → kveld (fasade-kveld krysstones, scrim/tekst mørk) → rørleggerfaktura (3 900) under listen →
+  «Inn · ut» → Bokført · Overført til PowerOffice → «Betalt. Bokført.» Husleier summerer til 64 500 (samme som heroen). Null trykk fra eier.
+  Faser: START, LYS1–7, VENTER, LISTE, DAG3, PURR, BETALT, MND, FAKTURA, BOKFORT, SLUTT (~31 s). Kompakt: bilde m/ prikker + liste inline.
+  Siste kapittel går tilbake til Annonse (`nesteId` wrap-around i ProduktSeksjon).
+- **Åpen designdiskusjon (ikke bygget):** Annonse-seksjonen oppleves som «bilde på bilde» (uskarpt fasadefoto som seksjonsbakgrunn →
+  overskriftblokk → avrundet kort → film). Bruker vil beholde den hvite rammen. Foreslått: Retning A (full-bleed stage, én overskrift på
+  fasaden, teksttabs m/ lilla underline, papirscener full-bleed ivory) som variant på /v6 for sammenligning. Venter på valg.

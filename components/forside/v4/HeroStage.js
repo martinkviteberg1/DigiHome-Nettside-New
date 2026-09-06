@@ -437,7 +437,7 @@ function useFortelling(aktiv, redusert) {
   return { k, vis, runde, puls };
 }
 
-function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, replay }) {
+function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, replay, zoom = false }) {
   const { k, vis } = fort;
   /* Uten direkte-modus (din adresse → Street View) står veggen som før: én setning, én linje, feltet. */
   const beat = direkte ? FORTELLING[k] : { id: 'auto', ord: ['Utleie', 'på', 'autopilot'], u: 'Én godkjenning. Resten skjedde mens du gikk hjem.', slutt: true };
@@ -459,7 +459,7 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
   const fs = smal ? (direkte ? 36 : 42) : direkte ? 'clamp(38px, 5.4svh, 62px)' : 'clamp(48px, 7.4svh, 86px)';
   return (
     <div
-      className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-24' : 'absolute flex flex-col justify-center'}
+      className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-24' : `absolute flex flex-col justify-center ${zoom ? 'dh-zoom-vegg' : ''}`}
       style={{
         ...(smal ? {} : { left: '61%', right: '5%', top: '8%', bottom: '8%' }),
         color: T.ink,
@@ -529,7 +529,9 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
   );
 }
 
-export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
+/* zoom: scenen ligger i HeroZoom (sticky, fullskjerm) og beskjæres med clip-path fra kort til hele flaten —
+   verdiene kommer som CSS-variabler (--dh-ix/--dh-iy/--dh-r) fra rammen rundt. Kun lg+. */
+export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom = false }) {
   const ref = useRef(null);
   const figRef = useRef(null);
   const smal = useSmal();
@@ -718,11 +720,14 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
   const radT = `opacity 520ms ${EASE} 120ms, transform 520ms ${EASE} 120ms`;
 
   return (
-    <figure ref={figRef} className="relative m-0" data-testid="v4-scene-wrap">
+    <figure ref={figRef} className={`relative m-0 ${zoom ? 'dh-zoom-fig' : ''}`} data-testid="v4-scene-wrap">
+      {/* zoom: klassene dh-zoom-* (globals.css, kun lg+) gjør scenen til hele rammen og beskjærer den med clip-path
+          fra CSS-variablene HeroZoom skriver. Under lg: vanlig kort. */}
       <div
         ref={ref}
-        className="relative w-full overflow-hidden rounded-[20px] sm:rounded-[24px]"
-        style={{ aspectRatio: smal ? '4 / 5.6' : '1.92 / 1', minHeight: smal ? 600 : 520, maxHeight: smal ? undefined : 'min(880px, calc(100svh - 124px))', background: T.charcoal, boxShadow: '0 0 0 1px rgba(21,19,15,0.08)', opacity: skifter || (direkte && !direkteInne) ? 0 : 1, transition: `opacity ${direkte && !skifter ? 1100 : 320}ms ${EASE}` }}
+        className={`relative w-full overflow-hidden rounded-[20px] sm:rounded-[24px] ${zoom ? 'dh-zoom-scene' : ''}`}
+        style={{ aspectRatio: smal ? '4 / 5.6' : '1.92 / 1', minHeight: smal ? 600 : 520, maxHeight: smal ? undefined : 'min(880px, calc(100svh - 124px))', background: T.charcoal, boxShadow: '0 0 0 1px rgba(21,19,15,0.08)', opacity: skifter ? 0 : 1, transition: `opacity 320ms ${EASE}` }}
+        data-zoom={zoom ? '1' : '0'}
         role="group"
         aria-label={direkte ? `Animert eksempel: eieren hjemme i sofaen mens DigiHome håndterer ${adresse} — annonse, kontrakt, husleie og drift går av seg selv; han godkjenner resten.` : `Animert eksempel: en dag i ${adresse} med DigiHome — husleie registrert, kontrakt signert, et spørsmål fra leietaker besvart fra kontrakten, og et varmtvannsproblem løst med én godkjenning fra eier.`}
         data-testid="v4-scene"
@@ -737,7 +742,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM }) {
         <Telefonstrom hjemme={hjemme} redusert={redusert} smal={smal} puls={direkte ? fort.puls : undefined} />
 
         {/* ── Veggen: han hjemme. Fortellingen om hva DigiHome er står rett på den lyse veggen — ingen boks. ── */}
-        <Veggfortelling hjemme={hjemme} direkte={direkte} smal={smal} fort={fort} adresse={adresse} vist={vist} hvem={hvem} replay={replay} />
+        <Veggfortelling hjemme={hjemme} direkte={direkte} smal={smal} fort={fort} adresse={adresse} vist={vist} hvem={hvem} replay={replay} zoom={zoom} />
 
         {/* ── Dagen: ett panel. Alt som skjedde, i rekkefølge — og handlingen der hendelsen er. ── */}
         <div

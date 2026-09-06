@@ -1028,6 +1028,14 @@ html.dh-tour-snap.dh-tour-flyt { scroll-snap-type: none; }
 @keyframes v4-fokus { 0% { transform: scale(1.1); opacity: 0; } 20% { transform: scale(1); opacity: 1; } 68% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.97); opacity: 0; } }
 @keyframes v4-lysning { 0% { opacity: 0; } 35% { opacity: 1; } 100% { opacity: 0; } }
 /* Strømmen fra mobilen (HeroStage): en ny hendelse kommer inn øverst i feeden */
+/* Hero i zoom-modus (HeroZoom): under lg er scenen et vanlig kort. Fra lg fyller den den sticky rammen og beskjæres
+   med clip-path fra kort til fullskjerm — variablene (--dh-ix/--dh-iy/--dh-r) skrives av HeroZoom per frame.
+   Veggteksten følger det synlige kortet (samme relative plass som i dag) med fast bredde, så linjene ikke brytes om. */
+@media (min-width: 1024px) {
+  .dh-zoom-fig { position: absolute; inset: 0; }
+  .dh-zoom-scene { aspect-ratio: auto !important; min-height: 0 !important; max-height: none !important; height: 100%; border-radius: 0 !important; box-shadow: none !important; clip-path: inset(var(--dh-iy, 0px) var(--dh-ix, 0px) round var(--dh-r, 0px)); will-change: clip-path; }
+  .dh-zoom-vegg { left: calc(61% - var(--dh-ix, 0px) * 0.22) !important; right: auto !important; width: calc(min(1600px, 100vw - 64px) * 0.34); }
+}
 /* Veggfortellingen i heroen — ordene inn (nedenfra, blur) og ut (opp, blur); linjen under likeså */
 @keyframes v4-ord-inn { from { opacity: 0; transform: translateY(18px); filter: blur(7px); } to { opacity: 1; transform: translateY(0); filter: blur(0px); } }
 @keyframes v4-ord-ut { from { opacity: 1; transform: translateY(0); filter: blur(0px); } to { opacity: 0; transform: translateY(-8px); filter: blur(6px); } }
