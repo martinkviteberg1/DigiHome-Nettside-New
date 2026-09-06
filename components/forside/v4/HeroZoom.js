@@ -36,7 +36,10 @@ const klem = (v, a, b) => Math.min(b, Math.max(a, v));
 /* Mykt inn, mykt ut — men nær lineært i midten, så bevegelsen følger fingeren */
 const kurve = (t) => t * t * (3 - 2 * t);
 
-export default function HeroZoom({ children }) {
+/* fullskjerm: scenen går helt opp under navbaren (sticky top 0, 100svh). Når den er hel og pinnet, får <html>
+   klassen dh-nav-klar — navbaren slipper bakgrunnen (globals.css) og rommet fyller virkelig hele skjermen. Når scenen
+   slipper og siden går videre, kommer navbaren tilbake. */
+export default function HeroZoom({ children, fullskjerm = false }) {
   const wrap = useRef(null);
   const ramme = useRef(null);
 
@@ -46,8 +49,9 @@ export default function HeroZoom({ children }) {
     const redusert = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let raf = 0; let vist = -1; let maal = 0; let sist = 0;
 
+    const topp = fullskjerm ? 0 : NAV;
     const skriv = (p) => {
-      const vh = window.innerHeight; const bw = w.clientWidth; const bh = vh - NAV;
+      const vh = window.innerHeight; const bw = w.clientWidth; const bh = vh - topp;
       const cw0 = Math.min(KORT_MAKS_B, bw - 2 * KORT_MARG);
       const ch0 = Math.min(cw0 / ASPEKT, 880, bh - 48);
       const ix0 = (bw - cw0) / 2; const iy0 = (bh - ch0) / 2;
@@ -58,11 +62,17 @@ export default function HeroZoom({ children }) {
       r.style.setProperty('--dh-s', (SKALA0 - (SKALA0 - 1) * e).toFixed(4));
       r.style.setProperty('--dh-p', e.toFixed(3));
       r.dataset.p = e >= 0.999 ? 'full' : e <= 0.001 ? 'kort' : 'mellom';
+      if (fullskjerm) {
+        /* Hel og fortsatt pinnet (rammens bunn står i bunnen av skjermen) → navbaren slipper bakgrunnen */
+        const rect = w.getBoundingClientRect();
+        const klar = e >= 0.96 && rect.bottom >= vh - 2;
+        document.documentElement.classList.toggle('dh-nav-klar', klar);
+      }
     };
     const maalNaa = () => {
       const rect = w.getBoundingClientRect();
       const dokTopp = rect.top + window.scrollY;            // rammens plass i dokumentet
-      const D = Math.max(240, dokTopp - NAV);               // scroll-lengden fram til pinning (= tekstblokken over)
+      const D = Math.max(240, dokTopp - topp);              // scroll-lengden fram til pinning (= tekstblokken over)
       return klem(window.scrollY / D, 0, 1);
     };
     /* Én løkke: glir mot målet, stopper når vi er der. Startes av scroll/resize, ikke kontinuerlig. */
@@ -81,17 +91,17 @@ export default function HeroZoom({ children }) {
     vist = maalNaa(); skriv(vist);                          // første bilde uten glid (ingen «hopp» ved lasting)
     window.addEventListener('scroll', be, { passive: true });
     window.addEventListener('resize', be);
-    return () => { window.removeEventListener('scroll', be); window.removeEventListener('resize', be); if (raf) window.cancelAnimationFrame(raf); };
-  }, []);
+    return () => { window.removeEventListener('scroll', be); window.removeEventListener('resize', be); if (raf) window.cancelAnimationFrame(raf); document.documentElement.classList.remove('dh-nav-klar'); };
+  }, [fullskjerm]);
 
   /* Under lg: vanlig kort i flyten (samme klasser som stage). Fra lg: høy seksjon → sticky ramme → scenen.
      lg:mb-28 = luft før neste seksjon når scenen slipper. */
   return (
-    <div ref={wrap} className="relative mx-auto w-full max-w-[1600px] px-4 pb-6 sm:px-8 lg:mb-28 lg:h-[var(--dh-zoom-h)] lg:max-w-none lg:px-0 lg:pb-0" style={{ '--dh-zoom-h': `calc(${100 + Math.round(HOLD * 100)}svh - ${NAV}px)` }} data-testid="v4-herozoom">
-      <div className="lg:sticky lg:top-[64px] lg:h-[calc(100svh-64px)]">
+    <div ref={wrap} className="relative mx-auto w-full max-w-[1600px] px-4 pb-6 sm:px-8 lg:mb-28 lg:h-[var(--dh-zoom-h)] lg:max-w-none lg:px-0 lg:pb-0" style={{ '--dh-zoom-h': `calc(${100 + Math.round(HOLD * 100)}svh - ${fullskjerm ? 0 : NAV}px)` }} data-testid="v4-herozoom" data-fullskjerm={fullskjerm ? '1' : '0'}>
+      <div className={fullskjerm ? 'lg:sticky lg:top-0 lg:h-[100svh]' : 'lg:sticky lg:top-[64px] lg:h-[calc(100svh-64px)]'}>
         {/* Standardverdiene = kortet ved p = 0, regnet i ren CSS — så første bilde (SSR, før effekten) er identisk med
             det scriptet skriver. Ingen blink fra fullskjerm til kort ved lasting. */}
-        <div ref={ramme} className="relative lg:absolute lg:inset-0" style={{ '--dh-ix': 'max(32px, calc((100vw - 1600px) / 2))', '--dh-iy': 'calc((100svh - 64px - min(calc(min(1600px, 100vw - 64px) / 1.92), 880px, calc(100svh - 112px))) / 2)', '--dh-r': '24px', '--dh-s': 1.04, '--dh-p': 0 }} data-testid="v4-herozoom-ramme">
+        <div ref={ramme} className="relative lg:absolute lg:inset-0" style={{ '--dh-ix': 'max(32px, calc((100vw - 1600px) / 2))', '--dh-iy': fullskjerm ? 'calc((100svh - min(calc(min(1600px, 100vw - 64px) / 1.92), 880px, calc(100svh - 48px))) / 2)' : 'calc((100svh - 64px - min(calc(min(1600px, 100vw - 64px) / 1.92), 880px, calc(100svh - 112px))) / 2)', '--dh-r': '24px', '--dh-s': 1.04, '--dh-p': 0 }} data-testid="v4-herozoom-ramme">
           {children}
         </div>
       </div>

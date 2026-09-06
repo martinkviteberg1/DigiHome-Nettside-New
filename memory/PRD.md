@@ -1171,3 +1171,17 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   SSR-standardverdier for --dh-ix/--dh-iy/--dh-r regnes i ren CSS = kortet ved p=0 → ingen blink ved lasting.
 - **SystemSeksjon:** flytende «Husleie mottatt · Leilighet 3 · 13 200 kr»-badge fjernet (`HusleieKort` slettet). Raden i aktivitetslisten inne i
   dashboardet står (ikke bedt fjernet).
+
+## Vegg premium + hero-variant «zoomfull» — sept 2025 (agent-testet, ikke brukergodkjent)
+- **Veggen (begge varianter):** ett ord per setning i Instrument Serif kursiv (`kursiv`-indeks per beat: «seg selv.», «signerte», «Bokført.»,
+  «Fikset.», «din»), 1.07em, aldri mer enn 1–2 ord. Tittel clamp(40px, 3.9vw, 76px), tracking −0.045em, 2-linjers fast høyde (flex-end).
+  Statuslinje: grønn prikk med pulsring (v4-puls-ring), tynne skillestreker, «Alt i orden» i blekk 0.78, klokke tabular. Undertekst 19px/0.64.
+  Dagens tall = tre stille kolonner (display-tall + etikett) i siste beat, staggered inn. Register 13px, gap-x-5, nummer 10.5px lilla når aktivt.
+- **Variant 4 `zoomfull`** (HeroVeksler prikk 3, cookie `dh_hero=zoomfull`): som zoom, men sticky top 0 / 100svh — scenen går helt opp under
+  navbaren. HeroZoom setter `html.dh-nav-klar` når e ≥ 0.96 og rammen fortsatt er pinnet (rect.bottom ≥ vh−2); globals.css gjør
+  `[data-testid="v4-nav"]` gjennomsiktig (bg transparent, border transparent, backdrop blur 0) med 450 ms overgang. Klassen tas bort når scenen
+  slipper → navbaren tilbake til vanlig. Nav-tekst forblir blekk (rommets topp er lys).
+- **Rev. (samme dag):** kursiv serif FJERNET (bruker: «ser jævlig ut»). Veggen nå: én skrift, tre størrelser, `mix-blend-mode: multiply` på
+  tekstblokken (trykkes på veggen), meta-linje uten tabular på ord (kun klokka), indeks uten nummer m/ lilla 4px-prikk foran aktivt ord,
+  hårlinje 0.12, stats-kolonner. Nav i zoomfull = **lys frostet glass** (bg ivory 0.38, blur 22 + saturate 1.25, hårlinje av lys i underkant)
+  — ikke gjennomsiktig. `v4-puls-dot` (opacity-puls) i stedet for ring.

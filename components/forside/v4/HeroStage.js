@@ -435,26 +435,34 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
   const beat = direkte ? FORTELLING[k] : { id: 'auto', ord: ['Utleie', 'på', 'autopilot'], u: 'Én godkjenning. Resten skjedde mens du gikk hjem.', slutt: true };
   const inne = direkte ? hjemme && vis : hjemme;
   const T0 = direkte ? 0 : FORTELLING_T0;
-  /* Konstantene (status, hårlinje, registeret) kommer én gang med rommet; beat-teksten følger klokken */
+  /* Konstantene (meta, hårlinje, indeksen) kommer én gang med rommet; beat-teksten følger klokken */
   const fast = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(12px)', transition: `opacity 900ms ${EASE} ${hjemme ? FORTELLING_T0 + i * 130 : 0}ms, transform 900ms ${EASE} ${hjemme ? FORTELLING_T0 + i * 130 : 0}ms` });
   /* Ordene monteres på nytt per beat (key) — derfor keyframes, ikke transitions: inn (blur, nedenfra) når de står,
      ut (opp, blur) når beatet er over. Før rommet er oppe: bare skjult. */
   const ut = direkte && hjemme && !vis;
   const ordStil = (i) => (inne
-    ? { animation: `v4-ord-inn 820ms ${EASE} ${T0 + 120 + i * 120}ms both`, willChange: 'transform, opacity' }
-    : ut ? { animation: `v4-ord-ut 300ms ${EASE} ${i * 24}ms both` } : { opacity: 0 });
+    ? { animation: `v4-ord-inn 900ms ${EASE} ${T0 + 120 + i * 120}ms both`, willChange: 'transform, opacity' }
+    : ut ? { animation: `v4-ord-ut 320ms ${EASE} ${i * 22}ms both` } : { opacity: 0 });
   const linjeStil = (d) => (inne
-    ? { animation: `v4-linje-inn 820ms ${EASE} ${T0 + d}ms both` }
-    : ut ? { animation: `v4-linje-ut 280ms ${EASE} 60ms both` } : { opacity: 0 });
+    ? { animation: `v4-linje-inn 900ms ${EASE} ${T0 + d}ms both` }
+    : ut ? { animation: `v4-linje-ut 300ms ${EASE} 60ms both` } : { opacity: 0 });
   const husleie = vist ? `${tall(18500)}\u00A0kr` : `${tall(64500)}\u00A0kr`;
   const slutt = !!beat.slutt;
-  const fs = smal ? (direkte ? 36 : 42) : direkte ? 'clamp(38px, 5.4svh, 62px)' : 'clamp(48px, 7.4svh, 86px)';
+  /* Én skrift i display, tre størrelser, ett aksentpunkt. Teksten legges med multiply, så den «trykkes» på veggen og
+     tar imot lyset i rommet i stedet for å ligge oppå det. */
+  const fs = smal ? (direkte ? 38 : 42) : direkte ? 'clamp(40px, 3.9vw, 76px)' : 'clamp(48px, 7.4svh, 86px)';
+  const dempet = 'rgba(21,19,15,0.60)';
+  const meta = 'rgba(21,19,15,0.52)';
+  const TALL = direkte
+    ? [[husleie, 'husleie inn'], ['3', smal ? 'spørsmål besvart' : 'spørsmål besvart for deg'], ['1', 'godkjenning — din']]
+    : [[husleie, 'husleie inn'], ['1 min', smal ? 'til rørlegger' : 'fra melding til rørlegger'], ['1', hvem === 'deg' ? 'godkjenning — din' : 'godkjenning']];
   return (
     <div
       className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-24' : `absolute flex flex-col justify-center ${zoom ? 'dh-zoom-vegg' : ''}`}
       style={{
         ...(smal ? {} : { left: '61%', right: '5%', top: '8%', bottom: '8%' }),
         color: T.ink,
+        mixBlendMode: smal ? 'normal' : 'multiply',
         background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 30%, rgba(243,241,236,0.98) 100%)' : 'none',
         opacity: hjemme ? 1 : 0,
         pointerEvents: hjemme ? 'auto' : 'none',
@@ -464,47 +472,53 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
       data-testid="v4-slutt"
       data-beat={beat.id}
     >
-      <p className="flex items-center gap-2 text-[13px] sm:text-[13.5px]" style={{ ...fast(0), color: 'rgba(21,19,15,0.58)' }} data-testid="v4-slutt-status">
-        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55' }} />
-        Alt i orden<span className="opacity-50"> · </span>{adresse}<span className="hidden opacity-50 sm:inline"> · </span><span className="hidden tabular-nums sm:inline">torsdag <span key={beat.kl || 'x'} className="inline-block animate-in fade-in-0 duration-500">{direkte ? beat.kl : '22:42'}</span></span>
+      {/* Meta — én stille linje: status, adresse, klokke */}
+      <p className="flex items-center gap-x-3 text-[13px] sm:text-[13.5px]" style={{ ...fast(0), color: meta }} data-testid="v4-slutt-status">
+        <span className="inline-flex items-center gap-2" style={{ color: 'rgba(21,19,15,0.72)' }}>
+          <span aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55', animation: hjemme ? 'v4-puls-dot 3200ms ease-in-out 1400ms infinite' : 'none' }} />
+          Alt i orden
+        </span>
+        <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.22)' }}>·</span>
+        <span>{adresse}</span>
+        <span aria-hidden="true" className="hidden sm:inline" style={{ color: 'rgba(21,19,15,0.22)' }}>·</span>
+        <span className="hidden sm:inline">torsdag <span key={beat.kl || 'x'} className="inline-block tabular-nums animate-in fade-in-0 duration-500">{direkte ? beat.kl : '22:42'}</span></span>
       </p>
-      {/* Setningen — fast høyde for to linjer, så ingenting under flytter seg mellom beatene */}
-      <h3 className="mt-3 sm:mt-5" style={{ ...display, fontSize: fs, lineHeight: 0.96, letterSpacing: '-0.04em', ...(direkte ? { minHeight: 'calc(2 * 0.96em)', display: 'flex', flexWrap: 'wrap', alignContent: 'flex-end' } : {}) }} data-testid="v4-slutt-tittel">
+
+      {/* Setningen — fast høyde for to linjer (align nederst), så ingenting under flytter seg mellom beatene */}
+      <h3 className="mt-6 sm:mt-8" style={{ ...display, fontSize: fs, lineHeight: 0.94, letterSpacing: '-0.045em', ...(direkte ? { minHeight: 'calc(2 * 0.94em)', display: 'flex', flexWrap: 'wrap', alignContent: 'flex-end' } : {}) }} data-testid="v4-slutt-tittel">
         {beat.ord.map((o, i) => (
           <span key={`${beat.id}-${i}`} className="inline-block" style={{ ...ordStil(i), marginRight: i < beat.ord.length - 1 ? '0.22em' : 0 }}>
-            {o}{slutt && i === beat.ord.length - 1 ? <span style={{ color: T.lilla, marginLeft: '0.02em' }}>.</span> : null}
+            {o}{slutt && i === beat.ord.length - 1 ? <span style={{ color: T.lilla, marginLeft: '-0.03em' }}>.</span> : null}
           </span>
         ))}
       </h3>
-      <p key={`u-${beat.id}`} className="mt-4 max-w-[30ch] text-[16px] leading-[1.42] sm:mt-5 sm:text-[18px]" style={{ ...linjeStil(120 + beat.ord.length * 120), color: 'rgba(21,19,15,0.66)', minHeight: direkte ? '2.84em' : undefined }}>{beat.u}</p>
+      <p key={`u-${beat.id}`} className="mt-5 max-w-[30ch] text-[16.5px] leading-[1.45] sm:mt-6 sm:text-[19px]" style={{ ...linjeStil(140 + beat.ord.length * 120), color: dempet, minHeight: direkte ? '2.9em' : undefined }}>{beat.u}</p>
 
-      {/* Hårlinjen tegnes én gang — under den: registeret (hva DigiHome er) i de fire beatene, dagens tall i det siste */}
-      <div aria-hidden="true" className="mt-7 h-px sm:mt-9" style={{ background: 'rgba(21,19,15,0.16)', transform: hjemme ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: '0 50%', transition: `transform 1200ms ${EASE} ${hjemme ? FORTELLING_T0 + 800 : 0}ms` }} />
-      <div className="mt-4 grid" style={fast(7.5)}>
+      {/* Hårlinjen tegnes én gang — under den: indeksen (hva DigiHome er) i de fire beatene, dagens tall i det siste */}
+      <div aria-hidden="true" className="mt-9 h-px sm:mt-11" style={{ background: 'rgba(21,19,15,0.12)', transform: hjemme ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: '0 50%', transition: `transform 1200ms ${EASE} ${hjemme ? FORTELLING_T0 + 800 : 0}ms` }} />
+      <div className="mt-5 grid" style={fast(7.5)}>
         {direkte && (
-          <p className="col-start-1 row-start-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] sm:text-[13.5px]" style={{ opacity: slutt ? 0 : 1, transition: `opacity 500ms ${EASE} ${slutt ? 0 : 200}ms` }} aria-hidden={slutt} data-testid="v4-register">
-            {REGISTER.map((r, i) => {
+          <p className="col-start-1 row-start-1 flex flex-wrap items-center gap-x-6 gap-y-1 text-[13px] sm:text-[13.5px]" style={{ opacity: slutt ? 0 : 1, transition: `opacity 500ms ${EASE} ${slutt ? 0 : 200}ms` }} aria-hidden={slutt} data-testid="v4-register">
+            {REGISTER.map((r) => {
               const paa = r.id === beat.id;
               return (
-                <span key={r.id} className="inline-flex items-center gap-2 tabular-nums" style={{ color: paa ? T.ink : 'rgba(21,19,15,0.38)', fontWeight: paa ? 500 : 400, transition: `color 500ms ${EASE}` }} data-paa={paa ? '1' : '0'}>
-                  <span className="text-[11px]" style={{ color: paa ? '#7A3FB0' : 'rgba(21,19,15,0.30)', transition: `color 500ms ${EASE}` }}>0{i + 1}</span>
+                <span key={r.id} className="relative inline-flex items-center" style={{ color: paa ? T.ink : 'rgba(21,19,15,0.34)', fontWeight: paa ? 500 : 400, transition: `color 600ms ${EASE}` }} data-paa={paa ? '1' : '0'}>
+                  <span aria-hidden="true" className="absolute -left-3 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full" style={{ background: T.lilla, opacity: paa ? 1 : 0, transform: paa ? 'translateY(-50%) scale(1)' : 'translateY(-50%) scale(0.4)', transition: `opacity 500ms ${EASE}, transform 600ms ${EASE}` }} />
                   {r.t}
                 </span>
               );
             })}
           </p>
         )}
-        <p className="col-start-1 row-start-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] tabular-nums sm:text-[13.5px]" style={{ color: 'rgba(21,19,15,0.56)', opacity: slutt ? 1 : 0, transition: `opacity 500ms ${EASE} ${slutt ? 300 : 0}ms` }} aria-hidden={!slutt} data-testid="v4-slutt-tall">
-          <span><span style={{ color: T.ink, fontWeight: 500 }}>{husleie}</span> husleie inn</span>
-          <span className="opacity-40">·</span>
-          {direkte ? (
-            <span><span style={{ color: T.ink, fontWeight: 500 }}>3</span> {smal ? 'spørsmål besvart' : 'leietakerspørsmål besvart'}</span>
-          ) : (
-            <span><span style={{ color: T.ink, fontWeight: 500 }}>1 min</span> {smal ? 'til rørlegger' : 'fra melding til rørlegger bestilt'}</span>
-          )}
-          <span className="opacity-40">·</span>
-          <span><span style={{ color: T.ink, fontWeight: 500 }}>1</span> godkjenning{hvem === 'deg' || direkte ? ' — din' : ''}</span>
-        </p>
+        {/* Dagens tall — tre stille kolonner: tallet i display, hva det er under */}
+        <div className="col-start-1 row-start-1 grid grid-cols-3 gap-4" style={{ opacity: slutt ? 1 : 0, transition: `opacity 600ms ${EASE} ${slutt ? 300 : 0}ms` }} aria-hidden={!slutt} data-testid="v4-slutt-tall">
+          {TALL.map(([v, l], i) => (
+            <div key={l} style={{ opacity: slutt ? 1 : 0, transform: slutt ? 'none' : 'translateY(8px)', transition: `opacity 600ms ${EASE} ${slutt ? 300 + i * 120 : 0}ms, transform 800ms ${EASE} ${slutt ? 300 + i * 120 : 0}ms` }}>
+              <p className="tabular-nums" style={{ ...display, fontSize: smal ? 22 : 'clamp(22px, 1.5vw, 30px)', letterSpacing: '-0.03em', lineHeight: 1, color: T.ink }}>{v}</p>
+              <p className="mt-1.5 text-[12px] sm:text-[12.5px]" style={{ color: meta }}>{l}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Neste steg er ett felt unna (ikke i direkte-modus — feltet står allerede over scenen). */}

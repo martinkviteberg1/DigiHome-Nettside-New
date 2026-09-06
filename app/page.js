@@ -45,13 +45,13 @@ export const metadata = {
 // ---------------------------------------------------------------------------
 export default function ForsidePage({ searchParams }) {
   const valg = cookies().get('dh_hero')?.value;
-  const hero = valg === 'side' ? 'side' : valg === 'zoom' ? 'zoom' : 'stage';
+  const hero = valg === 'side' ? 'side' : valg === 'zoom' ? 'zoom' : valg === 'zoomfull' ? 'zoomfull' : 'stage';
   const bilde = searchParams?.bilde === 'bygg' ? 'bygg' : searchParams?.bilde === 'stue' ? 'stue' : null;
   const stageBilde = bilde === 'bygg' ? '/v4/bolig-hero.webp' : bilde === 'stue' ? '/v4/stue-2000.webp' : '/v4/video/eier-poster.webp';
   return (
     <>
       {/* Scenebildet er LCP. Preload riktig utsnitt per flate; fontene preloades av next/font. */}
-      {hero === 'stage' || hero === 'zoom' ? (
+      {hero !== 'side' ? (
         <link rel="preload" as="image" href={stageBilde} media="(min-width: 640px)" fetchPriority="high" />
       ) : (
         <>
