@@ -1185,3 +1185,9 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   tekstblokken (trykkes på veggen), meta-linje uten tabular på ord (kun klokka), indeks uten nummer m/ lilla 4px-prikk foran aktivt ord,
   hårlinje 0.12, stats-kolonner. Nav i zoomfull = **lys frostet glass** (bg ivory 0.38, blur 22 + saturate 1.25, hårlinje av lys i underkant)
   — ikke gjennomsiktig. `v4-puls-dot` (opacity-puls) i stedet for ring.
+- **Rev. 2 (samme dag) — lag + nav + tekst:** Lag-kilder fjernet: `backdrop-filter` over levende video (nav i zoomfull, telefon-chip) og
+  `mix-blend-mode: multiply` på veggteksten — begge tvinger re-kompositering per frame. Nav i zoomfull = helt uten plate (transparent, ingen
+  blur, kun farge-transition); lesbarhet fra en myk ivory-gradient i toppen av scenen (`[data-fullskjerm="1"] .dh-zoom-scene::before`, 180 px,
+  opacity = --dh-p). Nav slipper platen ved e ≥ 0.2 (aldri blur over video i bevegelse). Veggteksten redusert til: overskrift (76px, 2-linjers boks)
+  · én linje (20px/0.60) · hårlinje · meta-linje (adresse · torsdag 20:4x · ● Alt i orden). Indeksraden (Annonse/Kontrakt/…) FJERNET. Siste beat:
+  stats-kolonner. Blekk rgba(21,19,15,0.94). Chip: solid ivory 0.94, ingen blur.

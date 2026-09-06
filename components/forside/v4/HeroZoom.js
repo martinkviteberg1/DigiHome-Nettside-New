@@ -65,7 +65,8 @@ export default function HeroZoom({ children, fullskjerm = false }) {
       if (fullskjerm) {
         /* Hel og fortsatt pinnet (rammens bunn står i bunnen av skjermen) → navbaren slipper bakgrunnen */
         const rect = w.getBoundingClientRect();
-        const klar = e >= 0.96 && rect.bottom >= vh - 2;
+        /* Slipper platen tidlig i utvidelsen (navbaren står da på ivory uansett), så blur aldri ligger over video i bevegelse */
+        const klar = e >= 0.2 && rect.bottom >= vh - 2;
         document.documentElement.classList.toggle('dh-nav-klar', klar);
       }
     };
