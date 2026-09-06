@@ -140,34 +140,25 @@ function Telefonstrom({ hjemme, redusert, smal, puls }) {
             <line x1={X + 4} y1={Y - 2} x2={fx + 16} y2={fy + 1} stroke="rgba(251,250,248,0.6)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
             <circle cx={X + 4} cy={Y - 2} r="2" fill="rgba(251,250,248,0.95)" />
           </svg>
-          {/* Flaten */}
-          <div className="absolute" style={{ left: fx, bottom: maal.h - fy, width: B, transformOrigin: '0% 100%', opacity: inne ? 1 : 0, transform: inne ? 'translateY(0px) scale(1)' : 'translateY(14px) scale(0.94)', transition: `opacity 600ms ${EASE} 500ms, transform 800ms cubic-bezier(0.2, 0.7, 0.2, 1) 500ms`, willChange: 'transform, opacity' }} data-testid="v4-strom-flate">
-            <div className="overflow-hidden rounded-[18px] px-3 pb-2 pt-2.5" style={{ background: smal ? 'rgba(251,250,248,0.94)' : 'rgba(251,250,248,0.80)', backdropFilter: smal ? 'none' : 'blur(14px) saturate(1.2)', WebkitBackdropFilter: smal ? 'none' : 'blur(14px) saturate(1.2)', color: T.ink, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.75), 0 24px 60px -24px rgba(0,0,0,0.6), 0 2px 10px -2px rgba(0,0,0,0.25)' }}>
-              <div className="flex items-center justify-between px-0.5 text-[10.5px] font-medium" style={{ color: 'rgba(21,19,15,0.55)' }}>
-                <span className="inline-flex items-center gap-1.5">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/brand/digihome-icon-purple.svg" alt="" width={12} height={12} className="h-3 w-3" draggable={false} />DigiHome</span>
-                <span>Nygårdsgaten 5</span>
-              </div>
-              <div className="mt-1">
-                {rader.map((k, i) => {
-                  const m = STROM[k % STROM.length];
-                  const ut = i === 3;
-                  return (
-                    <div key={k} className="grid" style={{ gridTemplateRows: ut ? '0fr' : '1fr', opacity: ut ? 0 : 1, transition: `grid-template-rows 600ms ${EASE}, opacity 400ms ${EASE}`, animation: i === 0 ? `v4-feed-inn 650ms cubic-bezier(0.2, 0.7, 0.2, 1) both` : 'none' }} data-testid={`v4-strom-${m.id}`}>
-                      <div className="min-h-0 overflow-hidden">
-                        <div className="flex items-center gap-2.5 py-2" style={{ borderTop: i === 0 ? '1px solid transparent' : '1px solid rgba(21,19,15,0.07)' }}>
-                          <StromIkon m={m} />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[12.5px] font-medium leading-[1.25]">{m.t}</span>
-                            <span className="block truncate text-[11px] leading-[1.3]" style={{ color: 'rgba(21,19,15,0.56)' }}>{m.u}</span>
-                          </span>
-                          <span className="shrink-0 text-[10.5px] tabular-nums" style={{ color: 'rgba(21,19,15,0.45)' }}>{STROM_TID[i] || ''}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+          {/* Én hendelse om gangen — ikke et varselpanel. Den nye kommer opp av telefonen (stiger, toner inn); den forrige
+              slipper oppover og forsvinner. Samme plass, samme bredde: en rolig puls, ikke en liste. */}
+          <div className="absolute" style={{ left: fx, bottom: maal.h - fy, width: B, opacity: inne ? 1 : 0, transition: `opacity 500ms ${EASE}` }} data-testid="v4-strom-flate">
+            {[n, n - 1].filter((k) => k >= 0).map((k, i) => {
+              const m = STROM[k % STROM.length];
+              const ny = i === 0;
+              return (
+                <div key={k} className="absolute bottom-0 left-0 w-full" style={{ transformOrigin: '0% 100%', animation: ny ? `v4-linje-inn 720ms cubic-bezier(0.2, 0.7, 0.2, 1) both` : `v4-ord-ut 420ms ${EASE} both`, willChange: 'transform, opacity' }} data-testid={`v4-strom-${m.id}`} aria-hidden={!ny}>
+                  <div className="flex items-center gap-2.5 rounded-[16px] py-2 pl-2.5 pr-3" style={{ background: smal ? 'rgba(251,250,248,0.95)' : 'rgba(251,250,248,0.82)', backdropFilter: smal ? 'none' : 'blur(14px) saturate(1.2)', WebkitBackdropFilter: smal ? 'none' : 'blur(14px) saturate(1.2)', color: T.ink, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.75), 0 24px 60px -24px rgba(0,0,0,0.6), 0 2px 10px -2px rgba(0,0,0,0.25)' }}>
+                    <StromIkon m={m} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[12.5px] font-medium leading-[1.25]">{m.t}</span>
+                      <span className="block truncate text-[11px] leading-[1.3]" style={{ color: 'rgba(21,19,15,0.56)' }}>{m.u}</span>
+                    </span>
+                    <span className="shrink-0 text-[10.5px] tabular-nums" style={{ color: 'rgba(21,19,15,0.45)' }}>nå</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
@@ -391,12 +382,13 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
    «Visning booket» opp fra telefonen hans. Én koreografi, to flater.
    Kun opacity/transform/filter på små tekstelementer. Faste minimumshøyder — ingenting hopper.
 --------------------------------------------------------------------------- */
+/* Kveldens tilbakeblikk — det som skjedde i dag mens han gjorde noe annet. Fortid, konkret, kort. Klokken tikker. */
 const FORTELLING = [
-  { id: 'annonse', ord: ['Annonsen', 'skriver', 'seg', 'selv.'], u: 'Fem bilder fra mobilen. Ferdig annonse — ute på FINN.', ms: 3300 },
-  { id: 'kontrakt', ord: ['Signert', 'med', 'BankID.'], u: 'Leietaker, kontrakt, depositum og overtakelse — i samme flyt.', ms: 3300 },
-  { id: 'okonomi', ord: ['Betalt.', 'Bokført.'], u: 'Husleien kommer inn hver måned. Regnskapet fører seg selv.', ms: 3300 },
-  { id: 'drift', ord: ['Noe', 'skjer.', 'Rørlegger', 'booket.'], u: 'Leietakeren melder fra i appen. Du godkjenner. Resten går.', ms: 3400 },
-  { id: 'kveld', ord: ['Kvelden', 'er', 'din'], u: 'Alt som kan gå av seg selv, gjør det. Du godkjenner resten.', ms: 7200, slutt: true },
+  { id: 'annonse', ord: ['Annonsen', 'skrev', 'seg', 'selv.'], u: 'Fem bilder fra mobilen i morges. Ute på FINN før lunsj.', ms: 3400, kl: '20:41' },
+  { id: 'kontrakt', ord: ['Emma', 'signerte', 'med', 'BankID.'], u: 'Kontrakt, depositum og nøkler — én flyt, ingen utskrift.', ms: 3400, kl: '20:42' },
+  { id: 'okonomi', ord: ['Husleien', 'kom.', 'Bokført.'], u: 'Åtte av åtte betalt. Regnskapet førte seg selv.', ms: 3300, kl: '20:43' },
+  { id: 'drift', ord: ['Varmtvannet', 'stoppet.', 'Fikset.'], u: 'Emma meldte fra i appen. Rørlegger booket — du godkjente.', ms: 3500, kl: '20:44' },
+  { id: 'kveld', ord: ['Kvelden', 'er', 'din'], u: 'Alt som kan gå av seg selv, gjør det. Du godkjenner resten.', ms: 7200, slutt: true, kl: '20:45' },
 ];
 const REGISTER = [
   { id: 'annonse', t: 'Annonse' },
@@ -474,7 +466,7 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
     >
       <p className="flex items-center gap-2 text-[13px] sm:text-[13.5px]" style={{ ...fast(0), color: 'rgba(21,19,15,0.58)' }} data-testid="v4-slutt-status">
         <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55' }} />
-        Alt i orden<span className="opacity-50"> · </span>{adresse}<span className="hidden opacity-50 sm:inline"> · </span><span className="hidden sm:inline">{direkte ? 'torsdag kveld' : '22:42'}</span>
+        Alt i orden<span className="opacity-50"> · </span>{adresse}<span className="hidden opacity-50 sm:inline"> · </span><span className="hidden tabular-nums sm:inline">torsdag <span key={beat.kl || 'x'} className="inline-block animate-in fade-in-0 duration-500">{direkte ? beat.kl : '22:42'}</span></span>
       </p>
       {/* Setningen — fast høyde for to linjer, så ingenting under flytter seg mellom beatene */}
       <h3 className="mt-3 sm:mt-5" style={{ ...display, fontSize: fs, lineHeight: 0.96, letterSpacing: '-0.04em', ...(direkte ? { minHeight: 'calc(2 * 0.96em)', display: 'flex', flexWrap: 'wrap', alignContent: 'flex-end' } : {}) }} data-testid="v4-slutt-tittel">

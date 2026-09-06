@@ -443,16 +443,6 @@ function GodkjennKort() {
     </div>
   );
 }
-function HusleieKort() {
-  return (
-    <div className="flex items-center gap-3 rounded-[16px] py-3 pl-3 pr-4" style={{ width: 268, background: 'rgba(255,255,255,0.96)', boxShadow: `0 0 0 1px ${HAIR2}, 0 30px 60px -28px rgba(21,19,15,0.35), 0 2px 8px -2px rgba(21,19,15,0.12)` }} data-testid="v4-system-husleie">
-      <Hake size={12} />
-      <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-medium">Husleie mottatt</span><span className="block truncate text-[12px]" style={{ color: DIM }}>Leilighet 3 · {tall(13200)} kr · matchet</span></span>
-      <span className="shrink-0 text-[11.5px] tabular-nums" style={{ color: DIM }}>08:02</span>
-    </div>
-  );
-}
-
 /* Rolig parallakse: 0 → 1 mens seksjonen går gjennom skjermen */
 function useFremdrift(ref) {
   const [p, setP] = useState(0);
@@ -522,10 +512,6 @@ export default function SystemSeksjon() {
                 <>
                   <div className="absolute z-[2]" style={{ left: Math.round(pw * 0.22), top: Math.round(ph * 0.60), ...lag(260, 32, 46) }}>
                     <GodkjennKort />
-                  </div>
-                  {/* Varselet lander over portalens topplinje — der et varsel hører hjemme */}
-                  <div className="absolute z-[2]" style={{ left: Math.round(pw * 0.60), top: -22, ...lag(200, 28, 22) }}>
-                    <HusleieKort />
                   </div>
                 </>
               )}

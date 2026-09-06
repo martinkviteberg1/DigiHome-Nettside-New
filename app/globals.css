@@ -1035,6 +1035,8 @@ html.dh-tour-snap.dh-tour-flyt { scroll-snap-type: none; }
   .dh-zoom-fig { position: absolute; inset: 0; }
   .dh-zoom-scene { aspect-ratio: auto !important; min-height: 0 !important; max-height: none !important; height: 100%; border-radius: 0 !important; box-shadow: none !important; clip-path: inset(var(--dh-iy, 0px) var(--dh-ix, 0px) round var(--dh-r, 0px)); will-change: clip-path; }
   .dh-zoom-vegg { left: calc(61% - var(--dh-ix, 0px) * 0.22) !important; right: auto !important; width: calc(min(1600px, 100vw - 64px) * 0.34); }
+  /* Rommet setter seg (1.04 → 1.00) mens beskjæringen åpnes — på wrapperen rundt videoen, aldri på <video> selv */
+  .dh-zoom-scene [data-testid="v4-film-hjem-ramme"] { transform: scale(var(--dh-s, 1)) !important; transform-origin: 50% 55%; will-change: transform; }
 }
 /* Veggfortellingen i heroen — ordene inn (nedenfra, blur) og ut (opp, blur); linjen under likeså */
 @keyframes v4-ord-inn { from { opacity: 0; transform: translateY(18px); filter: blur(7px); } to { opacity: 1; transform: translateY(0); filter: blur(0px); } }

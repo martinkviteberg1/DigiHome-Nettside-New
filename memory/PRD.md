@@ -1160,3 +1160,14 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - **Åpen designdiskusjon (ikke bygget):** Annonse-seksjonen oppleves som «bilde på bilde» (uskarpt fasadefoto som seksjonsbakgrunn →
   overskriftblokk → avrundet kort → film). Bruker vil beholde den hvite rammen. Foreslått: Retning A (full-bleed stage, én overskrift på
   fasaden, teksttabs m/ lilla underline, papirscener full-bleed ivory) som variant på /v6 for sammenligning. Venter på valg.
+
+## Hero-løft (begge varianter) + zoom silkemyk + mockup-badge — sept 2025 (agent-testet, ikke brukergodkjent)
+- **Veggfortellingen = kveldens tilbakeblikk (fortid):** «Annonsen skrev seg selv.» / «Emma signerte med BankID.» / «Husleien kom. Bokført.» /
+  «Varmtvannet stoppet. Fikset.» / «Kvelden er din.» — én linje under hver (≤ 60 tegn, 2 linjer). Klokken tikker i statuslinjen («torsdag 20:41» → 20:45, `kl` per beat).
+- **Telefonen: én hendelse om gangen** (ikke varselpanel): chip stiger fra telefonen (v4-linje-inn), forrige slipper oppover (v4-ord-ut), samme plass.
+  Ingen header-rad, ingen liste. Følger fortsatt `puls` fra veggen (1,3 s etter).
+- **HeroZoom silkemyk:** kritisk dempet lerp mot mål per frame (GLATTING 0.14, tidsnøytral), smoothstep-kurve, mikroskala 1.04 → 1.00 på
+  `v4-film-hjem-ramme` (CSS `!important` i .dh-zoom-scene, aldri på <video>), HOLD 0.5, `lg:mb-28` etter scenen (luft til «Koblet til tjenestene»).
+  SSR-standardverdier for --dh-ix/--dh-iy/--dh-r regnes i ren CSS = kortet ved p=0 → ingen blink ved lasting.
+- **SystemSeksjon:** flytende «Husleie mottatt · Leilighet 3 · 13 200 kr»-badge fjernet (`HusleieKort` slettet). Raden i aktivitetslisten inne i
+  dashboardet står (ikke bedt fjernet).
