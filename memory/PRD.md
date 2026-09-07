@@ -1346,3 +1346,17 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - **Testing:** backend-agent 8/8 (partner-API) og 5/5 (deck-API m/ tech). Browser-smoke 1920/390 uten konsollfeil/overflow. Frontend-agent
   IKKE kjørt (må spørre bruker). Ikke brukergodkjent visuelt.
 - **Åpent:** intern lisens-indeksering (Tech prisindeks vs. DH kostnadsinflasjon) er fortsatt et produktvalg (a: én kilde / b: advarsel).
+
+## Deck løftet til «verdensklasse» (runde 2) — DeckKonsept.js
+- 14 kapitler: Forside (ordvis inn-animasjon, innholdsliste) → Hvorfor (privat huseier vs. eiendomsselskap, to kort) → Konseptet (HeroScene)
+  → **For hvem** (nytt: Private huseiere · Eiendomsselskaper · Forvaltning, pris + tall i dag) → Strukturen (diagram m/ animerte strømmer)
+  → **Organisasjon** (org-kart: Styret felles for begge selskaper – Erik Hoffmann-Dahl (leder) + **Jens-Petter Glittenberg** (styremedlem,
+  initial-avatar, ingen foto) → Ledelse Sarah/Martin + Rådgiver Kevin → Tech AS / Digihome AS m/ funksjoner; linjer tegnes ved aktivering)
+  → Hvor vi står → Unit economics (Payback-bar m/ CAC-deler media/partner) → Go-to-market (S&M-miks-bar) → Plan DH → Plan Tech → Konsern
+  (bro m/ andelsbarer) → Hva om → Det vi trenger (Tidslinje m/ milepæler + bruk-av-midler-bar).
+- Navigasjon: fremdriftslinje, kapittelvelger (liste), opp/ned-knapper, tastatur, **N = presenternotater**. Scroll-snap: mandatory +
+  scroll-snap-stop always; hjul/styreflate = nøyaktig ett kapittel per gest (treghets-hale låses ute), fri scroll inne i kapitler høyere enn
+  skjermen; aktivt kapittel beregnes fra scroll-posisjon (35 %-linje). Tall teller opp og grafer bygger seg når kapitlet blir aktivt; print
+  (beforeprint) gjør alt aktivt.
+- Obs: brukerens tidligere testplaner («Test Martin», «Test 2», «Investormodell…», «Budsjett DigiHome») finnes ikke lenger i DB — trolig
+  slettet av bruker via ny ⋯-meny; testagentene slettet kun egne QA-planer (verifisert i skript). QA-planene mine er slettet.
