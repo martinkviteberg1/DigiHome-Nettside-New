@@ -72,8 +72,8 @@ const TECH_NAVN = 'Base 2026–2029 · Digihome Tech AS';
       bedrift: { startSelskaper: 0, nyeSelskaperPerMnd: 0, enheterPerSelskap: 20, pris: 79, aarligChurnPct: 8, salgskostPerSelskap: 15000, fraMnd: 1 },
       kost: {
         utviklingFast: 30000,   // AI-native utvikling (Fable) — trinn under: 35 k fra jan 27, 40 k fra jan 28, 45 k fra jan 29
-        hostingFast: 1500,      // Emergent + database, e-post/SMS, lagring — realistisk grunnlinje (ikke 250 kr)
-        variabelPerEnhet: 70,   // 20 kr produksjons-AI + ~50 kr BankID-signering, kredittsjekk, SMS, kart per enhet/mnd
+        hostingFast: 2500,      // Emergent + database, e-post/SMS, lagring, signering-abonnement — realistisk grunnlinje (ikke 250 kr)
+        variabelPerEnhet: 40,   // 20 kr produksjons-AI + ~20 kr signering, kredittsjekk, SMS, kart per enhet/mnd (snitt alle grupper)
         supportTimerPer100: 0, timekost: 650, // kundene er Digihome AS’ — support ligger i forvaltningen
         andreFaste: 15000,      // 2 k AI fast + 4 k programvare + 6 k regnskap/juridisk + 3 k sikkerhet/reserve
         markedsforingFast: 0,

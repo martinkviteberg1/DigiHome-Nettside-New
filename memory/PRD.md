@@ -1420,3 +1420,14 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   huseiere / mnd») tilpasset ren forvaltningsbase. Preset «Med plattformkunder» erstatter «Uten annonser».
 - Konsern-org i systemet: «SHD Gruppen AS» (org.nr 935 431 646) → konsernbidrag kan være mulig; ikke aktivert (avventer bruker).
 - Ikke brukergodkjent. Frontend-agent ikke kjørt.
+
+## Deck design-løft — forsidens redaksjonelle språk (sept 2026)
+- Nye primitiver i DeckKonsept: `Ingress` (ingress under H2), `Todelt` (overskrift + ingress venstre 5/12, innhold høyre 7/12; `bredHoyre` 4/8),
+  `Kolonne` (hårlinje-kolonne à la forsidens «veiskille»: ikon/over-etikett, display-tittel 26–30 px, tekst, hårlinjerader, fot), `Fakta` (tall i display).
+  Prinsipp: hårlinjer og luft i stedet for boks-i-boks; én mørk «gjenstand» per kapittel.
+- Omlagt: Hvorfor (Todelt + to Kolonner), Markedet (Todelt m/ stor Fakta + tre Kolonner), For hvem (Todelt bredHoyre + tre Kolonner m/ Fakta-par),
+  Hvor vi står (Todelt + 2×2 hårlinjetall), Unit economics (Digihome AS først «· i planen», Tech-grupper «· oppside», hårlinjetopper), GTM (Kolonner),
+  Risiko (2×2 hårlinjeblokker m/ «Se tallene»), Det vi trenger (tre hårlinjekolonner). Forside: TOC kompakt (13 px / py-5px) så forsiden får plass på 800 px.
+- Tech Base-plan justert: hostingFast 2 500, variabelPerEnhet 40 (70 ga meningsløs margin for bedrift-enheter à 79 kr). Konsern: −0,63 m før skatt,
+  −1,14 m etter, bunn 2,04 m aug 2028, pluss sep 2028. Script oppdatert.
+- Ikke brukergodkjent. Frontend-agent ikke kjørt.
