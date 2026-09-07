@@ -1308,3 +1308,41 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   koordinater) — utenfor: kortet er låst (aria-disabled, dimmet, ikke klikkbart), knapp «Meld interesse» (outline) → kontakt i interesse-modus.
   **Kontakt-steget kompakt:** Segment inline, Fullt navn + Telefon side om side (sm+), e-post full bredde, felt 52 px, mindre luft — står
   i viewport på 1440×800. Testet med Chrome/Playwright. Ikke brukergodkjent.
+
+## Budsjettmodul: én smart topplinje, responsive flater, performance-partner, nytt konsept-deck — [denne runden]
+- **Brukerens bestilling:** «forbedre ALT med UI/UX i budsjettmodulen (verdensklasse), Tech tilpasset SaaS», «to rader i toppmenyen er
+  unødvendig – tenk smartere», «fiks uresponsive bokser hvor tekst overflower», «performance marketing 8 % honorar per kunde første 12 mnd +
+  fast fee (12 000) – alle kundegrupper, også Digihome AS», «oppdater decket – verdensklasse for hele konseptet inkl. budsjetter, animasjon à la
+  forsiden».
+- **`components/admin/ModellTopplinje.js` (ny, delt DH + Tech):** ÉN sticky linje (lg+). Venstre: ← · selskapsmerke · navn (inline-edit) ·
+  [status ▾ utkast/vedtatt] · [periode · horisont ▾ 1/2/3 år]. Høyre: modellens egne kontroller (scenario ▾ m/ «Sammenlign scenarioer» som
+  footer, Forutsetninger-toggle) · [Del ▾: investorrom-bryter, deck, Excel, PDF] · [⋯: omvisning, slett m/ inline-bekreft; status på mobil]
+  · [Lagre m/ ulagret-prikk]. `Meny`/`MenyValg` generisk nedtrekk (utenfor-klikk, Esc, animate-in). Status kan nå settes fra DH-modellen
+  (før: bare Tech). Mobil (<md): status-pillen skjules og ligger i ⋯; navn-input krymper (min 56 px).
+- **Tech-modellen (`TechModell.js`):** KPI-kort m/ clamp-tekst, truncate + line-clamp (ingen overflow), grid 2/3/6 kolonner; MRR-bro
+  som HTML-waterfall (ikke SVG) m/ kompakte tall («73 k») og brytbare etiketter; prisjustering vises kun ≥ 0,5 % av slutt-MRR;
+  Rule of 40 vises først ved basis-MRR ≥ 50 000 kr/mnd (ellers «— tidlig fase»); «Fra budsjett / Manuelt»-toggle; rail kan skjules
+  (Forutsetninger-toggle, bunn-ark under xl); seksjonstitler «Huseiere», «Lisens · Digihome AS», «Bedrift», ny «Markedsføring & salg».
+- **Digihome-modellen (`BudsjettModell.js`):** topplinje via ModellTopplinje; Slett flyttet fra rail-footer til ⋯; hero-flisen viser
+  Inntekter/Kostnader + dekningsgrad-bar; ny rail-seksjon «Markedsføring & salg» (CAC, fast markedsføring, PartnerKort); Unit economics =
+  system + oppstart; Faste = admin + andre. Unit-kort viser «+ Partnerhonorar = Full CAC»; LTV/CAC og payback bruker full CAC. Tornado
+  inkluderer partner.honorarPct / partner.fastPerMnd når partner er på. Matrise: rad «Performance-partner».
+- **Motor (`lib/budsjett-modell.js`):** `rensPartner` + `partner` i STANDARD_DRIVERE og STANDARD_TECH {paa, fastPerMnd 12 000, honorarPct 8,
+  varighetMnd 12 (0 = livstid), andelNyePct 100, fraMnd 1, (Tech) gjelder{huseier,bedrift,forvaltning}}. Kohortbasert: honorar = % av
+  inntekten fra nye kunder yngre enn varigheten, churn-justert; lisensens «nye» = økning i enheter (fra mnd 2). Fast fee indekseres m/
+  kostnadsinflasjon. **Eksisterende planer uten partner-felt → paa:false (tall uendret).** DH: kost.partner, sammendrag.sumPartner/sumSm/
+  smAndelPct, cac.{partnerPerEnhet, fullCac, paybackMnd (full), paybackProvisjonMnd}. Tech: kost.partner/kost.markedsforing,
+  kost.markedsforingFast (fallback 0 for gamle planer), saas.sammendrag.sm{annonser,partner,markedsforing,salg,andelPct},
+  unit.*.{partner, fullCac}, aar[].sm{Annonser,Partner,Markedsforing,Salg}. Excel: ny rad + forutsetningsseksjon (R.kostSum 23→24 osv.).
+- **`components/admin/PartnerKort.js` (ny, delt):** toggle-kort m/ fast honorar, %, varighet (6/12/24/livstid), tilskrevet andel, startmåned,
+  (Tech) kundegruppe-chips, og motorens tall (kr per ny kunde · kr i perioden · % av inntekt).
+- **Deck (`components/investor/DeckKonsept.js`, ny; `/investor/deck` peker hit — `DeckLevende.js` er nå ubrukt):** 11 sider: Forside →
+  Konseptet (forsidens `HeroScene`, spiller når siden er synlig) → To selskaper, én plattform (prisliste, animert lisensstrøm) → Hvor vi står →
+  Unit economics (mørk, full CAC) → Go-to-market (partner, annonser, B2B, forvaltning som kanal) → Planen Digihome AS (levende laggraf +
+  skruer) → Planen Tech (MRR per kundegruppe + skruer inkl. partnerhonorar) → Konsern (eliminert lisens, bro) → Hva om (presets for begge) →
+  Det vi trenger (kapital + buffer, bruk av midler, Q&A). `.deck-inn` glir inn per side (stagger via --i), grafer tweener. Tech-serier
+  skyves til DH-planens tidsakse ved ulik start. **API:** `/api/investor/deck` returnerer `tech` (koblet → vedtatt samme start → samme start →
+  nyeste; `?tech=` for presenter) og `techPlaner`. Investorer ser kun investorSynlige tech-planer.
+- **Testing:** backend-agent 8/8 (partner-API) og 5/5 (deck-API m/ tech). Browser-smoke 1920/390 uten konsollfeil/overflow. Frontend-agent
+  IKKE kjørt (må spørre bruker). Ikke brukergodkjent visuelt.
+- **Åpent:** intern lisens-indeksering (Tech prisindeks vs. DH kostnadsinflasjon) er fortsatt et produktvalg (a: én kilde / b: advarsel).

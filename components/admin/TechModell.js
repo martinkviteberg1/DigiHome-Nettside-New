@@ -11,9 +11,10 @@
    Alt regnes live i nettleseren (lib/budsjett-modell.js → beregnTech).
    ───────────────────────────────────────────────────────────────────────────── */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Loader2, RefreshCw, Home, Building2, Link2, Cpu, CalendarClock, Info, Layers, SlidersHorizontal } from 'lucide-react';
+import { ChevronDown, Loader2, RefreshCw, Home, Building2, Link2, Cpu, CalendarClock, Info, Layers, SlidersHorizontal, Megaphone } from 'lucide-react';
 import { beregnTech, rensTechDrivere } from '@/lib/budsjett-modell';
 import ModellTopplinje, { PILL, PILL_AKTIV } from '@/components/admin/ModellTopplinje';
+import PartnerKort from '@/components/admin/PartnerKort';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
 const MND = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
@@ -36,10 +37,10 @@ const Seksjon = ({ tittel, sammendrag, ikon: Ikon, open, onToggle, children, tes
     <button onClick={onToggle} className="group flex w-full items-center justify-between gap-2 py-2.5 text-left">
       <span className="flex min-w-0 items-center gap-2">
         {Ikon && <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-[8px] transition-colors ${open ? 'bg-[#f0ebfa] text-[#6d28d9]' : 'bg-[#f5f4f1] text-[#a6a19a] group-hover:text-[#57534e]'}`}><Ikon className="h-3.5 w-3.5" /></span>}
-        <span className={`shrink-0 text-[11px] font-bold uppercase tracking-[0.09em] transition-colors ${open ? 'text-[#1c1917]' : 'text-[#78716c] group-hover:text-[#1c1917]'}`}>{tittel}</span>
+        <span className={`truncate text-[11px] font-bold uppercase tracking-[0.09em] transition-colors ${open ? 'text-[#1c1917]' : 'text-[#78716c] group-hover:text-[#1c1917]'}`}>{tittel}</span>
       </span>
-      <span className="flex min-w-0 items-center gap-1.5">
-        {!open && sammendrag && <span className="truncate rounded-full bg-[#f5f4f1] px-2 py-0.5 text-[11px] font-medium text-[#8f8a82]">{sammendrag}</span>}
+      <span className="flex max-w-[48%] shrink-0 items-center gap-1.5">
+        {!open && sammendrag && <span className="truncate rounded-full bg-[#f5f4f1] px-2 py-0.5 text-[11px] font-medium text-[#8f8a82]" title={sammendrag}>{sammendrag}</span>}
         <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#c2beb8] transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </span>
     </button>
@@ -171,7 +172,7 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
   const [henterFakta, setHenterFakta] = useState(false);
   const [prisliste, setPrisliste] = useState(null);
   const [kontantTech, setKontantTech] = useState(null);
-  const [open, setOpen] = useState({ huseier: true, forvaltning: true, bedrift: false, kost: false, rd: false, justering: false });
+  const [open, setOpen] = useState({ huseier: true, forvaltning: true, bedrift: false, salg: false, kost: false, rd: false, justering: false });
   const [visMnd, setVisMnd] = useState(false);
   const [antallMnd, setAntallMnd] = useState(N);
   const [endrerHorisont, setEndrerHorisont] = useState(0);
@@ -185,6 +186,7 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
   const m = useMemo(() => beregnTech({ antallMnd, drivere: tech, fakta: fakta || {} }), [tech, fakta, antallMnd]);
   const sanert = m.drivere;
   const set = (gruppe, k, v) => { setTech((c) => ({ ...c, [gruppe]: { ...c[gruppe], [k]: v } })); setSkittent(true); };
+  const setPartner = (p) => { setTech((c) => ({ ...c, partner: p })); setSkittent(true); };
 
   const hentFakta = useCallback(async (planId, mnd = antallMnd) => {
     setHenterFakta(true); setFeil('');
@@ -259,11 +261,11 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
           <p className="mb-1 hidden text-[14px] font-bold text-[#1c1917] xl:block" style={heading}>Forutsetninger</p>
           <p className="mb-2 text-[11.5px] leading-snug text-[#a6a19a]">Prisene er Techs. Det Digihome AS betaler er én av dem.</p>
 
-          <Seksjon tittel="Go-to-market · Huseiere" ikon={Home} open={open.huseier} onToggle={() => setOpen((o) => ({ ...o, huseier: !o.huseier }))} sammendrag={`${tall(u.huseier.arpu)} kr/enh · ${tall(sanert.huseier.aarligChurnPct)} % churn`} testid="tech-sek-huseier">
+          <Seksjon tittel="Huseiere" ikon={Home} open={open.huseier} onToggle={() => setOpen((o) => ({ ...o, huseier: !o.huseier }))} sammendrag={`${tall(u.huseier.arpu)} kr/enh · ${tall(sanert.huseier.aarligChurnPct)} % churn`} testid="tech-sek-huseier">
             <Felt label="Enheter i dag" verdi={tech.huseier.startEnheter} onEndre={(v) => set('huseier', 'startEnheter', v)} enhet="enh." readOnly={readOnly} testid="tech-huseier-start" />
             <Felt label="Organisk vekst" verdi={tech.huseier.organiskPerMnd} onEndre={(v) => set('huseier', 'organiskPerMnd', v)} enhet="enh/mnd" readOnly={readOnly} slider={{ min: 0, max: 30, step: 0.5 }} />
-            <Felt label="Annonsebudsjett" verdi={tech.huseier.annonsePerMnd} onEndre={(v) => set('huseier', 'annonsePerMnd', v)} enhet="kr/mnd" readOnly={readOnly} slider={{ min: 0, max: 200000, step: 5000 }} testid="tech-huseier-annonse" />
-            <Felt label="CAC per aktivert enhet" verdi={tech.huseier.cacPerEnhet} onEndre={(v) => set('huseier', 'cacPerEnhet', v)} enhet="kr" readOnly={readOnly} hint={`≈ ${tall(sanert.huseier.organiskPerMnd + sanert.huseier.annonsePerMnd / Math.max(1, sanert.huseier.cacPerEnhet), 1)} nye enheter/mnd i fase 1`} />
+            <Felt label="Annonsekjøp (media)" verdi={tech.huseier.annonsePerMnd} onEndre={(v) => set('huseier', 'annonsePerMnd', v)} enhet="kr/mnd" readOnly={readOnly} slider={{ min: 0, max: 200000, step: 5000 }} testid="tech-huseier-annonse" hint="betalt trafikk — partnerhonorar og fast markedsføring ligger under Markedsføring & salg" />
+            <Felt label="CAC per aktivert enhet (media)" verdi={tech.huseier.cacPerEnhet} onEndre={(v) => set('huseier', 'cacPerEnhet', v)} enhet="kr" readOnly={readOnly} hint={`≈ ${tall(sanert.huseier.organiskPerMnd + sanert.huseier.annonsePerMnd / Math.max(1, sanert.huseier.cacPerEnhet), 1)} nye enheter/mnd i fase 1`} />
             <Felt label="Årlig churn" verdi={tech.huseier.aarligChurnPct} onEndre={(v) => set('huseier', 'aarligChurnPct', v)} enhet="%" readOnly={readOnly} slider={{ min: 0, max: 60, step: 1 }} />
             <div className="py-[6px]">
               <div className="flex items-center justify-between gap-3">
@@ -317,13 +319,30 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
             {prisHint && avvikHint && <p className="text-[11px] text-[#a6a19a]">{avvikHint}</p>}
           </Seksjon>
 
-          <Seksjon tittel="Go-to-market · Bedrift" ikon={Building2} open={open.bedrift} onToggle={() => setOpen((o) => ({ ...o, bedrift: !o.bedrift }))} sammendrag={sanert.bedrift.nyeSelskaperPerMnd > 0 ? `${tall(sanert.bedrift.nyeSelskaperPerMnd, 1)} selskap/mnd · ${kr(sanert.bedrift.pris)}/enh` : 'Ikke i planen'} testid="tech-sek-bedrift">
+          <Seksjon tittel="Bedrift" ikon={Building2} open={open.bedrift} onToggle={() => setOpen((o) => ({ ...o, bedrift: !o.bedrift }))} sammendrag={sanert.bedrift.nyeSelskaperPerMnd > 0 ? `${tall(sanert.bedrift.nyeSelskaperPerMnd, 1)} selskap/mnd · ${kr(sanert.bedrift.pris)}/enh` : 'Ikke i planen'} testid="tech-sek-bedrift">
             <Felt label="Salgsstart" verdi={tech.bedrift.fraMnd} onEndre={(v) => set('bedrift', 'fraMnd', v)} enhet="mnd nr" readOnly={readOnly} hint={`Første salg ${mndKort(ymPluss(plan.startYm, Math.max(0, sanert.bedrift.fraMnd - 1)))}`} />
             <Felt label="Nye selskaper" verdi={tech.bedrift.nyeSelskaperPerMnd} onEndre={(v) => set('bedrift', 'nyeSelskaperPerMnd', v)} enhet="per mnd" readOnly={readOnly} slider={{ min: 0, max: 5, step: 0.25 }} testid="tech-bedrift-nye" />
             <Felt label="Enheter per selskap" verdi={tech.bedrift.enheterPerSelskap} onEndre={(v) => set('bedrift', 'enheterPerSelskap', v)} enhet="enh." readOnly={readOnly} />
             <Felt label="Pris per enhet" verdi={tech.bedrift.pris} onEndre={(v) => set('bedrift', 'pris', v)} enhet="kr/mnd" readOnly={readOnly} hint={`≈ ${kr(u.bedrift.arpuSelskap)} per selskap/mnd${prisliste?.bedrift && Number(prisliste.bedrift.pris) !== sanert.bedrift.pris ? ` · prislisten: ${kr(prisliste.bedrift.pris)}` : ''}`} />
             <Felt label="Årlig churn" verdi={tech.bedrift.aarligChurnPct} onEndre={(v) => set('bedrift', 'aarligChurnPct', v)} enhet="%" readOnly={readOnly} slider={{ min: 0, max: 30, step: 1 }} />
-            <Felt label="Salgskost per selskap" verdi={tech.bedrift.salgskostPerSelskap} onEndre={(v) => set('bedrift', 'salgskostPerSelskap', v)} enhet="kr" readOnly={readOnly} hint={u.bedrift.paybackMnd ? `Payback ${tall(u.bedrift.paybackMnd, 1)} mnd · LTV/CAC ${tall(u.bedrift.ltvCac, 1)}×` : null} />
+            <Felt label="Salgskost per selskap" verdi={tech.bedrift.salgskostPerSelskap} onEndre={(v) => set('bedrift', 'salgskostPerSelskap', v)} enhet="kr" readOnly={readOnly} hint={u.bedrift.paybackMnd ? `Payback ${tall(u.bedrift.paybackMnd, 1)} mnd · LTV/CAC ${tall(u.bedrift.ltvCac, 1)}× (full CAC)` : null} />
+          </Seksjon>
+
+          <Seksjon tittel="Markedsføring & salg" ikon={Megaphone} open={open.salg} onToggle={() => setOpen((o) => ({ ...o, salg: !o.salg }))}
+            sammendrag={`${kr(sanert.kost.markedsforingFast)}/mnd${sanert.partner.paa ? ` · partner ${tall(sanert.partner.honorarPct, 0)} %` : ''}`} testid="tech-sek-salg">
+            <p className="pb-1 pt-0.5 text-[11px] leading-snug text-[#a6a19a]">S&M = annonsekjøp (under Huseiere) + salgskost (under Bedrift) + fast markedsføring + performance-partner.</p>
+            <Felt label="Fast markedsføring" verdi={tech.kost.markedsforingFast} onEndre={(v) => set('kost', 'markedsforingFast', v)} enhet="kr/mnd" readOnly={readOnly} testid="tech-kost-mf" hint="merkevare, innhold, verktøy — uavhengig av volum" />
+            <PartnerKort
+              verdi={sanert.partner} readOnly={readOnly} enhetsnavn="kunde" testid="tech-partner"
+              onEndre={setPartner}
+              grupper={[{ id: 'huseier', label: 'Huseiere' }, { id: 'bedrift', label: 'Bedrift' }, { id: 'forvaltning', label: 'Lisens · Digihome AS' }]}
+              perKunde={sanert.partner.paa && sanert.partner.gjelder.huseier ? u.huseier.partner : null}
+              iPerioden={sanert.partner.paa ? sa.sm.partner : null}
+              andelPct={sanert.partner.paa && s.sumInntekt > 0 ? Math.round((sa.sm.partner / s.sumInntekt) * 100) : null}
+            />
+            <p className="mt-2 text-[11px] leading-snug text-[#a6a19a]">
+              S&M i perioden: <b className="text-[#57534e]">{kr(sa.sumSm)}</b>{sa.sm.andelPct != null ? ` · ${sa.sm.andelPct} % av inntekten` : ''}
+            </p>
           </Seksjon>
 
           <Seksjon tittel="COGS · per enhet" ikon={Layers} open={open.kost} onToggle={() => setOpen((o) => ({ ...o, kost: !o.kost }))} sammendrag={`${kr(u.variabelPerEnhet)}/enh · hosting ${kr(sanert.kost.hostingFast)}`} testid="tech-sek-kost">
@@ -385,50 +404,61 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
             </div>
           </div>
 
-          {/* Unit economics per kundegruppe */}
+          {/* Unit economics per kundegruppe — full CAC = media/salg + partnerhonorar */}
           <div className="grid gap-3 md:grid-cols-3">
             <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="tech-unit-huseier">
               <p className="flex items-center gap-2 text-[12.5px] font-bold text-[#1c1917]"><span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: FARGE.huseier }} /> Huseiere</p>
               <dl className="mt-2 divide-y divide-black/[0.05] text-[12.5px]">
-                {[['ARPU', kr(u.huseier.arpu)], ['Bidrag / mnd', `${kr(u.huseier.bidrag)} · ${u.huseier.bruttoMarginPct} %`], ['CAC', kr(u.huseier.cac)], ['Payback', u.huseier.paybackMnd ? `${tall(u.huseier.paybackMnd, 1)} mnd` : '—'], ['LTV / CAC', u.huseier.ltvCac ? `${tall(u.huseier.ltvCac, 1)}×` : '—']].map(([l, v]) => <div key={l} className="flex justify-between py-1.5"><dt className="text-[#8f8a82]">{l}</dt><dd className="font-semibold text-[#1c1917]">{v}</dd></div>)}
+                {[['ARPU', kr(u.huseier.arpu)], ['Bidrag / mnd', `${kr(u.huseier.bidrag)} · ${u.huseier.bruttoMarginPct} %`], ['CAC · media', kr(u.huseier.cac)],
+                  ...(u.huseier.partner ? [['+ Partnerhonorar', kr(u.huseier.partner)], ['= Full CAC', kr(u.huseier.fullCac)]] : []),
+                  ['Payback', u.huseier.paybackMnd ? `${tall(u.huseier.paybackMnd, 1)} mnd` : '—'], ['LTV / CAC', u.huseier.ltvCac ? `${tall(u.huseier.ltvCac, 1)}×` : '—']].map(([l, v]) => <div key={l} className="flex justify-between gap-2 py-1.5"><dt className={`truncate ${l.startsWith('=') ? 'text-[#57534e]' : 'text-[#8f8a82]'}`}>{l}</dt><dd className="shrink-0 font-semibold text-[#1c1917]">{v}</dd></div>)}
               </dl>
             </div>
             <div className="rounded-[16px] bg-[#1c1917] p-4 text-white" data-testid="tech-unit-forvaltning">
               <p className="flex items-center gap-2 text-[12.5px] font-bold"><span className="h-2.5 w-2.5 rounded-[3px] bg-white/80" /> Lisens · Digihome AS <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide">Internt</span></p>
               <dl className="mt-2 divide-y divide-white/10 text-[12.5px]">
-                {[['Pris per enhet', kr(u.forvaltning.prisPerEnhet)], ['Bidrag / enhet', `${kr(u.forvaltning.bidrag)} · ${u.forvaltning.bruttoMarginPct} %`], ['Enheter ved slutt', tall(s.enheterVedSlutt.forvaltning)], ['Inntekt i perioden', kr(s.sumForvaltning)], ['Andel av Tech', `${s.andelForvaltningPct ?? 0} %`]].map(([l, v]) => <div key={l} className="flex justify-between py-1.5"><dt className="text-white/55">{l}</dt><dd className="font-semibold">{v}</dd></div>)}
+                {[['Pris per enhet', kr(u.forvaltning.prisPerEnhet)], ['Bidrag / enhet', `${kr(u.forvaltning.bidrag)} · ${u.forvaltning.bruttoMarginPct} %`],
+                  ...(u.forvaltning.partner ? [['Partnerhonorar / ny enhet', kr(u.forvaltning.partner)]] : []),
+                  ['Enheter ved slutt', tall(s.enheterVedSlutt.forvaltning)], ['Inntekt i perioden', kr(s.sumForvaltning)], ['Andel av Tech', `${s.andelForvaltningPct ?? 0} %`]].map(([l, v]) => <div key={l} className="flex justify-between gap-2 py-1.5"><dt className="truncate text-white/55">{l}</dt><dd className="shrink-0 font-semibold">{v}</dd></div>)}
               </dl>
               <p className="mt-2 text-[11px] leading-snug text-white/45">Følger porteføljen i Digihome AS-budsjettet. Elimineres i konsernet.</p>
             </div>
             <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="tech-unit-bedrift">
               <p className="flex items-center gap-2 text-[12.5px] font-bold text-[#1c1917]"><span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: FARGE.bedrift }} /> Bedrift</p>
               <dl className="mt-2 divide-y divide-black/[0.05] text-[12.5px]">
-                {[['Per selskap / mnd', kr(u.bedrift.arpuSelskap)], ['Bidrag / selskap', kr(u.bedrift.bidragSelskap)], ['Salgskost (CAC)', kr(u.bedrift.cacSelskap)], ['Payback', u.bedrift.paybackMnd ? `${tall(u.bedrift.paybackMnd, 1)} mnd` : '—'], ['LTV / CAC', u.bedrift.ltvCac ? `${tall(u.bedrift.ltvCac, 1)}×` : '—']].map(([l, v]) => <div key={l} className="flex justify-between py-1.5"><dt className="text-[#8f8a82]">{l}</dt><dd className="font-semibold text-[#1c1917]">{v}</dd></div>)}
+                {[['Per selskap / mnd', kr(u.bedrift.arpuSelskap)], ['Bidrag / selskap', kr(u.bedrift.bidragSelskap)], ['CAC · salg', kr(u.bedrift.cacSelskap)],
+                  ...(u.bedrift.partner ? [['+ Partnerhonorar', kr(u.bedrift.partner)], ['= Full CAC', kr(u.bedrift.fullCac)]] : []),
+                  ['Payback', u.bedrift.paybackMnd ? `${tall(u.bedrift.paybackMnd, 1)} mnd` : '—'], ['LTV / CAC', u.bedrift.ltvCac ? `${tall(u.bedrift.ltvCac, 1)}×` : '—']].map(([l, v]) => <div key={l} className="flex justify-between gap-2 py-1.5"><dt className={`truncate ${l.startsWith('=') ? 'text-[#57534e]' : 'text-[#8f8a82]'}`}>{l}</dt><dd className="shrink-0 font-semibold text-[#1c1917]">{v}</dd></div>)}
               </dl>
             </div>
           </div>
 
           {/* SaaS-resultat per planår */}
           <div className="overflow-x-auto rounded-[18px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="tech-aar">
-            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#a6a19a]">Resultat per planår <span className="font-medium normal-case tracking-normal">· SaaS-oppstilling</span></p>
-              <p className="text-[11.5px] text-[#a6a19a]">COGS = variable + support + hosting · S&M = annonser + salg · R&D = utvikling · G&A = andre faste</p>
+              <p className="min-w-0 text-[11px] leading-snug text-[#a6a19a]">COGS = variable + support + hosting · S&M = annonsekjøp + partner + markedsføring + salg · R&D = utvikling · G&A = andre faste</p>
             </div>
             <table className="w-full text-[13px]">
-              <thead><tr className="text-[10.5px] uppercase tracking-wide text-[#a6a19a]"><th className="pb-2 text-left font-bold">Linje</th>{m.aar.map((a) => <th key={a.nr} className="pb-2 text-right font-bold">År {a.nr}{a.antallMnd < 12 ? <span className="ml-1 font-medium normal-case">({a.antallMnd} mnd)</span> : ''}</th>)}<th className="pb-2 text-right font-bold">Perioden</th></tr></thead>
+              <thead><tr className="text-[10.5px] uppercase tracking-wide text-[#a6a19a]"><th className="pb-2 text-left font-bold">Linje</th>{m.aar.map((a) => <th key={a.nr} className="whitespace-nowrap pb-2 pl-3 text-right font-bold">År {a.nr}{a.antallMnd < 12 ? <span className="ml-1 font-medium normal-case">({a.antallMnd} mnd)</span> : ''}</th>)}<th className="whitespace-nowrap pb-2 pl-3 text-right font-bold">Perioden</th></tr></thead>
               <tbody>
                 {[
                   ['Inntekt · huseiere', (a) => a.huseier, s.sumHuseier], ['Inntekt · lisens Digihome AS', (a) => a.forvaltning, s.sumForvaltning], ['Inntekt · bedrift', (a) => a.bedrift, s.sumBedrift],
                   ['Sum inntekt', (a) => a.inntekt, s.sumInntekt, 'fet'],
                   ['COGS', (a) => -a.cogs, -sa.sumCogs], ['Bruttoresultat', (a) => a.brutto, sa.sumBrutto, 'fet', (a) => a.bruttoPct, sa.bruttoMarginPct],
-                  ['S&M · annonser og salg', (a) => -a.sm, -sa.sumSm], ['R&D · utvikling og drift', (a) => -a.rd, -sa.sumRd], ['G&A · andre faste', (a) => -a.ga, -sa.sumGa],
+                  ['S&M', (a) => -a.sm, -sa.sumSm, 'fet'],
+                  ['· annonsekjøp', (a) => -a.smAnnonser, -sa.sm.annonser, 'under'],
+                  ...(sa.sm.partner ? [['· performance-partner', (a) => -a.smPartner, -sa.sm.partner, 'under']] : []),
+                  ...(sa.sm.markedsforing ? [['· fast markedsføring', (a) => -a.smMarkedsforing, -sa.sm.markedsforing, 'under']] : []),
+                  ...(sa.sm.salg ? [['· salg bedrift', (a) => -a.smSalg, -sa.sm.salg, 'under']] : []),
+                  ['R&D · utvikling og drift', (a) => -a.rd, -sa.sumRd], ['G&A · andre faste', (a) => -a.ga, -sa.sumGa],
                   ['EBITDA', (a) => a.resultat, s.resultat, 'fet', (a) => a.marginPct, s.sumInntekt > 0 ? Math.round((s.resultat / s.sumInntekt) * 100) : null],
                   ['Netto ny MRR', (a) => a.netNyMrr, sa.bro.slutt - sa.bro.start], ['Kunder ved slutt', (a) => a.kunderSlutt, kunder.total[antallMnd - 1], null, null, null, true], ['ARR ved slutt', (a) => a.arrExit, sa.arrExit, null, null, null, true],
-                ].map(([l, f, tot, fet, pct, totPct, erAntall]) => (
-                  <tr key={l} className={`border-t border-black/[0.05] ${fet ? 'font-semibold text-[#1c1917]' : 'text-[#57534e]'}`}>
-                    <td className="py-2">{l}</td>
-                    {m.aar.map((a) => { const v = f(a); return <td key={a.nr} className={`py-2 text-right ${l === 'EBITDA' ? (v >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]') : ''}`}>{erAntall && l.startsWith('Kunder') ? tall(v) : krS(v)}{pct && pct(a) != null ? <span className="ml-1 text-[11px] font-medium text-[#a6a19a]">{pct(a)} %</span> : null}</td>; })}
-                    <td className={`py-2 text-right font-semibold ${l === 'EBITDA' ? (tot >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]') : ''}`}>{erAntall && l.startsWith('Kunder') ? tall(tot) : krS(tot)}{totPct != null ? <span className="ml-1 text-[11px] font-medium text-[#a6a19a]">{totPct} %</span> : null}</td>
+                ].map(([l, f, tot, stil, pct, totPct, erAntall]) => (
+                  <tr key={l} className={`${stil === 'under' ? '' : 'border-t border-black/[0.05]'} ${stil === 'fet' ? 'font-semibold text-[#1c1917]' : stil === 'under' ? 'text-[12px] text-[#8f8a82]' : 'text-[#57534e]'}`}>
+                    <td className={`whitespace-nowrap ${stil === 'under' ? 'py-1 pl-3' : 'py-2'}`}>{l}</td>
+                    {m.aar.map((a) => { const v = f(a); return <td key={a.nr} className={`whitespace-nowrap pl-3 text-right ${stil === 'under' ? 'py-1' : 'py-2'} ${l === 'EBITDA' ? (v >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]') : ''}`}>{erAntall && l.startsWith('Kunder') ? tall(v) : krS(v)}{pct && pct(a) != null ? <span className="ml-1 text-[11px] font-medium text-[#a6a19a]">{pct(a)} %</span> : null}</td>; })}
+                    <td className={`whitespace-nowrap pl-3 text-right ${stil === 'under' ? 'py-1 font-medium' : 'py-2 font-semibold'} ${l === 'EBITDA' ? (tot >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]') : ''}`}>{erAntall && l.startsWith('Kunder') ? tall(tot) : krS(tot)}{totPct != null ? <span className="ml-1 text-[11px] font-medium text-[#a6a19a]">{totPct} %</span> : null}</td>
                   </tr>
                 ))}
               </tbody>
@@ -450,7 +480,7 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
                       ['MRR · huseiere', m.inntekt.huseier], ['MRR · lisens Digihome AS', m.inntekt.forvaltning], ['MRR · bedrift', m.inntekt.bedrift], ['Sum MRR', saas.mrr, true],
                       ['Ny MRR', saas.nyMrr], ['Churnet MRR', saas.churnMrr], ['Netto ny MRR', saas.netNyMrr, true],
                       ['Kunder · huseiere', kunder.huseier, false, true], ['Kunder · bedrifter', kunder.bedrift, false, true], ['Enheter på plattformen', m.enheter.total, false, true],
-                      ['COGS', saas.cogs], ['Bruttoresultat', saas.brutto, true], ['S&M', saas.sm], ['R&D', saas.rd], ['G&A', saas.ga],
+                      ['COGS', saas.cogs], ['Bruttoresultat', saas.brutto, true], ['S&M', saas.sm, true], ['· annonsekjøp', m.kost.annonser], ...(sa.sm.partner ? [['· performance-partner', m.kost.partner]] : []), ...(sa.sm.markedsforing ? [['· fast markedsføring', m.kost.markedsforing]] : []), ...(sa.sm.salg ? [['· salg bedrift', m.kost.salg]] : []), ['R&D', saas.rd], ['G&A', saas.ga],
                       ['EBITDA', m.resultat, true], ['Akkumulert', m.akkumulert, true, false, true],
                     ].map(([l, serie, fet, erEnh, ingenSum]) => (
                       <tr key={l} className={`border-t border-black/[0.04] ${fet ? 'font-semibold text-[#1c1917]' : 'text-[#57534e]'}`}>

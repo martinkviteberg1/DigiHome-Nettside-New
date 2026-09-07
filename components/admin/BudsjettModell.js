@@ -18,11 +18,12 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   ArrowRight, Trash2, RefreshCw, Loader2, Check, Plus, X, RotateCcw, ChevronDown,
   SlidersHorizontal, TrendingUp, Scale, Users, Building2, Bookmark, HelpCircle, FileSpreadsheet, FileText, ArrowLeftRight,
-  CalendarDays, ChevronLeft, ChevronRight, Presentation,
+  CalendarDays, ChevronLeft, ChevronRight, Presentation, Megaphone,
 } from 'lucide-react';
 import Omvisning from '@/components/admin/Omvisning';
 import KonsernModell from '@/components/admin/KonsernModell';
 import ModellTopplinje, { PILL, PILL_AKTIV, PILL_LILLA, KNAPP_PRIMAER } from '@/components/admin/ModellTopplinje';
+import PartnerKort from '@/components/admin/PartnerKort';
 import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE, skalerVekst } from '@/lib/budsjett-modell';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
@@ -151,10 +152,10 @@ const Seksjon = ({ tittel, sammendrag, ikon: Ikon, open, onToggle, children }) =
             <Ikon className="h-3.5 w-3.5" />
           </span>
         )}
-        <span className={`shrink-0 text-[11px] font-bold uppercase tracking-[0.09em] transition-colors ${open ? 'text-[#1c1917]' : 'text-[#78716c] group-hover:text-[#1c1917]'}`}>{tittel}</span>
+        <span className={`truncate text-[11px] font-bold uppercase tracking-[0.09em] transition-colors ${open ? 'text-[#1c1917]' : 'text-[#78716c] group-hover:text-[#1c1917]'}`}>{tittel}</span>
       </span>
-      <span className="flex min-w-0 items-center gap-1.5">
-        {!open && sammendrag && <span className="truncate rounded-full bg-[#f5f4f1] px-2 py-0.5 text-[11px] font-medium text-[#8f8a82]">{sammendrag}</span>}
+      <span className="flex max-w-[48%] shrink-0 items-center gap-1.5">
+        {!open && sammendrag && <span className="truncate rounded-full bg-[#f5f4f1] px-2 py-0.5 text-[11px] font-medium text-[#8f8a82]" title={sammendrag}>{sammendrag}</span>}
         <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#c2beb8] transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </span>
     </button>
@@ -1235,7 +1236,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const [antallMnd, setAntallMnd] = useState(plan.antallMnd);
   const [lagretAntallMnd, setLagretAntallMnd] = useState(plan.antallMnd);
   const [lagretFakta, setLagretFakta] = useState(plan.fakta || { eksisterende: [], enheter: [], oppdatertAt: null });
-  const [aapne, setAapne] = useState({ portefolje: true, unit: false, org: false, faste: false, aarlig: false });
+  const [aapne, setAapne] = useState({ portefolje: true, unit: false, salg: false, org: false, faste: false, aarlig: false });
   const [railAapen, setRailAapen] = useState(true);
   // Under xl er panelet et bunn-ark som dekker innholdet — start derfor lukket
   // på mobil/nettbrett, så tallene er det første man ser.
@@ -1343,8 +1344,8 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
     {
       id: 'deling',
       tittel: 'Deling med investorrommet',
-      tekst: 'Bryteren gjør modellen synlig i investorrommet — alltid skrivebeskyttet. Investorene ser tallene, men kan ikke endre dem.',
-      maal: () => document.querySelector('[data-testid="budsjett-investor-bryter"]'),
+      tekst: '«Del» samler investorrommet, det levende decket og eksport til Excel/PDF. Investorene ser tallene skrivebeskyttet — de kan ikke endre dem.',
+      maal: () => document.querySelector('[data-testid="modell-del"]'),
     },
   ];
   const tourFerdig = useCallback(() => {
@@ -1373,7 +1374,6 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const [visning, setVisning] = useState(plan.antallMnd > 12 ? 'teleskop' : 'mnd');
   // Segment: 'forvaltning' (denne motoren) | 'konsern' (plattform + felles + konsolidert)
   const [segment, setSegment] = useState('forvaltning');
-  const [sletteBekreft, setSletteBekreft] = useState(false);
 
   const m = useMemo(
     () => beregnInvestorModell({ antallMnd, fakta, drivere, startYm: plan.startYm }),
@@ -1553,15 +1553,16 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
     const ltv = levetidMnd !== null ? Math.round(m.cac.bidrag * levetidMnd) : null;
     const bemPerEnhet = Math.round((sanert.aarslonn * (1 + sanert.paslagPct / 100)) / sanert.enheterPerAarsverk / 12);
     const bidragEtter = m.cac.bidrag - bemPerEnhet;
+    const cacFull = m.cac.fullCac ?? m.cac.provisjon;
     return {
       margin: m.cac.bruttoHonorarNy > 0 ? Math.round((m.cac.bidrag / m.cac.bruttoHonorarNy) * 100) : null,
       levetidAar: levetidMnd !== null ? Math.round((levetidMnd / 12) * 10) / 10 : null,
       ltv,
-      ltvCac: ltv !== null && m.cac.provisjon > 0 ? Math.round((ltv / m.cac.provisjon) * 10) / 10 : null,
+      ltvCac: ltv !== null && cacFull > 0 ? Math.round((ltv / cacFull) * 10) / 10 : null,
       bemPerEnhet,
       bidragEtter,
       marginEtter: m.cac.bruttoHonorarNy > 0 ? Math.round((bidragEtter / m.cac.bruttoHonorarNy) * 100) : null,
-      paybackEtter: bidragEtter > 0 && m.cac.provisjon > 0 ? Math.round((m.cac.provisjon / bidragEtter) * 10) / 10 : null,
+      paybackEtter: bidragEtter > 0 && cacFull > 0 ? Math.round((cacFull / bidragEtter) * 10) / 10 : null,
     };
   }, [m.cac, sanert.aarligChurnPct, sanert.aarslonn, sanert.paslagPct, sanert.enheterPerAarsverk]);
 
@@ -1609,6 +1610,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
     r.push({ label: 'Bemanning, budsjettert %', serie: m.budsjettertPct, type: 'stock', info: true, fmt: (v) => `${v} %` });
     if (!alleNull(m.kost.mfFast)) r.push({ label: 'Fast markedsføring', serie: m.kost.mfFast });
     if (!alleNull(m.kost.provisjon)) r.push({ label: 'Salgsprovisjon (CAC)', serie: m.kost.provisjon });
+    if (!alleNull(m.kost.partner || [])) r.push({ label: 'Performance-partner', serie: m.kost.partner });
     if (!alleNull(m.kost.admin)) r.push({ label: 'Administrasjon', serie: m.kost.admin });
     if (!alleNull(m.kost.andre)) r.push({ label: 'Andre faste', serie: m.kost.andre });
     r.push({ label: 'Sum kostnader', serie: m.kostSum, sum: true });
@@ -1621,7 +1623,8 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const sisteIdx = m.N - 1;
   const antallEndret = ['nyePerMnd', 'aarligChurnPct', 'snittleieNye', 'honorarPctNye', 'oppstartPerEnhet', 'systemPerEnhet', 'enheterPerAarsverk', 'aarslonn', 'paslagPct', 'mfFast', 'provisjonPerNyEnhet', 'adminFast', 'andreFaste', 'indeksPct', 'lonnsvekstPct', 'kostInflasjonPct']
     .filter((k) => Math.abs((sanert[k] ?? 0) - (lagretDrivere[k] ?? 0)) > 1e-9).length
-    + (JSON.stringify(sanert.vekstplan || []) !== JSON.stringify(lagretDrivere.vekstplan || []) ? 1 : 0);
+    + (JSON.stringify(sanert.vekstplan || []) !== JSON.stringify(lagretDrivere.vekstplan || []) ? 1 : 0)
+    + (JSON.stringify(sanert.partner || {}) !== JSON.stringify(lagretDrivere.partner || {}) ? 1 : 0);
 
   // Bemanning: nå-situasjon (rail-sammendrag) + flaskehals-innsikt (hovedflaten)
   const pctNaa = m.budsjettertPct[0] || 0;
@@ -1649,56 +1652,42 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
 
   return (
     <div className="w-full" data-testid="modell-editor">
-      {/* Topplinje */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <button onClick={() => onTilbake?.()} data-testid="budsjett-tilbake" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-[#8f8a82] transition-colors hover:bg-black/[0.05] hover:text-[#1c1917]" title="Alle budsjetter">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          {readOnly ? (
-            <h2 className="truncate text-[19px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{navn}</h2>
-          ) : (
-            <input value={navn} maxLength={80} data-testid="modell-navn"
-              onChange={(e) => { setNavn(e.target.value); setSkittent(true); }}
-              className="-ml-1 w-[220px] min-w-0 rounded-[8px] border border-transparent bg-transparent px-1 text-[19px] font-bold tracking-[-0.01em] text-[#1c1917] outline-none transition-colors hover:border-black/[0.07] focus:border-black/[0.15] sm:w-[300px]" style={heading} />
-          )}
-          {/* Selskap: dette er Digihome AS' budsjett. Konsern er nå en egen sammenstilling under
-              selskapsvelgeren — det eldre plattform-laget i planen er kun tilgjengelig der det finnes. */}
-          <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#f0efec] py-0.5 pl-0.5 pr-2.5 text-[11.5px] font-bold text-[#57534e]" data-testid="modell-selskap">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#1c1917] text-[9.5px] font-bold text-white">DH</span> Digihome AS
+      {/* Topplinje — én linje: identitet til venstre, handlinger gruppert til høyre */}
+      <ModellTopplinje
+        selskap="digihome" testPrefix="modell"
+        navn={navn} onNavn={(v) => { setNavn(v); setSkittent(true); }} readOnly={readOnly} onTilbake={onTilbake}
+        startYm={plan.startYm} antallMnd={antallMnd} onHorisont={endreHorisont} horisontBusy={endrerHorisont}
+        horisontHint="Porteføljefakta hentes på nytt fra leieforholdene for hele den nye perioden. Lagres først når du trykker Lagre."
+        status={status} onStatus={(v) => { setStatus(v); lagre({ status: v }); }}
+        investorSynlig={investorSynlig} onInvestorSynlig={(v) => { setInvestorSynlig(v); lagre({ investorSynlig: v }); }}
+        delValg={[
+          { id: 'deck', ikon: Presentation, label: 'Åpne investordeck', under: 'Levende deck for denne planen (presenter-modus)', href: `/investor/deck?plan=${encodeURIComponent(plan.id)}`, testid: 'modell-deck' },
+          { id: 'xlsx', ikon: FileSpreadsheet, ikonFarge: 'text-[#15803d]', label: 'Last ned Excel', under: 'Arbeidsbok med levende formler', onClick: eksporterExcel, busy: eksporterer, testid: 'modell-excel-eksport' },
+          { id: 'pdf', ikon: FileText, ikonFarge: 'text-[#b91c1c]', label: 'Last ned PDF', under: 'Investorklar rapport med nøkkeltall og grafer', onClick: eksporterPdf, busy: eksportererPdf, testid: 'modell-pdf-eksport' },
+        ]}
+        merValg={[
+          { id: 'tour', ikon: HelpCircle, label: 'Omvisning', under: 'Se hvordan modellen henger sammen', onClick: () => setTourAktiv(true), testid: 'modell-tour-knapp' },
+        ]}
+        onSlett={slett}
+        skittent={skittent} lagrer={lagrer} lagret={lagret} onLagre={() => lagre()}
+        feil={feil}
+        venstreEkstra={plan.plattform ? (
+          <span className="hidden shrink-0 items-center gap-0.5 rounded-full bg-[#f0efec] p-0.5 lg:flex" data-testid="modell-segment">
+            {[['forvaltning', 'Forvaltning'], ['konsern', 'Eldre konsern-lag']].map(([v, l]) => (
+              <button key={v} onClick={() => setSegment(v)} data-testid={`modell-segment-${v}`}
+                className={`h-7 rounded-full px-3 text-[11.5px] font-bold transition-all ${segment === v ? 'bg-[#1c1917] text-white' : 'text-[#8f8a82] hover:text-[#1c1917]'}`}>{l}</button>
+            ))}
           </span>
-          {plan.plattform && (
-            <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-[#f0efec] p-0.5" data-testid="modell-segment">
-              {[['forvaltning', 'Forvaltning'], ['konsern', 'Eldre konsern-lag']].map(([v, l]) => (
-                <button key={v} onClick={() => setSegment(v)} data-testid={`modell-segment-${v}`}
-                  className={`h-7 rounded-full px-3 text-[11.5px] font-bold transition-all ${segment === v ? 'bg-[#1c1917] text-white' : 'text-[#8f8a82] hover:text-[#1c1917]'}`}>{l}</button>
-              ))}
-            </span>
-          )}
-          <span className="hidden shrink-0 text-[13px] text-[#a6a19a] lg:block">
-            {stor(mndLang(plan.startYm))} – {mndLang(ymPluss(plan.startYm, antallMnd - 1))} · {antallMnd} mnd
-          </span>
-          {/* Horisontvelger — utvid planen til 2/3 år (henter friske fakta) */}
-          {!readOnly && (
-            <span className="hidden shrink-0 items-center gap-1 sm:flex" data-testid="modell-horisont" title="Endre planens horisont — porteføljefakta hentes på nytt for hele perioden">
-              {[[12, '1 år'], [24, '2 år'], [36, '3 år']].map(([n, l]) => (
-                <button key={n} onClick={() => endreHorisont(n)} disabled={endrerHorisont} data-testid={`modell-horisont-${n}`}
-                  className={`h-7 rounded-full px-2.5 text-[11.5px] font-bold transition-all disabled:opacity-50 ${antallMnd === n ? 'bg-[#1c1917] text-white' : 'bg-[#f0efec] text-[#8f8a82] hover:text-[#1c1917]'}`}>
-                  {endrerHorisont === n ? <Loader2 className="h-3 w-3 animate-spin" /> : l}
-                </button>
-              ))}
-            </span>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        ) : null}
+      >
           {/* Forutsetningssett — velg scenario direkte fra topplinjen */}
           <div className="relative" data-testid="modell-scenariovalg">
             <button onClick={() => { setScenarioMenyAapen((v) => !v); setNyScenarioNavn(null); }} data-testid="modell-scenario-meny"
               title="Velg forutsetningssett (scenario)"
-              className={`flex h-9 max-w-[210px] shrink-0 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold transition-all ${aktivtScenario ? 'bg-[#f0ebfa] text-[#6d28d9]' : 'bg-white text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:text-[#1c1917]'}`}>
+              className={`${aktivtScenario ? PILL_LILLA : PILL} max-w-[210px]`}>
               <Bookmark className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden truncate sm:block">{aktivtScenario ? (scenarioer.find((sc) => sc.id === aktivtScenario)?.navn || 'Scenario') : 'Basis'}</span>
-              <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${scenarioMenyAapen ? 'rotate-180' : ''} ${aktivtScenario ? 'text-[#a78bfa]' : 'text-[#c2beb8]'}`} />
+              <ChevronDown className={`h-3 w-3 shrink-0 transition-transform duration-200 ${scenarioMenyAapen ? 'rotate-180' : ''} ${aktivtScenario ? 'text-[#a78bfa]' : 'text-[#c2beb8]'}`} />
             </button>
             {scenarioMenyAapen && (
               <>
@@ -1753,70 +1742,30 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                       )}
                     </>
                   )}
+                  {/* Scenariosammenligning — A/B-duell mellom driversett, bor hos scenarioene */}
+                  <div className="mx-1.5 my-1 border-t border-black/[0.06]" />
+                  <button onClick={() => { setScenarioMenyAapen(false); setVisSammenlign(true); }} data-testid="modell-sammenlign-knapp"
+                    title="Sammenlign to scenarioer side ved side — resultat, break-even, kapitalbehov og drivere"
+                    className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-[#f7f6f3]">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[#f5f4f1]"><ArrowLeftRight className="h-3.5 w-3.5 text-[#7c3aed]" /></span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold text-[#1c1917]">Sammenlign scenarioer</span>
+                      <span className="block text-[11px] text-[#a6a19a]">Side ved side — resultat, break-even, kapitalbehov</span>
+                    </span>
+                  </button>
                 </div>
               </>
             )}
           </div>
-          {/* Levende investordeck — presenter-modus (admin-sesjon). Investorer får personlig lenke fra Investorrom. */}
-          <a href={`/investor/deck?plan=${encodeURIComponent(plan.id)}`} target="_blank" rel="noopener" data-testid="modell-deck"
-            title="Åpne det levende investordecket for denne planen (presenter-modus)"
-            className="flex h-9 shrink-0 items-center gap-2 rounded-full bg-[#1c1917] px-3.5 text-[12.5px] font-medium text-white transition-colors hover:bg-black/80">
-            <Presentation className="h-3.5 w-3.5" />
-            <span className="hidden sm:block">Deck</span>
-          </a>
-          {/* Excel-eksport — investorklar arbeidsbok med formler */}
-          <button onClick={eksporterExcel} disabled={eksporterer} data-testid="modell-excel-eksport"
-            title="Last ned som Excel — Sammendrag, Månedsbudsjett med levende formler, Årsoversikt og Forutsetninger"
-            className="flex h-9 shrink-0 items-center gap-2 rounded-full bg-white px-3.5 text-[12.5px] font-medium text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-all hover:text-[#1c1917] disabled:opacity-60">
-            {eksporterer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-[#15803d]" />}
-            <span className="hidden sm:block">Excel</span>
-          </button>
-          {/* PDF-rapport — investorklart dokument */}
-          <button onClick={eksporterPdf} disabled={eksportererPdf} data-testid="modell-pdf-eksport"
-            title="Last ned PDF-rapport — forside, nøkkeltall, grafer, månedsbudsjett og forutsetninger"
-            className="flex h-9 shrink-0 items-center gap-2 rounded-full bg-white px-3.5 text-[12.5px] font-medium text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-all hover:text-[#1c1917] disabled:opacity-60">
-            {eksportererPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5 text-[#b91c1c]" />}
-            <span className="hidden sm:block">PDF</span>
-          </button>
-          {/* Scenariosammenligning — A/B-duell mellom driversett */}
-          <button onClick={() => setVisSammenlign(true)} data-testid="modell-sammenlign-knapp"
-            title="Sammenlign to scenarioer side ved side — resultat, break-even, kapitalbehov og drivere"
-            className="flex h-9 shrink-0 items-center gap-2 rounded-full bg-white px-3.5 text-[12.5px] font-medium text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-all hover:text-[#1c1917]">
-            <ArrowLeftRight className="h-3.5 w-3.5 text-[#7c3aed]" />
-            <span className="hidden sm:block">Sammenlign</span>
-          </button>
-          {/* Omvisning */}
-          <button onClick={() => setTourAktiv(true)} data-testid="modell-tour-knapp" title="Omvisning — se hvordan budsjettmodellen henger sammen"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#a6a19a] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-colors hover:text-[#1c1917]">
-            <HelpCircle className="h-4 w-4" />
-          </button>
-          {/* Vis/skjul forutsetninger — bor i topp-raden (kun forvaltningsvisningen) */}
+          {/* Vis/skjul forutsetninger (kun forvaltningsvisningen) */}
           {segment === 'forvaltning' && <button onClick={() => setRailAapen(!railAapen)} data-testid={railAapen ? 'modell-rail-skjul' : 'modell-rail-vis'}
             title={railAapen ? 'Skjul forutsetninger — mer plass til tallene' : 'Vis forutsetninger'}
-            className={`relative flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-medium transition-all ${railAapen ? 'bg-[#141414] text-white' : 'bg-white text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:text-[#1c1917]'}`}>
+            className={`relative ${railAapen ? PILL_AKTIV : PILL}`}>
             <SlidersHorizontal className="h-3.5 w-3.5" />
             <span className="hidden sm:block">Forutsetninger</span>
-            {!railAapen && antallEndret > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#6d28d9] ring-2 ring-[#f7f7f5]" />}
+            {!railAapen && antallEndret > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#6d28d9] ring-2 ring-[#f7f6f3]" />}
           </button>}
-          {!readOnly && (
-            <>
-              <button onClick={() => { const ny = !investorSynlig; setInvestorSynlig(ny); lagre({ investorSynlig: ny }); }}
-                data-testid="budsjett-investor-bryter"
-                className={`flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-medium transition-all ${investorSynlig ? 'bg-[#f0ebfa] text-[#6d28d9]' : 'bg-white text-[#8f8a82] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:text-[#57534e]'}`}>
-                {investorSynlig ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                <span className="hidden min-[440px]:block">{investorSynlig ? 'I investorrommet' : 'Ikke delt'}</span>
-              </button>
-              <button onClick={() => lagre()} disabled={lagrer || !skittent} data-testid="modell-lagre" className={`${KNAPP_PRIMAER} relative`}>
-                {lagrer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : lagret ? <Check className="h-3.5 w-3.5" /> : null}
-                {lagret ? 'Lagret' : 'Lagre'}
-                {skittent && !lagrer && <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#6d28d9] ring-2 ring-[#f7f7f5]" title="Ulagrede endringer" />}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {feil && <p className="mt-3 text-[13px] text-[#b3261e]" data-testid="modell-feil">{feil}</p>}
+      </ModellTopplinje>
 
       {/* Konsern: plattform + felles + konsolidert — egen cockpit, samme plan */}
       {segment === 'konsern' ? (
@@ -1824,7 +1773,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
       ) : null}
 
       {/* Cockpit (forvaltning) */}
-      <div className={`mt-4 flex flex-col gap-3 xl:flex-row xl:items-start ${segment === 'konsern' ? 'hidden' : ''}`}>
+      <div className={`mt-3 flex flex-col gap-3 xl:flex-row xl:items-start ${segment === 'konsern' ? 'hidden' : ''}`}>
         {/* ── Venstre: forutsetninger — investorens mentale kjede (vis/skjul i topp-raden) ── */}
         {railAapen && (
         <>
@@ -1832,7 +1781,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             slipper å skyve hele cockpiten ned på mobil/nettbrett. */}
         <div className="fixed inset-0 z-[70] bg-black/25 backdrop-blur-[2px] xl:hidden" onClick={() => setRailAapen(false)} data-testid="modell-rail-overlay" />
         <aside
-          className="fixed inset-x-0 bottom-0 z-[71] max-h-[84vh] w-full shrink-0 overflow-y-auto overscroll-contain rounded-t-[22px] bg-[#f7f6f3] px-3 pb-[max(14px,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-18px_60px_rgba(20,16,40,0.28)] xl:sticky xl:inset-x-auto xl:bottom-auto xl:top-3 xl:z-auto xl:max-h-[calc(100vh-24px)] xl:w-[344px] xl:rounded-none xl:bg-transparent xl:p-0 xl:shadow-none"
+          className="fixed inset-x-0 bottom-0 z-[71] max-h-[84vh] w-full shrink-0 overflow-y-auto overscroll-contain rounded-t-[22px] bg-[#f7f6f3] px-3 pb-[max(14px,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-18px_60px_rgba(20,16,40,0.28)] xl:sticky xl:inset-x-auto xl:bottom-auto xl:top-[64px] xl:z-auto xl:max-h-[calc(100vh-76px)] xl:w-[344px] xl:rounded-none xl:bg-transparent xl:p-0 xl:shadow-none"
           data-testid="modell-drivere" style={{ scrollbarWidth: 'thin' }}
         >
           {/* Mobil-topp: håndtak + Ferdig */}
@@ -1924,10 +1873,25 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             </Seksjon>
 
             <Seksjon tittel="Unit economics" ikon={Scale} open={aapne.unit} onToggle={() => veksle('unit')}
-              sammendrag={`CAC ${kr0(sanert.provisjonPerNyEnhet)} · system ${kr0(sanert.systemPerEnhet)}/enh`}>
-              <Felt label="Systemkostnad per enhet" k="systemPerEnhet" {...feltProps} enhet="kr/mnd" testid="driver-system" heltall />
-              <Felt label="Salgsprovisjon per ny (CAC)" k="provisjonPerNyEnhet" {...feltProps} enhet="kr" testid="driver-cac" heltall />
+              sammendrag={`system ${kr0(sanert.systemPerEnhet)}/enh · bidrag ${kr0(m.cac.bidrag)}`}>
+              <Felt label="Systemkostnad per enhet" k="systemPerEnhet" {...feltProps} enhet="kr/mnd" testid="driver-system" heltall hint="plattformlisensen fra Digihome Tech AS — elimineres i konsernet" />
               <Felt label="Oppstartshonorar" k="oppstartPerEnhet" {...feltProps} enhet="kr" testid="driver-oppstart" heltall hint="engangsbeløp per ny signering" />
+            </Seksjon>
+
+            <Seksjon tittel="Markedsføring & salg" ikon={Megaphone} open={aapne.salg} onToggle={() => veksle('salg')}
+              sammendrag={`CAC ${kr0(m.cac.fullCac)} · ${kr0(sanert.mfFast)}/mnd${sanert.partner.paa ? ' · partner' : ''}`}>
+              <Felt label="Salgsprovisjon per ny (CAC)" k="provisjonPerNyEnhet" {...feltProps} enhet="kr" testid="driver-cac" heltall hint="engangs anskaffelseskost per signert enhet" />
+              <Felt label="Fast markedsføring" k="mfFast" {...feltProps} enhet="kr/mnd" testid="driver-mf" heltall hint="merkevare, innhold, verktøy — uavhengig av volum" />
+              <PartnerKort
+                verdi={sanert.partner} readOnly={readOnly} enhetsnavn="enhet" testid="driver-partner"
+                onEndre={(p) => settDriver('partner', p)}
+                perKunde={sanert.partner.paa ? m.cac.partnerPerEnhet : null}
+                iPerioden={sanert.partner.paa ? s.sumPartner : null}
+                andelPct={sanert.partner.paa && s.sumInntekt > 0 ? Math.round((s.sumPartner / s.sumInntekt) * 100) : null}
+              />
+              <p className="mt-2 text-[11px] leading-snug text-[#a6a19a]">
+                S&M i perioden: <b className="text-[#57534e]">{kr0(s.sumSm)} kr</b>{s.smAndelPct != null ? ` · ${s.smAndelPct} % av inntekten` : ''}
+              </p>
             </Seksjon>
 
             <Seksjon tittel="Organisasjon" ikon={Users} open={aapne.org} onToggle={() => veksle('org')}
@@ -1948,8 +1912,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             </Seksjon>
 
             <Seksjon tittel="Faste kostnader" ikon={Building2} open={aapne.faste} onToggle={() => veksle('faste')}
-              sammendrag={`${kr0(sanert.mfFast + sanert.adminFast + sanert.andreFaste)} kr/mnd`}>
-              <Felt label="Fast markedsføring" k="mfFast" {...feltProps} enhet="kr/mnd" testid="driver-mf" heltall />
+              sammendrag={`${kr0(sanert.adminFast + sanert.andreFaste)} kr/mnd`}>
               <Felt label="Administrasjon" k="adminFast" {...feltProps} enhet="kr/mnd" testid="driver-admin" heltall />
               <Felt label="Andre faste kostnader" k="andreFaste" {...feltProps} enhet="kr/mnd" testid="driver-andre" heltall />
             </Seksjon>
@@ -1986,16 +1949,6 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                     {henterFakta ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} Oppdater fra leieforholdene
                   </button>
                 ) : <span />}
-                {!readOnly && (!sletteBekreft ? (
-                  <button onClick={() => setSletteBekreft(true)} data-testid="budsjett-slett" className="flex items-center gap-1 text-[11.5px] font-medium text-[#c2beb8] transition-colors hover:text-[#c2413b]">
-                    <Trash2 className="h-3 w-3" /> Slett
-                  </button>
-                ) : (
-                  <span className="flex items-center gap-1">
-                    <button onClick={slett} data-testid="budsjett-slett-bekreft" className="rounded-[7px] bg-[#fdf0ef] px-2 py-0.5 text-[11px] font-bold text-[#c2413b]">Ja, slett</button>
-                    <button onClick={() => setSletteBekreft(false)} className="px-1 py-0.5 text-[11px] font-medium text-[#a8a29a]">Avbryt</button>
-                  </span>
-                ))}
               </div>
             </div>
           </div>
@@ -2029,6 +1982,25 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                     </span>
                   )}
                 </div>
+                {/* Inntekter mot kostnader — dekningsgraden forteller hvor langt unna balanse perioden er */}
+                <div className="mt-3 grid grid-cols-2 gap-3 border-t border-black/[0.05] pt-2.5" data-testid="modell-dekning">
+                  <div className="min-w-0">
+                    <p className="text-[10.5px] font-bold uppercase tracking-[0.07em] text-[#b5b0a8]">Inntekter</p>
+                    <p className="truncate text-[15px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{kr(s.sumInntekt)}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10.5px] font-bold uppercase tracking-[0.07em] text-[#b5b0a8]">Kostnader</p>
+                    <p className="truncate text-[15px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{kr(s.sumKost)}</p>
+                  </div>
+                </div>
+                {s.sumKost > 0 && (
+                  <div className="mt-2">
+                    <div className="flex h-[5px] overflow-hidden rounded-full bg-[#fdf0ef]">
+                      <span className="h-full rounded-full bg-[#0a7d55] transition-all duration-500" style={{ width: `${Math.min(100, (s.sumInntekt / s.sumKost) * 100)}%` }} />
+                    </div>
+                    <p className="mt-1 text-[10.5px] text-[#a6a19a]">inntektene dekker <b className="text-[#57534e]">{Math.round((s.sumInntekt / s.sumKost) * 100)} %</b> av kostnadene i perioden</p>
+                  </div>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:col-span-7 xl:grid-cols-2">
@@ -2224,7 +2196,13 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                   <span className="text-[#57534e]">= Bidrag etter bemanning</span>
                   <span className={`font-bold ${unit.bidragEtter > 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`} data-testid="modell-bidrag-etter">{kr0(unit.bidragEtter)} kr/mnd{unit.marginEtter !== null && <span className="ml-1 text-[11px] font-bold text-[#a6a19a]">({unit.marginEtter} %)</span>}</span>
                 </div>
-                <div className="flex justify-between border-t border-black/[0.05] pt-1.5"><span className="text-[#8f8a82]">CAC</span><span className="font-medium text-[#57534e]">{kr0(m.cac.provisjon)} kr</span></div>
+                <div className="flex justify-between border-t border-black/[0.05] pt-1.5"><span className="text-[#8f8a82]">CAC <span className="text-[#c2beb8]">(salgsprovisjon)</span></span><span className="font-medium text-[#57534e]">{kr0(m.cac.provisjon)} kr</span></div>
+                {sanert.partner.paa && (
+                  <>
+                    <div className="flex justify-between"><span className="text-[#8f8a82]">+ Partnerhonorar <span className="text-[#c2beb8]">({sanert.partner.honorarPct.toString().replace('.', ',')} % · {sanert.partner.varighetMnd > 0 ? `${sanert.partner.varighetMnd} mnd` : 'livstid'})</span></span><span className="font-medium text-[#57534e]">{kr0(m.cac.partnerPerEnhet)} kr</span></div>
+                    <div className="flex justify-between"><span className="text-[#57534e]">= Full CAC</span><span className="font-semibold text-[#1c1917]" data-testid="modell-full-cac">{kr0(m.cac.fullCac)} kr</span></div>
+                  </>
+                )}
                 <div className="flex justify-between"><span className="text-[#8f8a82]">LTV <span className="text-[#c2beb8]">({unit.levetidAar === null ? 'fra churn' : `${kma(unit.levetidAar)} år levetid`})</span></span><span className="font-medium text-[#57534e]">{unit.ltv === null ? '—' : `${kr0(unit.ltv)} kr`}</span></div>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">
@@ -2294,12 +2272,18 @@ function TornadoListe({ m, sanert, fakta, antallMnd, startYm }) {
       ['andreFaste', 'Andre faste'],
       ['indeksPct', 'Indeksregulering (leie)'], ['lonnsvekstPct', 'Lønnsvekst'],
       ['kostInflasjonPct', 'Kostnadsinflasjon'],
+      ...(sanert.partner?.paa ? [['partner.honorarPct', 'Partnerhonorar (%)'], ['partner.fastPerMnd', 'Partner fast honorar']] : []),
     ];
+    // Nøstede drivere («partner.honorarPct») skaleres i sitt objekt
+    const les = (k) => (k.includes('.') ? sanert[k.split('.')[0]]?.[k.split('.')[1]] : sanert[k]);
+    const skriv = (k, verdi) => (k.includes('.')
+      ? { ...sanert, [k.split('.')[0]]: { ...sanert[k.split('.')[0]], [k.split('.')[1]]: verdi } }
+      : { ...sanert, [k]: verdi });
     const rader = kandidater.map(([k, label]) => {
-      const v = sanert[k];
+      const v = les(k);
       if (!Number.isFinite(v) || v === 0) return null;
       // Veksttakten skaleres i ALLE faser — ikke bare grunntakten
-      const over = (f) => (k === 'nyePerMnd' ? skalerVekst(sanert, f) : { ...sanert, [k]: v * f });
+      const over = (f) => (k === 'nyePerMnd' ? skalerVekst(sanert, f) : skriv(k, v * f));
       const opp = beregnInvestorModell({ antallMnd, fakta, drivere: over(1.1), startYm }).sammendrag.resultat - basis;
       const ned = beregnInvestorModell({ antallMnd, fakta, drivere: over(0.9), startYm }).sammendrag.resultat - basis;
       const spenn = (Math.abs(opp) + Math.abs(ned)) / 2;

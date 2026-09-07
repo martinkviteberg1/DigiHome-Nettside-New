@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import DeckLevende from '@/components/investor/DeckLevende';
+import DeckKonsept from '@/components/investor/DeckKonsept';
 
 /* /investor/deck?t=<lenke>            → investor (ev. passord)
    /investor/deck?plan=<id>            → presenter (admin-sesjon fra localStorage eller ?key=) */
@@ -10,6 +10,7 @@ function DeckInnhold() {
   const sp = useSearchParams();
   const t = sp.get('t') || '';
   const planId = sp.get('plan') || '';
+  const techId = sp.get('tech') || '';
   const [adminKey, setAdminKey] = useState(sp.get('key') || '');
   const [klar, setKlar] = useState(Boolean(t || sp.get('key')));
   useEffect(() => {
@@ -20,7 +21,7 @@ function DeckInnhold() {
     setKlar(true);
   }, [klar]);
   if (!klar) return <div className="min-h-[100svh]" style={{ background: '#F3F1EC' }} />;
-  return <DeckLevende token={t} adminKey={t ? '' : adminKey} planId={planId} />;
+  return <DeckKonsept token={t} adminKey={t ? '' : adminKey} planId={planId} techId={techId} />;
 }
 
 export default function DeckSide() {

@@ -9529,23 +9529,39 @@ async function handleRoute(request, { params }) {
         // Plan: presenter kan velge fritt (?plan=); investor ser bare investorSynlige — «vedtatt» først, så nyeste.
         const onsket = dUrl.searchParams.get('plan') || '';
         const alle = await listPlaner(db, { kunInvestorSynlige: !presenter });
-        // Decket forteller forvaltningshistorien (Digihome AS) — Tech-budsjetter får egen deck-variant senere.
+        // Decket forteller hele konseptet: Digihome AS (forvaltning) er hovedplanen; Tech-planen
+        // (SaaS) hentes i tillegg — koblet (kobletPlanId), ellers vedtatt m/ samme start, ellers nyeste.
         const modeller = alle.filter((p) => p.type === 'modell' && p.selskap !== 'tech');
+        const techPlaner = alle.filter((p) => p.type === 'modell' && p.selskap === 'tech');
         let valgt = onsket ? modeller.find((p) => p.id === onsket) : null;
         if (!valgt) valgt = modeller.find((p) => p.status === 'vedtatt') || modeller[0] || null;
         if (!valgt) return cors(NextResponse.json({ ok: false, error: 'Ingen plan er delt med investorrommet ennå' }, { status: 404 }));
         const plan = await hentPlan(db, valgt.id);
         if (!plan) return cors(NextResponse.json({ error: 'Plan ikke funnet' }, { status: 404 }));
+        const onsketTech = dUrl.searchParams.get('tech') || '';
+        const techValgt = (onsketTech && techPlaner.find((p) => p.id === onsketTech))
+          || techPlaner.find((p) => p.kobletPlanId === plan.id && p.status === 'vedtatt')
+          || techPlaner.find((p) => p.kobletPlanId === plan.id)
+          || techPlaner.find((p) => p.status === 'vedtatt' && p.startYm === plan.startYm)
+          || techPlaner.find((p) => p.startYm === plan.startYm)
+          || techPlaner[0] || null;
+        const techPlan = techValgt ? await hentPlan(db, techValgt.id) : null;
         return cors(NextResponse.json({
           ok: true,
           presenter: Boolean(presenter),
           investor: link ? { label: link.label, harPassord: Boolean(link.pinHash), kanSporre: (link.sections || []).includes('qa') } : null,
           planer: presenter ? modeller.map((p) => ({ id: p.id, navn: p.navn, status: p.status, investorSynlig: p.investorSynlig })) : undefined,
+          techPlaner: presenter ? techPlaner.map((p) => ({ id: p.id, navn: p.navn, status: p.status, investorSynlig: p.investorSynlig, kobletPlanId: p.kobletPlanId || null })) : undefined,
           plan: {
             id: plan.id, navn: plan.navn, status: plan.status, startYm: plan.startYm, antallMnd: plan.antallMnd, notat: plan.notat || '',
             drivere: plan.drivere, fakta: plan.fakta, scenarioer: plan.scenarioer || [], plattform: plan.plattform, felles: plan.felles,
             oppdatertAt: plan.oppdatertAt || plan.opprettetAt || null,
           },
+          tech: techPlan ? {
+            id: techPlan.id, navn: techPlan.navn, status: techPlan.status, startYm: techPlan.startYm, antallMnd: techPlan.antallMnd,
+            tech: techPlan.tech || {}, fakta: techPlan.fakta || {}, kobletPlanId: techPlan.kobletPlanId || null,
+            oppdatertAt: techPlan.oppdatertAt || techPlan.opprettetAt || null,
+          } : null,
         }));
       }
       return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));

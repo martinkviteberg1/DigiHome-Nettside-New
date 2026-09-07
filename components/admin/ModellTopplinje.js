@@ -42,7 +42,7 @@ const STATUSER = {
 };
 
 /* ── Meny: generisk nedtrekk med utenfor-klikk og Esc ── */
-export function Meny({ knapp, aapen, onLukk, bredde = 268, align = 'right', children, testid }) {
+export function Meny({ knapp, aapen, onLukk, bredde = 268, align = 'right', children, testid, klasse = '' }) {
   const ref = useRef(null);
   useEffect(() => {
     if (!aapen) return undefined;
@@ -53,7 +53,7 @@ export function Meny({ knapp, aapen, onLukk, bredde = 268, align = 'right', chil
     return () => { document.removeEventListener('mousedown', klikk); document.removeEventListener('keydown', esc); };
   }, [aapen, onLukk]);
   return (
-    <div className="relative shrink-0" ref={ref}>
+    <div className={`relative shrink-0 ${klasse}`} ref={ref}>
       {knapp}
       {aapen && (
         <div role="menu" data-testid={testid} style={{ width: bredde }}
@@ -112,7 +112,7 @@ export default function ModellTopplinje({
   const horisonter = [[12, '1 år'], [24, '2 år'], [36, '3 år']];
   const egendefinert = !horisonter.some(([n]) => n === antallMnd);
   const visDel = !readOnly && (onInvestorSynlig || delValg.length > 0);
-  const visMer = !readOnly && (merValg.length > 0 || onSlett);
+  const visMer = !readOnly && (merValg.length > 0 || onSlett || onStatus);
 
   return (
     <div className="z-30 -mx-4 -mt-3 border-b border-black/[0.05] bg-[#f7f6f3]/92 px-4 pb-2.5 pt-2.5 backdrop-blur-md sm:-mx-6 sm:px-6 lg:sticky lg:top-0" data-testid={`${tp}-topplinje`}>
@@ -128,15 +128,15 @@ export default function ModellTopplinje({
             <h2 className="truncate text-[18px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{navn}</h2>
           ) : (
             <input value={navn} maxLength={80} data-testid={`${tp}-navn`} onChange={(e) => onNavn(e.target.value)}
-              className="-ml-1 w-[160px] min-w-0 shrink rounded-[8px] border border-transparent bg-transparent px-1 text-[18px] font-bold tracking-[-0.01em] text-[#1c1917] outline-none transition-colors hover:border-black/[0.07] focus:border-black/[0.15] sm:w-[240px] xl:w-[300px]" style={heading} />
+              className="-ml-1 min-w-[56px] flex-1 rounded-[8px] border border-transparent bg-transparent px-1 text-[18px] font-bold tracking-[-0.01em] text-[#1c1917] outline-none transition-colors hover:border-black/[0.07] focus:border-black/[0.15] sm:max-w-[240px] xl:max-w-[320px]" style={heading} />
           )}
 
           {/* Status: utkast / vedtatt — popover */}
           {onStatus && !readOnly ? (
-            <Meny aapen={meny === 'status'} onLukk={lukk} bredde={288} align="left" testid={`${tp}-status-meny`}
+            <Meny aapen={meny === 'status'} onLukk={lukk} bredde={288} align="left" testid={`${tp}-status-meny`} klasse="hidden md:block"
               knapp={(
                 <button onClick={() => veksle('status')} data-testid={`${tp}-status`} title="Budsjettets status"
-                  className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-white pl-2.5 pr-2 text-[12px] font-semibold shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-all hover:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.16)] ${st.tekst}`}>
+                  className={`hidden h-8 shrink-0 items-center gap-1.5 rounded-full bg-white pl-2.5 pr-2 text-[12px] font-semibold shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-all hover:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.16)] md:flex ${st.tekst}`}>
                   <span className={`h-2 w-2 rounded-full ${st.prikk}`} />
                   {st.label}
                   <ChevronDown className={`h-3 w-3 text-[#c2beb8] transition-transform ${meny === 'status' ? 'rotate-180' : ''}`} />
@@ -230,6 +230,17 @@ export default function ModellTopplinje({
                   <MoreHorizontal className="h-4 w-4" />
                 </button>
               )}>
+              {onStatus && (
+                <div className="md:hidden" data-testid={`${tp}-status-mobil`}>
+                  <MenyTittel>Status</MenyTittel>
+                  {Object.entries(STATUSER).map(([id, v]) => (
+                    <MenyValg key={id} label={v.label} under={v.under} valgt={status === id}
+                      ikon={() => <span className={`h-2.5 w-2.5 rounded-full ${v.prikk}`} />}
+                      onClick={() => { if (status !== id) onStatus(id); lukk(); }} />
+                  ))}
+                  {(merValg.length > 0 || onSlett) && <MenySkille />}
+                </div>
+              )}
               {merValg.map((v) => (
                 <MenyValg key={v.id} ikon={v.ikon} ikonFarge={v.ikonFarge} label={v.label} under={v.under} busy={v.busy} testid={v.testid}
                   onClick={() => { v.onClick?.(); lukk(); }} />
