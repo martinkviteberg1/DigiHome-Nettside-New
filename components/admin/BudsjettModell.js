@@ -18,9 +18,10 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   ArrowLeft, ArrowRight, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Plus, X, RotateCcw, ChevronDown,
   SlidersHorizontal, TrendingUp, Scale, Users, Building2, Bookmark, HelpCircle, FileSpreadsheet, FileText, ArrowLeftRight,
-  CalendarDays, ChevronLeft, ChevronRight,
+  CalendarDays, ChevronLeft, ChevronRight, Presentation,
 } from 'lucide-react';
 import Omvisning from '@/components/admin/Omvisning';
+import KonsernModell from '@/components/admin/KonsernModell';
 import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE, skalerVekst } from '@/lib/budsjett-modell';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
@@ -1369,6 +1370,8 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const [henterFakta, setHenterFakta] = useState(false);
   const [endrerHorisont, setEndrerHorisont] = useState(0);
   const [visning, setVisning] = useState(plan.antallMnd > 12 ? 'teleskop' : 'mnd');
+  // Segment: 'forvaltning' (denne motoren) | 'konsern' (plattform + felles + konsolidert)
+  const [segment, setSegment] = useState('forvaltning');
   const [sletteBekreft, setSletteBekreft] = useState(false);
 
   const m = useMemo(
@@ -1658,7 +1661,13 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
               onChange={(e) => { setNavn(e.target.value); setSkittent(true); }}
               className="-ml-1 w-[220px] min-w-0 rounded-[8px] border border-transparent bg-transparent px-1 text-[19px] font-bold tracking-[-0.01em] text-[#1c1917] outline-none transition-colors hover:border-black/[0.07] focus:border-black/[0.15] sm:w-[300px]" style={heading} />
           )}
-          <span className="hidden shrink-0 rounded-full bg-[#f0efec] px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#78716c] sm:block">Budsjett</span>
+          {/* Segmentbryter: forvaltningsmotoren eller konsernet (plattform + felles + konsolidert) */}
+          <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-[#f0efec] p-0.5" data-testid="modell-segment">
+            {[['forvaltning', 'Forvaltning'], ['konsern', 'Konsern']].map(([v, l]) => (
+              <button key={v} onClick={() => setSegment(v)} data-testid={`modell-segment-${v}`}
+                className={`h-7 rounded-full px-3 text-[11.5px] font-bold transition-all ${segment === v ? 'bg-[#1c1917] text-white' : 'text-[#8f8a82] hover:text-[#1c1917]'}`}>{l}</button>
+            ))}
+          </span>
           <span className="hidden shrink-0 text-[13px] text-[#a6a19a] lg:block">
             {stor(mndLang(plan.startYm))} – {mndLang(ymPluss(plan.startYm, antallMnd - 1))} · {antallMnd} mnd
           </span>
@@ -1741,6 +1750,13 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
               </>
             )}
           </div>
+          {/* Levende investordeck — presenter-modus (admin-sesjon). Investorer får personlig lenke fra Investorrom. */}
+          <a href={`/investor/deck?plan=${encodeURIComponent(plan.id)}`} target="_blank" rel="noopener" data-testid="modell-deck"
+            title="Åpne det levende investordecket for denne planen (presenter-modus)"
+            className="flex h-9 shrink-0 items-center gap-2 rounded-full bg-[#1c1917] px-3.5 text-[12.5px] font-medium text-white transition-colors hover:bg-black/80">
+            <Presentation className="h-3.5 w-3.5" />
+            <span className="hidden sm:block">Deck</span>
+          </a>
           {/* Excel-eksport — investorklar arbeidsbok med formler */}
           <button onClick={eksporterExcel} disabled={eksporterer} data-testid="modell-excel-eksport"
             title="Last ned som Excel — Sammendrag, Månedsbudsjett med levende formler, Årsoversikt og Forutsetninger"
@@ -1767,14 +1783,14 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#a6a19a] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-colors hover:text-[#1c1917]">
             <HelpCircle className="h-4 w-4" />
           </button>
-          {/* Vis/skjul forutsetninger — bor i topp-raden */}
-          <button onClick={() => setRailAapen(!railAapen)} data-testid={railAapen ? 'modell-rail-skjul' : 'modell-rail-vis'}
+          {/* Vis/skjul forutsetninger — bor i topp-raden (kun forvaltningsvisningen) */}
+          {segment === 'forvaltning' && <button onClick={() => setRailAapen(!railAapen)} data-testid={railAapen ? 'modell-rail-skjul' : 'modell-rail-vis'}
             title={railAapen ? 'Skjul forutsetninger — mer plass til tallene' : 'Vis forutsetninger'}
             className={`relative flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-medium transition-all ${railAapen ? 'bg-[#141414] text-white' : 'bg-white text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:text-[#1c1917]'}`}>
             <SlidersHorizontal className="h-3.5 w-3.5" />
             <span className="hidden sm:block">Forutsetninger</span>
             {!railAapen && antallEndret > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#6d28d9] ring-2 ring-[#f7f7f5]" />}
-          </button>
+          </button>}
           {!readOnly && (
             <>
               <button onClick={() => { const ny = !investorSynlig; setInvestorSynlig(ny); lagre({ investorSynlig: ny }); }}
@@ -1795,8 +1811,13 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
 
       {feil && <p className="mt-3 text-[13px] text-[#b3261e]" data-testid="modell-feil">{feil}</p>}
 
-      {/* Cockpit */}
-      <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-start">
+      {/* Konsern: plattform + felles + konsolidert — egen cockpit, samme plan */}
+      {segment === 'konsern' ? (
+        <KonsernModell plan={plan} drivere={drivere} fakta={fakta} antallMnd={antallMnd} startYm={plan.startYm} api={api} readOnly={readOnly} onLagret={onEndret} />
+      ) : null}
+
+      {/* Cockpit (forvaltning) */}
+      <div className={`mt-4 flex flex-col gap-3 xl:flex-row xl:items-start ${segment === 'konsern' ? 'hidden' : ''}`}>
         {/* ── Venstre: forutsetninger — investorens mentale kjede (vis/skjul i topp-raden) ── */}
         {railAapen && (
         <>

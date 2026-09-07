@@ -131,6 +131,18 @@ export default function InvestorRoomPage() {
               <HeroKpi label="CAC-payback" value={inv.payback?.paybackMonths != null ? `${inv.payback.paybackMonths} mnd` : '—'} sub={`Bruttomargin ${inv.payback?.grossMarginPct != null ? Math.round(inv.payback.grossMarginPct * 100) : '—'} %`} icon={Clock} />
             </div>
           )}
+
+          {/* Levende deck — planen som presentasjon, med drivere investoren kan skru på selv */}
+          {(data.viewer?.sections || []).includes('deck') && (
+            <a href={`/investor/deck?t=${encodeURIComponent(token)}`} className="group mt-8 flex flex-col gap-4 rounded-2xl bg-[#cf97fc]/[0.08] ring-1 ring-[#cf97fc]/25 p-6 transition-colors hover:bg-[#cf97fc]/[0.12] sm:flex-row sm:items-center sm:justify-between" data-testid="investor-deck-lenke">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#cf97fc] mb-2 flex items-center gap-2"><Sparkles className="w-3.5 h-3.5" /> Levende deck</p>
+                <p className="text-[20px] font-bold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-heading)' }}>Planen – som presentasjon du kan skru på</p>
+                <p className="text-[13.5px] text-white/50 mt-1.5 max-w-xl leading-relaxed">To motorer, ett konsern. Se budsjettet måned for måned, prøv «hva om» og endre driverne selv – ingenting lagres.</p>
+              </div>
+              <span className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-[#0a0a0a] transition-transform group-hover:translate-x-0.5">Åpne decket <ChevronRight className="w-4 h-4" /></span>
+            </a>
+          )}
         </section>
 
         {data.metrics && <GrowthSection metrics={data.metrics} />}

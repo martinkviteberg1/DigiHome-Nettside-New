@@ -53,6 +53,7 @@ import {
   listDocuments as ddListDocuments, updateDocument as ddUpdateDocument, getDocument as ddGetDocument,
   deleteDocument as ddDeleteDocument, publicDocumentView as ddPublicDocView,
   saveChunk as ddSaveChunk, assembleChunks as ddAssembleChunks, cleanupChunks as ddCleanupChunks,
+  verifyPin as ddVerifyPin, pinCookieValue as ddPinCookieValue,
   askQuestion as ddAskQuestion, listQuestionsForLink as ddListQuestionsForLink,
   listAllQuestions as ddListAllQuestions, answerQuestion as ddAnswerQuestion, deleteQuestion as ddDeleteQuestion,
 } from '@/lib/investor-room';
@@ -9448,6 +9449,79 @@ async function handleRoute(request, { params }) {
       const id = (new URL(request.url).searchParams.get('id') || '').trim();
       const result = await ddDeleteQuestion(db, id);
       return cors(NextResponse.json(result, { status: result.ok ? 200 : 400 }));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // INVESTORDECK — levende budsjett på personlig lenke (?t=) eller som
+    // presenter (admin-sesjon via ?key=). Kun aggregater (plan + FAKTA-serier),
+    // aldri persondata. Valgfritt lenkepassord (PIN) i httpOnly-cookie.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (route.startsWith('/investor/deck')) {
+      const dUrl = new URL(request.url);
+      const t = dUrl.searchParams.get('t') || '';
+      const presenter = !t && (await modulAuthed(request, db, 'budsjett'));
+      let link = null;
+      if (!presenter) {
+        link = await ddValidateToken(db, t);
+        if (!link) return cors(NextResponse.json({ error: 'Ugyldig lenke' }, { status: 404 }));
+        if (link.invalid) return cors(NextResponse.json({ error: link.invalid === 'revoked' ? 'Lenken er trukket tilbake' : 'Lenken er utløpt', invalid: link.invalid }, { status: 410 }));
+        if (!(link.sections || []).includes('deck')) return cors(NextResponse.json({ error: 'Lenken gir ikke tilgang til decket' }, { status: 403 }));
+      }
+      const pinOk = (lnk) => {
+        if (!lnk?.pinHash) return true;
+        const c = request.cookies.get(`dh_deckpin_${lnk.id}`)?.value || '';
+        return c === ddPinCookieValue(lnk);
+      };
+
+      if (route === '/investor/deck/pin' && method === 'POST') {
+        if (presenter || !link) return cors(NextResponse.json({ ok: true }));
+        let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+        if (!ddVerifyPin(link, body.pin)) {
+          try { await ddLogAudit(db, { linkId: link.id, label: link.label, event: 'deck_pin_feil', meta: {}, ua: request.headers.get('user-agent') || '' }); } catch (e) { /* ok */ }
+          return cors(NextResponse.json({ ok: false, error: 'Feil passord' }, { status: 401 }));
+        }
+        const res = NextResponse.json({ ok: true });
+        res.cookies.set(`dh_deckpin_${link.id}`, ddPinCookieValue(link), { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30, secure: process.env.NODE_ENV === 'production' });
+        return cors(res);
+      }
+
+      if (route === '/investor/deck/hendelse' && method === 'POST') {
+        if (presenter || !link || !pinOk(link)) return cors(NextResponse.json({ ok: true }));
+        let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+        const type = ['deck_aapnet', 'deck_side', 'deck_hvaom', 'deck_nedlasting', 'deck_driver'].includes(body.type) ? body.type : 'deck_side';
+        const meta = {};
+        if (body.side) meta.side = String(body.side).slice(0, 60);
+        if (body.valg) meta.valg = String(body.valg).slice(0, 80);
+        if (body.format) meta.format = String(body.format).slice(0, 20);
+        try { await ddLogAudit(db, { linkId: link.id, label: link.label, event: type, meta, ua: request.headers.get('user-agent') || '' }); } catch (e) { /* ok */ }
+        if (type === 'deck_aapnet') { try { await ddRecordView(db, link.id); } catch (e) { /* ok */ } }
+        return cors(NextResponse.json({ ok: true }));
+      }
+
+      if (route === '/investor/deck' && method === 'GET') {
+        if (link && !pinOk(link)) return cors(NextResponse.json({ ok: false, needsPin: true, label: link.label }, { status: 401 }));
+        // Plan: presenter kan velge fritt (?plan=); investor ser bare investorSynlige — «vedtatt» først, så nyeste.
+        const onsket = dUrl.searchParams.get('plan') || '';
+        const alle = await listPlaner(db, { kunInvestorSynlige: !presenter });
+        const modeller = alle.filter((p) => p.type === 'modell');
+        let valgt = onsket ? modeller.find((p) => p.id === onsket) : null;
+        if (!valgt) valgt = modeller.find((p) => p.status === 'vedtatt') || modeller[0] || null;
+        if (!valgt) return cors(NextResponse.json({ ok: false, error: 'Ingen plan er delt med investorrommet ennå' }, { status: 404 }));
+        const plan = await hentPlan(db, valgt.id);
+        if (!plan) return cors(NextResponse.json({ error: 'Plan ikke funnet' }, { status: 404 }));
+        return cors(NextResponse.json({
+          ok: true,
+          presenter: Boolean(presenter),
+          investor: link ? { label: link.label, harPassord: Boolean(link.pinHash), kanSporre: (link.sections || []).includes('qa') } : null,
+          planer: presenter ? modeller.map((p) => ({ id: p.id, navn: p.navn, status: p.status, investorSynlig: p.investorSynlig })) : undefined,
+          plan: {
+            id: plan.id, navn: plan.navn, status: plan.status, startYm: plan.startYm, antallMnd: plan.antallMnd, notat: plan.notat || '',
+            drivere: plan.drivere, fakta: plan.fakta, scenarioer: plan.scenarioer || [], plattform: plan.plattform, felles: plan.felles,
+            oppdatertAt: plan.oppdatertAt || plan.opprettetAt || null,
+          },
+        }));
+      }
+      return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));
     }
 
     // --- Investor-rom: offentlige token-gatede endepunkter ------------------

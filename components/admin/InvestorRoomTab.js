@@ -16,8 +16,8 @@ const nf = new Intl.NumberFormat('nb-NO');
 const fmtTime = (iso) => { try { return new Date(iso).toLocaleString('nb-NO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } };
 const fmtBytes = (b) => { const n = Number(b) || 0; if (n > 1048576) return `${(n / 1048576).toFixed(1)} MB`; if (n > 1024) return `${Math.round(n / 1024)} kB`; return `${n} B`; };
 
-const SECTION_LABELS = { metrics: 'Vekst/KPI', economy: 'Økonomi', forecast: 'Prognose', docs: 'Dokumenter', qa: 'Q&A' };
-const EVENT_LABELS = { view_room: 'Åpnet rommet', download_doc: 'Lastet ned dokument', ask_question: 'Stilte spørsmål' };
+const SECTION_LABELS = { metrics: 'Vekst/KPI', economy: 'Økonomi', forecast: 'Prognose', docs: 'Dokumenter', qa: 'Q&A', deck: 'Deck (levende budsjett)' };
+const EVENT_LABELS = { view_room: 'Åpnet rommet', download_doc: 'Lastet ned dokument', ask_question: 'Stilte spørsmål', deck_aapnet: 'Åpnet decket', deck_side: 'Så side i decket', deck_hvaom: 'Prøvde «hva om»', deck_driver: 'Skrudde på driver', deck_nedlasting: 'Lastet ned fra decket', deck_pin_feil: 'Feil deck-passord' };
 const EVENT_ICONS = { view_room: Eye, download_doc: Download, ask_question: MessageCircleQuestion };
 
 const SUBTABS = [
@@ -94,7 +94,8 @@ function LinksPanel({ data, q, onChange, flash }) {
   const [label, setLabel] = useState('');
   const [email, setEmail] = useState('');
   const [expiresDays, setExpiresDays] = useState('90');
-  const [sections, setSections] = useState(['metrics', 'economy', 'forecast', 'docs', 'qa']);
+  const [sections, setSections] = useState(['metrics', 'economy', 'forecast', 'docs', 'qa', 'deck']);
+  const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState('');
   const [busyId, setBusyId] = useState('');
@@ -108,22 +109,23 @@ function LinksPanel({ data, q, onChange, flash }) {
     try {
       const r = await fetch(`/api/admin/investor-room/links?${q}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: label.trim(), email: email.trim(), sections, expiresDays: Number(expiresDays) || null }),
+        body: JSON.stringify({ label: label.trim(), email: email.trim(), sections, expiresDays: Number(expiresDays) || null, pin: pin.trim() || undefined }),
       });
       const j = await r.json();
       if (j.ok) {
         try { await navigator.clipboard.writeText(j.url); } catch (e) {}
         flash(true, `Lenke opprettet for ${label.trim()} — kopiert til utklippstavlen`);
-        setLabel(''); setEmail('');
+        setLabel(''); setEmail(''); setPin('');
         await onChange();
       } else flash(false, j.error || 'Kunne ikke opprette lenke');
     } catch (e) { flash(false, 'Nettverksfeil'); }
     setBusy(false);
   };
 
-  const copyUrl = async (link) => {
-    const url = `${data.baseUrl || window.location.origin}/investor?t=${link.token}`;
-    try { await navigator.clipboard.writeText(url); setCopied(link.id); setTimeout(() => setCopied(''), 2000); } catch (e) { flash(false, 'Kunne ikke kopiere'); }
+  const copyUrl = async (link, variant = 'rom') => {
+    const url = `${data.baseUrl || window.location.origin}${variant === 'deck' ? '/investor/deck' : '/investor'}?t=${link.token}`;
+    const nokkel = variant === 'deck' ? `${link.id}-deck` : link.id;
+    try { await navigator.clipboard.writeText(url); setCopied(nokkel); setTimeout(() => setCopied(''), 2000); } catch (e) { flash(false, 'Kunne ikke kopiere'); }
   };
 
   const setRevoked = async (link, revoked) => {
@@ -158,7 +160,7 @@ function LinksPanel({ data, q, onChange, flash }) {
       {/* Opprett ny */}
       <div className="rounded-2xl bg-white shadow-[0_2px_14px_rgba(0,0,0,0.04)] p-5">
         <p className="text-[14px] font-bold text-[#0a0a0a] mb-4 flex items-center gap-2" style={{ fontFamily: 'var(--font-heading)' }}><Plus className="w-4 h-4 text-[#8b5cf6]" /> Ny tilgangslenke</p>
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-4 gap-3">
           <label className="block">
             <span className="block text-[11px] font-semibold uppercase tracking-wider text-[#aaa] mb-1">Mottaker *</span>
             <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ola Investor — Fond AS"
@@ -178,6 +180,11 @@ function LinksPanel({ data, q, onChange, flash }) {
               <option value="180">180 dager</option>
               <option value="">Aldri</option>
             </select>
+          </label>
+          <label className="block">
+            <span className="block text-[11px] font-semibold uppercase tracking-wider text-[#aaa] mb-1">Passord på lenken (valgfritt)</span>
+            <input value={pin} onChange={(e) => setPin(e.target.value)} placeholder="min. 4 tegn — sendes separat" autoComplete="off" data-testid="dd-lenke-pin"
+              className="w-full h-10 rounded-lg bg-[#f7f6f4] text-[13.5px] px-3 outline-none focus:ring-2 focus:ring-[#d9c4f5]" />
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-2 mt-4">
@@ -213,6 +220,7 @@ function LinksPanel({ data, q, onChange, flash }) {
                     <span className={`text-[10.5px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 ${l.status === 'active' ? 'bg-[#e9f7ef] text-[#1f7a4d]' : l.status === 'revoked' ? 'bg-[#fdecec] text-[#c0392b]' : 'bg-[#fdf3e2] text-[#a97615]'}`}>
                       {l.status === 'active' ? 'Aktiv' : l.status === 'revoked' ? 'Trukket' : 'Utløpt'}
                     </span>
+                    {l.harPassord ? <span className="text-[10.5px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 bg-[#f4f0fb] text-[#7c3aed]" title="Lenken krever passord">Passord</span> : null}
                   </div>
                   <p className="text-[11.5px] text-[#999] mt-0.5">
                     {l.email ? `${l.email} · ` : ''}{(l.sections || []).map((s) => SECTION_LABELS[s]).join(' · ')}
@@ -229,6 +237,11 @@ function LinksPanel({ data, q, onChange, flash }) {
                   <button onClick={() => copyUrl(l)} title="Kopier lenke" className="h-8 px-3 rounded-lg bg-[#f4f0fb] text-[#8b5cf6] text-[12px] font-semibold flex items-center gap-1.5 hover:bg-[#ece2fb]">
                     {copied === l.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied === l.id ? 'Kopiert' : 'Kopier'}
                   </button>
+                  {(l.sections || []).includes('deck') ? (
+                    <button onClick={() => copyUrl(l, 'deck')} title="Kopier deck-lenke (levende budsjett)" className="h-8 px-3 rounded-lg bg-[#0a0a0a] text-white text-[12px] font-semibold flex items-center gap-1.5 hover:bg-[#2a2a2a]" data-testid={`dd-deck-kopier-${l.id}`}>
+                      {copied === `${l.id}-deck` ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} Deck
+                    </button>
+                  ) : null}
                   <a href={`/investor?t=${l.token}`} target="_blank" rel="noopener" title="Åpne som investor" className="h-8 w-8 rounded-lg text-[#999] hover:text-[#0a0a0a] hover:bg-[#f5f5f4] flex items-center justify-center"><ExternalLink className="w-4 h-4" /></a>
                   <button onClick={() => setRevoked(l, l.status !== 'revoked')} disabled={busyId === l.id} title={l.status === 'revoked' ? 'Gjenopprett tilgang' : 'Trekk tilbake tilgang'}
                     className="h-8 w-8 rounded-lg text-[#999] hover:text-amber-600 hover:bg-amber-50 flex items-center justify-center disabled:opacity-40">
