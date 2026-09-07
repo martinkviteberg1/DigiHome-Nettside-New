@@ -519,105 +519,68 @@ export default function StartV4() {
                 />
                 {finnUrl && finnNotat ? <p className="mt-4 text-[13.5px] text-[#15130F]/55" data-testid="start-finn-notat">{finnNotat}</p> : null}
 
-                {/* Valget er system vs. menneske — så de to skal ikke se like ut.
-                    Venstre: produktet på lys flate. Høyre: forvalteren, portrett på varm mørk flate.
-                    Innholdet er det samme spørsmålet i begge: hvem gjør hva. */}
+                {/* Valget er system vs. menneske. Samme grammatikk i begge kort (hvem gjør hva), ulikt materiale:
+                    lys flate for systemet, varm mørk for forvalteren. Nøkkeltallet er det visuelle ankeret — ikke dekor. */}
                 <div className="mt-9 grid gap-3 md:grid-cols-2" data-testid="start-tjenester">
-                  {/* ── Lei ut selv — systemet ── */}
-                  <div
-                    role="presentation"
-                    onClick={() => velgTjeneste('selvforvaltning')}
-                    className="group flex cursor-pointer flex-col rounded-[20px] p-6 transition-colors duration-200 hover:bg-white sm:p-7"
-                    style={{ background: '#FBFAF8', boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.10)', minHeight: 460 }}
-                    data-testid="service-selvforvaltning-kolonne"
-                  >
-                    <p className="flex items-center gap-2 text-[13px] font-medium" style={{ color: 'rgba(21,19,15,0.5)' }}>
-                      <span aria-hidden="true" className="inline-flex h-5 w-5 items-center justify-center rounded-[6px]" style={{ background: T.ink }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} /></span>
-                      Systemet · hele Norge
-                    </p>
-                    <h2 className="mt-5 text-[30px] sm:text-[34px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.02, color: T.ink }}>Lei ut selv</h2>
-                    <p className="mt-2 max-w-[30ch] text-[15px] leading-[1.45]" style={{ color: 'rgba(21,19,15,0.65)' }}>Du er utleier. Systemet tar rutinen.</p>
-                    <dl className="my-auto border-t py-5" style={{ borderColor: 'rgba(21,19,15,0.10)' }}>
-                      {[
-                        ['Du', 'Annonse og visninger · godkjenner leietaker · bestemmer i saker', true],
-                        ['Systemet', 'Kontrakt · husleie · purring · foreslår løsninger på saker', false],
-                      ].map(([hvem, hva, deg]) => (
-                        <div key={hvem} className="grid grid-cols-[88px_1fr] gap-3 border-b py-3.5" style={{ borderColor: 'rgba(21,19,15,0.10)' }}>
-                          <dt className="flex items-center gap-2 self-start text-[14px] font-medium" style={{ color: T.ink }}>
-                            {deg ? <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.lilla }} /> : null}{hvem}
-                          </dt>
-                          <dd className="text-[14px] leading-[1.5]" style={{ color: 'rgba(21,19,15,0.7)' }}>{hva}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                    <div className="pt-2">
-                      <p className="text-[13px]" style={{ color: 'rgba(21,19,15,0.55)' }}><span className="font-medium" style={{ color: T.ink }}>5 % av husleien</span> · ingen bindingstid</p>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); velgTjeneste('selvforvaltning'); }}
-                        className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14.5px] font-medium transition-[background-color,transform] duration-200 group-hover:bg-[#2A2620] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
-                        style={{ background: T.ink, color: '#F4F1EA' }}
-                        data-testid="service-selvforvaltning"
+                  {[
+                    {
+                      id: 'selvforvaltning', morkt: false,
+                      over: 'Systemet · hele Norge', tittel: 'Lei ut selv', ingress: 'Du er utleier. Systemet tar rutinen.',
+                      rader: [['Du', 'Annonse og visninger · godkjenner leietaker · bestemmer i saker', true], ['Systemet', 'Kontrakt · husleie · purring · foreslår løsninger på saker', false]],
+                      tall: '5 %', under: 'av husleien · ingen bindingstid',
+                      knapp: 'Lei ut selv', testId: 'service-selvforvaltning',
+                    },
+                    {
+                      id: 'full_forvaltning', morkt: true,
+                      over: fullUtilgjengelig ? `Forvalteren · kommer til ${form.city || 'ditt område'}` : 'Forvalteren · Bergen og omegn',
+                      tittel: 'Full forvaltning', ingress: 'Én fast forvalter gjør jobben. Du har siste ord.',
+                      rader: [['Forvalteren', 'Annonse og visninger · anbefaler leietaker · håndterer saker', false], ['Du', 'Godkjenner leietaker · har siste ord', true]],
+                      tall: fullUtilgjengelig ? 'Snart' : '24 t', under: fullUtilgjengelig ? 'vi sier fra når vi lanserer' : 'til personlig tilbud · fast forvalter',
+                      knapp: fullUtilgjengelig ? 'Registrer interesse' : 'Få et tilbud', testId: 'service-full_forvaltning',
+                    },
+                  ].map((o) => {
+                    const fg = o.morkt ? '#F4F1EA' : T.ink;
+                    const svak = o.morkt ? 'rgba(244,241,234,0.72)' : 'rgba(21,19,15,0.62)';
+                    const dim = o.morkt ? 'rgba(244,241,234,0.6)' : 'rgba(21,19,15,0.5)';
+                    const haar = o.morkt ? 'rgba(244,241,234,0.16)' : 'rgba(21,19,15,0.10)';
+                    return (
+                      <div
+                        key={o.id}
+                        role="presentation"
+                        onClick={() => velgTjeneste(o.id)}
+                        className={`group flex cursor-pointer flex-col rounded-[20px] p-6 transition-colors duration-200 sm:p-7 ${o.morkt ? 'hover:bg-[#2A2620]' : 'hover:bg-white'}`}
+                        style={{ background: o.morkt ? T.charcoal : '#FBFAF8', boxShadow: o.morkt ? 'none' : 'inset 0 0 0 1px rgba(21,19,15,0.10)', color: fg }}
+                        data-testid={`${o.testId}-kolonne`}
                       >
-                        Lei ut selv <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* ── Full forvaltning — mennesket ── */}
-                  <div
-                    role="presentation"
-                    onClick={() => velgTjeneste('full_forvaltning')}
-                    className="group relative flex cursor-pointer flex-col overflow-hidden rounded-[20px] p-6 sm:p-7"
-                    style={{ background: T.charcoal, minHeight: 460 }}
-                    data-testid="service-full_forvaltning-kolonne"
-                  >
-                    {/* Én av forvalterne — teamet, ikke én navngitt person. Kun transform i hover. */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/brand/sarah-sleeman-1000.webp"
-                      alt=""
-                      className="pointer-events-none absolute inset-0 h-full w-full object-cover will-change-transform transition-transform duration-[1400ms] ease-out group-hover:scale-[1.03]"
-                      style={{ objectPosition: '50% 12%', filter: 'saturate(0.85)' }}
-                    />
-                    <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(34,31,26,0.28) 0%, rgba(34,31,26,0.22) 26%, rgba(34,31,26,0.86) 56%, #221F1A 100%)' }} />
-                    <div className="relative flex h-full flex-1 flex-col" style={{ color: '#F4F1EA' }}>
-                      <p className="text-[13px] font-medium" style={{ color: 'rgba(244,241,234,0.8)' }}>
-                        {fullUtilgjengelig ? `Forvalterteamet · kommer til ${form.city || 'ditt område'}` : 'Forvalterteamet · Bergen og omegn'}
-                      </p>
-                      <div className="mt-auto pt-[150px] sm:pt-[170px]">
-                        <h2 className="text-[30px] sm:text-[34px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.02, color: '#F4F1EA' }}>Full forvaltning</h2>
-                        <p className="mt-2 max-w-[30ch] text-[15px] leading-[1.45]" style={{ color: 'rgba(244,241,234,0.75)' }}>Én fast forvalter gjør jobben. Du har siste ord.</p>
-                        <dl className="mt-6 border-t" style={{ borderColor: 'rgba(244,241,234,0.16)' }}>
-                          {[
-                            ['Forvalteren', 'Annonse og visninger · anbefaler leietaker · håndterer saker', false],
-                            ['Du', 'Godkjenner leietaker · har siste ord', true],
-                          ].map(([hvem, hva, deg]) => (
-                            <div key={hvem} className="grid grid-cols-[88px_1fr] gap-3 border-b py-3.5" style={{ borderColor: 'rgba(244,241,234,0.16)' }}>
-                              <dt className="flex items-center gap-2 self-start text-[14px] font-medium">
+                        <p className="text-[13px] font-medium" style={{ color: dim }}>{o.over}</p>
+                        <h2 className="mt-4 text-[30px] sm:text-[34px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.02, color: fg }}>{o.tittel}</h2>
+                        <p className="mt-2 max-w-[30ch] text-[15px] leading-[1.45]" style={{ color: svak }}>{o.ingress}</p>
+                        <dl className="mt-6 border-t" style={{ borderColor: haar }}>
+                          {o.rader.map(([hvem, hva, deg]) => (
+                            <div key={hvem} className="grid grid-cols-[92px_1fr] gap-3 border-b py-3.5" style={{ borderColor: haar }}>
+                              <dt className="flex items-center gap-2 self-start text-[14px] font-medium" style={{ color: fg }}>
                                 {deg ? <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.lilla }} /> : null}{hvem}
                               </dt>
-                              <dd className="text-[14px] leading-[1.5]" style={{ color: 'rgba(244,241,234,0.78)' }}>{hva}</dd>
+                              <dd className="text-[14px] leading-[1.5]" style={{ color: svak }}>{hva}</dd>
                             </div>
                           ))}
                         </dl>
-                        <div className="pt-7">
-                          <p className="text-[13px]" style={{ color: 'rgba(244,241,234,0.65)' }}>
-                            {fullUtilgjengelig ? 'Vi sier fra når vi lanserer' : <><span className="font-medium" style={{ color: '#F4F1EA' }}>Personlig tilbud</span> · svar innen 24 timer</>}
-                          </p>
+                        <div className="mt-auto pt-8">
+                          <p className="text-[40px] sm:text-[44px]" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 1, color: fg }}>{o.tall}</p>
+                          <p className="mt-1.5 text-[13.5px]" style={{ color: svak }}>{o.under}</p>
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); velgTjeneste('full_forvaltning'); }}
-                            className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14.5px] font-medium transition-[background-color,transform] duration-200 group-hover:bg-white active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-                            style={{ background: '#F4F1EA', color: T.ink }}
-                            data-testid="service-full_forvaltning"
+                            onClick={(e) => { e.stopPropagation(); velgTjeneste(o.id); }}
+                            className={`mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14.5px] font-medium transition-[background-color,transform] duration-200 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 ${o.morkt ? 'group-hover:bg-white focus-visible:ring-white/40' : 'group-hover:bg-[#2A2620] focus-visible:ring-[#15130F]/30'}`}
+                            style={o.morkt ? { background: '#F4F1EA', color: T.ink } : { background: T.ink, color: '#F4F1EA' }}
+                            data-testid={o.testId}
                           >
-                            {fullUtilgjengelig ? 'Registrer interesse' : 'Få et tilbud'} <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
+                            {o.knapp} <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
                           </button>
                         </div>
                       </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
                 <p className="mt-5 text-[13px] text-[#15130F]/45">Begge kan endres senere. Ingenting sendes før du sier ja.</p>
               </section>
