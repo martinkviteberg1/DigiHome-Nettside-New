@@ -85,6 +85,22 @@ const erBergen = (postal = '', city = '') => {
   if (String(city).trim().toLowerCase() === 'bergen') return true;
   return /^5[0-2]\d\d$/.test(String(postal).trim());
 };
+/* Full forvaltning: innenfor FORVALTNING_RADIUS_KM fra Bergen sentrum. Med koordinater måler vi;
+   uten (FINN uten gateadresse o.l.) faller vi tilbake på postnummer/poststed. */
+const BERGEN_SENTRUM = { lat: 60.3913, lng: 5.3221 };
+const FORVALTNING_RADIUS_KM = 60;
+const kmFraBergen = (p) => {
+  const lat = Number(p?.lat); const lng = Number(p?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const R = 6371; const dLat = ((lat - BERGEN_SENTRUM.lat) * Math.PI) / 180; const dLng = ((lng - BERGEN_SENTRUM.lng) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((BERGEN_SENTRUM.lat * Math.PI) / 180) * Math.cos((lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+};
+const innenforOmrade = (pos, postal = '', city = '') => {
+  const km = kmFraBergen(pos);
+  if (km !== null) return km <= FORVALTNING_RADIUS_KM;
+  return erBergen(postal, city);
+};
 const komplettAdresse = (address = '', postal = '', city = '') => {
   const gate = String(address).split(',')[0].trim();
   return /[A-Za-zÆØÅæøå]/.test(gate) && /\d+[A-Za-z]?\b/.test(gate) && /^\d{4}$/.test(String(postal).trim()) && /[A-Za-zÆØÅæøå]{2}/.test(String(city).trim());
@@ -176,6 +192,8 @@ export default function StartV4() {
   const [form, setForm] = useState({ address: '', postalCode: '', city: '', propertyType: '', sqm: '', bedrooms: '', name: '', email: '', phone: '', service: '', ownerKind: 'private' });
   const [pos, setPos] = useState(null);
   const [sikt, setSikt] = useState(null); // forslaget kartet peker på mens du skriver — {lat,lng,text,sub}
+  const videreTimer = useRef(0);
+  const finnTimer = useRef(0);
   const siktCache = useRef(new Map());
   const siktAbort = useRef(null);
   const [bekreftet, setBekreftet] = useState(false);
@@ -202,8 +220,8 @@ export default function StartV4() {
 
   const stegIndex = STEG.findIndex((s) => s.id === steg);
   const gate = gateAv(form.address, form.postalCode, form.city);
-  const utenforOmrade = form.service === 'full_forvaltning' && !!form.postalCode && !erBergen(form.postalCode, form.city);
-  const fullUtilgjengelig = !!form.postalCode && !erBergen(form.postalCode, form.city);
+  const fullUtilgjengelig = !!form.postalCode && !innenforOmrade(pos, form.postalCode, form.city);
+  const utenforOmrade = form.service === 'full_forvaltning' && fullUtilgjengelig;
 
   const setField = useCallback((felt, verdi) => {
     setForm((c) => ({ ...c, [felt]: verdi }));
@@ -482,6 +500,8 @@ export default function StartV4() {
                       setErrors((c) => ({ ...c, address: '' }));
                       if (!finn) { setFinnUrl(''); setFinnCode(''); setFinnNotat(''); setPos(null); }
                       if (!String(v || '').trim()) setSikt(null);
+                      /* FINN-lenke limt inn → hent automatisk. Ingen knapp å trykke. */
+                      if (finn && !finnLaster) { window.clearTimeout(finnTimer.current); finnTimer.current = window.setTimeout(() => losFinn(v), 350); }
                     }}
                     onForslag={visForslag}
                     onVelg={(v) => {
@@ -494,6 +514,11 @@ export default function StartV4() {
                       setBekreftet(v.pending ? true : komplett);
                       setErrors(v.pending || komplett ? {} : { address: 'Adresseforslaget mangler husnummer, postnummer eller poststed.' });
                       try { track('address_search', { selected: true }); } catch (e) { /* ok */ }
+                      /* Å velge en fullstendig adresse ER å gå videre — et lite øyeblikk så valget rekker å registreres. */
+                      if (komplett && !v.pending) {
+                        window.clearTimeout(videreTimer.current);
+                        videreTimer.current = window.setTimeout(() => { setFinnUrl(''); setFinnCode(''); setFinnNotat(''); setErrors({}); etterAdresse(preService, postal, city); }, 420);
+                      }
                     }}
                     onFortsett={fortsettFraAdresse}
                     klar={finnLaster || bekreftet || !!detectFinnReference(form.address)}
@@ -501,6 +526,7 @@ export default function StartV4() {
                     bekreftet={bekreftet && !finnUrl}
                     feil={errors.address}
                     knapp={finnLaster ? 'Henter' : 'Fortsett'}
+                    visKnapp={false}
                     autoFokus={prefillFerdig}
                   />
                 </div>
@@ -542,11 +568,13 @@ export default function StartV4() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src="/brand/sarah-sleeman-360.webp" alt="" className="h-8 w-8 rounded-full object-cover" style={{ boxShadow: '0 0 0 2px rgba(244,241,234,0.22)' }} />
                       ),
-                      over: 'Forvalterteamet', omrade: fullUtilgjengelig ? `Kommer til ${form.city || 'ditt område'}` : 'Bergen og omegn',
-                      tittel: 'Full forvaltning', ingress: 'Én fast forvalter gjør jobben. Du har siste ord.',
+                      laast: fullUtilgjengelig,
+                      over: 'Forvalterteamet', omrade: fullUtilgjengelig ? `kommer til ${form.city || 'ditt område'}` : 'Bergen og omegn',
+                      tittel: 'Full forvaltning',
+                      ingress: fullUtilgjengelig ? `Foreløpig bare i Bergen og omegn. Meld interesse, så sier vi fra når vi kommer til ${form.city || 'ditt område'}.` : 'Én fast forvalter gjør jobben. Du har siste ord.',
                       rader: [['Forvalteren', 'Annonse og visninger · anbefaler leietaker · håndterer saker', false], ['Du', 'Godkjenner leietaker · har siste ord', true]],
-                      meta: fullUtilgjengelig ? 'Vi sier fra når vi lanserer' : <><span className="font-medium">Personlig tilbud</span> · svar innen 24 timer</>,
-                      knapp: fullUtilgjengelig ? 'Registrer interesse' : 'Få et tilbud', testId: 'service-full_forvaltning',
+                      meta: fullUtilgjengelig ? 'Ikke tilgjengelig for denne adressen ennå' : <><span className="font-medium">Personlig tilbud</span> · svar innen 24 timer</>,
+                      knapp: fullUtilgjengelig ? 'Meld interesse' : 'Få et tilbud', testId: 'service-full_forvaltning',
                     },
                   ].map((o) => {
                     const fg = o.morkt ? '#F4F1EA' : T.ink;
@@ -557,21 +585,22 @@ export default function StartV4() {
                       <div
                         key={o.id}
                         role="presentation"
-                        onClick={() => velgTjeneste(o.id)}
-                        className={`group flex cursor-pointer flex-col rounded-[20px] p-5 transition-colors duration-200 sm:p-6 ${o.morkt ? 'hover:bg-[#2A2620]' : 'hover:bg-white'}`}
+                        onClick={o.laast ? undefined : () => velgTjeneste(o.id)}
+                        className={`group flex flex-col rounded-[20px] p-5 transition-colors duration-200 sm:p-6 ${o.laast ? 'cursor-default' : `cursor-pointer ${o.morkt ? 'hover:bg-[#2A2620]' : 'hover:bg-white'}`}`}
                         style={{ background: o.morkt ? T.charcoal : '#FBFAF8', boxShadow: o.morkt ? 'none' : 'inset 0 0 0 1px rgba(21,19,15,0.10)', color: fg }}
+                        aria-disabled={o.laast || undefined}
                         data-testid={`${o.testId}-kolonne`}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3" style={{ opacity: o.laast ? 0.6 : 1 }}>
                           {o.merke}
                           <p className="text-[13px] leading-tight">
                             <span className="font-medium" style={{ color: fg }}>{o.over}</span>
                             <span style={{ color: dim }}> · {o.omrade}</span>
                           </p>
                         </div>
-                        <h2 className="mt-4 text-[26px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.04, color: fg }}>{o.tittel}</h2>
-                        <p className="mt-1.5 max-w-[30ch] text-[14.5px] leading-[1.45]" style={{ color: svak }}>{o.ingress}</p>
-                        <dl className="mt-4 border-t" style={{ borderColor: haar }}>
+                        <h2 className="mt-4 text-[26px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.04, color: fg, opacity: o.laast ? 0.6 : 1 }}>{o.tittel}</h2>
+                        <p className="mt-1.5 max-w-[32ch] text-[14.5px] leading-[1.45]" style={{ color: svak }}>{o.ingress}</p>
+                        <dl className="mt-4 border-t" style={{ borderColor: haar, opacity: o.laast ? 0.45 : 1 }}>
                           {o.rader.map(([hvem, hva, deg]) => (
                             <div key={hvem} className="grid grid-cols-[88px_1fr] gap-3 border-b py-2.5" style={{ borderColor: haar }}>
                               <dt className="flex items-center gap-2 self-start text-[13.5px] font-medium" style={{ color: fg }}>
@@ -586,8 +615,8 @@ export default function StartV4() {
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); velgTjeneste(o.id); }}
-                            className={`mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14.5px] font-medium transition-[background-color,transform] duration-200 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 ${o.morkt ? 'group-hover:bg-white focus-visible:ring-white/40' : 'group-hover:bg-[#2A2620] focus-visible:ring-[#15130F]/30'}`}
-                            style={o.morkt ? { background: '#F4F1EA', color: T.ink } : { background: T.ink, color: '#F4F1EA' }}
+                            className={`mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14.5px] font-medium transition-[background-color,transform] duration-200 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 ${o.laast ? 'hover:bg-white/10 focus-visible:ring-white/40' : o.morkt ? 'group-hover:bg-white focus-visible:ring-white/40' : 'group-hover:bg-[#2A2620] focus-visible:ring-[#15130F]/30'}`}
+                            style={o.laast ? { background: 'transparent', color: '#F4F1EA', boxShadow: 'inset 0 0 0 1px rgba(244,241,234,0.35)' } : o.morkt ? { background: '#F4F1EA', color: T.ink } : { background: T.ink, color: '#F4F1EA' }}
                             data-testid={o.testId}
                           >
                             {o.knapp} <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
@@ -613,8 +642,9 @@ export default function StartV4() {
                   testId="start-h1"
                 />
 
-                <form onSubmit={send} className="mt-9 flex flex-col gap-6" noValidate>
+                <form onSubmit={send} className="mt-6 flex flex-col gap-4" noValidate>
                   <Segment
+                    inline
                     label="Jeg registrerer som"
                     verdi={form.ownerKind}
                     onChange={(k) => {
@@ -629,7 +659,7 @@ export default function StartV4() {
 
                   {/* ── BEDRIFT: selskapet først — det er avtaleparten ── */}
                   {bedrift ? (
-                    <div className="flex flex-col gap-6" data-testid="start-selskap">
+                    <div className="flex flex-col gap-4" data-testid="start-selskap">
                       <SelskapSok
                         verdi={company}
                         onVelg={(n) => { setCompany(n); setCompanyAck(false); setErrors((c) => ({ ...c, company: '' })); rort('company'); }}
@@ -652,9 +682,9 @@ export default function StartV4() {
                     </div>
                   ) : null}
 
-                  <div className="flex flex-col gap-5">
+                  {/* Navn og telefon side om side fra sm — e-post får hele bredden. Hele steget skal stå i viewporten. */}
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <TekstFelt id="owner-name-input" label={bedrift ? 'Kontaktperson' : 'Fullt navn'} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => rort('name')} autoComplete="name" placeholder={bedrift ? 'Fullt navn' : 'Ola Nordmann'} feil={feilFor('name')} ok={okFor('name')} autoFokus={!bedrift} />
-                    <TekstFelt id="owner-email-input" label={bedrift ? 'E-post (jobb)' : 'E-post'} hint={erSelv ? 'Tilgangen sendes hit' : 'Bekreftelsen sendes hit'} type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} onBlur={() => rort('email')} autoComplete="email" inputMode="email" placeholder={bedrift ? 'navn@selskap.no' : 'ola@eksempel.no'} feil={feilFor('email')} ok={okFor('email')} />
                     <TelefonFelt id="owner-phone-input" land={landIso} onLand={(iso) => { setLandIso(iso); setField('phone', bareSiffer(form.phone, landFor(iso).max + (iso === 'NO' ? 0 : 1))); }} landListe={LAND} flagg={flagg} value={visTelefon(form.phone, landIso)} feil={feilFor('phone')} ok={okFor('phone')} onBlur={() => rort('phone')}
                       hint={erSelv ? undefined : 'Vi ringer for å avtale'}
                       onChange={(e) => {
@@ -663,15 +693,18 @@ export default function StartV4() {
                         if (raw.startsWith('+')) { const m = [...LAND].sort((a, b) => b.dial.length - a.dial.length).find((l) => raw.startsWith(l.dial)); if (m) { iso = m.iso; lokal = raw.slice(m.dial.length); setLandIso(m.iso); } }
                         setField('phone', bareSiffer(lokal, landFor(iso).max + (iso === 'NO' ? 0 : 1)));
                       }} />
+                    <div className="sm:col-span-2">
+                      <TekstFelt id="owner-email-input" label={bedrift ? 'E-post (jobb)' : 'E-post'} hint={erSelv ? 'Tilgangen sendes hit' : 'Bekreftelsen sendes hit'} type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} onBlur={() => rort('email')} autoComplete="email" inputMode="email" placeholder={bedrift ? 'navn@selskap.no' : 'ola@eksempel.no'} feil={feilFor('email')} ok={okFor('email')} />
+                    </div>
                   </div>
 
                   {erSelv ? (
-                    <div className="rounded-[14px] p-4 sm:p-5" style={{ background: 'rgba(21,19,15,0.035)' }} data-testid="start-avtale">
+                    <div className="rounded-[14px] p-3.5 sm:p-4" style={{ background: 'rgba(21,19,15,0.035)' }} data-testid="start-avtale">
                       <Avkryssing id="owner-terms-checkbox" checked={terms} onChange={(v) => { setTerms(v); setGodtattNaar(v ? 'nå' : ''); setErrors((c) => ({ ...c, terms: '' })); rort('terms'); }} feil={feilFor('terms')}>
                         Jeg godtar <button type="button" onClick={(e) => { e.stopPropagation(); setAvtaleApen(true); }} className="font-medium text-[#15130F] underline decoration-[#15130F]/30 underline-offset-4 hover:decoration-[#15130F]" data-testid="start-les-avtale">avtalen om selvforvaltning</button> (5 % av husleien, ingen bindingstid)
                         {bedrift ? <> — på vegne av <strong className="font-medium text-[#15130F]">{company?.name || 'selskapet'}</strong>, som jeg har signaturrett for.</> : '.'}
                       </Avkryssing>
-                      <div className="mt-3 flex items-center justify-between gap-4 pl-[30px] text-[13px]">
+                      <div className="mt-2 flex items-center justify-between gap-4 pl-[30px] text-[13px]">
                         <button type="button" onClick={() => setAvtaleApen(true)} className="text-[#15130F]/60 underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F]" data-testid="start-les-avtale-2">Les avtalen — tar to minutter</button>
                         <span className="inline-flex items-center gap-1.5 text-[#15130F]/55" style={{ opacity: terms ? 1 : 0, transition: `opacity 300ms ${EASE}` }}><Check className="h-3.5 w-3.5 text-[#1F9D55]" strokeWidth={2.4} /> Godtatt {godtattNaar || 'nå'}</span>
                       </div>
@@ -682,13 +715,13 @@ export default function StartV4() {
 
                   {sendFeil ? <p role="alert" className="rounded-[12px] px-4 py-3 text-[13.5px]" style={{ background: 'rgba(180,60,40,0.08)', color: '#8E2E1F' }}>{sendFeil}</p> : null}
 
-                  <div className="pt-1">
+                  <div>
                     <StegKnapp type="submit" laster={laster} testId="owner-submit-button">
                       {laster ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                       {erSelv ? (bedrift ? 'Registrer selskapet' : 'Opprett konto') : utenforOmrade ? 'Registrer interesse' : 'Be om tilbud'}
                       {!laster && <ArrowRight className="h-4 w-4" strokeWidth={1.8} />}
                     </StegKnapp>
-                    <p className="mt-3 text-[12.5px] text-[#15130F]/45">Ved innsending godtar du at DigiHome kontakter deg om denne henvendelsen.</p>
+                    <p className="mt-2.5 text-[12.5px] text-[#15130F]/45">Ved innsending godtar du at DigiHome kontakter deg om denne henvendelsen.</p>
                   </div>
                 </form>
               </section>

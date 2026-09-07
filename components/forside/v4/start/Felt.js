@@ -16,7 +16,7 @@ const RING_FEIL = '0 0 0 1px rgba(180,60,40,0.7), 0 0 0 4px rgba(180,60,40,0.10)
 
 export function Label({ htmlFor, children, hint }) {
   return (
-    <div className="mb-2 flex items-baseline justify-between gap-3">
+    <div className="mb-1.5 flex items-baseline justify-between gap-3">
       <label htmlFor={htmlFor} className="text-[13.5px] font-medium text-[#15130F]/75">{children}</label>
       {hint ? <span className="text-[12.5px] text-[#15130F]/45">{hint}</span> : null}
     </div>
@@ -48,7 +48,7 @@ export function TekstFelt({ id, label, hint, value, onChange, onBlur, type = 'te
           aria-invalid={!!feil}
           aria-describedby={feil ? `${id}-feil` : undefined}
           data-testid={id}
-          className="h-14 w-full min-w-0 appearance-none rounded-[14px] border-0 bg-transparent px-5 text-[16px] text-[#15130F] outline-none ring-0 placeholder:text-[#15130F]/40 focus:outline-none focus:ring-0"
+          className="h-[52px] w-full min-w-0 appearance-none rounded-[14px] border-0 bg-transparent px-5 text-[16px] text-[#15130F] outline-none ring-0 placeholder:text-[#15130F]/40 focus:outline-none focus:ring-0"
           style={{ outline: 'none', boxShadow: 'none' }}
         />
         <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-[#1F9D55]" strokeWidth={2.2} style={{ opacity: ok && !fokus && !feil ? 1 : 0, transition: `opacity 200ms ${EASE}` }} />
@@ -93,7 +93,7 @@ export function TelefonFelt({ id = 'start-telefon', land, onLand, landListe, val
           aria-invalid={!!feil}
           aria-describedby={feil ? `${id}-feil` : undefined}
           data-testid={id}
-          className="h-14 w-full min-w-0 appearance-none rounded-r-[14px] border-0 bg-transparent px-4 text-[16px] tabular-nums text-[#15130F] outline-none ring-0 placeholder:text-[#15130F]/40 focus:outline-none focus:ring-0"
+          className="h-[52px] w-full min-w-0 appearance-none rounded-r-[14px] border-0 bg-transparent px-4 text-[16px] tabular-nums text-[#15130F] outline-none ring-0 placeholder:text-[#15130F]/40 focus:outline-none focus:ring-0"
           style={{ outline: 'none', boxShadow: 'none' }}
         />
         <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-[#1F9D55]" strokeWidth={2.2} style={{ opacity: ok && !fokus && !feil ? 1 : 0, transition: `opacity 200ms ${EASE}` }} />
@@ -104,11 +104,11 @@ export function TelefonFelt({ id = 'start-telefon', land, onLand, landListe, val
 }
 
 /* Segment: to–tre valg i én pill. Valgt = ink. */
-export function Segment({ label, verdi, onChange, valg, testId = 'start-segment' }) {
+export function Segment({ label, verdi, onChange, valg, testId = 'start-segment', inline = false }) {
   return (
-    <div>
-      {label ? <span className="mb-2 block text-[13.5px] font-medium text-[#15130F]/75">{label}</span> : null}
-      <div className="grid gap-1 rounded-[14px] p-1" style={{ gridTemplateColumns: `repeat(${valg.length}, minmax(0,1fr))`, background: 'rgba(21,19,15,0.06)' }} role="radiogroup" aria-label={label} data-testid={testId}>
+    <div className={inline ? 'flex flex-wrap items-center justify-between gap-x-4 gap-y-2' : ''}>
+      {label ? <span className={`${inline ? '' : 'mb-1.5 '}block text-[13.5px] font-medium text-[#15130F]/75`}>{label}</span> : null}
+      <div className={`grid gap-1 rounded-[14px] p-1 ${inline ? 'w-full sm:w-[300px]' : ''}`} style={{ gridTemplateColumns: `repeat(${valg.length}, minmax(0,1fr))`, background: 'rgba(21,19,15,0.06)' }} role="radiogroup" aria-label={label} data-testid={testId}>
         {valg.map(([id, tekst]) => {
           const aktiv = verdi === id;
           return (
@@ -118,7 +118,7 @@ export function Segment({ label, verdi, onChange, valg, testId = 'start-segment'
               role="radio"
               aria-checked={aktiv}
               onClick={() => onChange(id)}
-              className="h-11 rounded-[10px] text-[14.5px] font-medium transition-[background-color,color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
+              className="h-10 rounded-[10px] text-[14.5px] font-medium transition-[background-color,color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
               style={{ background: aktiv ? T.ink : 'transparent', color: aktiv ? '#F4F1EA' : 'rgba(21,19,15,0.7)' }}
               data-testid={`${testId}-${id}`}
             >

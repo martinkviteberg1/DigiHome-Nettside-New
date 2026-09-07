@@ -25,7 +25,7 @@ function postFraSub(sub = '') {
   return m ? { postal: m[1], city: m[2] } : { postal: '', city: '' };
 }
 
-export default function AdresseSok({ verdi, onEndre, onVelg, onForslag, onFortsett, klar, laster, feil, bekreftet, knapp = 'Fortsett', autoFokus = false }) {
+export default function AdresseSok({ verdi, onEndre, onVelg, onForslag, onFortsett, klar, laster, feil, bekreftet, knapp = 'Fortsett', visKnapp = true, autoFokus = false }) {
   const [forslag, setForslag] = useState([]);
   const [apen, setApen] = useState(false);
   const [aktiv, setAktiv] = useState(-1);
@@ -143,7 +143,7 @@ export default function AdresseSok({ verdi, onEndre, onVelg, onForslag, onFortse
   return (
     <div ref={boksRef} className="relative" data-testid="start-adressesok">
       <form onSubmit={send} className="relative">
-        <div className="flex h-14 items-center rounded-[14px] pl-5 pr-1.5" style={{ background: '#FBFAF8', boxShadow: ring, transition: `box-shadow 200ms ${EASE}` }}>
+        <div className={`flex h-14 items-center rounded-[14px] pl-5 ${visKnapp ? 'pr-1.5' : 'pr-2'}`} style={{ background: '#FBFAF8', boxShadow: ring, transition: `box-shadow 200ms ${EASE}` }}>
           {bekreftet && <Check className="mr-2.5 h-4 w-4 shrink-0 text-[#1F9D55]" strokeWidth={2.2} aria-hidden="true" />}
           <input
             ref={inputRef}
@@ -170,17 +170,22 @@ export default function AdresseSok({ verdi, onEndre, onVelg, onForslag, onFortse
             style={{ outline: 'none', boxShadow: 'none', WebkitAppearance: 'none' }}
             data-testid="start-adresse-input"
           />
-          <button
-            type="submit"
-            disabled={laster || !klar}
-            className="ml-2 inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[10px] px-4 text-[15px] font-medium transition-[background-color,transform,opacity] duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30 disabled:cursor-not-allowed"
-            style={{ background: klar ? T.ink : 'rgba(21,19,15,0.08)', color: klar ? '#F4F1EA' : 'rgba(21,19,15,0.4)', opacity: laster ? 0.85 : 1 }}
-            data-testid="start-adresse-fortsett"
-          >
-            {laster ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            <span>{knapp}</span>
-            {!laster && <ArrowRight className="h-4 w-4" strokeWidth={1.8} />}
-          </button>
+          {/* Uten knapp: å velge et forslag ER å gå videre. Laster (FINN) vises som en stille spinner. */}
+          {visKnapp ? (
+            <button
+              type="submit"
+              disabled={laster || !klar}
+              className="ml-2 inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[10px] px-4 text-[15px] font-medium transition-[background-color,transform,opacity] duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30 disabled:cursor-not-allowed"
+              style={{ background: klar ? T.ink : 'rgba(21,19,15,0.08)', color: klar ? '#F4F1EA' : 'rgba(21,19,15,0.4)', opacity: laster ? 0.85 : 1 }}
+              data-testid="start-adresse-fortsett"
+            >
+              {laster ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              <span>{knapp}</span>
+              {!laster && <ArrowRight className="h-4 w-4" strokeWidth={1.8} />}
+            </button>
+          ) : laster ? (
+            <span className="mr-3 inline-flex h-11 shrink-0 items-center" aria-label="Henter" data-testid="start-adresse-laster"><Loader2 className="h-4 w-4 animate-spin text-[#15130F]/55" /></span>
+          ) : null}
         </div>
 
         <ul

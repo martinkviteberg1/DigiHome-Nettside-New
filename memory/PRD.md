@@ -1301,3 +1301,10 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - **Tjeneste-steget:** system vs. menneske — «Lei ut selv» på lys flate (Systemet-chip, Du/Systemet-rader), «Full forvaltning» med
   forvalterportrett (/brand/sarah-sleeman-1000.webp, «Forvalterteamet · Bergen og omegn») på charcoal, offwhite knapp. Arbeidsdeling uendret.
 - Testet med Chrome/Playwright-skript (tidslinje, flytur, mobil). Ikke brukergodkjent. /produkt-side og tom-tilstand-valg: bruker sa «tenk selv».
+- **Runde 2 (samme dag):** Tjeneste-kortene uten foto/nøkkeltall — kompakte, lys vs. charcoal, DigiHome-merke / lite Sarah-avatar (32 px)
+  foran «Systemet · Hele Norge» / «Forvalterteamet · Bergen og omegn». Hele steget står i viewport (1440×800, ingen scroll).
+  **Fortsett-knappen er borte:** å velge et fullstendig forslag går videre automatisk (420 ms), FINN-lenke hentes automatisk ved innliming.
+  **Full forvaltning kun ≤ 60 km fra Bergen sentrum** (`innenforOmrade(pos, postal, city)`, haversine; fallback postnr/poststed uten
+  koordinater) — utenfor: kortet er låst (aria-disabled, dimmet, ikke klikkbart), knapp «Meld interesse» (outline) → kontakt i interesse-modus.
+  **Kontakt-steget kompakt:** Segment inline, Fullt navn + Telefon side om side (sm+), e-post full bredde, felt 52 px, mindre luft — står
+  i viewport på 1440×800. Testet med Chrome/Playwright. Ikke brukergodkjent.
