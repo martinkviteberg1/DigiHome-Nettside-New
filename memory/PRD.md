@@ -1431,3 +1431,7 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - Tech Base-plan justert: hostingFast 2 500, variabelPerEnhet 40 (70 ga meningsløs margin for bedrift-enheter à 79 kr). Konsern: −0,63 m før skatt,
   −1,14 m etter, bunn 2,04 m aug 2028, pluss sep 2028. Script oppdatert.
 - Ikke brukergodkjent. Frontend-agent ikke kjørt.
+- **Løft 2 (signaturvisualer)**: `Punktfelt` (360 punkter = ≈570 000 husholdninger; lilla = 1 %, liten prikk = planen) i Markedet; `Bane`
+  («Rullebanen»: akkumulert kontantstrøm etter skatt m/ bunn-markør og bånd for hentet kapital) i Det vi trenger; H2 avsløres ord for ord
+  (`deck-ord`) på alle kapitler; Risiko har ett display-tall per risiko (+kapital ved 8 000 kr, utvikling/mnd, enheter truffet, churn %);
+  bunnlinjen viser «Neste · <kapittel>» ved pilene. Mobil uten overflow, ingen konsollfeil.

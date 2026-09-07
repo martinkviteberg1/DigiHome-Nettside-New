@@ -103,7 +103,64 @@ const Kapittel = ({ nr, navn, under, morkt = false }) => (
     <span className="text-[13px] font-medium" style={{ color: morkt ? LYS_SVAK : SVAK }}>{navn}{under ? <span style={{ color: morkt ? 'rgba(244,241,234,0.35)' : 'rgba(21,19,15,0.35)' }}> · {under}</span> : null}</span>
   </Inn>
 );
-const H2 = ({ children, morkt = false, maks = '16ch', className = '' }) => <h2 className={`mt-5 text-[38px] sm:text-[52px] lg:text-[60px] ${className}`} style={{ ...display, color: morkt ? T.offwhite : T.ink, maxWidth: maks }}>{children}</h2>;
+/* H2 avsløres ord for ord (som forsidens hero) når kapitlet er aktivt — bare for rene tekststrenger. */
+const H2 = ({ children, morkt = false, maks = '16ch', className = '' }) => {
+  const ord = typeof children === 'string' ? children.split(' ') : null;
+  return (
+    <h2 className={`mt-5 text-[38px] sm:text-[52px] lg:text-[60px] ${className}`} style={{ ...display, color: morkt ? T.offwhite : T.ink, maxWidth: maks }}>
+      {ord ? ord.map((o, i) => <span key={`${o}-${i}`} className="deck-ord mr-[0.24em]" style={{ '--o': Math.min(i, 14) }}>{o}</span>) : children}
+    </h2>
+  );
+};
+/* Punktfelt: 360 punkter = ≈ 570 000 husholdninger som leier. Lilla = 1 % av markedet; den lille = planen. */
+function Punktfelt({ enheterPlan = 0, marked = 570000, kol = 36, rader = 10, morkt = false }) {
+  const n = kol * rader; const perPunkt = marked / n; const enProsent = Math.max(1, Math.round((marked / 100) / perPunkt));
+  const planAndel = Math.min(1, enheterPlan / perPunkt); const r = 4.2; const steg = 12; const W = kol * steg; const H = rader * steg;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 190 }} role="img" aria-label={`${nb(marked)} husholdninger som leier, planen er ${nb(enheterPlan)} enheter`} data-testid="deck-punktfelt">
+      {Array.from({ length: rader }, (_, ri) => (
+        <g key={ri} className="deck-inn" style={{ '--i': ri * 0.6 }}>
+          {Array.from({ length: kol }, (_, ci) => {
+            const idx = ri * kol + ci; const erProsent = idx < enProsent; const erPlan = idx === enProsent;
+            const cx = ci * steg + steg / 2; const cy = ri * steg + steg / 2;
+            if (erPlan) return <g key={ci}><circle cx={cx} cy={cy} r={r} fill="none" stroke={morkt ? T.lilla : LILLA_M} strokeWidth="0.8" strokeDasharray="1.6 1.4" /><circle cx={cx} cy={cy} r={Math.max(0.9, r * Math.sqrt(planAndel))} fill={morkt ? T.lilla : LILLA_M} /></g>;
+            return <circle key={ci} cx={cx} cy={cy} r={r} fill={erProsent ? (morkt ? T.lilla : LILLA_M) : (morkt ? 'rgba(244,241,234,0.16)' : 'rgba(21,19,15,0.10)')} />;
+          })}
+        </g>
+      ))}
+    </svg>
+  );
+}
+/* Bane: akkumulert kontantstrøm (etter skatt) som «rullebane» — bunnen markeres, kapitalen som hentes vises som bånd. */
+function Bane({ serie, kapital, bunnIdx, startYm, N, aktiv = true, hoyde = 220, bredde = 1000 }) {
+  const mål = useMemo(() => Array.from({ length: N }, (_, i) => (aktiv ? (serie[i] || 0) : 0)), [serie, N, aktiv]);
+  const v = useTween(mål, 1000);
+  const W = bredde; const H = hoyde; const padL = 8; const padR = 8; const padT = 22; const padB = 26;
+  const min = Math.min(0, ...serie, -(kapital || 0)) * 1.08; const maks = Math.max(1, ...serie) * 1.08;
+  const x = (i) => padL + ((W - padL - padR) * i) / Math.max(1, N - 1);
+  const y = (val) => padT + (H - padT - padB) * (1 - (val - min) / (maks - min));
+  const d = v.map((val, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(val).toFixed(1)}`).join(' ');
+  const areal = `${d} L${x(N - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`;
+  const bunnV = bunnIdx != null ? serie[bunnIdx] : null;
+  const aarMerker = Array.from({ length: N }, (_, i) => i).filter((i) => ymDeler(ymPluss(startYm, i)).m === 1);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Akkumulert kontantstrøm" data-testid="deck-bane">
+      {kapital > 0 ? <rect x={padL} y={y(0)} width={W - padL - padR} height={Math.max(0, y(-kapital) - y(0))} fill="rgba(212,150,255,0.10)" /> : null}
+      {kapital > 0 ? <line x1={padL} x2={W - padR} y1={y(-kapital)} y2={y(-kapital)} stroke={T.lilla} strokeWidth="1" strokeDasharray="4 6" /> : null}
+      <line x1={padL} x2={W - padR} y1={y(0)} y2={y(0)} stroke="rgba(244,241,234,0.35)" strokeWidth="1" />
+      <path d={areal} fill="rgba(244,241,234,0.08)" />
+      <path d={d} fill="none" stroke={T.offwhite} strokeWidth="2" strokeLinejoin="round" />
+      {aarMerker.map((i) => <text key={i} x={x(i)} y={H - 8} fontSize="11" fill="rgba(244,241,234,0.45)" textAnchor="middle">{ymDeler(ymPluss(startYm, i)).y}</text>)}
+      {bunnIdx != null && aktiv ? (
+        <g>
+          <circle cx={x(bunnIdx)} cy={y(v[bunnIdx] || 0)} r="5" fill={T.lilla} />
+          <text x={Math.min(W - 160, Math.max(10, x(bunnIdx) - 40))} y={y(bunnV) + 22} fontSize="12" fill={T.lilla}>bunn {mnok(Math.abs(bunnV || 0))} · {mndLabel(startYm, bunnIdx, false)}</text>
+        </g>
+      ) : null}
+      {kapital > 0 ? <text x={W - padR} y={y(-kapital) - 6} fontSize="12" fill={T.lilla} textAnchor="end">hentet kapital {mnok(kapital)}</text> : null}
+    </svg>
+  );
+}
 const Etikett = ({ children, farge = SVAK, className = '' }) => <p className={`text-[12.5px] font-medium ${className}`} style={{ color: farge }}>{children}</p>;
 /* Ingress under H2 — samme stemme som forsidens seksjonsingresser. */
 const Ingress = ({ children, morkt = false, i = 2, maks = '46ch', className = '' }) => <Inn i={i}><p className={`mt-6 text-[16px] leading-[1.55] sm:text-[18px] ${className}`} style={{ color: morkt ? LYS : DIM, maxWidth: maks }}>{children}</p></Inn>;
@@ -1018,6 +1075,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           {data.presenter && visNotater && NOTATER[sider[side]] ? <div className="rounded-[14px] px-4 py-3 text-[13px] leading-[1.5] shadow-[0_12px_40px_rgba(20,17,14,0.18)]" style={{ background: '#2b2822', color: T.offwhite }} data-testid="deck-notat"><span className="mr-2 text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: T.lilla }}>Notat</span>{NOTATER[sider[side]]}</div> : null}
         </div>
         <div className="pointer-events-auto flex items-center gap-1.5">
+          {side < sider.length - 1 ? <button onClick={() => gaaTil(side + 1)} className="mr-2 hidden text-[12.5px] font-medium transition-colors duration-500 sm:block" style={{ color: morkSide ? LYS_SVAK : SVAK }} data-testid="deck-neste-navn">Neste · <span style={{ color: morkSide ? T.offwhite : T.ink }}>{KAPITLER[side + 1].navn}</span></button> : null}
           <button onClick={() => gaaTil(side - 1)} disabled={side === 0} aria-label="Forrige" className="flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-500 disabled:opacity-30" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)', color: morkSide ? T.offwhite : T.ink }} data-testid="deck-forrige"><ArrowUp className="h-4 w-4" strokeWidth={1.8} /></button>
           <button onClick={() => gaaTil(side + 1)} disabled={side === sider.length - 1} aria-label="Neste" className="flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-500 disabled:opacity-30" style={{ background: morkSide ? T.offwhite : T.ink, color: morkSide ? T.ink : T.offwhite }} data-testid="deck-neste"><ArrowDown className="h-4 w-4" strokeWidth={1.8} /></button>
         </div>
@@ -1082,7 +1140,11 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           <Inn i={1}><H2 maks="13ch">Hver fjerde husholdning leier.</H2></Inn>
           <Ingress>Nesten ingen av utleierne har et system. Markedet er stort, privat og fragmentert – og det begrenser ikke planen. Tempoet på kundeanskaffelse gjør det.</Ingress>
           <Inn i={3} className="mt-8 border-t pt-5" style={{ borderColor: HAIR }}>
-            <Fakta stor v={`${nb((Math.round(mF.enheter[N - 1] || 0) / 570000) * 100, 2)} %`} u={`av leiemarkedet er planen ved ${mndLabel(plan.startYm, N - 1, false)}. Én prosent er ${nb(5700)} enheter – ${nb(Math.round(5700 / Math.max(1, Math.round(mF.enheter[N - 1] || 1))))}× det vi planlegger.`} />
+            <Punktfelt enheterPlan={Math.round(mF.enheter[N - 1] || 0)} />
+            <div className="mt-4 flex flex-wrap items-baseline gap-x-6 gap-y-2">
+              <Fakta v={`${nb((Math.round(mF.enheter[N - 1] || 0) / 570000) * 100, 2)} %`} u={`av leiemarkedet er planen ved ${mndLabel(plan.startYm, N - 1, false)} – den lille prikken`} />
+              <Fakta v="1 %" u={`= ${nb(5700)} enheter, ${nb(Math.round(5700 / Math.max(1, Math.round(mF.enheter[N - 1] || 1))))}× planen – de lilla`} />
+            </div>
           </Inn>
         </>}>
           <div className="grid gap-10 sm:grid-cols-3">
@@ -1487,15 +1549,18 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             const c5 = celle(5000, 0); const c8 = celle(8000, 0);
             const utv = mT ? mT.kost.utvikling[Math.min(N - 1, 12)] : null;
             return [
-              { t: 'Kundekost', r: `Planen regner ${kr(basisF.provisjonPerNyEnhet)} i media per ny forvaltningskunde. ${c5 && c8 ? `Ved 8 000 kr øker kapitalbehovet med ${mnok(c8.kapital - c5.kapital)}.` : ''}`, m: `Performance-avtalen (${basisF.partner?.paa ? `${kma(basisF.partner.honorarPct)} % i ${basisF.partner.varighetMnd} mnd` : 'resultatbasert'}) flytter risiko til byrået. Forvaltningens egne kunder og referral er kanalen som koster null. Vi bremser veksten før vi finansierer dyre kunder.`, kap: 'variabel' },
-              { t: 'Én kodebase, få hoder', r: `Tech bygger AI-native uten utviklerteam${utv ? ` – ${kr(utv)}/mnd i utvikling` : ''}. Nøkkelperson- og leverandørrisiko er reell.`, m: 'Kode, data og infrastruktur eies av Digihome Tech AS – ikke av leverandøren. Arkitektur og prosesser er dokumentert. Kapasitet kan kjøpes måned for måned, ikke ansettes i panikk.', kap: 'org' },
-              { t: 'Jus og regulering', r: 'Husleieloven regulerer depositum, oppsigelse og regulering i detalj. Én systematisk feil i kontraktsmal eller frist treffer hele porteføljen samtidig.', m: 'Styreleder er advokat med selskaps- og kontraktsrett som fag. Kontrakter, depositum og signering er standardisert i programvaren – én rettelse gjelder alle enheter.', kap: 'org' },
-              { t: 'Churn og bemanning', r: `Planen antar ${kma(basisF.aarligChurnPct)} % årlig churn og en bemanningstrapp fra ${basisF.bemanningstrinn?.[0]?.prosent ?? 30} % til ${basisF.bemanningstrinn?.[basisF.bemanningstrinn.length - 1]?.prosent ?? '—'} % stilling ved ${nb(basisF.bemanningstrinn?.[basisF.bemanningstrinn.length - 1]?.fraEnheter ?? 0)} enheter.`, m: 'Forvaltningsavtaler er trege å si opp midt i et leieforhold. Modellen varsler når enheter per årsverk passerer grensen, og «Hva om» viser hva dobbel churn og halv vekst gjør med kapitalbehovet – før noen andre spør.', kap: 'hvaom' },
+              { t: 'Kundekost', tall: c5 && c8 ? `+${mnok(c8.kapital - c5.kapital)}` : null, tallU: 'mer kapital ved 8 000 kr', r: `Planen regner ${kr(basisF.provisjonPerNyEnhet)} i media per ny forvaltningskunde. ${c5 && c8 ? `Ved 8 000 kr øker kapitalbehovet med ${mnok(c8.kapital - c5.kapital)}.` : ''}`, m: `Performance-avtalen (${basisF.partner?.paa ? `${kma(basisF.partner.honorarPct)} % i ${basisF.partner.varighetMnd} mnd` : 'resultatbasert'}) flytter risiko til byrået. Forvaltningens egne kunder og referral er kanalen som koster null. Vi bremser veksten før vi finansierer dyre kunder.`, kap: 'variabel' },
+              { t: 'Én kodebase, få hoder', tall: utv ? kr(utv) : null, tallU: 'per måned i utvikling', r: `Tech bygger AI-native uten utviklerteam${utv ? ` – ${kr(utv)}/mnd i utvikling` : ''}. Nøkkelperson- og leverandørrisiko er reell.`, m: 'Kode, data og infrastruktur eies av Digihome Tech AS – ikke av leverandøren. Arkitektur og prosesser er dokumentert. Kapasitet kan kjøpes måned for måned, ikke ansettes i panikk.', kap: 'org' },
+              { t: 'Jus og regulering', tall: nb(Math.round(mF.enheter[N - 1] || 0)), tallU: 'enheter treffes samtidig av én malfeil', r: 'Husleieloven regulerer depositum, oppsigelse og regulering i detalj. Én systematisk feil i kontraktsmal eller frist treffer hele porteføljen samtidig.', m: 'Styreleder er advokat med selskaps- og kontraktsrett som fag. Kontrakter, depositum og signering er standardisert i programvaren – én rettelse gjelder alle enheter.', kap: 'org' },
+              { t: 'Churn og bemanning', tall: `${kma(basisF.aarligChurnPct)} %`, tallU: 'årlig churn i planen – test 10 % i Hva om', r: `Planen antar ${kma(basisF.aarligChurnPct)} % årlig churn og en bemanningstrapp fra ${basisF.bemanningstrinn?.[0]?.prosent ?? 30} % til ${basisF.bemanningstrinn?.[basisF.bemanningstrinn.length - 1]?.prosent ?? '—'} % stilling ved ${nb(basisF.bemanningstrinn?.[basisF.bemanningstrinn.length - 1]?.fraEnheter ?? 0)} enheter.`, m: 'Forvaltningsavtaler er trege å si opp midt i et leieforhold. Modellen varsler når enheter per årsverk passerer grensen, og «Hva om» viser hva dobbel churn og halv vekst gjør med kapitalbehovet – før noen andre spør.', kap: 'hvaom' },
             ].map((x, i) => (
               <Inn key={x.t} i={2 + i} className="border-t pt-5" style={{ borderColor: HAIR }}>
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-[26px] sm:text-[30px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.ink }}>{x.t}</p>
-                  <button onClick={() => gaaTil(sider.indexOf(x.kap))} className="deck-skjul-print flex shrink-0 items-center gap-1 text-[12.5px] font-medium" style={{ color: LILLA_M }}>Se tallene <ArrowRight className="h-3 w-3" /></button>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[26px] sm:text-[30px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.ink }}>{x.t}</p>
+                    <button onClick={() => gaaTil(sider.indexOf(x.kap))} className="deck-skjul-print mt-2 flex items-center gap-1 text-[12.5px] font-medium" style={{ color: LILLA_M }}>Se tallene <ArrowRight className="h-3 w-3" /></button>
+                  </div>
+                  {x.tall ? <div className="shrink-0 text-right"><p className="text-[26px] sm:text-[30px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: LILLA_M }}>{x.tall}</p><p className="mt-1 max-w-[18ch] text-[11.5px] leading-[1.35]" style={{ color: SVAK }}>{x.tallU}</p></div> : null}
                 </div>
                 <p className="mt-3 text-[14.5px] leading-[1.55]" style={{ color: DIM }}>{x.r}</p>
                 <p className="mt-4 border-t pt-3 text-[14.5px] leading-[1.55]" style={{ borderColor: HAIR, color: T.ink }}><span className="mr-2 text-[11.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: LILLA_M }}>Tiltak</span>{x.m}</p>
@@ -1522,6 +1587,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             ...(harTech ? [{ l: 'Break-even Tech', idx: k.tech.breakEvenIdx, f: FARGE.huseier, opp: false }] : []),
             { l: 'Break-even konsern', idx: sK.breakEvenIdx, f: T.gronn, opp: true },
           ]} />
+        </Inn>
+        <Inn i={5} className="mt-10 border-t pt-5" style={{ borderColor: LYS_HAIR }}>
+          <p className="mb-2 text-[12.5px] font-medium" style={{ color: LYS_SVAK }}>Rullebanen · akkumulert kontantstrøm{skattPaa ? ' etter betalt skatt' : ''}, konsern</p>
+          <Bane aktiv={er('trenger')} serie={skattPaa ? k.kontant.akkumulert : k.akkumulert} kapital={kapBuffer} bunnIdx={kapReellIdx} startYm={plan.startYm} N={N} hoyde={smal ? 200 : 220} bredde={smal ? 560 : 1000} />
         </Inn>
         <Inn i={6} className="mt-8">
           <p className="mb-3 text-[12.5px] font-medium" style={{ color: LYS_SVAK }}>Pengene går til · sum over perioden</p>
