@@ -13,10 +13,14 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Plus, ArrowLeft, ArrowRight, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Wallet, TrendingUp, HelpCircle,
+  Copy,
 } from 'lucide-react';
 import BudsjettModell from '@/components/admin/BudsjettModell';
+import TechModell from '@/components/admin/TechModell';
+import KonsernSammenstilling from '@/components/admin/KonsernSammenstilling';
 import Omvisning from '@/components/admin/Omvisning';
-import { STANDARD_DRIVERE } from '@/lib/budsjett-modell';
+import { useSelskap, SelskapsVelger, SelskapMerke } from '@/components/admin/SelskapOkonomi';
+import { STANDARD_DRIVERE, STANDARD_TECH } from '@/lib/budsjett-modell';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
 const KNAPP_PRIMAER = 'flex h-9 items-center gap-1.5 rounded-[9px] bg-[#141414] px-4 text-[13px] font-medium text-white transition-colors hover:bg-black/80 active:scale-[0.98] disabled:opacity-40';
@@ -25,7 +29,7 @@ const KNAPP_GHOST = 'flex h-9 items-center gap-1.5 rounded-[9px] border border-b
 const MND = ['januar', 'februar', 'mars', 'april', 'mai', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'desember'];
 const MND_KORT = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
 // Smalt no-break space (U+202F) som tusenskiller — NBSP fra nb-NO rendres bredt
-const kr = (n) => `${Math.round(Number(n) || 0).toLocaleString('nb-NO').replace(/\u00A0/g, '\u202F')} kr`;
+const kr = (n) => `${Math.round(Number(n) || 0).toLocaleString('nb-NO').replace(/\u00A0/g, ' ')} kr`;
 const ymDeler = (ym) => { const [y, m] = String(ym || '').split('-').map(Number); return { y, m }; };
 const ymPluss = (ym, i) => {
   const { y, m } = ymDeler(ym);
@@ -68,6 +72,25 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
   const [planer, setPlaner] = useState(null); // null = laster
   const [feil, setFeil] = useState('');
   const [visNy, setVisNy] = useState(false);
+  // Selskapsdimensjon — samme valg som i Økonomi (husket i localStorage + URL)
+  const [selskap, setSelskap] = useSelskap();
+  const [nySelskap, setNySelskap] = useState('digihome');
+  const [nyKobling, setNyKobling] = useState('');
+  useEffect(() => { if (selskap === 'digihome' || selskap === 'tech') setNySelskap(selskap); }, [selskap]);
+  // Puls: faktisk denne måneden fra Økonomi (per selskap) — møter planens tall for samme måned
+  const [okonomi, setOkonomi] = useState(null);
+  useEffect(() => {
+    if (readOnly || !apiKey) return;
+    let avbrutt = false;
+    (async () => { try { const r = await fetch(`/api/admin/finance/selskap?key=${encodeURIComponent(apiKey)}`); const j = await r.json(); if (!avbrutt && j?.ok) setOkonomi(j); } catch (e) { /* stille */ } })();
+    return () => { avbrutt = true; };
+  }, [apiKey, readOnly]);
+  const [dupliserer, setDupliserer] = useState('');
+  const dupliser = async (e, id) => {
+    e.stopPropagation(); if (dupliserer) return; setDupliserer(id);
+    try { const r = await api('plan/dupliser', { method: 'POST', body: { id } }); await hentPlaner(); if (r?.id) await aapne(r.id); } catch (err) { setFeil(err.message); }
+    setDupliserer('');
+  };
   const [valgtId, setValgtId] = useState(null);
 
   /* ── Omvisning (budsjettoversikten): auto-start ved første besøk for alle
@@ -145,6 +168,27 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
     const n = ymDiff(nyFra, nyTil);
     if (!(n >= 1 && n <= 36)) { setNyFeil('Perioden må være 1–36 måneder (til-måned kan ikke være før fra-måned)'); return; }
     setOppretter(true); setNyFeil('');
+    if (nySelskap === 'tech') {
+      // Tech-budsjett: prisliste fra Økonomi er utgangspunktet; enheter under forvaltning fra koblet Digihome AS-budsjett.
+      try {
+        let prisliste = null;
+        try { const r = await fetch(`/api/admin/finance/settings?key=${encodeURIComponent(apiKey)}`); const j = await r.json(); prisliste = j.settings?.prisliste || null; } catch (e) { prisliste = null; }
+        const tech = {
+          ...STANDARD_TECH,
+          huseier: { ...STANDARD_TECH.huseier, ...(prisliste?.huseier ? { prisModell: prisliste.huseier.modell, pris: prisliste.huseier.pris } : {}) },
+          forvaltning: { ...STANDARD_TECH.forvaltning, kilde: 'plan', ...(prisliste?.forvaltning ? { pris: prisliste.forvaltning.pris } : {}) },
+          bedrift: { ...STANDARD_TECH.bedrift, ...(prisliste?.bedrift ? { pris: prisliste.bedrift.pris } : {}) },
+        };
+        let fakta = null;
+        try { const f = await api(`plan/tech-fakta?startYm=${nyFra}&antallMnd=${n}${nyKobling ? `&kobletPlanId=${encodeURIComponent(nyKobling)}` : ''}`); fakta = f.fakta || null; } catch (e) { fakta = null; }
+        const r = await api('plan', { method: 'PUT', body: { navn, selskap: 'tech', startYm: nyFra, antallMnd: n, investorSynlig: false, tech, fakta, kobletPlanId: nyKobling || null } });
+        setNyNavn(''); setVisNy(false);
+        await hentPlaner();
+        await aapne(r.id);
+      } catch (e) { setNyFeil(e.message); }
+      setOppretter(false);
+      return;
+    }
     try {
       // Porteføljefakta hentes fra leieforholdene — kontraktsfestet, ingen antakelser
       let forslag = null;
@@ -152,7 +196,7 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
       try { forslag = await api(`plan/forslag?startYm=${nyFra}&antallMnd=${n}`); } catch (e) { hentetOk = false; }
       const serie = (arr) => { const a = (arr || []).slice(0, n).map((v) => Math.max(0, Math.round(Number(v) || 0))); while (a.length < n) a.push(0); return a; };
       const body = {
-        navn, startYm: nyFra, antallMnd: n, type: 'modell', investorSynlig: false,
+        navn, selskap: 'digihome', startYm: nyFra, antallMnd: n, type: 'modell', investorSynlig: false,
         fakta: { eksisterende: serie(forslag?.sikret), enheter: serie(forslag?.enheterSerie), bortfall: serie(forslag?.bortfall), oppdatertAt: new Date().toISOString() },
         drivere: {
           ...STANDARD_DRIVERE,
@@ -224,6 +268,19 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
   const sum = useMemo(() => (plan ? plan.hon.reduce((s, x) => s + x, 0) : 0), [plan]);
 
   /* ────────────────────────── Editor ────────────────────────── */
+  if (valgtId && !planLaster && plan && plan.selskap === 'tech') {
+    return (
+      <TechModell
+        key={plan.id}
+        plan={plan}
+        api={api}
+        apiKey={apiKey}
+        readOnly={readOnly}
+        onTilbake={() => { tilListe(); hentPlaner(); }}
+        onEndret={hentPlaner}
+      />
+    );
+  }
   if (valgtId && !planLaster && plan && plan.type === 'modell') {
     return (
       <BudsjettModell
@@ -342,13 +399,26 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
   /* ────────────────────────── Liste ────────────────────────── */
   const horisontLabel = (n) => (n === 12 ? '1 år' : n === 24 ? '2 år' : n === 36 ? '3 år' : `${n} mnd`);
   const datoKort = (iso) => { try { return new Date(iso).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' }); } catch (e) { return ''; } };
+  const planerVist = (planer || [])
+    .filter((p) => (selskap === 'tech' ? p.selskap === 'tech' : p.selskap !== 'tech'))
+    .sort((a, b) => (a.status === 'vedtatt' ? -1 : 0) - (b.status === 'vedtatt' ? -1 : 0) || String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+  // Planen som «gjelder» nå: vedtatt som dekker denne måneden, ellers nyeste som dekker den
+  const gjeldende = planerVist.find((p) => p.status === 'vedtatt' && p.naa) || planerVist.find((p) => p.naa) || null;
+  const faktiskNaa = okonomi?.naa?.[selskap === 'tech' ? 'tech' : 'digihome'] || null;
+  const dhModeller = (planer || []).filter((p) => p.selskap !== 'tech' && p.type === 'modell');
+  const undertekst = selskap === 'tech'
+    ? 'Plattformselskapets budsjett — prislisten × tre kundegrupper. Lisensen fra Digihome AS følger forvaltningsbudsjettet automatisk.'
+    : selskap === 'konsern'
+      ? 'Konsernet er en sammenstilling av ett Digihome AS- og ett Tech-budsjett, med plattformlisensen eliminert.'
+      : 'Forvaltningsselskapets budsjett — porteføljefakta fra leieforholdene, resten modellerer du med synlige forutsetninger.';
   return (
     <div className="mx-auto w-full max-w-[1060px] pt-2" data-testid="budsjett-liste">
+      {!readOnly && <SelskapsVelger verdi={selskap} onChange={(v) => { setSelskap(v); setVisNy(false); }} />}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-[25px] font-bold tracking-[-0.015em] text-[#1c1917]" style={heading}>Budsjetter</h1>
           <p className="mt-1 text-[13.5px] text-[#8f8a82]">
-            {readOnly ? 'Budsjetter delt med investorrommet.' : 'Driverstyrte budsjetter — porteføljefakta fra leieforholdene, resten modellerer du med synlige forutsetninger.'}
+            {readOnly ? 'Budsjetter delt med investorrommet.' : undertekst}
           </p>
         </div>
         <div className="mt-1 flex shrink-0 items-center gap-2">
@@ -356,7 +426,7 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
             className="flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.08] bg-white text-[#a6a19a] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917]">
             <HelpCircle className="h-4 w-4" />
           </button>
-          {!readOnly && (
+          {!readOnly && selskap !== 'konsern' && (
             <button onClick={() => { setVisNy((v) => !v); setNyFeil(''); }} data-testid="budsjett-ny" className={`${KNAPP_PRIMAER} shrink-0`}>
               <Plus className="h-3.5 w-3.5" /> Nytt budsjett
             </button>
@@ -371,6 +441,22 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
         <div className="relative mt-4 overflow-hidden rounded-[18px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="budsjett-ny-panel">
           <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#8b5cf6] via-[#a78bfa] to-transparent" />
           <p className="text-[14px] font-bold text-[#1c1917]" style={heading}>Nytt budsjett</p>
+          {/* Selskap først — motoren følger selskapet */}
+          <div className="mt-3 grid gap-2 sm:grid-cols-2" data-testid="budsjett-ny-selskap">
+            {[
+              ['digihome', 'Digihome AS', 'Forvaltningsmotoren — porteføljefakta fra leieforholdene, vekst, churn og bemanningstrapp.'],
+              ['tech', 'Digihome Tech AS', 'Plattformmotoren — prislisten × huseiere, lisens fra Digihome AS og bedriftskunder.'],
+            ].map(([id, navnS, tekst]) => (
+              <button key={id} type="button" onClick={() => setNySelskap(id)} data-testid={`budsjett-ny-selskap-${id}`} aria-pressed={nySelskap === id}
+                className={`flex items-start gap-3 rounded-[14px] p-3.5 text-left transition-all ${nySelskap === id ? 'bg-[#1c1917] text-white shadow-sm' : 'bg-[#f7f6f3] text-[#1c1917] hover:bg-[#f0efec]'}`}>
+                <SelskapMerke id={id} storrelse={28} />
+                <span className="min-w-0">
+                  <span className="block text-[13.5px] font-bold" style={heading}>{navnS}</span>
+                  <span className={`mt-0.5 block text-[12px] leading-snug ${nySelskap === id ? 'text-white/65' : 'text-[#8f8a82]'}`}>{tekst}</span>
+                </span>
+              </button>
+            ))}
+          </div>
           <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_150px_150px]">
             <label className="block">
               <span className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a6a19a]">Navn</span>
@@ -403,10 +489,21 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
                 className="mt-1 h-9 w-full rounded-[9px] border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none focus:border-[#1c1917]/25" />
             </label>
           </div>
+          {nySelskap === 'tech' && (
+            <label className="mt-3 block max-w-[520px]" data-testid="budsjett-ny-kobling-felt">
+              <span className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a6a19a]">Enheter under forvaltning hentes fra</span>
+              <select value={nyKobling} onChange={(e) => setNyKobling(e.target.value)} data-testid="budsjett-ny-kobling"
+                className="mt-1 h-9 w-full rounded-[9px] border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none focus:border-[#1c1917]/25">
+                <option value="">Dagens portefølje (kontraktsfestet, uten vekst)</option>
+                {dhModeller.map((p) => <option key={p.id} value={p.id}>{p.navn} · {periodeLabel(p.startYm, p.antallMnd)}{p.status === 'vedtatt' ? ' · vedtatt' : ''}</option>)}
+              </select>
+              <span className="mt-1 block text-[11.5px] text-[#a6a19a]">Gir lisensinntekten (enheter × pris) uten å taste noe. Kan endres i budsjettet.</span>
+            </label>
+          )}
           <div className="mt-3.5 flex flex-wrap items-center gap-3">
             <button onClick={opprett} disabled={oppretter} data-testid="budsjett-opprett" className={KNAPP_PRIMAER}>
               {oppretter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <TrendingUp className="h-3.5 w-3.5" />}
-              {oppretter ? 'Henter porteføljefakta…' : 'Opprett budsjett'}
+              {oppretter ? (nySelskap === 'tech' ? 'Henter enheter…' : 'Henter porteføljefakta…') : `Opprett ${nySelskap === 'tech' ? 'Tech-budsjett' : 'budsjett'}`}
             </button>
             {nyFra && nyTil && ymDiff(nyFra, nyTil) >= 1 && (
               <span className="text-[12.5px] text-[#a6a19a]">{periodeLabel(nyFra, ymDiff(nyFra, nyTil))}</span>
@@ -414,24 +511,60 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
           </div>
           {nyFeil && <p className="mt-2.5 text-[13px] text-[#b3261e]" data-testid="budsjett-ny-feil">{nyFeil}</p>}
           <p className="mt-2.5 text-[12px] leading-relaxed text-[#a6a19a]">
-            Porteføljefakta (kontraktsfestet honorar, enheter og re-utleie) hentes automatisk fra leieforholdene — vekst, churn, bemanning og kostnader modellerer du med synlige forutsetninger etterpå.
+            {nySelskap === 'tech'
+              ? 'Prisene starter fra prislisten i Økonomi → Tech. Vekst, churn, annonser og utviklingskost modellerer du med synlige forutsetninger etterpå.'
+              : 'Porteføljefakta (kontraktsfestet honorar, enheter og re-utleie) hentes automatisk fra leieforholdene — vekst, churn, bemanning og kostnader modellerer du med synlige forutsetninger etterpå.'}
           </p>
         </div>
       )}
 
       {feil && <p className="mt-4 text-[13px] text-[#b3261e]" data-testid="budsjett-feil">{feil}</p>}
 
+      {/* Puls: budsjett møter faktisk — samme måned, samme selskap */}
+      {!readOnly && selskap !== 'konsern' && planer !== null && planerVist.length > 0 && (
+        <div className="mt-5 grid gap-3 rounded-[18px] bg-[#1c1917] p-5 text-white sm:grid-cols-[1.2fr_1fr_1fr_1fr]" data-testid="budsjett-puls">
+          <div className="min-w-0">
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-white/45">Denne måneden · {faktiskNaa ? stor(mndLabel(faktiskNaa.ym || okonomi?.naa?.ym)) : stor(mndLabel(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`))}</p>
+            {gjeldende ? (
+              <p className="mt-1.5 text-[13.5px] leading-snug text-white/85">Måles mot <button onClick={() => aapne(gjeldende.id)} className="font-semibold text-white underline decoration-white/30 underline-offset-2 hover:decoration-white" data-testid="budsjett-puls-plan">{gjeldende.navn}</button>{gjeldende.status === 'vedtatt' ? ' (vedtatt)' : ' (nyeste utkast)'} · måned {gjeldende.naa.idx + 1} av {gjeldende.antallMnd}</p>
+            ) : (
+              <p className="mt-1.5 text-[13.5px] leading-snug text-white/70">Ingen budsjett dekker denne måneden. Lag et som starter nå for å følge plan mot faktisk.</p>
+            )}
+          </div>
+          {[
+            ['Inntekt', faktiskNaa?.inntekt, gjeldende?.naa?.inntekt],
+            ['Kostnader', faktiskNaa?.kost, gjeldende?.naa?.kost, true],
+            ['Resultat', faktiskNaa?.resultat, gjeldende?.naa?.resultat],
+          ].map(([l, f, pl, kostnad]) => {
+            const avvik = f != null && pl != null ? f - pl : null;
+            const bra = avvik == null ? null : kostnad ? avvik <= 0 : avvik >= 0;
+            return (
+              <div key={l} className="min-w-0 border-l border-white/10 pl-4">
+                <p className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-white/45">{l}</p>
+                {f == null && !okonomi ? <span className="mt-2 block h-5 w-24 animate-pulse rounded bg-white/15" /> : <p className="mt-1 text-[19px] font-bold tracking-[-0.02em] whitespace-nowrap" style={heading}>{f == null ? '—' : kr(f)}</p>}
+                <p className="mt-0.5 text-[11.5px] text-white/55 whitespace-nowrap">{pl != null ? <>plan {kr(pl)}{avvik != null && Math.abs(avvik) >= 1 ? <span className={`ml-1.5 font-semibold ${bra ? 'text-[#7CFFB2]' : 'text-[#FF9B9B]'}`}>{avvik > 0 ? '+' : '−'}{kr(Math.abs(avvik))}</span> : null}</> : 'ingen plan'}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Konsern = sammenstilling, ikke egne budsjetter */}
+      {!readOnly && selskap === 'konsern' && planer !== null ? (
+        <KonsernSammenstilling planer={planer} api={api} onAapne={(id, sel) => { if (!id) return; setSelskap(sel); aapne(id); }} />
+      ) : null}
+
       {/* Budsjettkort — rikt grid med status, horisont, nøkkeltall og margin */}
-      {planer === null ? (
+      {selskap === 'konsern' && !readOnly ? null : planer === null ? (
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {[0, 1].map((i) => <div key={i} className="h-[168px] animate-pulse rounded-[18px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)]" />)}
         </div>
-      ) : planer.length === 0 ? (
+      ) : planerVist.length === 0 ? (
         <div className="mt-8 rounded-[18px] bg-white px-6 py-12 text-center shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="budsjett-tom">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4f0fb]"><Wallet className="h-6 w-6 text-[#8b5cf6]" /></span>
-          <p className="mt-4 text-[15px] font-bold text-[#1c1917]" style={heading}>{readOnly ? 'Ingen budsjetter er delt ennå' : 'Ingen budsjetter ennå'}</p>
+          <p className="mt-4 text-[15px] font-bold text-[#1c1917]" style={heading}>{readOnly ? 'Ingen budsjetter er delt ennå' : selskap === 'tech' ? 'Ingen Tech-budsjetter ennå' : 'Ingen budsjetter ennå'}</p>
           <p className="mx-auto mt-1 max-w-[380px] text-[13px] leading-relaxed text-[#8f8a82]">
-            {readOnly ? 'Når et budsjett deles med investorrommet, dukker det opp her.' : 'Lag ditt første budsjett — velg periode, så henter vi porteføljefakta fra leieforholdene for deg.'}
+            {readOnly ? 'Når et budsjett deles med investorrommet, dukker det opp her.' : selskap === 'tech' ? 'Lag plattformbudsjettet — prisene hentes fra prislisten, lisensvolumet fra et Digihome AS-budsjett.' : 'Lag ditt første budsjett — velg periode, så henter vi porteføljefakta fra leieforholdene for deg.'}
           </p>
           {!readOnly && !visNy && (
             <button onClick={() => setVisNy(true)} className={`${KNAPP_PRIMAER} mx-auto mt-5`}><Plus className="h-3.5 w-3.5" /> Nytt budsjett</button>
@@ -439,15 +572,17 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
         </div>
       ) : (
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {planer.map((p) => {
+          {planerVist.map((p) => {
             const marginPct = p.inntekter > 0 ? Math.round(((p.resultat || 0) / p.inntekter) * 100) : null;
             return (
               <button key={p.id} onClick={() => aapne(p.id)} data-testid={`budsjett-rad-${p.id}`}
                 className="group relative overflow-hidden rounded-[18px] bg-white p-5 text-left shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-all duration-200 hover:-translate-y-[2px] hover:shadow-[0_12px_32px_rgba(28,25,23,0.10),inset_0_0_0_1px_rgba(0,0,0,0.07)] active:scale-[0.995]">
                 <div className="flex items-center gap-2">
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] ${p.type === 'modell' ? 'bg-[#1c1917] text-white' : 'bg-[#f0efec] text-[#78716c]'}`}>
-                    {p.type === 'modell' ? <TrendingUp className="h-4 w-4" /> : <Wallet className="h-4 w-4" />}
-                  </span>
+                  {p.selskap === 'tech' ? <SelskapMerke id="tech" storrelse={36} /> : (
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] ${p.type === 'modell' ? 'bg-[#1c1917] text-white' : 'bg-[#f0efec] text-[#78716c]'}`}>
+                      {p.type === 'modell' ? <TrendingUp className="h-4 w-4" /> : <Wallet className="h-4 w-4" />}
+                    </span>
+                  )}
                   <span className="rounded-full bg-[#f0efec] px-2 py-[3px] text-[10.5px] font-bold uppercase tracking-[0.05em] text-[#78716c]">{horisontLabel(p.antallMnd)}</span>
                   {p.status === 'vedtatt' && (
                     <span className="rounded-full bg-[#e7f4ee] px-2 py-[3px] text-[10.5px] font-bold uppercase tracking-[0.05em] text-[#0a7d55]">Vedtatt</span>
@@ -455,19 +590,33 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
                   {!readOnly && p.investorSynlig && (
                     <span className="flex items-center gap-1 rounded-full bg-[#f0ebfa] px-2 py-[3px] text-[10.5px] font-bold text-[#6d28d9]" title="Synlig i investorrommet"><Eye className="h-3 w-3" /> Investorrom</span>
                   )}
-                  <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-[#d6d1c9] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#8f8a82]" />
+                  {p.naa && (
+                    <span className="rounded-full bg-[#fff4d6] px-2 py-[3px] text-[10.5px] font-bold uppercase tracking-[0.05em] text-[#8a6a00]" title="Perioden dekker inneværende måned">Løpende</span>
+                  )}
+                  <span className="ml-auto flex items-center gap-1">
+                    {!readOnly && (
+                      <span role="button" tabIndex={0} onClick={(e) => dupliser(e, p.id)} onKeyDown={(e) => { if (e.key === 'Enter') dupliser(e, p.id); }} title="Dupliser som nytt utkast" data-testid={`budsjett-dupliser-${p.id}`}
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-[#d6d1c9] opacity-0 transition-all hover:bg-black/[0.05] hover:text-[#1c1917] group-hover:opacity-100 focus:opacity-100">
+                        {dupliserer === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
+                      </span>
+                    )}
+                    <ArrowRight className="h-4 w-4 shrink-0 text-[#d6d1c9] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#8f8a82]" />
+                  </span>
                 </div>
                 <p className="mt-3 truncate text-[16.5px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{p.navn}</p>
-                <p className="mt-0.5 text-[12.5px] text-[#a6a19a]">{p.type === 'modell' ? '' : 'Enkelt budsjett (eldre) · '}{periodeLabel(p.startYm, p.antallMnd)}</p>
+                <p className="mt-0.5 text-[12.5px] text-[#a6a19a]">{p.selskap === 'tech' ? 'Digihome Tech AS · ' : p.type === 'modell' ? '' : 'Enkelt budsjett (eldre) · '}{periodeLabel(p.startYm, p.antallMnd)}{p.selskap === 'tech' && p.tech?.andelForvaltningPct != null ? ` · ${p.tech.andelForvaltningPct} % fra Digihome AS` : ''}</p>
                 <div className="mt-3.5 grid grid-cols-2 gap-3 border-t border-black/[0.05] pt-3">
                   <div className="min-w-0">
                     <p className="text-[10.5px] font-bold uppercase tracking-[0.07em] text-[#b5b0a8]">Inntekter</p>
-                    <p className="mt-0.5 truncate text-[15.5px] font-bold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{kr(p.inntekter)}</p>
+                    <p className="mt-0.5 truncate text-[15.5px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{kr(p.inntekter)}</p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10.5px] font-bold uppercase tracking-[0.07em] text-[#b5b0a8]">{p.type === 'modell' ? 'Resultat' : 'Honorar'}</p>
-                    {p.type === 'modell' ? (
-                      <p className={`mt-0.5 truncate text-[15.5px] font-bold tabular-nums tracking-[-0.01em] ${(p.resultat || 0) >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`} style={heading}>
+                    <p className="text-[10.5px] font-bold uppercase tracking-[0.07em] text-[#b5b0a8]">{p.selskap === 'tech' ? 'ARR ved slutt' : p.type === 'modell' ? 'Resultat' : 'Honorar'}</p>
+                    {p.selskap === 'tech' && p.tech ? (
+                      <p className="mt-0.5 truncate text-[15.5px] font-bold tracking-[-0.01em] text-[#6d28d9]" style={heading}>{kr(p.tech.arrExit)}<span className={`ml-1.5 text-[11px] font-semibold ${(p.resultat || 0) >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{(p.resultat || 0) >= 0 ? '+' : '−'}{kr(Math.abs(p.resultat || 0)).replace(' kr', '')}</span></p>
+                    ) : null}
+                    {p.selskap === 'tech' && p.tech ? null : p.type === 'modell' ? (
+                      <p className={`mt-0.5 truncate text-[15.5px] font-bold tracking-[-0.01em] ${(p.resultat || 0) >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`} style={heading}>
                         {kr(p.resultat)}
                         {marginPct !== null && <span className="ml-1.5 text-[11px] font-semibold text-[#a6a19a]">{marginPct} %</span>}
                       </p>

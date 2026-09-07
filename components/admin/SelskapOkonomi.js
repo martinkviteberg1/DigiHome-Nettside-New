@@ -16,9 +16,9 @@ import { ArrowRight, Check, Loader2, Pencil, Plus, Trash2, X, Info, Sparkles } f
 import { VISNINGER, SELSKAPER, selskapInfo, PRISLISTE_PRODUKTER, prisPerEnhet, rensPrisliste, AUTOKILDER } from '@/lib/selskap-okonomi';
 
 const nf0 = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 });
-const smal = (s) => String(s).replace(/[\u00A0\u0020]/g, '\u202F');
-const kr = (n) => `${smal(nf0.format(Math.round(Number(n) || 0)))}\u202Fkr`;
-const krS = (n) => `${(Number(n) || 0) < 0 ? '−' : ''}${smal(nf0.format(Math.abs(Math.round(Number(n) || 0))))}\u202Fkr`;
+const smal = (s) => String(s).replace(/[\u00A0\u0020]/g, ' ');
+const kr = (n) => `${smal(nf0.format(Math.round(Number(n) || 0)))} kr`;
+const krS = (n) => `${(Number(n) || 0) < 0 ? '−' : ''}${smal(nf0.format(Math.abs(Math.round(Number(n) || 0))))} kr`;
 const MND = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
 const ymKort = (ym) => { const [y, m] = String(ym).split('-').map(Number); return `${MND[m - 1]} ${String(y).slice(2)}`; };
 const ymLang = (ym) => { const [y, m] = String(ym).split('-').map(Number); return `${MND[m - 1]} ${y}`; };
@@ -134,7 +134,7 @@ function Stat({ label, verdi, under, tone, stor, testid }) {
   return (
     <div className="rounded-2xl border border-[#eee] bg-white p-5" data-testid={testid}>
       <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[#999]">{label}</p>
-      <p className={`${stor ? 'text-[30px]' : 'text-[22px]'} mt-2 font-bold tracking-[-0.02em] ${farge}`} style={heading}>{verdi}</p>
+      <p className={`${stor ? 'text-[30px]' : 'text-[22px]'} mt-2 font-bold tracking-[-0.02em] whitespace-nowrap ${farge}`} style={heading}>{verdi}</p>
       {under ? <p className="mt-1 text-[12px] text-[#aaa]">{under}</p> : null}
     </div>
   );

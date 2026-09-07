@@ -30,7 +30,7 @@ import {
   anvendScenario as lfScenario, filtrerRader as lfFiltrer, parseFilterParams as lfParseFilter,
   filterBeskrivelse as lfBeskrivelse, beregnTotals as lfTotals, harFilter as lfHarFilter,
 } from '@/lib/leieforhold-filter';
-import { hentBudsjett, lagreBudsjett, beregnFaktisk, lagForslag, gyldigBudsjettAar, fangFaktiskEtterslep, beregnInntektsmodell, beregnSikretSerie, listBudsjettAar, INNTEKT_KATEGORIER, KOSTNAD_KATEGORIER, listPlaner, hentPlan, lagrePlan, slettPlan, beregnFaktiskPeriode, lagForslagForPeriode, gyldigYm } from '@/lib/budsjett';
+import { hentBudsjett, lagreBudsjett, beregnFaktisk, lagForslag, gyldigBudsjettAar, fangFaktiskEtterslep, beregnInntektsmodell, beregnSikretSerie, listBudsjettAar, INNTEKT_KATEGORIER, KOSTNAD_KATEGORIER, listPlaner, hentPlan, lagrePlan, slettPlan, beregnFaktiskPeriode, lagForslagForPeriode, gyldigYm, lagTechFakta, dupliserPlan } from '@/lib/budsjett';
 import { lagBudsjettExcel, lagBudsjettExcelRullerende } from '@/lib/budsjett-excel';
 import {
   beregnOversikt as drBeregnOversikt, listEnheter as drListEnheter, lagreEnhet as drLagreEnhet,
@@ -4465,8 +4465,34 @@ async function handleRoute(request, { params }) {
     // Lesing krever budsjett-modulen; skriving/sletting krever admin.
     if (route === '/admin/budsjett/planer' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      // Ikke-admin (investor/bruker med modulen) ser KUN budsjetter som er delt med investorrommet
-      return cors(NextResponse.json({ ok: true, planer: await listPlaner(db, { kunInvestorSynlige: !adminAuthed(request) }) }));
+      // Ikke-admin (investor/bruker med modulen) ser KUN budsjetter som er delt med investorrommet.
+      // ?selskap=digihome|tech filtrerer per juridisk enhet (utelatt = alle).
+      const selskapQ = (() => { try { return new URL(request.url).searchParams.get('selskap') || undefined; } catch (e) { return undefined; } })();
+      return cors(NextResponse.json({ ok: true, planer: await listPlaner(db, { kunInvestorSynlige: !adminAuthed(request), selskap: selskapQ === 'tech' || selskapQ === 'digihome' ? selskapQ : undefined }) }));
+    }
+    if (route === '/admin/budsjett/plan/dupliser' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const bDup = await request.json().catch(() => ({}));
+      const rDup = await dupliserPlan(db, bDup.id, { updatedBy: bDup.updatedBy || '' });
+      return cors(NextResponse.json(rDup, { status: rDup.ok ? 200 : (rDup.status || 400) }));
+    }
+    // Tech-budsjett: enheter under forvaltning per måned — fra et Digihome AS-budsjett
+    // (?kobletPlanId=) eller fra dagens portefølje. Brukes ved opprettelse og «Oppdater fakta».
+    if (route === '/admin/budsjett/plan/tech-fakta' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const uTf = new URL(request.url);
+      const startYmTf = gyldigYm(uTf.searchParams.get('startYm'));
+      const antallTf = Math.round(Number(uTf.searchParams.get('antallMnd'))) || 12;
+      const kobletTf = uTf.searchParams.get('kobletPlanId') || null;
+      if (!startYmTf) return cors(NextResponse.json({ ok: false, error: 'startYm må være ÅÅÅÅ-MM' }, { status: 400 }));
+      if (!(antallTf >= 1 && antallTf <= 36)) return cors(NextResponse.json({ ok: false, error: 'antallMnd må være 1–36' }, { status: 400 }));
+      let faktaTf = kobletTf ? await lagTechFakta(db, { startYm: startYmTf, antallMnd: antallTf, kobletPlanId: kobletTf }) : null;
+      if (!faktaTf) {
+        const lfTf = await hentLeieforhold(leieforholdTarget(), { db });
+        if (!lfTf.ok) return cors(NextResponse.json({ ok: false, error: lfTf.error || 'Kunne ikke hente porteføljen' }, { status: 502 }));
+        faktaTf = await lagTechFakta(db, { startYm: startYmTf, antallMnd: antallTf, rows: lfTf.rows });
+      }
+      return cors(NextResponse.json({ ok: true, fakta: faktaTf }));
     }
     if (route === '/admin/budsjett/plan' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
@@ -9503,7 +9529,8 @@ async function handleRoute(request, { params }) {
         // Plan: presenter kan velge fritt (?plan=); investor ser bare investorSynlige — «vedtatt» først, så nyeste.
         const onsket = dUrl.searchParams.get('plan') || '';
         const alle = await listPlaner(db, { kunInvestorSynlige: !presenter });
-        const modeller = alle.filter((p) => p.type === 'modell');
+        // Decket forteller forvaltningshistorien (Digihome AS) — Tech-budsjetter får egen deck-variant senere.
+        const modeller = alle.filter((p) => p.type === 'modell' && p.selskap !== 'tech');
         let valgt = onsket ? modeller.find((p) => p.id === onsket) : null;
         if (!valgt) valgt = modeller.find((p) => p.status === 'vedtatt') || modeller[0] || null;
         if (!valgt) return cors(NextResponse.json({ ok: false, error: 'Ingen plan er delt med investorrommet ennå' }, { status: 404 }));

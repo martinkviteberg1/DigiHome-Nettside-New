@@ -16,21 +16,21 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
-  ArrowLeft, ArrowRight, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Plus, X, RotateCcw, ChevronDown,
+  ArrowRight, Trash2, RefreshCw, Loader2, Check, Plus, X, RotateCcw, ChevronDown,
   SlidersHorizontal, TrendingUp, Scale, Users, Building2, Bookmark, HelpCircle, FileSpreadsheet, FileText, ArrowLeftRight,
   CalendarDays, ChevronLeft, ChevronRight, Presentation,
 } from 'lucide-react';
 import Omvisning from '@/components/admin/Omvisning';
 import KonsernModell from '@/components/admin/KonsernModell';
+import ModellTopplinje, { PILL, PILL_AKTIV, PILL_LILLA, KNAPP_PRIMAER } from '@/components/admin/ModellTopplinje';
 import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE, skalerVekst } from '@/lib/budsjett-modell';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
-const KNAPP_PRIMAER = 'flex h-9 items-center gap-1.5 rounded-[9px] bg-[#141414] px-4 text-[13px] font-medium text-white transition-colors hover:bg-black/80 active:scale-[0.98] disabled:opacity-40';
 
 const MND_KORT = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
 // Tallformat: nb-NO gir NBSP (U+00A0) som tusenskiller — den rendres bredt i
 // overskriftsfonten. Vi bytter til SMALT no-break space (U+202F): «454 286 kr».
-const smal = (s) => String(s).replace(/[\u00A0\u0020]/g, '\u202F');
+const smal = (s) => String(s).replace(/[\u00A0\u0020]/g, ' ');
 const kr = (n) => `${smal(Math.round(Number(n) || 0).toLocaleString('nb-NO'))} kr`;
 const kr0 = (n) => smal(Math.round(Number(n) || 0).toLocaleString('nb-NO'));
 const ymDeler = (ym) => { const [y, m] = String(ym || '').split('-').map(Number); return { y, m }; };
@@ -97,7 +97,7 @@ function MndVelger({ value, min, max, onChange, testid }) {
               className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#8f8a82] transition-colors hover:bg-[#f5f4f1] hover:text-[#1c1917] disabled:opacity-25">
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-[13.5px] font-bold tabular-nums text-[#1c1917]" style={heading}>{visAar}</span>
+            <span className="text-[13.5px] font-bold text-[#1c1917]" style={heading}>{visAar}</span>
             <button type="button" disabled={visAar >= maxA} onClick={() => setVisAar((a) => a + 1)}
               className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#8f8a82] transition-colors hover:bg-[#f5f4f1] hover:text-[#1c1917] disabled:opacity-25">
               <ChevronRight className="h-4 w-4" />
@@ -621,8 +621,8 @@ function BemanningsplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }
                             </span>
                           )}
                         </td>
-                        <td className="py-1.5 text-right font-medium tabular-nums text-[#57534e]">{kr0(kapT)} enh</td>
-                        <td className="py-1.5 text-right font-medium tabular-nums text-[#57534e]">{kr0(kostT)} kr</td>
+                        <td className="py-1.5 text-right font-medium text-[#57534e]">{kr0(kapT)} enh</td>
+                        <td className="py-1.5 text-right font-medium text-[#57534e]">{kr0(kostT)} kr</td>
                         <td className="py-1.5 text-right">
                           {!readOnly && draft.bemanningstrinn.length > 1 && !erStart && (
                             <button onClick={() => fjernTrinn(i)} className="rounded p-1 text-[#c2beb8] transition-colors hover:text-[#c2413b]" title="Fjern trinn" data-testid={`bemplan-trinn-fjern-${i}`}>
@@ -860,8 +860,8 @@ function VekstplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }) {
                           className="h-8 w-[84px] rounded-[8px] bg-[#f5f4f1] px-2 text-right text-[13px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
                       )}
                     </td>
-                    <td className="py-2 pr-2 text-right tabular-nums text-[#8f8a82]">{nyeIFase(1)?.mnd ?? N} mnd</td>
-                    <td className="py-2 pr-2 text-right tabular-nums font-semibold text-[#1c1917]">{kma(nyeIFase(1)?.sum ?? 0)}</td>
+                    <td className="py-2 pr-2 text-right text-[#8f8a82]">{nyeIFase(1)?.mnd ?? N} mnd</td>
+                    <td className="py-2 pr-2 text-right font-semibold text-[#1c1917]">{kma(nyeIFase(1)?.sum ?? 0)}</td>
                     <td className="py-2 text-right">&nbsp;</td>
                   </tr>
                   {draft.faser.map((f, i) => {
@@ -886,8 +886,8 @@ function VekstplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }) {
                               className="h-8 w-[84px] rounded-[8px] bg-[#f5f4f1] px-2 text-right text-[13px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
                           )}
                         </td>
-                        <td className="py-2 pr-2 text-right tabular-nums text-[#8f8a82]">{eff ? `${eff.mnd} mnd` : '—'}</td>
-                        <td className="py-2 pr-2 text-right tabular-nums font-semibold text-[#1c1917]">{eff ? kma(eff.sum) : '—'}</td>
+                        <td className="py-2 pr-2 text-right text-[#8f8a82]">{eff ? `${eff.mnd} mnd` : '—'}</td>
+                        <td className="py-2 pr-2 text-right font-semibold text-[#1c1917]">{eff ? kma(eff.sum) : '—'}</td>
                         <td className="py-2 text-right">
                           {!readOnly && (
                             <button onClick={() => fjernFase(i)} data-testid={`vekstplan-fase-fjern-${i}`} title="Fjern fasen"
@@ -1087,7 +1087,7 @@ function ScenarioSammenligning({ plan, fakta, drivere, scenarioer, aktivtScenari
     if (d === null || d === undefined) return <span className="text-[11px] font-medium text-[#c2beb8]">—</span>;
     const tekst = enhet === 'mnd' ? `${d > 0 ? '+' : ''}${d} mnd` : enhet === 'stk' ? `${d > 0 ? '+' : ''}${kr0(d)}` : `${d > 0 ? '+' : ''}${kr0(d)} kr`;
     const tone = bedre === null ? 'bg-[#f4f2ee] text-[#8f8a82]' : bedre ? 'bg-[#e7f6ef] text-[#0a7d55]' : 'bg-[#fdf0ef] text-[#b3261e]';
-    return <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${tone}`}>{tekst}</span>;
+    return <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${tone}`}>{tekst}</span>;
   };
 
   return (
@@ -1134,8 +1134,8 @@ function ScenarioSammenligning({ plan, fakta, drivere, scenarioer, aktivtScenari
                   {/* ≥sm: fire kolonner på én linje */}
                   <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 sm:grid sm:px-5">
                     <span className="truncate text-[12.5px] font-medium text-[#57534e]">{label}</span>
-                    <span className="truncate text-[13.5px] font-bold tabular-nums text-[#1c1917]" style={heading}>{verdiFn(mA)}</span>
-                    <span className="truncate text-[13.5px] font-bold tabular-nums text-[#1c1917]" style={heading}>{verdiFn(mB)}</span>
+                    <span className="truncate text-[13.5px] font-bold text-[#1c1917]" style={heading}>{verdiFn(mA)}</span>
+                    <span className="truncate text-[13.5px] font-bold text-[#1c1917]" style={heading}>{verdiFn(mB)}</span>
                     <span className="text-right"><Delta d={d} enhet={enhet} bedre={d === null ? null : bedreFn(d)} /></span>
                   </div>
                   {/* Mobil: stablet — etikett + Δ øverst, A/B under hverandre m/ fargeprikk */}
@@ -1145,8 +1145,8 @@ function ScenarioSammenligning({ plan, fakta, drivere, scenarioer, aktivtScenari
                       <Delta d={d} enhet={enhet} bedre={d === null ? null : bedreFn(d)} />
                     </div>
                     <div className="mt-1 grid grid-cols-2 gap-2">
-                      <span className="flex min-w-0 items-center gap-1.5"><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: FARGE_A }} /><span className="truncate text-[13px] font-bold tabular-nums text-[#1c1917]" style={heading}>{verdiFn(mA)}</span></span>
-                      <span className="flex min-w-0 items-center gap-1.5"><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: FARGE_B }} /><span className="truncate text-[13px] font-bold tabular-nums text-[#1c1917]" style={heading}>{verdiFn(mB)}</span></span>
+                      <span className="flex min-w-0 items-center gap-1.5"><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: FARGE_A }} /><span className="truncate text-[13px] font-bold text-[#1c1917]" style={heading}>{verdiFn(mA)}</span></span>
+                      <span className="flex min-w-0 items-center gap-1.5"><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: FARGE_B }} /><span className="truncate text-[13px] font-bold text-[#1c1917]" style={heading}>{verdiFn(mB)}</span></span>
                     </div>
                   </div>
                 </div>
@@ -1174,8 +1174,8 @@ function ScenarioSammenligning({ plan, fakta, drivere, scenarioer, aktivtScenari
                 {diff.map(([label, a, b]) => (
                   <div key={label} className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)] items-baseline gap-x-3 py-2">
                     <span className="truncate text-[12.5px] font-medium text-[#57534e]">{label}</span>
-                    <span className="min-w-0 break-words text-[12.5px] font-bold tabular-nums" style={{ color: FARGE_A }}>{a}</span>
-                    <span className="min-w-0 break-words text-[12.5px] font-bold tabular-nums" style={{ color: FARGE_B }}>{b}</span>
+                    <span className="min-w-0 break-words text-[12.5px] font-bold" style={{ color: FARGE_A }}>{a}</span>
+                    <span className="min-w-0 break-words text-[12.5px] font-bold" style={{ color: FARGE_B }}>{b}</span>
                   </div>
                 ))}
               </div>
@@ -1203,10 +1203,10 @@ function ScenarioSammenligning({ plan, fakta, drivere, scenarioer, aktivtScenari
                   return (
                     <tr key={aar} className={i % 2 ? 'bg-[#fbfaf8]/70' : ''}>
                       <td className="px-4 py-2.5 font-bold text-[#1c1917] sm:px-5">{aar}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{kr(sumI(mA))}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{kr(sumI(mB))}</td>
-                      <td className={`px-3 py-2.5 text-right font-semibold tabular-nums ${sumR(mA) >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr(sumR(mA))}</td>
-                      <td className={`px-3 py-2.5 text-right font-semibold tabular-nums ${sumR(mB) >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr(sumR(mB))}</td>
+                      <td className="px-3 py-2.5 text-right">{kr(sumI(mA))}</td>
+                      <td className="px-3 py-2.5 text-right">{kr(sumI(mB))}</td>
+                      <td className={`px-3 py-2.5 text-right font-semibold ${sumR(mA) >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr(sumR(mA))}</td>
+                      <td className={`px-3 py-2.5 text-right font-semibold ${sumR(mB) >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr(sumR(mB))}</td>
                       <td className="px-4 py-2.5 text-right sm:px-5"><Delta d={dr} bedre={dr === 0 ? null : dr > 0} /></td>
                     </tr>
                   );
@@ -1224,6 +1224,7 @@ function ScenarioSammenligning({ plan, fakta, drivere, scenarioer, aktivtScenari
 
 export default function BudsjettModell({ plan, api, apiKey = '', readOnly = false, onTilbake, onEndret }) {
   const [navn, setNavn] = useState(plan.navn);
+  const [status, setStatus] = useState(plan.status || 'utkast');
   const [investorSynlig, setInvestorSynlig] = useState(Boolean(plan.investorSynlig));
   const [drivere, setDrivere] = useState(() => ({ ...rensModellDrivere(plan.drivere) }));
   const [lagretDrivere, setLagretDrivere] = useState(() => rensModellDrivere(plan.drivere));
@@ -1414,7 +1415,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
           id: plan.id, type: 'modell',
           navn: (overstyr.navn ?? navn) || 'Budsjett',
           startYm: plan.startYm, antallMnd,
-          status: plan.status, notat: plan.notat || '',
+          status: overstyr.status ?? status, notat: plan.notat || '',
           investorSynlig: overstyr.investorSynlig ?? investorSynlig,
           drivere: overstyr.drivere ?? drivere,
           fakta: overstyr.fakta ?? fakta,
@@ -1433,7 +1434,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
       onEndret?.();
     } catch (e) { setFeil(e.message); }
     setLagrer(false);
-  }, [api, plan, navn, investorSynlig, drivere, fakta, scenarioer, lagrer, onEndret, antallMnd]);
+  }, [api, plan, navn, status, investorSynlig, drivere, fakta, scenarioer, lagrer, onEndret, antallMnd]);
 
   /* ── Scenariohandlinger ── */
   const velgScenario = (sc) => {
@@ -1661,13 +1662,19 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
               onChange={(e) => { setNavn(e.target.value); setSkittent(true); }}
               className="-ml-1 w-[220px] min-w-0 rounded-[8px] border border-transparent bg-transparent px-1 text-[19px] font-bold tracking-[-0.01em] text-[#1c1917] outline-none transition-colors hover:border-black/[0.07] focus:border-black/[0.15] sm:w-[300px]" style={heading} />
           )}
-          {/* Segmentbryter: forvaltningsmotoren eller konsernet (plattform + felles + konsolidert) */}
-          <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-[#f0efec] p-0.5" data-testid="modell-segment">
-            {[['forvaltning', 'Forvaltning'], ['konsern', 'Konsern']].map(([v, l]) => (
-              <button key={v} onClick={() => setSegment(v)} data-testid={`modell-segment-${v}`}
-                className={`h-7 rounded-full px-3 text-[11.5px] font-bold transition-all ${segment === v ? 'bg-[#1c1917] text-white' : 'text-[#8f8a82] hover:text-[#1c1917]'}`}>{l}</button>
-            ))}
+          {/* Selskap: dette er Digihome AS' budsjett. Konsern er nå en egen sammenstilling under
+              selskapsvelgeren — det eldre plattform-laget i planen er kun tilgjengelig der det finnes. */}
+          <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#f0efec] py-0.5 pl-0.5 pr-2.5 text-[11.5px] font-bold text-[#57534e]" data-testid="modell-selskap">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#1c1917] text-[9.5px] font-bold text-white">DH</span> Digihome AS
           </span>
+          {plan.plattform && (
+            <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-[#f0efec] p-0.5" data-testid="modell-segment">
+              {[['forvaltning', 'Forvaltning'], ['konsern', 'Eldre konsern-lag']].map(([v, l]) => (
+                <button key={v} onClick={() => setSegment(v)} data-testid={`modell-segment-${v}`}
+                  className={`h-7 rounded-full px-3 text-[11.5px] font-bold transition-all ${segment === v ? 'bg-[#1c1917] text-white' : 'text-[#8f8a82] hover:text-[#1c1917]'}`}>{l}</button>
+              ))}
+            </span>
+          )}
           <span className="hidden shrink-0 text-[13px] text-[#a6a19a] lg:block">
             {stor(mndLang(plan.startYm))} – {mndLang(ymPluss(plan.startYm, antallMnd - 1))} · {antallMnd} mnd
           </span>
@@ -2006,18 +2013,18 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
               <div className="relative">
                 <p className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#a6a19a]">Resultat i perioden</p>
                 <div className="mt-1.5 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-                  <p className={`text-[29px] font-bold leading-none tabular-nums tracking-[-0.02em] ${s.resultat >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`} style={heading} data-testid="modell-resultat">{kr(s.resultat)}</p>
+                  <p className={`text-[29px] font-bold leading-none tracking-[-0.02em] ${s.resultat >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`} style={heading} data-testid="modell-resultat">{kr(s.resultat)}</p>
                   <SparkHero serie={m.resultat} />
                 </div>
                 <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                  <span className="rounded-full bg-[#f5f4f1] px-2 py-[3px] text-[10.5px] font-semibold tabular-nums text-[#78716c]" data-testid="modell-siste-mnd">
+                  <span className="rounded-full bg-[#f5f4f1] px-2 py-[3px] text-[10.5px] font-semibold text-[#78716c]" data-testid="modell-siste-mnd">
                     siste mnd {kr0(m.resultat[sisteIdx])} kr
                   </span>
-                  <span className="rounded-full bg-[#f5f4f1] px-2 py-[3px] text-[10.5px] font-semibold tabular-nums text-[#78716c]">
+                  <span className="rounded-full bg-[#f5f4f1] px-2 py-[3px] text-[10.5px] font-semibold text-[#78716c]">
                     første mnd {kr0(m.resultat[0])} kr
                   </span>
                   {s.sumInntekt > 0 && (
-                    <span className="rounded-full bg-[#f0ebfa] px-2 py-[3px] text-[10.5px] font-semibold tabular-nums text-[#6d28d9]">
+                    <span className="rounded-full bg-[#f0ebfa] px-2 py-[3px] text-[10.5px] font-semibold text-[#6d28d9]">
                       margin {Math.round((s.resultat / s.sumInntekt) * 100)} %
                     </span>
                   )}
@@ -2049,16 +2056,16 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                         <span className="ml-1.5 font-medium normal-case tracking-normal text-[#c2beb8]">{stor(mndKort(ymPluss(plan.startYm, a.fraIdx)))} – {mndKort(ymPluss(plan.startYm, a.tilIdx))}</span>
                       </p>
                       {yoy !== null && (
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold tabular-nums ${yoy >= 0 ? 'bg-[#e7f4ee] text-[#0a7d55]' : 'bg-[#fdf0ef] text-[#b3261e]'}`}>
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold ${yoy >= 0 ? 'bg-[#e7f4ee] text-[#0a7d55]' : 'bg-[#fdf0ef] text-[#b3261e]'}`}>
                           {yoy >= 0 ? '+' : ''}{yoy} % vekst
                         </span>
                       )}
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12.5px]">
-                      <p className="flex justify-between gap-2"><span className="text-[#8f8a82]">Inntekter</span><span className="font-semibold tabular-nums text-[#1c1917]">{kr0(a.inntekt)}</span></p>
-                      <p className="flex justify-between gap-2"><span className="text-[#8f8a82]">Resultat</span><span className={`font-bold tabular-nums ${a.resultat >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr0(a.resultat)}</span></p>
-                      <p className="flex justify-between gap-2"><span className="text-[#8f8a82]">Enheter v/slutt</span><span className="font-semibold tabular-nums text-[#1c1917]">{Math.round(a.enheterSlutt)}</span></p>
-                      <p className="flex justify-between gap-2"><span className="text-[#8f8a82]" title="Siste måneds inntekt × 12 — exit run-rate">ARR ved slutt</span><span className="font-semibold tabular-nums text-[#6d28d9]">{kr0(a.arrExit)}</span></p>
+                      <p className="flex justify-between gap-2"><span className="text-[#8f8a82]">Inntekter</span><span className="font-semibold text-[#1c1917]">{kr0(a.inntekt)}</span></p>
+                      <p className="flex justify-between gap-2"><span className="text-[#8f8a82]">Resultat</span><span className={`font-bold ${a.resultat >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr0(a.resultat)}</span></p>
+                      <p className="flex justify-between gap-2"><span className="text-[#8f8a82]">Enheter v/slutt</span><span className="font-semibold text-[#1c1917]">{Math.round(a.enheterSlutt)}</span></p>
+                      <p className="flex justify-between gap-2"><span className="text-[#8f8a82]" title="Siste måneds inntekt × 12 — exit run-rate">ARR ved slutt</span><span className="font-semibold text-[#6d28d9]">{kr0(a.arrExit)}</span></p>
                     </div>
                   </div>
                 );

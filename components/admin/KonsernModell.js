@@ -21,7 +21,7 @@ import {
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
 const KNAPP_PRIMAER = 'flex h-9 items-center gap-1.5 rounded-[9px] bg-[#141414] px-4 text-[13px] font-medium text-white transition-colors hover:bg-black/80 active:scale-[0.98] disabled:opacity-40';
 const MND_KORT = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
-const smal = (s) => String(s).replace(/[\u00A0\u0020]/g, '\u202F');
+const smal = (s) => String(s).replace(/[\u00A0\u0020]/g, ' ');
 const kr = (n) => `${smal(Math.round(Number(n) || 0).toLocaleString('nb-NO'))} kr`;
 const kr0 = (n) => smal(Math.round(Number(n) || 0).toLocaleString('nb-NO'));
 const mkr = (n) => { const v = Number(n) || 0; return Math.abs(v) >= 1e6 ? `${(v / 1e6).toLocaleString('nb-NO', { maximumFractionDigits: 1 })} MNOK` : kr(v); };
@@ -38,7 +38,7 @@ function Felt({ label, verdi, onChange, enhet, steg = 1, min = 0, hint, readOnly
           type="number" inputMode="decimal" step={steg} min={min} value={verdi} disabled={readOnly}
           onChange={(e) => onChange(e.target.value)}
           data-testid={testid}
-          className="h-8 w-[104px] rounded-[8px] border border-black/[0.08] bg-white px-2 text-right text-[13px] tabular-nums text-[#1c1917] outline-none transition-colors focus:border-[#6d28d9]/50 disabled:bg-[#f7f6f3]"
+          className="h-8 w-[104px] rounded-[8px] border border-black/[0.08] bg-white px-2 text-right text-[13px] text-[#1c1917] outline-none transition-colors focus:border-[#6d28d9]/50 disabled:bg-[#f7f6f3]"
         />
         {enhet ? <span className="w-8 text-[11.5px] text-[#a6a19a]">{enhet}</span> : null}
       </span>
@@ -63,7 +63,7 @@ function Nokkel({ label, verdi, under, tone, testid }) {
   return (
     <div className="rounded-[14px] bg-white px-4 py-3.5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid={testid}>
       <p className="text-[11.5px] font-medium text-[#8f8a82]">{label}</p>
-      <p className={`mt-1 text-[22px] font-bold tracking-[-0.02em] tabular-nums ${tone === 'neg' ? 'text-[#b3261e]' : tone === 'pos' ? 'text-[#15803d]' : 'text-[#1c1917]'}`} style={heading}>{verdi}</p>
+      <p className={`mt-1 text-[22px] font-bold tracking-[-0.02em] ${tone === 'neg' ? 'text-[#b3261e]' : tone === 'pos' ? 'text-[#15803d]' : 'text-[#1c1917]'}`} style={heading}>{verdi}</p>
       {under ? <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">{under}</p> : null}
     </div>
   );
@@ -181,8 +181,8 @@ export default function KonsernModell({ plan, drivere, fakta, antallMnd, startYm
               {pl.vekstplan.map((f, i) => (
                 <div key={i} className="mt-1.5 flex items-center gap-2 text-[12px]">
                   <span className="text-[#8f8a82]">fra mnd</span>
-                  <input type="number" min={2} max={N} value={f.fraMnd} disabled={readOnly} onChange={(e) => settPl('vekstplan', pl.vekstplan.map((x, j) => (j === i ? { ...x, fraMnd: e.target.value } : x)))} className="h-7 w-14 rounded-[7px] border border-black/[0.08] px-1.5 text-right tabular-nums" />
-                  <input type="number" step={1000} value={f.annonsePerMnd} disabled={readOnly} onChange={(e) => settPl('vekstplan', pl.vekstplan.map((x, j) => (j === i ? { ...x, annonsePerMnd: e.target.value } : x)))} className="h-7 w-24 rounded-[7px] border border-black/[0.08] px-1.5 text-right tabular-nums" />
+                  <input type="number" min={2} max={N} value={f.fraMnd} disabled={readOnly} onChange={(e) => settPl('vekstplan', pl.vekstplan.map((x, j) => (j === i ? { ...x, fraMnd: e.target.value } : x)))} className="h-7 w-14 rounded-[7px] border border-black/[0.08] px-1.5 text-right" />
+                  <input type="number" step={1000} value={f.annonsePerMnd} disabled={readOnly} onChange={(e) => settPl('vekstplan', pl.vekstplan.map((x, j) => (j === i ? { ...x, annonsePerMnd: e.target.value } : x)))} className="h-7 w-24 rounded-[7px] border border-black/[0.08] px-1.5 text-right" />
                   <span className="text-[#a6a19a]">kr/mnd</span>
                   {!readOnly ? <button onClick={() => settPl('vekstplan', pl.vekstplan.filter((_, j) => j !== i))} className="ml-auto text-[#a6a19a] hover:text-[#b3261e]"><X className="h-3.5 w-3.5" /></button> : null}
                 </div>
@@ -283,7 +283,7 @@ export default function KonsernModell({ plan, drivere, fakta, antallMnd, startYm
               <p className="text-[11.5px] font-medium text-[#8f8a82]">Forvaltning · per enhet per måned</p>
               <dl className="mt-2 divide-y divide-black/[0.05] text-[13px]">
                 {[['Honorar (eks. mva)', kr(honorarF)], ['Systemkost', `−${kr(mF.cac?.systemPerEnhet || 0)}`], ['Bidrag før bemanning', kr(mF.cac?.bidrag || 0)], ['CAC (provisjon)', kr(mF.cac?.provisjon || 0)], ['Payback', mF.cac?.paybackMnd ? `${mF.cac.paybackMnd} mnd` : '—'], ['Enheter per årsverk', `${mF.drivere.enheterPerAarsverk}`]].map(([l, v]) => (
-                  <div key={l} className="flex items-center justify-between py-1.5"><dt className="text-[#57534e]">{l}</dt><dd className="font-medium tabular-nums text-[#1c1917]">{v}</dd></div>
+                  <div key={l} className="flex items-center justify-between py-1.5"><dt className="text-[#57534e]">{l}</dt><dd className="font-medium text-[#1c1917]">{v}</dd></div>
                 ))}
               </dl>
             </div>
@@ -291,7 +291,7 @@ export default function KonsernModell({ plan, drivere, fakta, antallMnd, startYm
               <p className="text-[11.5px] font-medium text-[#8f8a82]">Plattform · per enhet per måned</p>
               <dl className="mt-2 divide-y divide-black/[0.05] text-[13px]">
                 {[['ARPU (eks. mva)', kr(mP.unit.arpu)], ['Variabel kost + support', `−${kr(mP.unit.variabelPerEnhet)}`], ['Bidrag', `${kr(mP.unit.bidrag)} · ${mP.unit.bruttoMarginPct ?? '—'} %`], ['CAC', kr(mP.unit.cac)], ['Payback', mP.unit.paybackMnd ? `${mP.unit.paybackMnd} mnd` : '—'], ['Levetid · LTV · LTV/CAC', `${mP.unit.levetidMnd ?? '—'} mnd · ${mP.unit.ltv ? kr(mP.unit.ltv) : '—'} · ${mP.unit.ltvCac ?? '—'}×`]].map(([l, v]) => (
-                  <div key={l} className="flex items-center justify-between py-1.5"><dt className="text-[#57534e]">{l}</dt><dd className="font-medium tabular-nums text-[#1c1917]">{v}</dd></div>
+                  <div key={l} className="flex items-center justify-between py-1.5"><dt className="text-[#57534e]">{l}</dt><dd className="font-medium text-[#1c1917]">{v}</dd></div>
                 ))}
               </dl>
             </div>

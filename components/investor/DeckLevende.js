@@ -22,7 +22,8 @@ import {
 const MND = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
 const ymPluss = (ym, i) => { const [y, m] = String(ym || '2026-01').split('-').map(Number); const t = y * 12 + (m - 1) + i; return [Math.floor(t / 12), (t % 12) + 1]; };
 const mndLabel = (ym, i, kort = true) => { const [y, m] = ymPluss(ym, i); return kort ? `${MND[m - 1]} ${String(y).slice(2)}` : `${MND[m - 1]} ${y}`; };
-const nb = (n, d = 0) => (Number(n) || 0).toLocaleString('nb-NO', { maximumFractionDigits: d, minimumFractionDigits: d });
+// Tusenskiller = vanlig mellomrom: Right Grotesk mangler U+00A0/U+202F, og U+2009 er usynlig smalt i fet display-størrelse. Tall står alltid i nowrap-kontekst.
+const nb = (n, d = 0) => (Number(n) || 0).toLocaleString('nb-NO', { maximumFractionDigits: d, minimumFractionDigits: d }).replace(/\u00A0/g, ' ');
 const mnok = (n) => { const v = Number(n) || 0; return Math.abs(v) >= 1e6 ? `${nb(v / 1e6, 1)} MNOK` : `${nb(v / 1000)} k`; };
 const kr = (n) => `${nb(n)} kr`;
 const klem = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
