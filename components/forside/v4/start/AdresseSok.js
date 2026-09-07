@@ -25,7 +25,7 @@ function postFraSub(sub = '') {
   return m ? { postal: m[1], city: m[2] } : { postal: '', city: '' };
 }
 
-export default function AdresseSok({ verdi, onEndre, onVelg, onFortsett, klar, laster, feil, bekreftet, knapp = 'Fortsett', autoFokus = false }) {
+export default function AdresseSok({ verdi, onEndre, onVelg, onForslag, onFortsett, klar, laster, feil, bekreftet, knapp = 'Fortsett', autoFokus = false }) {
   const [forslag, setForslag] = useState([]);
   const [apen, setApen] = useState(false);
   const [aktiv, setAktiv] = useState(-1);
@@ -40,6 +40,15 @@ export default function AdresseSok({ verdi, onEndre, onVelg, onFortsett, klar, l
   useEffect(() => {
     if (autoFokus) { try { inputRef.current?.focus({ preventScroll: true }); } catch (e) { /* ok */ } }
   }, [autoFokus]);
+
+  /* Kartet følger forslaget: det aktive (pil/hover) — ellers det øverste. Lett debounce mot piltasting. */
+  useEffect(() => {
+    if (!onForslag || !forslag.length) return undefined;
+    const s = aktiv >= 0 ? forslag[aktiv] : forslag[0];
+    const t = window.setTimeout(() => onForslag(s || null), aktiv >= 0 ? 140 : 220);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forslag, aktiv]);
 
   /* Debounced søk. Avbryter forrige kall. */
   useEffect(() => {
@@ -118,6 +127,8 @@ export default function AdresseSok({ verdi, onEndre, onVelg, onFortsett, klar, l
 
   const tast = (e) => {
     if (e.key === 'Escape') { setApen(false); return; }
+    /* Enter velger forslaget også når knappen er deaktivert (nettleseren dropper implisitt submit da). */
+    if (e.key === 'Enter' && apen && forslag.length && !bekreftet) { e.preventDefault(); velg(aktiv >= 0 ? forslag[aktiv] : forslag[0]); return; }
     if (!forslag.length) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); setApen(true); setAktiv((i) => (i + 1) % forslag.length); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setApen(true); setAktiv((i) => (i <= 0 ? forslag.length - 1 : i - 1)); }

@@ -18,7 +18,7 @@ const SPLIT = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*)/g;
 const LINK = /^\[([^\]]+)\]\(([^)]+)\)$/;
 const BOLD = /^\*\*([^*]+)\*\*$/;
 
-const LINK_CLS = 'text-[#7c3aed] underline decoration-[#d9c9f5] decoration-1 underline-offset-[3px] hover:decoration-[#7c3aed] transition-colors';
+const LINK_CLS = 'text-[#15130F] underline decoration-[#15130F]/30 decoration-1 underline-offset-[3px] hover:decoration-[#15130F] transition-colors';
 
 export function renderRich(text, keyPrefix = 'r') {
   if (text === null || text === undefined) return null;

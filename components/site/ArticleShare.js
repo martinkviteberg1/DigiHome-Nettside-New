@@ -34,7 +34,7 @@ export default function ArticleShare({ title = '', compact = false }) {
 
   const onShare = async () => { if (!(await native())) copy(); };
 
-  const btn = 'inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-full border border-black/[0.09] bg-white text-[13px] font-medium text-[#4a4a4a] hover:border-[#d9c9f5] hover:text-[#7c3aed] transition-colors';
+  const btn = 'inline-flex h-9 items-center justify-center gap-1.5 rounded-[9px] px-3 text-[13px] font-medium text-[#15130F]/75 shadow-[0_0_0_1px_rgba(21,19,15,0.12)] transition-colors hover:bg-[#15130F]/[0.04] hover:text-[#15130F]';
 
   if (compact) {
     return (

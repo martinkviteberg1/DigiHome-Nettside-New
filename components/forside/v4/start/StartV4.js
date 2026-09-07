@@ -154,10 +154,30 @@ function Tilbake({ onClick }) {
   );
 }
 
+/* Under lg (< 1024 px): mobilpanelet rendres bare der det vises — ellers ville et skjult
+   BoligPanel laste kart og Street View én gang ekstra på desktop. SSR-default: false. */
+function useUnderLg() {
+  const [u, setU] = useState(false);
+  useEffect(() => {
+    try {
+      const mq = window.matchMedia('(max-width: 1023px)');
+      const f = () => setU(mq.matches);
+      f();
+      mq.addEventListener('change', f);
+      return () => mq.removeEventListener('change', f);
+    } catch (e) { return undefined; }
+  }, []);
+  return u;
+}
+
 export default function StartV4() {
+  const underLg = useUnderLg();
   const [steg, setSteg] = useState('adresse');
   const [form, setForm] = useState({ address: '', postalCode: '', city: '', propertyType: '', sqm: '', bedrooms: '', name: '', email: '', phone: '', service: '', ownerKind: 'private' });
   const [pos, setPos] = useState(null);
+  const [sikt, setSikt] = useState(null); // forslaget kartet peker på mens du skriver — {lat,lng,text,sub}
+  const siktCache = useRef(new Map());
+  const siktAbort = useRef(null);
   const [bekreftet, setBekreftet] = useState(false);
   const [preService, setPreService] = useState('');
   const [finnUrl, setFinnUrl] = useState('');
@@ -203,6 +223,27 @@ export default function StartV4() {
       const d = await r2.json().catch(() => ({}));
       if (d && typeof d.lat === 'number' && typeof d.lng === 'number') setPos({ lat: d.lat, lng: d.lng });
     } catch (e) { /* panelet er forsterkning, ikke krav */ }
+  }, []);
+
+  /* Kartet følger forslaget mens du skriver: Place Details (server-proxy, cachet per place_id)
+     gir koordinatene. Siste sikt beholdes til adressen er bekreftet eller feltet tømmes — aldri
+     tilbake til papir midt i skrivingen. */
+  const visForslag = useCallback((s) => {
+    if (!s || !s.place_id) return;
+    const hit = siktCache.current.get(s.place_id);
+    if (hit) { setSikt({ ...hit, text: s.text, sub: s.sub }); return; }
+    if (siktAbort.current) siktAbort.current.abort();
+    const ctrl = new AbortController();
+    siktAbort.current = ctrl;
+    fetch(`/api/address?place_id=${encodeURIComponent(s.place_id)}`, { signal: ctrl.signal })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d || typeof d.lat !== 'number' || typeof d.lng !== 'number') return;
+        const v = { lat: d.lat, lng: d.lng };
+        siktCache.current.set(s.place_id, v);
+        setSikt({ ...v, text: s.text, sub: s.sub });
+      })
+      .catch(() => { /* avbrutt eller nettverk — stille */ });
   }, []);
 
   const velgTjeneste = useCallback((service) => {
@@ -390,8 +431,8 @@ export default function StartV4() {
      (Ellers ville et klikk på «Les avtalen» rødmerke navnefeltet som autofokus la deg i.) */
   const rort = (k) => { if (['name', 'email', 'phone'].includes(k) && !String(form[k] || '').trim()) return; setBeroert((c) => (c[k] ? c : { ...c, [k]: true })); };
   const kontaktTekst = form.name.trim() ? [form.name.trim(), form.email.trim()].filter(Boolean).join(' · ') : '';
-  const panel = <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} modell={form.service} selskap={bedrift ? (company?.name || '') : undefined} kontakt={sendt ? kontaktTekst : ''} ferdig={sendt} />;
-  const panelKompakt = (form.address || pos) ? <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} modell={form.service} kompakt /> : null;
+  const panel = <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} sikt={sikt} modell={form.service} selskap={bedrift ? (company?.name || '') : undefined} kontakt={sendt ? kontaktTekst : ''} ferdig={sendt} />;
+  const panelKompakt = underLg && (form.address || pos || sikt) ? <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} sikt={sikt} modell={form.service} kompakt /> : null;
 
   const fornavn = form.name.trim().split(' ')[0];
   const ferdigInnhold = sendt ? (
@@ -440,7 +481,9 @@ export default function StartV4() {
                       setForm((c) => ({ ...c, address: v, ...(finn ? {} : { postalCode: '', city: '', propertyType: '', sqm: '', bedrooms: '' }) }));
                       setErrors((c) => ({ ...c, address: '' }));
                       if (!finn) { setFinnUrl(''); setFinnCode(''); setFinnNotat(''); setPos(null); }
+                      if (!String(v || '').trim()) setSikt(null);
                     }}
+                    onForslag={visForslag}
                     onVelg={(v) => {
                       const address = String(v.address || '').replace(/,\s*(Norway|Norge)$/i, '');
                       const postal = String(v.postal || '').trim(); const city = String(v.city || '').trim();
@@ -476,73 +519,105 @@ export default function StartV4() {
                 />
                 {finnUrl && finnNotat ? <p className="mt-4 text-[13.5px] text-[#15130F]/55" data-testid="start-finn-notat">{finnNotat}</p> : null}
 
-                {/* Valget handler om arbeidsdeling. Så vi viser akkurat det: hvem gjør hva. */}
-                <div className="mt-9 grid overflow-hidden rounded-[20px] md:grid-cols-2" style={{ background: '#FBFAF8', boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.10)' }} data-testid="start-tjenester">
-                  {[
-                    {
-                      id: 'selvforvaltning', tittel: 'Lei ut selv', omrade: 'Hele Norge',
-                      ingress: 'Du er utleier. Systemet tar rutinen.',
-                      rader: [
-                        ['Annonse og visninger', 'Du'],
-                        ['Kontrakt, husleie og purring', 'Automatisk'],
-                        ['Saker og leverandører', 'Systemet foreslår · du bestemmer'],
-                      ],
-                      meta: <><span className="font-medium text-[#15130F]">5 % av husleien</span> · ingen bindingstid</>,
-                      knapp: 'Lei ut selv', testId: 'service-selvforvaltning',
-                    },
-                    {
-                      id: 'full_forvaltning', tittel: 'Full forvaltning', omrade: fullUtilgjengelig ? `Kommer til ${form.city || 'ditt område'}` : 'Bergen og omegn',
-                      ingress: 'Én fast forvalter gjør jobben. Du har siste ord.',
-                      rader: [
-                        ['Annonse og visninger', 'Forvalteren din'],
-                        ['Leietaker', 'Forvalteren anbefaler · du godkjenner'],
-                        ['Kontrakt, husleie og saker', 'DigiHome'],
-                      ],
-                      meta: fullUtilgjengelig ? 'Vi sier fra når vi lanserer' : <><span className="font-medium text-[#15130F]">Personlig tilbud</span> · svar innen 24 timer</>,
-                      knapp: fullUtilgjengelig ? 'Registrer interesse' : 'Få et tilbud', testId: 'service-full_forvaltning', person: true,
-                    },
-                  ].map((o, i) => (
-                    <div
-                      key={o.id}
-                      role="presentation"
-                      onClick={() => velgTjeneste(o.id)}
-                      className={`group flex cursor-pointer flex-col p-6 transition-colors duration-200 hover:bg-white sm:p-7 ${i > 0 ? 'border-t md:border-l md:border-t-0' : ''}`}
-                      style={{ borderColor: 'rgba(21,19,15,0.10)' }}
-                      data-testid={`${o.testId}-kolonne`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <h2 className="text-[26px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.ink }}>{o.tittel}</h2>
-                        {o.person ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src="/brand/sarah-sleeman-360.webp" alt="" width={36} height={36} className="h-9 w-9 shrink-0 rounded-full object-cover" style={{ boxShadow: '0 0 0 1px rgba(21,19,15,0.10)' }} />
-                        ) : null}
-                      </div>
-                      <p className="mt-2 text-[14.5px] leading-[1.45] text-[#15130F]/65">{o.ingress}</p>
-                      <ul className="mt-5 flex flex-col">
-                        {o.rader.map(([hva, hvem], n) => (
-                          <li key={hva} className={`py-2.5 ${n > 0 ? 'border-t' : ''}`} style={{ borderColor: 'rgba(21,19,15,0.07)' }}>
-                            <span className="block text-[12.5px] text-[#15130F]/50">{hva}</span>
-                            <span className="mt-0.5 flex items-center gap-2 text-[14px] font-medium" style={{ color: 'rgba(21,19,15,0.85)' }}>
-                              {/^du\b/i.test(hvem) || /\bdu\b/.test(hvem) ? <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.lilla }} /> : null}
-                              {hvem}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="mt-auto pt-6">
-                        <p className="text-[13px] text-[#15130F]/55">{o.meta}<span className="text-[#15130F]/35"> · {o.omrade}</span></p>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); velgTjeneste(o.id); }}
-                          className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14.5px] font-medium transition-[background-color,transform] duration-200 group-hover:bg-[#2A2620] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
-                          style={{ background: T.ink, color: '#F4F1EA' }}
-                          data-testid={o.testId}
-                        >
-                          {o.knapp} <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
-                        </button>
+                {/* Valget er system vs. menneske — så de to skal ikke se like ut.
+                    Venstre: produktet på lys flate. Høyre: forvalteren, portrett på varm mørk flate.
+                    Innholdet er det samme spørsmålet i begge: hvem gjør hva. */}
+                <div className="mt-9 grid gap-3 md:grid-cols-2" data-testid="start-tjenester">
+                  {/* ── Lei ut selv — systemet ── */}
+                  <div
+                    role="presentation"
+                    onClick={() => velgTjeneste('selvforvaltning')}
+                    className="group flex cursor-pointer flex-col rounded-[20px] p-6 transition-colors duration-200 hover:bg-white sm:p-7"
+                    style={{ background: '#FBFAF8', boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.10)', minHeight: 460 }}
+                    data-testid="service-selvforvaltning-kolonne"
+                  >
+                    <p className="flex items-center gap-2 text-[13px] font-medium" style={{ color: 'rgba(21,19,15,0.5)' }}>
+                      <span aria-hidden="true" className="inline-flex h-5 w-5 items-center justify-center rounded-[6px]" style={{ background: T.ink }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} /></span>
+                      Systemet · hele Norge
+                    </p>
+                    <h2 className="mt-5 text-[30px] sm:text-[34px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.02, color: T.ink }}>Lei ut selv</h2>
+                    <p className="mt-2 max-w-[30ch] text-[15px] leading-[1.45]" style={{ color: 'rgba(21,19,15,0.65)' }}>Du er utleier. Systemet tar rutinen.</p>
+                    <dl className="my-auto border-t py-5" style={{ borderColor: 'rgba(21,19,15,0.10)' }}>
+                      {[
+                        ['Du', 'Annonse og visninger · godkjenner leietaker · bestemmer i saker', true],
+                        ['Systemet', 'Kontrakt · husleie · purring · foreslår løsninger på saker', false],
+                      ].map(([hvem, hva, deg]) => (
+                        <div key={hvem} className="grid grid-cols-[88px_1fr] gap-3 border-b py-3.5" style={{ borderColor: 'rgba(21,19,15,0.10)' }}>
+                          <dt className="flex items-center gap-2 self-start text-[14px] font-medium" style={{ color: T.ink }}>
+                            {deg ? <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.lilla }} /> : null}{hvem}
+                          </dt>
+                          <dd className="text-[14px] leading-[1.5]" style={{ color: 'rgba(21,19,15,0.7)' }}>{hva}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <div className="pt-2">
+                      <p className="text-[13px]" style={{ color: 'rgba(21,19,15,0.55)' }}><span className="font-medium" style={{ color: T.ink }}>5 % av husleien</span> · ingen bindingstid</p>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); velgTjeneste('selvforvaltning'); }}
+                        className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14.5px] font-medium transition-[background-color,transform] duration-200 group-hover:bg-[#2A2620] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
+                        style={{ background: T.ink, color: '#F4F1EA' }}
+                        data-testid="service-selvforvaltning"
+                      >
+                        Lei ut selv <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ── Full forvaltning — mennesket ── */}
+                  <div
+                    role="presentation"
+                    onClick={() => velgTjeneste('full_forvaltning')}
+                    className="group relative flex cursor-pointer flex-col overflow-hidden rounded-[20px] p-6 sm:p-7"
+                    style={{ background: T.charcoal, minHeight: 460 }}
+                    data-testid="service-full_forvaltning-kolonne"
+                  >
+                    {/* Én av forvalterne — teamet, ikke én navngitt person. Kun transform i hover. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/brand/sarah-sleeman-1000.webp"
+                      alt=""
+                      className="pointer-events-none absolute inset-0 h-full w-full object-cover will-change-transform transition-transform duration-[1400ms] ease-out group-hover:scale-[1.03]"
+                      style={{ objectPosition: '50% 12%', filter: 'saturate(0.85)' }}
+                    />
+                    <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(34,31,26,0.28) 0%, rgba(34,31,26,0.22) 26%, rgba(34,31,26,0.86) 56%, #221F1A 100%)' }} />
+                    <div className="relative flex h-full flex-1 flex-col" style={{ color: '#F4F1EA' }}>
+                      <p className="text-[13px] font-medium" style={{ color: 'rgba(244,241,234,0.8)' }}>
+                        {fullUtilgjengelig ? `Forvalterteamet · kommer til ${form.city || 'ditt område'}` : 'Forvalterteamet · Bergen og omegn'}
+                      </p>
+                      <div className="mt-auto pt-[150px] sm:pt-[170px]">
+                        <h2 className="text-[30px] sm:text-[34px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.02, color: '#F4F1EA' }}>Full forvaltning</h2>
+                        <p className="mt-2 max-w-[30ch] text-[15px] leading-[1.45]" style={{ color: 'rgba(244,241,234,0.75)' }}>Én fast forvalter gjør jobben. Du har siste ord.</p>
+                        <dl className="mt-6 border-t" style={{ borderColor: 'rgba(244,241,234,0.16)' }}>
+                          {[
+                            ['Forvalteren', 'Annonse og visninger · anbefaler leietaker · håndterer saker', false],
+                            ['Du', 'Godkjenner leietaker · har siste ord', true],
+                          ].map(([hvem, hva, deg]) => (
+                            <div key={hvem} className="grid grid-cols-[88px_1fr] gap-3 border-b py-3.5" style={{ borderColor: 'rgba(244,241,234,0.16)' }}>
+                              <dt className="flex items-center gap-2 self-start text-[14px] font-medium">
+                                {deg ? <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.lilla }} /> : null}{hvem}
+                              </dt>
+                              <dd className="text-[14px] leading-[1.5]" style={{ color: 'rgba(244,241,234,0.78)' }}>{hva}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                        <div className="pt-7">
+                          <p className="text-[13px]" style={{ color: 'rgba(244,241,234,0.65)' }}>
+                            {fullUtilgjengelig ? 'Vi sier fra når vi lanserer' : <><span className="font-medium" style={{ color: '#F4F1EA' }}>Personlig tilbud</span> · svar innen 24 timer</>}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); velgTjeneste('full_forvaltning'); }}
+                            className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14.5px] font-medium transition-[background-color,transform] duration-200 group-hover:bg-white active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                            style={{ background: '#F4F1EA', color: T.ink }}
+                            data-testid="service-full_forvaltning"
+                          >
+                            {fullUtilgjengelig ? 'Registrer interesse' : 'Få et tilbud'} <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
                 <p className="mt-5 text-[13px] text-[#15130F]/45">Begge kan endres senere. Ingenting sendes før du sier ja.</p>
               </section>
@@ -645,7 +720,7 @@ export default function StartV4() {
 
         {/* ── Høyre: boligen din ── */}
         <aside className="hidden lg:block lg:py-6 lg:pr-6" aria-label="Boligen din">
-          <div className="sticky top-[88px] h-[calc(100svh-113px)]">{panel}</div>
+          <div className="sticky top-[88px] h-[calc(100svh-113px)]">{underLg ? null : panel}</div>
         </aside>
       </div>
 

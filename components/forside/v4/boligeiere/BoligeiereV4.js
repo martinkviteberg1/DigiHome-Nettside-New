@@ -13,6 +13,8 @@ import LeietakerSeksjon from '../LeietakerSeksjon';
 import StegSeksjon from '../StegSeksjon';
 import FaqSeksjon from '../FaqSeksjon';
 import AvslutningSeksjon from '../AvslutningSeksjon';
+import TillitStripe from '../TillitStripe';
+import EierSitater from '../forvaltning/EierSitater';
 
 /* ---------------------------------------------------------------------------
    BoligeiereV4 — siden for boligeiere (én bolig eller fem, hus eller leilighet).
@@ -67,7 +69,9 @@ const PRIS_SVAR = (
   </p>
 );
 
-export default function BoligeiereV4() {
+/* Samme side, annen inngang: /bli-utleier (SEO «utleiemegler i Bergen», annonser) bruker
+   egen tekst og FAQ, og får tillit (logoer + eiernes stemmer) rett etter heroen. */
+export default function BoligeiereV4({ label = 'For boligeiere', tittel = 'Boligen på autopilot', ingressKort, ingressLang, under, sporsmal = SPORSMAL, prisSvar = PRIS_SVAR, avslutning, tillit = false, testid = 'boligeiere-v4' } = {}) {
   const [eiendom, setEiendom] = useState(null);
   const sceneRef = useRef(null);
   const valgt = useCallback((v) => {
@@ -82,24 +86,24 @@ export default function BoligeiereV4() {
   }, []);
 
   return (
-    <div className="min-h-screen overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="boligeiere-v4">
+    <div className="min-h-screen overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid={testid}>
       <NavV4 />
       <main>
         {/* ── 1. Hero — nøytral. Gjenkjennelse før valg. ── */}
         <section className="relative lg:flex lg:min-h-[calc(100svh-64px)] lg:flex-col lg:justify-center" data-testid="v4b-hero">
           <div className="mx-auto grid w-full max-w-[1440px] gap-14 px-5 pb-16 pt-10 sm:px-8 sm:pt-12 lg:w-[calc(100%-128px)] lg:grid-cols-[minmax(0,6fr)_minmax(0,7fr)] lg:items-center lg:gap-14 lg:px-0 lg:py-10 2xl:gap-16">
             <div className="min-w-0 max-w-[600px]">
-              <p className="dh-cover-inn text-[15px] font-medium" style={{ color: 'rgba(21,19,15,0.55)' }} data-testid="v4b-label">For boligeiere</p>
+              <p className="dh-cover-inn text-[15px] font-medium" style={{ color: 'rgba(21,19,15,0.55)' }} data-testid="v4b-label">{label}</p>
               <h1
                 className="dh-cover-inn mt-4 max-w-[10ch] text-[52px] sm:text-[68px] lg:text-[clamp(64px,5vw,96px)]"
                 style={{ ...display, color: T.ink, animationDelay: '.04s' }}
                 data-testid="v4b-h1"
               >
-                Boligen på autopilot<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+                {tittel}<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
               </h1>
               <p className="dh-cover-inn mt-7 max-w-[38ch] text-[18px] leading-[1.45] text-[#15130F]/70 sm:mt-8 sm:text-[20px]" style={{ animationDelay: '.08s' }} data-testid="v4b-ingress">
-                <span className="sm:hidden">Én bolig eller fem. Lei ut selv, med et system som tar rutinen — eller la oss ta alt.</span>
-                <span className="hidden sm:inline">Én bolig eller fem. Lei ut selv, med et system som tar rutinen — eller la en fast forvalter hos oss ta alt. Du har oversikten og siste ord uansett.</span>
+                <span className="sm:hidden">{ingressKort || 'Én bolig eller fem. Lei ut selv, med et system som tar rutinen — eller la oss ta alt.'}</span>
+                <span className="hidden sm:inline">{ingressLang || 'Én bolig eller fem. Lei ut selv, med et system som tar rutinen — eller la en fast forvalter hos oss ta alt. Du har oversikten og siste ord uansett.'}</span>
               </p>
 
               {/* Handlingen er feltet. relative z-20: forslagslisten skal ligge over scenen. */}
@@ -107,7 +111,7 @@ export default function BoligeiereV4() {
                 <AdresseFelt onValgt={valgt} />
               </div>
               <p className="dh-cover-inn mt-4 text-[14px]" style={{ color: 'rgba(21,19,15,0.5)', animationDelay: '.22s' }} data-testid="v4b-under">
-                Hele Norge · ingen bindingstid · fra 5 % av husleien
+                {under || 'Hele Norge · ingen bindingstid · fra 5 % av husleien'}
               </p>
             </div>
 
@@ -117,18 +121,20 @@ export default function BoligeiereV4() {
           </div>
         </section>
 
+        {tillit ? <TillitStripe /> : null}
         {/* ── 2. Veiskillet ── */}
         <VeiskilleSeksjon />
         {/* ── 3. Samme leieår, hvem gjør hva ── */}
         <SammenligningSeksjon />
         {/* ── 4. Leietakeren ── */}
         <LeietakerSeksjon />
+        {tillit ? <EierSitater /> : null}
         {/* ── 5. Slik kommer du i gang ── */}
         <StegSeksjon />
         {/* ── 6. Spørsmål og svar ── */}
-        <FaqSeksjon sporsmal={SPORSMAL} prisSvar={PRIS_SVAR} />
+        <FaqSeksjon sporsmal={sporsmal} prisSvar={prisSvar} />
         {/* ── 7. Avslutning ── */}
-        <AvslutningSeksjon tittel="Boligen på autopilot" under="Start med adressen din. Selv eller med oss — resten setter vi opp sammen." />
+        <AvslutningSeksjon tittel={avslutning?.tittel || 'Boligen på autopilot'} under={avslutning?.under || 'Start med adressen din. Selv eller med oss — resten setter vi opp sammen.'} />
       </main>
       <Footer />
     </div>

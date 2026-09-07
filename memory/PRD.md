@@ -1280,3 +1280,24 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   PowerOffice, historikk hvem/når) + «Kontroll»-stripe (roller, historikk, BankID via Posten, eksport til regnskap). Hvert kapittel spiller
   når det kommer i bildet (useSynlig per rad). Tall og navn er eksempeldata (Strandgaten Eiendom AS, Kari Nilsen, Jonas Berg).
 - Kun screenshot-testet. Ikke brukergodkjent.
+
+## Onboarding «kartet våkner» + artikkelmaler V4 + hero-timing — [denne runden]
+- **Artikler:** `/guider/[slug]` og `/nyheter/[slug]` kjører på `components/forside/v4/artikkel/ArtikkelDeler.js` (Sti, Tittel, Byline,
+  KortSvar, Fakta, Bilde, StegBlokk, H2/Avsnitt/Punktliste, Kilder, Ansvar, ArtikkelCta, Rader). JSON-LD/HowTo/TOC/notFound urørt.
+  `FaqSection` og `GuideCluster` reskinnet globalt til V4-rader (hårlinjer, ingen hvite kort). Ny `components/forside/v4/tokens.js`
+  (uten 'use client') så server-komponenter kan bruke T/display; motion.js re-eksporterer.
+- **/bli-utleier?address=…:** 400 var falsk alarm (rå «å» i curl). URL-kodet → 200 → klientredirect til `/bli-utleier/start` m/ parametre.
+- **Forsiden:** heroscenen (mannen + filmen) personaliseres ikke lenger av valgt adresse (ForsideV4: `eiendom = null`). Velg → «Fortsett» →
+  onboarding som før. Veggteksten kommer raskere i direkte-modus (`FORTELLING_T0_DIREKTE` 380 ms, direkteInne 120 ms, ordstagger 95 ms).
+- **Onboarding høyrepanel (`start/BoligPanel.js` + ny `start/BoligKart.js`):** «Kartet våkner» — Google Maps (raster + V4 JSON-stil,
+  `isFractionalZoomEnabled`) fra sekund én over Bergen (zoom 14, 60 s CSS-drift). Papirboksen «Tre steg» er fjernet; kvitteringen nederst
+  (Bolig · Modell · Kontakt) er de tre stegene. Skriving: `AdresseSok` melder aktivt/øverste forslag (`onForslag`) → StartV4 henter
+  Place Details (`/api/address?place_id=`, cachet) → `sikt` → nålen glir og kameraet flyr (rAF `moveCamera`, Mercator-senter, zoomkurve
+  som dipper på vei; ingen Google pan/zoom-trinn). Bekreftet adresse: fly til zoom 17 → `onLandet` → hold 1,1 s → push-in (scale 1.28) +
+  morph til Street View (1,4 s) → langsom drift. Fotoet slippes aldri før kartet har landet (fallback 3,5/4,5 s). Tekstfarger følger flaten.
+  Enter velger forslag også når knappen er deaktivert (implisitt submit var blokkert). Mobilpanelet rendres kun < lg (`useUnderLg`) —
+  før lastet desktop+mobil kart/Street View dobbelt. Valgfritt: `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` → vektorkart (stil i Cloud Console;
+  paletten ligger i `public/v4/kartstil-digihome.json`). Merk: Google-logo/attribusjon ligger under kvitteringsgradienten (ToS-gråsone).
+- **Tjeneste-steget:** system vs. menneske — «Lei ut selv» på lys flate (Systemet-chip, Du/Systemet-rader), «Full forvaltning» med
+  forvalterportrett (/brand/sarah-sleeman-1000.webp, «Forvalterteamet · Bergen og omegn») på charcoal, offwhite knapp. Arbeidsdeling uendret.
+- Testet med Chrome/Playwright-skript (tidslinje, flytur, mobil). Ikke brukergodkjent. /produkt-side og tom-tilstand-valg: bruker sa «tenk selv».

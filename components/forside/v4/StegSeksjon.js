@@ -19,7 +19,8 @@ const STEG = [
   { nr: '4', t: 'Autopilot på', d: 'Husleie, purring og saker går automatisk. Leier du ut selv, er du fortsatt utleieren og godkjenner det som koster — med full forvaltning tar forvalteren over.' },
 ];
 
-const PERSON = { bilde: '/brand/sarah-sleeman-360.webp', navn: 'Sarah Sleeman', tekst: 'Fast forvalter ved full forvaltning — én person som kjenner boligen din.' };
+/* Ingen navngitt forvalter som standard — DigiHome har flere forvaltere; hvem du får, avtales ved start. */
+const PERSON = null;
 
 export default function StegSeksjon({ tittel = ['Slik kommer', 'du i gang.'], under = 'Ti minutter fra adresse til autopilot. Selv — eller med oss.', steg = STEG, person = PERSON, testid = 'v4b' }) {
   const ref = useRef(null);

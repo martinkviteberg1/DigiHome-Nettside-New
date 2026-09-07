@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef } from 'react';
 import NavV4 from './NavV4';
 import HeroScene from './HeroScene';
 import HeroStage, { FILM } from './HeroStage';
@@ -34,20 +34,11 @@ import { T, display } from './motion';
    'zoom' (som stage, men scenen vokser til fullskjerm når du scroller — HeroZoom).
    bilde: midlertidig scenebilde for 'stage' ('stue' | 'bygg') til footagen finnes. */
 export default function ForsideV4({ hero = 'side', bilde = null, veksler = false, produkt = 'ramme' }) {
-  /* Din adresse → din bolig. Valgt adresse personaliserer heroscenen før du går videre. */
-  const [eiendom, setEiendom] = useState(null);
+  /* Adressefeltet: valg → knappen blir «Fortsett» → onboardingen. Scenen (mannen og filmen)
+     forblir som den er — boligen vises først i onboardingen (kart → Street View). */
   const sceneRef = useRef(null);
-  const valgt = useCallback((v) => {
-    if (!v || !v.address) return;
-    setEiendom({ adresse: v.address, by: v.city || '', lat: Number(v.lat), lng: Number(v.lng) });
-    /* Mobil: scenen ligger under feltet — vis den. */
-    try {
-      if (window.matchMedia('(max-width: 1023px)').matches && sceneRef.current) {
-        const y = sceneRef.current.getBoundingClientRect().top + window.scrollY - 200;   // feltet forblir synlig under headeren
-        window.scrollTo({ top: y, behavior: 'smooth' });
-      }
-    } catch (e) { /* ok */ }
-  }, []);
+  const valgt = useCallback(() => {}, []);
+  const eiendom = null;
 
   return (
     <div className="min-h-screen overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="forside-v4">

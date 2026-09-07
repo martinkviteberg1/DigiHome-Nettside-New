@@ -1,13 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { site } from '@/lib/site';
 import { Knapp } from './motion';
+import KomIGangVelger from './start/KomIGangVelger';
 
 /* ---------------------------------------------------------------------------
    NavV4 — lys, stille verktøylinje. Logo, fem lenker, logg inn, én knapp.
    Ingen megamenyer i første versjon. Hairline når siden er scrollet.
+
+   «Kom i gang» åpner veiskillet (Huseier / Eiendomsselskap) som overlay —
+   modal på desktop, drawer på mobil. Lenken peker på /kom-i-gang, så
+   cmd-klikk, høyreklikk og uten JS fortsatt gir en side.
 --------------------------------------------------------------------------- */
 
 const LENKER = [
@@ -18,9 +23,20 @@ const LENKER = [
   ['Priser', '/priser'],
 ];
 
-export default function NavV4() {
+/* `bg` — bakgrunn for linja (gamle sider har varm hvit flate, V4-sidene canvas). */
+export default function NavV4({ bg = 'rgba(243,241,236,0.85)' } = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [apen, setApen] = useState(false);
+  const [velger, setVelger] = useState(false);
+
+  /* Åpne veiskillet i stedet for å navigere — men la modifikator-klikk gå til /kom-i-gang */
+  const apneVelger = (e) => {
+    if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1)) return;
+    e?.preventDefault?.();
+    setApen(false);
+    setVelger(true);
+  };
+  const lukkVelger = useCallback(() => setVelger(false), []);
 
   useEffect(() => {
     const f = () => setScrolled(window.scrollY > 8);
@@ -42,7 +58,7 @@ export default function NavV4() {
 
   return (
     <>
-      <header className={`sticky top-0 z-50 border-b bg-[#F3F1EC]/85 backdrop-blur-md transition-colors duration-300 ${scrolled || apen ? 'border-[#15130F]/[0.08]' : 'border-transparent'}`} data-testid="v4-nav">
+      <header className={`sticky top-0 z-50 border-b backdrop-blur-md transition-colors duration-300 ${scrolled || apen ? 'border-[#15130F]/[0.08]' : 'border-transparent'}`} style={{ background: bg }} data-testid="v4-nav">
         {/* Samme kanter som scenen på forsiden: 1600 maks, 32 px marg på desktop. */}
         <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-6 px-5 sm:px-8 lg:h-[64px] lg:w-[calc(100%-64px)] lg:px-0">
           <div className="flex items-center gap-6">
@@ -58,7 +74,7 @@ export default function NavV4() {
           </div>
           <div className="flex items-center gap-2">
             <a href={site.loginUrl} className={`${lenke} hidden sm:inline-flex`}>Logg inn</a>
-            <Knapp href="/omvisning" size="sm" className="hidden sm:inline-flex" data-testid="v4-nav-cta">Se DigiHome</Knapp>
+            <Knapp href="/kom-i-gang" size="sm" className="hidden sm:inline-flex" onClick={apneVelger} aria-haspopup="dialog" aria-expanded={velger} data-testid="v4-nav-cta">Kom i gang</Knapp>
             <button type="button" onClick={() => setApen((v) => !v)} aria-expanded={apen} aria-label={apen ? 'Lukk meny' : 'Åpne meny'} className="relative -mr-2 flex h-11 w-11 items-center justify-center rounded-full text-[#15130F] transition-colors hover:bg-[#15130F]/[0.05] lg:hidden" data-testid="v4-meny-knapp">
               {/* To streker, 22 px. Blir et kryss når menyen er åpen. */}
               <span aria-hidden="true" className="absolute block h-[1.5px] w-[22px] rounded-full bg-current transition-transform duration-300" style={{ transform: apen ? 'rotate(45deg)' : 'translateY(-4px)', transitionTimingFunction: 'cubic-bezier(0.22,1,0.36,1)' }} />
@@ -82,11 +98,14 @@ export default function NavV4() {
               : <Link key={l} href={h} onClick={() => setApen(false)} className="border-b border-[#15130F]/[0.08] py-4 text-[26px] text-[#15130F]" style={{ fontFamily: 'var(--font-heading)' }}>{l}</Link>))}
           </nav>
           <div className="mt-auto flex flex-col gap-2 pt-8">
-            <Knapp href="/omvisning">Se DigiHome</Knapp>
+            <Knapp href="/kom-i-gang" onClick={apneVelger} aria-haspopup="dialog" data-testid="v4-nav-cta-mobil">Kom i gang</Knapp>
             <Knapp href={site.loginUrl} variant="lys">Logg inn</Knapp>
           </div>
         </div>
       </div>
+
+      {/* Veiskillet: Huseier / Eiendomsselskap — modal på desktop, drawer på mobil */}
+      <KomIGangVelger apen={velger} onLukk={lukkVelger} />
     </>
   );
 }

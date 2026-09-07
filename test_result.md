@@ -1675,6 +1675,57 @@ agent_communication:
 
 
 frontend:
+  - task: "Nettsted-opprydding + felles V4-chrome: dh/Header og dh/Footer er nå broer til NavV4 (fixed ramme, bg-prop) og ny FooterV4 (charcoal, nyhetsbrev → /api/newsletter/subscribe, 4 kolonner, juridisk bunnlinje, org-prop). Eksperimentruter slettet (/2 /gammel /ny /ny2 /ny-forside /nyest /nyest2 /nyest3 /v3 /v4 /v5 /film /video /bergen-urban) → 308 til /; /tour → /omvisning; /sommer → /boligeiere (next.config.js). Sitemap: /privat → /boligeiere. Metadata: dobbel «| DigiHome» fjernet på /bli-utleier/start; PriceWizard h1→h2 (én H1 på /priskalkulator). Nye V4-sider: /priser (PriserV4: 3 nivåer på hårlinjer, RegnUt-glidebryter 5 %, FAQ, avslutning), /book-mote (BookMoteV4: emne-segment ?emne=forvaltning|selv|bedrift, skjema → /api/leads source book-mote lead_type motebooking), /kontakt (KontaktV4: info på hårlinjer + skjema → /api/leads lead_type kontakt), /om-oss (OmOssV4: historie, tall, verdier, Sarah som daglig leder og én av forvalterne, TillitStripe, avslutning)."
+    implemented: true
+    working: "NA"
+    file: "/app/components/dh/Header.tsx, /app/components/dh/Footer.tsx, /app/components/forside/v4/FooterV4.js, /app/components/forside/v4/NavV4.js, /app/components/forside/v4/sider/*.js, /app/app/priser/page.js, /app/app/book-mote/page.js, /app/app/kontakt/page.js, /app/app/om-oss/page.js, /app/next.config.js, /app/app/sitemap.js, /app/app/globals.css"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Verifisert med curl (alle 200, redirects 308 til riktig mål) og screenshots 1920 (priser, om-oss, kontakt, book-mote, bli-utleier m/ V4-nav + FooterV4, guider). Ingen console-feil. Skjemaer ikke sendt inn ennå (bør testes: mote-skjema/mote-send → mote-sendt; kontakt-skjema/kontakt-send → kontakt-sendt; footer-newsletter-input/-submit → footer-newsletter-done). data-testid: priser-v4, v4p-niva-01/02/03, v4p-cta-01/02/03, v4p-glider, v4p-mnd, v4p-leie; book-mote-v4, bm-emne-forvaltning/selv/bedrift, mote-navn, mote-epost, mote-telefon, mote-melding, mote-send, mote-sendt, mote-feil; kontakt-v4, kontakt-navn/-epost/-telefon/-melding/-send/-sendt; om-oss-v4, v4o-tall, v4o-mennesker; footer-v4, footer-newsletter."
+
+
+  - task: "Forvaltning v3-redesign: lys canvas-hero med kjempestor to-linjers H1, ingress/CTA + rollelegende (Sarah som forvalter-ANSIKT, rolle 'Forvalteren din' — ikke 'den eneste'), scene uten papirboks: ekte Bergen-hjem (stue-moblert) med adresse på bildet → månedslinje m/ dagsmerker → ledger i ink; ett mørkt objekt = «Venter på deg»-kortet (desktop: bryter ut ved saksraden, mobil: rett under saksraden). Brev fra Sarah erstattet av TeamSeksjon («Én fast forvalter. Et helt team bak.» — forvalter/drift/økonomi/system, telefon/e-post, Sarah-portrett som 'daglig leder — og en av forvalterne'). Steg-kort m/ Sarah fjernet (StegSeksjon default person=null, påvirker også /boligeiere og /bedrift), FAQ- og steg-kopi rollebasert. StartV4: Sarah-ansikt ved 'Full forvaltning' byttet til rolleglyf."
+    implemented: true
+    working: "NA"
+    file: "/app/components/forside/v4/forvaltning/ForvaltningDeler.js, /app/components/forside/v4/forvaltning/ForvaltningScene.js, /app/components/forside/v4/forvaltning/ForvaltningV4.js, /app/components/forside/v4/StegSeksjon.js, /app/components/forside/v4/start/StartV4.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Screenshot-QA desktop 1920×1000 (hero, venter-fase, kort ved saksrad) og mobil 390 (hero, scene m/ kort under saksrad, team). Ingen console-feil i Chromium. Bruker rapporterte '1 error' i Next dev-overlay på iPhone (ikke reprodusert i Chromium; sannsynlig HMR/chunk-feil mens siden sto åpen under redigering — avventer feilmelding fra bruker). data-testid: v4f-hero, v4f-h1, v4f-bolig, v4f-adresse, v4f-tidslinje, v4f-markor[data-dag], v4f-kort, v4f-godkjenn, v4f-godkjent, v4f-replay, v4f-roller, v4f-team, v4f-team-roller, v4f-ledelse, v4f-telefon, v4f-epost."
+
+
+  - task: "Kom i gang-flyt: nav-CTA «Se DigiHome» → «Kom i gang» (desktop + mobilmeny) åpner veiskille-overlay KomIGangVelger (modal ≥640px med to dører m/ bilde; bottom drawer <640px med rader). Huseier → /bli-utleier/start, Eiendomsselskap → /bli-utleier/start?kind=business. Esc/backdrop/X lukker, fokusfelle, body-scroll-lås, portal til body. Fallback-side /kom-i-gang (KomIGang: rader venstre, bilde som svarer på hover høyre). Delt data i start/velg.js."
+    implemented: true
+    working: "NA"
+    file: "/app/components/forside/v4/NavV4.js, /app/components/forside/v4/start/KomIGangVelger.js, /app/components/forside/v4/start/KomIGang.js, /app/components/forside/v4/start/velg.js, /app/app/kom-i-gang/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Screenshot-QA: desktop modal åpner uten navigasjon (URL uendret), hover bytter aktiv dør, Esc lukker + body overflow gjenopprettes. Mobil 390px: drawer glir opp fra mobilmenyen (menyen lukkes), backdrop-klikk lukker. /kom-i-gang 200, bildekryssfading ved hover verifisert. data-testid: v4-nav-cta, v4-nav-cta-mobil, kig-velger[data-inne], kig-velger-panel, kig-velger-backdrop, kig-velger-lukk, kig-velger-huseier / -eiendomsselskap (desktop-dører), kig-velger-rad-huseier / -eiendomsselskap (mobilrader), kig-velger-samtale; side: kom-i-gang, kig-valg-huseier / -eiendomsselskap, kig-bilde-*[data-aktiv], kig-lukk. Merk: cookie-banneret dekker bunnen av mobilmenyen ved første besøk (pre-eksisterende) — godta cookies før test av mobil-CTA."
+
+  - task: "Forvaltning: ny seksjon «Fra eierne» (EierSitater) mellom Sarahs brev og Slik kommer du i gang — mørkt oppslag, ett sitat om gangen fra lib/site.js testimonials, autobytte 7 s når synlig (useSynlig), navn som velgere m/ lilla fremdriftslinje (keyframe v4fyll i globals.css), teller 01/03."
+    implemented: true
+    working: "NA"
+    file: "/app/components/forside/v4/forvaltning/EierSitater.js, /app/components/forside/v4/forvaltning/ForvaltningV4.js, /app/app/globals.css"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Screenshot-QA 1920×800: seksjonen rendrer, klikk på navn 3 gir teller 03 / 03 og bytter sitat. Ingen console-feil. data-testid: v4f-eiere, v4f-eiere-teller, v4f-eiere-sitat-{0..2}[data-aktiv], v4f-eiere-velg-{0..2}."
+
+
   - task: "Produktseksjon full bleed (KINO-modus): ny rendringsmotor for variant 'full' (cookie dh_produkt=full) — hele stagen er et fullskjermsfoto per scene, all animasjon/tekst/UI ligger direkte på fotoet (ingen kort, ingen papir). Fire kapitler i /app/components/forside/v4/produkt/kino/: AnnonseKino (hele skjermen er kameraet: fasade → kjøkken → soverom → spisestue → stue, bildene krymper ned i bunken; etiketter i fotoet; wipe re opp sengen; annonse + FINN; interessenter; Emma valgt), KontraktKino, DriftKino (natt → morgen, sone forankret ved vinduet), OkonomiKino (vinduene lyser). Motor: Kino.js (KinoStage m/ dissolve + svak driv, scrim per tema, KinoTekst, Etikett, Sone, Rad, Fold, KinoKnapp, KinoSms). Tabs som ord øverst på stagen m/ lilla fremdrift; farge følger scenetema via onTema."
     implemented: true
     working: "NA"

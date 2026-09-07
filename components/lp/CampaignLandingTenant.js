@@ -1,17 +1,27 @@
 'use client';
 
 // Google Ads-kampanjeside for leietakere — samme konverteringsmønster som
-// utleiersidene: 2-stegs skjema over folden, tillitsrad, sticky CTA, exit-intent.
+// utleiersidene: 2-stegs skjema over folden, tillit, sticky CTA, exit-intent.
+// UI i V4-drakt; skjema-logikk og sporing (/api/tenants, trackLead) er uendret.
 
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  MapPin, ArrowRight, ArrowLeft, Check, Loader2, Phone, ShieldCheck,
-  Clock, Star, Home, KeyRound, Search, BadgeCheck, FileSignature, CalendarCheck, Lock, Sparkles,
-} from 'lucide-react';
+import { MapPin, ArrowRight, Check, Loader2, Phone, ShieldCheck, CalendarCheck, Lock } from 'lucide-react';
 import { site, neighborhoods } from '@/lib/site';
 import { getLeadAttribution, track } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
-import { Reveal, InitialsAvatar, AvatarStack, StickyMobileCta, ExitIntent } from '@/components/lp/lp-shared';
+import { StickyMobileCta, ExitIntent } from '@/components/lp/lp-shared';
+import { T, display } from '@/components/forside/v4/motion';
+import StegSeksjon from '@/components/forside/v4/StegSeksjon';
+import FaqSeksjon from '@/components/forside/v4/FaqSeksjon';
+import { Avsloring, DIM, HAIR, Punkt, SVAK } from '@/components/forside/v4/sider/deler';
+
+const FLATE = '#EDEAE3';
+const feltCls = 'w-full h-14 px-5 rounded-[14px] border-0 bg-[#FBFAF8] outline-none text-[16px] text-[#15130F] placeholder:text-[#15130F]/40 transition-[box-shadow] duration-200 focus:outline-none focus:ring-0';
+const feltOk = 'shadow-[0_0_0_1px_rgba(21,19,15,0.14)] focus:shadow-[0_0_0_2px_#15130F]';
+const feltFeil = 'shadow-[0_0_0_2px_#B42318]';
+const velgWrap = 'flex items-center rounded-[14px] bg-[#FBFAF8] pl-4 shadow-[0_0_0_1px_rgba(21,19,15,0.14)] transition-[box-shadow] duration-200 focus-within:shadow-[0_0_0_2px_#15130F]';
+const velgCls = 'h-14 min-w-0 flex-1 cursor-pointer appearance-none bg-transparent px-3 text-[16px] text-[#15130F] outline-none focus:outline-none focus:ring-0';
+const knappCls = 'group flex h-[52px] w-full items-center justify-center gap-2 rounded-[12px] bg-[#15130F] text-[15px] font-medium text-[#F4F1EA] transition-transform active:scale-[0.98] disabled:opacity-60';
 
 const SOURCE = 'lp-leietaker';
 const PHONE_RE = /^(?:\+47)?\s?(?:\d\s?){8}$/;
@@ -90,77 +100,65 @@ function TenantForm() {
     }
   };
 
-  /* ------------------------------ Ferdig-state ------------------------------ */
+  /* -------------------------------- Ferdig-state -------------------------------- */
   if (status === 'done') {
     const firstName = form.name.trim().split(/\s+/)[0];
     return (
-      <div className="rounded-[24px] border border-success/25 bg-success-bg px-6 py-7">
+      <div className="rounded-[20px] p-6 sm:p-8" style={{ background: FLATE }} data-testid="lt-form-done">
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white border border-success/30">
-            <Check className="h-5 w-5 text-success" />
-          </span>
-          <p className="font-heading font-bold text-[20px] text-ink leading-tight">Takk{firstName ? `, ${firstName}` : ''}! Du er på lista.</p>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(31,157,85,0.14)', color: T.gronn }}><Check className="h-5 w-5" strokeWidth={2.2} /></span>
+          <p className="text-[26px] sm:text-[30px]" style={{ ...display, color: T.ink }}>Takk{firstName ? `, ${firstName}` : ''}<Punkt /></p>
         </div>
-        <ol className="mt-5 space-y-3">
+        <p className="mt-3 text-[15.5px] leading-[1.5]" style={{ color: DIM }}>Du er på lista. Slik går det videre:</p>
+        <ol className="mt-5 border-t" style={{ borderColor: HAIR }}>
           {[
             `Vi matcher ønskene dine${form.area.trim() ? ` (${form.area.trim()})` : ''} mot boligene våre`,
             'Du får varsel så snart noe relevant blir ledig — ofte før offentlig annonsering',
             'Visning, kontrakt og signering skjer digitalt med BankID',
           ].map((t, i) => (
-            <li key={i} className="flex items-start gap-3 text-[14.5px] text-ink-soft">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white border border-success/25 text-success text-[12px] font-bold">{i + 1}</span>
-              {t}
+            <li key={i} className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-3 border-b py-3 text-[15px]" style={{ borderColor: HAIR, color: 'rgba(21,19,15,0.8)' }}>
+              <span className="pt-[3px] text-[12.5px] tabular-nums" style={{ color: SVAK }}>0{i + 1}</span>{t}
             </li>
           ))}
         </ol>
-        <a href={`tel:${site.phoneHref}`} className="mt-5 inline-flex items-center gap-2 text-[14px] font-semibold text-ink hover:text-lavender transition-colors">
-          <Phone className="w-4 h-4" /> Spørsmål? Ring {site.phone}
+        <a href={`tel:${site.phoneHref}`} className="mt-5 inline-flex items-center gap-2 text-[14.5px] font-medium transition-colors hover:text-[#15130F]/70" style={{ color: T.ink }}>
+          <Phone className="h-4 w-4" strokeWidth={1.8} /> Spørsmål? Ring {site.phone}
         </a>
       </div>
     );
   }
 
-  const selectCls = 'w-full h-12 px-3 rounded-[14px] border border-hairline bg-canvas outline-none focus:border-[#c9b8e4] focus:shadow-[0_0_0_4px_rgba(155,91,214,0.09)] text-[15px] text-ink appearance-none cursor-pointer transition-all';
-
   /* -------------------------------- Steg 1 -------------------------------- */
   if (step === 1) {
     return (
-      <div onFocus={handleStart}
-        className="relative rounded-[24px] bg-surface/95 backdrop-blur-sm shadow-[0_40px_100px_-50px_rgba(10,10,10,0.5),0_2px_12px_rgba(10,10,10,0.05)] p-5 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <p className="font-heading font-bold text-[19px] text-ink leading-tight">Bli varslet om nye boliger</p>
-          <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-success-bg text-success text-[11px] font-semibold px-2.5 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> Gratis
-          </span>
+      <div onFocus={handleStart} className="relative rounded-[20px] p-5 sm:p-7" style={{ background: FLATE }} data-testid="lt-form-step1">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+          <p className="text-[24px] sm:text-[28px]" style={{ ...display, color: T.ink }}>Bli varslet om nye boliger</p>
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-[12.5px] font-medium" style={{ color: T.gronn }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.gronn }} /> Gratis</span>
         </div>
-        <p className="text-[13.5px] text-quiet mt-1">Ofte før boligene annonseres offentlig — det tar under ett minutt.</p>
-
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="flex items-center rounded-[14px] border border-hairline bg-canvas pl-3.5 focus-within:border-[#c9b8e4] focus-within:shadow-[0_0_0_4px_rgba(155,91,214,0.09)] transition-all">
-            <MapPin className="h-4 w-4 text-taupe shrink-0" />
-            <select value={form.area} onChange={set('area')} className="flex-1 h-12 px-2.5 bg-transparent outline-none text-[15px] text-ink appearance-none cursor-pointer">
+        <p className="mt-1.5 text-[14px]" style={{ color: DIM }}>Ofte før boligene annonseres offentlig — det tar under ett minutt.</p>
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className={velgWrap}>
+            <MapPin className="h-[18px] w-[18px] shrink-0" style={{ color: SVAK }} strokeWidth={1.8} />
+            <select value={form.area} onChange={set('area')} aria-label="Ønsket område" className={velgCls} data-testid="lt-area">
               <option value="">Ønsket område</option>
               {neighborhoods.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
-          <div className="flex items-center rounded-[14px] border border-hairline bg-canvas pl-3.5 focus-within:border-[#c9b8e4] focus-within:shadow-[0_0_0_4px_rgba(155,91,214,0.09)] transition-all">
-            <CalendarCheck className="h-4 w-4 text-taupe shrink-0" />
-            <select value={form.move_in} onChange={set('move_in')} className="flex-1 h-12 px-2.5 bg-transparent outline-none text-[15px] text-ink appearance-none cursor-pointer">
+          <div className={velgWrap}>
+            <CalendarCheck className="h-[18px] w-[18px] shrink-0" style={{ color: SVAK }} strokeWidth={1.8} />
+            <select value={form.move_in} onChange={set('move_in')} aria-label="Når vil du flytte" className={velgCls} data-testid="lt-movein">
               <option value="">Når vil du flytte?</option>
               {MOVE_IN.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
         </div>
-
-        <button type="button" onClick={goStep2}
-          className="group mt-3.5 w-full h-[52px] rounded-full bg-ink text-canvas font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_14px_30px_-12px_rgba(10,10,10,0.5)] hover:-translate-y-0.5 transition-all">
-          Varsle meg om boliger <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+        <button type="button" onClick={goStep2} className={`${knappCls} mt-3`} data-testid="lt-step1-next">
+          Varsle meg om boliger <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.8} />
         </button>
-
-        <div className="mt-3.5 flex items-center justify-center gap-4 text-[12px] text-taupe flex-wrap">
-          <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-success" /> Ingen budrunder</span>
-          <span className="inline-flex items-center gap-1.5"><BadgeCheck className="w-3.5 h-3.5 text-success" /> Kvalitetssikret</span>
-          <span className="inline-flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-success" /> 100 % gratis</span>
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px]" style={{ color: SVAK }}>
+          <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" style={{ color: T.gronn }} strokeWidth={1.8} /> Ingen budrunder</span>
+          <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" style={{ color: T.gronn }} strokeWidth={1.8} /> 100 % gratis</span>
         </div>
       </div>
     );
@@ -168,64 +166,78 @@ function TenantForm() {
 
   /* -------------------------------- Steg 2 -------------------------------- */
   return (
-    <form onSubmit={submit} onFocus={handleStart}
-      className="relative rounded-[24px] bg-surface/95 backdrop-blur-sm shadow-[0_40px_100px_-50px_rgba(10,10,10,0.5),0_2px_12px_rgba(10,10,10,0.05)] p-5 sm:p-6 space-y-3.5">
+    <form onSubmit={submit} onFocus={handleStart} className="relative space-y-4 rounded-[20px] p-5 sm:p-7" style={{ background: FLATE }} data-testid="lt-form-step2">
       <div>
         <div className="flex items-center justify-between gap-3">
-          <p className="font-heading font-bold text-[19px] text-ink leading-tight">Nesten ferdig — hvor når vi deg?</p>
-          <span className="shrink-0 text-[11px] font-semibold text-quiet">Steg 2 av 2</span>
+          <p className="text-[24px] sm:text-[28px]" style={{ ...display, color: T.ink }}>Nesten ferdig — hvor når vi deg<span style={{ color: T.lilla }}>?</span></p>
+          <span className="shrink-0 text-[12px] tabular-nums" style={{ color: SVAK }}>Steg 2 av 2</span>
         </div>
-        <div className="mt-2.5 h-1 rounded-full bg-fill overflow-hidden">
-          <div className="h-full w-[85%] rounded-full bg-gradient-to-r from-lavender to-lavender-soft transition-all" />
-        </div>
+        <div className="mt-3 h-px w-full overflow-hidden" style={{ background: 'rgba(21,19,15,0.12)' }}><div className="h-full w-[85%]" style={{ background: T.lilla }} /></div>
       </div>
-
-      <button type="button" onClick={() => setStep(1)}
-        className="inline-flex max-w-full items-center gap-2 rounded-full bg-fill px-3.5 py-1.5 text-[13px] text-ink-soft hover:bg-hairline transition-colors">
-        <MapPin className="w-3.5 h-3.5 text-lavender shrink-0" />
+      <button type="button" onClick={() => setStep(1)} className="inline-flex max-w-full items-center gap-2 rounded-full px-3.5 py-1.5 text-[13px] transition-colors hover:bg-[#15130F]/[0.08]" style={{ background: 'rgba(21,19,15,0.05)', color: 'rgba(21,19,15,0.75)' }}>
+        <MapPin className="h-3.5 w-3.5 shrink-0" style={{ color: T.ink }} strokeWidth={1.8} />
         <span className="truncate">{form.area || 'Hele Bergen'}{form.move_in ? ` · ${form.move_in}` : ''}</span>
-        <span className="text-quiet underline underline-offset-2 shrink-0">endre</span>
+        <span className="shrink-0 underline underline-offset-2" style={{ color: SVAK }}>endre</span>
       </button>
-
       <div>
-        <input ref={nameRef} value={form.name} onChange={set('name')} placeholder="Navn" autoComplete="name" enterKeyHint="next"
-          className={`w-full h-12 px-4 rounded-[14px] border bg-canvas outline-none text-[15px] placeholder:text-taupe transition-all ${fieldErr.name ? 'border-rose-300 shadow-[0_0_0_4px_rgba(244,63,94,0.07)]' : 'border-hairline focus:border-[#c9b8e4] focus:shadow-[0_0_0_4px_rgba(155,91,214,0.09)]'}`} />
-        {fieldErr.name ? <p className="text-[12.5px] text-rose-500 mt-1.5 ml-1">{fieldErr.name}</p> : null}
+        <label htmlFor="lt-name" className="mb-2 block text-[13.5px] font-medium" style={{ color: 'rgba(21,19,15,0.75)' }}>Navn</label>
+        <input id="lt-name" ref={nameRef} value={form.name} onChange={set('name')} placeholder="Ola Nordmann" autoComplete="name" enterKeyHint="next" className={`${feltCls} ${fieldErr.name ? feltFeil : feltOk}`} data-testid="lt-name" />
+        {fieldErr.name ? <p className="mt-1.5 text-[12.5px]" style={{ color: '#B42318' }}>{fieldErr.name}</p> : null}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <input value={form.phone} onChange={set('phone')} type="tel" inputMode="tel" placeholder="Telefon" autoComplete="tel" enterKeyHint="next"
-            className={`w-full h-12 px-4 rounded-[14px] border bg-canvas outline-none text-[15px] placeholder:text-taupe transition-all ${fieldErr.phone ? 'border-rose-300 shadow-[0_0_0_4px_rgba(244,63,94,0.07)]' : 'border-hairline focus:border-[#c9b8e4] focus:shadow-[0_0_0_4px_rgba(155,91,214,0.09)]'}`} />
-          {fieldErr.phone ? <p className="text-[12.5px] text-rose-500 mt-1.5 ml-1">{fieldErr.phone}</p> : null}
+          <label htmlFor="lt-phone" className="mb-2 block text-[13.5px] font-medium" style={{ color: 'rgba(21,19,15,0.75)' }}>Telefon</label>
+          <input id="lt-phone" value={form.phone} onChange={set('phone')} type="tel" inputMode="tel" placeholder="8 siffer" autoComplete="tel" enterKeyHint="next" className={`${feltCls} ${fieldErr.phone ? feltFeil : feltOk}`} data-testid="lt-phone" />
+          {fieldErr.phone ? <p className="mt-1.5 text-[12.5px]" style={{ color: '#B42318' }}>{fieldErr.phone}</p> : null}
         </div>
         <div>
-          <input value={form.email} onChange={set('email')} type="email" inputMode="email" placeholder="E-post" autoComplete="email" enterKeyHint="done"
-            className={`w-full h-12 px-4 rounded-[14px] border bg-canvas outline-none text-[15px] placeholder:text-taupe transition-all ${fieldErr.email ? 'border-rose-300 shadow-[0_0_0_4px_rgba(244,63,94,0.07)]' : 'border-hairline focus:border-[#c9b8e4] focus:shadow-[0_0_0_4px_rgba(155,91,214,0.09)]'}`} />
-          {fieldErr.email ? <p className="text-[12.5px] text-rose-500 mt-1.5 ml-1">{fieldErr.email}</p> : null}
+          <label htmlFor="lt-email" className="mb-2 block text-[13.5px] font-medium" style={{ color: 'rgba(21,19,15,0.75)' }}>E-post</label>
+          <input id="lt-email" value={form.email} onChange={set('email')} type="email" inputMode="email" placeholder="ola@epost.no" autoComplete="email" enterKeyHint="done" className={`${feltCls} ${fieldErr.email ? feltFeil : feltOk}`} data-testid="lt-email" />
+          {fieldErr.email ? <p className="mt-1.5 text-[12.5px]" style={{ color: '#B42318' }}>{fieldErr.email}</p> : null}
         </div>
       </div>
-      <select value={form.budget} onChange={set('budget')} className={selectCls}>
-        <option value="">Månedsbudsjett (valgfritt)</option>
-        {BUDGETS.map((b) => <option key={b} value={b}>{b}</option>)}
-      </select>
-      {err ? <p className="text-[13px] text-rose-500">{err}</p> : null}
-      <button type="submit" disabled={status === 'sending'}
-        className="group w-full h-[52px] rounded-full bg-ink text-canvas font-semibold text-[15px] flex items-center justify-center gap-2 transition-all hover:shadow-[0_18px_40px_-14px_rgba(10,10,10,0.6)] hover:-translate-y-0.5 disabled:opacity-60 disabled:translate-y-0">
-        {status === 'sending' ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Varsle meg om boliger <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" /></>}
+      <div>
+        <label htmlFor="lt-budget" className="mb-2 block text-[13.5px] font-medium" style={{ color: 'rgba(21,19,15,0.75)' }}>Månedsbudsjett (valgfritt)</label>
+        <div className={velgWrap} style={{ paddingLeft: 8 }}>
+          <select id="lt-budget" value={form.budget} onChange={set('budget')} className={velgCls}>
+            <option value="">Velg</option>
+            {BUDGETS.map((b) => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </div>
+      </div>
+      {err ? <p className="text-[13px]" style={{ color: '#B42318' }}>{err}</p> : null}
+      <button type="submit" disabled={status === 'sending'} className={knappCls} data-testid="lt-submit">
+        {status === 'sending' ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Varsle meg om boliger <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.8} /></>}
       </button>
-      <div className="flex items-center justify-center gap-4 text-[12px] text-taupe pt-0.5 flex-wrap">
-        <span className="inline-flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-success" /> Vi deler aldri opplysningene dine</span>
-        <span className="inline-flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-success" /> Helt gratis</span>
-      </div>
+      <p className="text-center text-[12.5px]" style={{ color: SVAK }}>Vi deler aldri opplysningene dine. Helt gratis.</p>
     </form>
   );
 }
 
 /* ------------------------------ hovedside ------------------------------ */
+const STEG = [
+  { nr: '01', t: 'Fortell oss hva du leter etter', d: 'Område, budsjett og innflytting. Det tar under ett minutt — og det er helt gratis.' },
+  { nr: '02', t: 'Vi matcher deg med riktige boliger', d: 'Du får beskjed så snart en bolig som passer blir ledig i Bergen — ofte før den annonseres.' },
+  { nr: '03', t: 'Signér digitalt og flytt inn', d: 'Trygg kontrakt med BankID, klar overtakelse og support hele veien.' },
+];
+
+const FORDELER = [
+  ['01', 'Trygt og kvalitetssikret', 'Alle boliger og kontrakter er kvalitetssikret. Du vet alltid hvem du leier av — ingen overraskelser.'],
+  ['02', 'Alt digitalt', 'Visning, kontrakt og signering med BankID samlet i appen. Enkelt, raskt og papirløst.'],
+  ['03', 'Et team som svarer', 'Et lokalt team i Bergen følger deg opp — og er tilgjengelig når du trenger hjelp.'],
+];
+
+const FAQ = [
+  { q: 'Hva skjer etter at jeg har registrert meg?', a: 'Vi matcher ønskene dine mot boligene våre, og varsler deg så snart noe relevant blir ledig — ofte før boligen annonseres offentlig. Deretter avtaler vi visning digitalt.' },
+  { q: 'Hva koster det å registrere seg?', a: 'Ingenting. Det er helt gratis og uforpliktende å bli varslet om ledige boliger som matcher ønskene dine.' },
+  { q: 'Hvor finner jeg boligene?', a: 'Vi forvalter kvalitetssikrede utleieboliger i hele Bergen — inkludert Nordnes, Sandviken, Møhlenpris, Sentrum, Åsane, Fana og Laksevåg.' },
+  { q: 'Må jeg delta i budrunder?', a: 'Nei. Vi matcher deg direkte med boliger som passer, så du slipper budrunder og kø. Du får beskjed når noe relevant blir ledig.' },
+  { q: 'Hvordan signerer jeg kontrakt?', a: 'Alt skjer digitalt. Du signerer leiekontrakten trygt med BankID, og får full oversikt over leieforholdet i appen.' },
+  { q: 'Hvor raskt kan jeg flytte inn?', a: 'Det varierer med tilbudet, men mange finner bolig i løpet av få uker. Jo mer fleksibel du er på område og innflytting, desto raskere går det.' },
+];
+
 export default function CampaignLandingTenant() {
   const [scrolled, setScrolled] = useState(false);
-  const [openFaq, setOpenFaq] = useState(0);
-
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();
@@ -238,297 +250,113 @@ export default function CampaignLandingTenant() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
-  const bullets = [
-    'Møblert og innflyttingsklart',
-    'Ingen budrunder — vi matcher deg direkte',
-    'Digital kontrakt med BankID',
-  ];
-
-  const steps = [
-    { n: '01', icon: Search, t: 'Fortell oss hva du leter etter', d: 'Område, budsjett og innflytting. Det tar under ett minutt — og det er helt gratis.' },
-    { n: '02', icon: BadgeCheck, t: 'Vi matcher deg med riktige boliger', d: 'Du får beskjed så snart en bolig som passer dine ønsker blir ledig i Bergen — ofte før den annonseres.' },
-    { n: '03', icon: KeyRound, t: 'Signér digitalt og flytt inn', d: 'Trygg kontrakt med BankID, klar overtakelse og support hele veien.' },
-  ];
-
-  const benefits = [
-    { icon: BadgeCheck, t: 'Trygt og kvalitetssikret', b: 'Alle boliger og kontrakter er kvalitetssikret. Du vet alltid hvem du leier av — ingen overraskelser.' },
-    { icon: FileSignature, t: 'Alt digitalt', b: 'Visning, kontrakt og signering med BankID samlet i appen. Enkelt, raskt og papirløst.' },
-    { icon: Clock, t: 'Rask respons', b: 'Et lokalt team i Bergen følger deg opp — og er tilgjengelig når du trenger hjelp, hele døgnet.' },
-  ];
-
-  const testimonials = [
-    { quote: 'Jeg slapp hele budrunde-stresset. DigiHome fant en leilighet på Møhlenpris som passet perfekt, og alt gikk digitalt.', name: 'Sofie R.', area: 'Møhlenpris' },
-    { quote: 'Fikk varsel om en bolig i Sandviken samme uke jeg registrerte meg. Signerte med BankID og flyttet inn uten styr.', name: 'Henrik B.', area: 'Sandviken' },
-    { quote: 'Endelig en seriøs utleier som faktisk svarer. Trygt, ryddig og raskt fra start til nøkler i hånda.', name: 'Amalie T.', area: 'Sentrum' },
-  ];
-
-  const faq = [
-    { q: 'Hva skjer etter at jeg har registrert meg?', a: 'Vi matcher ønskene dine mot boligene våre, og varsler deg så snart noe relevant blir ledig — ofte før boligen annonseres offentlig. Deretter avtaler vi visning digitalt.' },
-    { q: 'Hva koster det å registrere seg?', a: 'Ingenting. Det er helt gratis og uforpliktende å bli varslet om ledige boliger som matcher ønskene dine.' },
-    { q: 'Hvor finner jeg boligene?', a: 'Vi forvalter kvalitetssikrede utleieboliger i hele Bergen — inkludert Nordnes, Sandviken, Møhlenpris, Sentrum, Åsane, Fana og Laksevåg.' },
-    { q: 'Må jeg delta i budrunder?', a: 'Nei. Vi matcher deg direkte med boliger som passer, så du slipper budrunder og kø. Du får beskjed når noe relevant blir ledig.' },
-    { q: 'Hvordan signerer jeg kontrakt?', a: 'Alt skjer digitalt. Du signerer leiekontrakten trygt med BankID, og får full oversikt over leieforholdet i appen.' },
-    { q: 'Hvor raskt kan jeg flytte inn?', a: 'Det varierer med tilbudet, men mange finner bolig i løpet av få uker. Jo mer fleksibel du er på område og innflytting, desto raskere går det.' },
-  ];
-
   return (
-    <div className="bg-canvas text-ink min-h-screen flex flex-col antialiased selection:bg-lavender/20">
-      {/* Header */}
-      <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-canvas/85 backdrop-blur-md border-b border-hairline/70' : 'bg-transparent border-b border-transparent'}`}>
-        <div className="max-w-[1200px] mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
-          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-6 w-auto" width={130} height={24} />
-          <div className="flex items-center gap-3">
-            <a href={`tel:${site.phoneHref}`} className="inline-flex items-center gap-2 text-[14px] font-medium text-ink hover:text-lavender transition-colors">
-              <Phone className="w-4 h-4" /> <span className="hidden sm:inline">{site.phone}</span>
+    <div className="flex min-h-screen flex-col overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="lt-v4">
+      <header className={`sticky top-0 z-40 border-b transition-colors duration-300 ${scrolled ? 'border-[#15130F]/[0.08]' : 'border-transparent'}`} style={{ background: 'rgba(243,241,236,0.9)', backdropFilter: 'saturate(1.2) blur(8px)' }}>
+        <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between px-5 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[18px] w-auto" />
+          <div className="flex items-center gap-5">
+            <a href={`tel:${site.phoneHref}`} className="inline-flex items-center gap-2 text-[13.5px] transition-colors hover:text-[#15130F]" style={{ color: 'rgba(21,19,15,0.65)' }}>
+              <Phone className="h-4 w-4" strokeWidth={1.8} /> <span className="hidden sm:inline">{site.phone}</span>
             </a>
-            <button onClick={scrollToForm} className="hidden sm:inline-flex h-9 items-center rounded-full bg-ink text-canvas px-4 text-[13px] font-semibold hover:-translate-y-0.5 transition-transform">
-              Finn bolig
-            </button>
+            <button type="button" onClick={scrollToForm} className="hidden h-10 items-center gap-1.5 rounded-[10px] px-4 text-[13.5px] font-medium transition-transform active:scale-[0.97] sm:inline-flex" style={{ background: T.ink, color: T.offwhite }}>Finn bolig <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.8} /></button>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div aria-hidden className="pointer-events-none absolute -top-48 -right-32 h-[560px] w-[560px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.30) 0%, rgba(207,151,252,0) 70%)' }} />
-        <div aria-hidden className="pointer-events-none absolute top-32 -left-40 h-[420px] w-[420px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(155,91,214,0.12) 0%, rgba(155,91,214,0) 70%)' }} />
-
-        <div className="relative max-w-[1200px] mx-auto px-5 sm:px-8 pt-8 sm:pt-14 pb-14 grid lg:grid-cols-[1.05fr_0.95fr] gap-10 lg:gap-16 items-center">
-          <div>
-            <Reveal>
-              <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-surface/70 px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-quiet">
-                <span className="h-1.5 w-1.5 rounded-full bg-lavender" /> Leie bolig i Bergen
-              </div>
-            </Reveal>
-            <Reveal delay={60}>
-              <h1 className="font-heading font-bold tracking-[-0.04em] leading-[1.02] text-[35px] sm:text-[52px] lg:text-[58px] mt-4 max-w-[16ch]">
-                Finn ditt neste hjem i Bergen
-              </h1>
-            </Reveal>
-            <Reveal delay={110}>
-              <p className="text-quiet text-[16px] sm:text-[18px] mt-4 max-w-[52ch] leading-relaxed">
-                Kvalitetssikrede utleieboliger — uten budrunder, kø og stress. Registrer ønskene dine, så varsler vi deg når den rette boligen blir ledig.
-              </p>
-            </Reveal>
-
-            {/* Skjemaet først — over folden, også på mobil */}
-            <Reveal delay={170}>
-              <div id="lp-form" className="mt-6 scroll-mt-24">
-                <TenantForm />
-              </div>
-            </Reveal>
-
-            {/* Tillitsrad
-                Her sto tidligere «4,9/5 fra leietakere i Bergen» med fem
-                fylte stjerner. Tallet finnes ikke i noen datakilde i
-                kodebasen, og en vurderingsscore som ikke kan dokumenteres er
-                både et tillitsproblem og noe markedsføringsloven slår ned på.
-                Erstattet med selskapets faktiske, dokumenterte volumtall
-                (statStrip: «150+ boliger — akkumulert forvaltet eller
-                håndtert»). Skal stjernene tilbake, må de kobles til en reell
-                kilde, f.eks. antall Google-vurderinger. */}
-            <Reveal delay={230}>
-              <div className="mt-5 flex items-center justify-between gap-x-6 gap-y-3 flex-wrap">
-                <div className="flex items-center gap-2.5">
-                  <AvatarStack size={30} names={['Sofie R.', 'Henrik B.', 'Amalie T.', 'Jonas F.']} />
-                  <div>
-                    <p className="text-[13px] font-semibold text-ink leading-tight">150+ boliger håndtert</p>
-                    <p className="text-[12.5px] text-quiet mt-0.5">av vårt lokale team i Bergen</p>
-                  </div>
-                </div>
-                <img src="/bankid-logo.png" alt="BankID" style={{ height: 18 }} loading="lazy" className="w-auto object-contain opacity-60 grayscale" />
-              </div>
-            </Reveal>
-
-            {/* Kompakte fordels-punkter */}
-            <Reveal delay={280}>
-              <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2.5">
-                {bullets.map((b, i) => (
-                  <li key={i} className="flex items-center gap-2 text-[13.5px] text-ink-soft">
-                    <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-success-bg">
-                      <Check className="h-2.5 w-2.5 text-success" />
-                    </span>
-                    {b}
+      <main className="flex-1">
+        {/* Hero: budskap + skjema over folden */}
+        <section className="mx-auto w-full max-w-[1400px] px-5 pb-14 pt-8 sm:px-8 sm:pt-12 lg:w-[calc(100%-64px)] lg:px-0 lg:pb-20 lg:pt-14" data-testid="lt-hero">
+          <div className="grid gap-8 lg:grid-cols-12 lg:gap-12 xl:gap-16">
+            <div className="lg:col-span-6 lg:row-start-1">
+              <p className="dh-cover-inn text-[14px] font-medium" style={{ color: SVAK }}>Leie bolig i Bergen</p>
+              <h1 className="dh-cover-inn mt-4 max-w-[15ch] text-[42px] sm:text-[58px] lg:text-[clamp(52px,4.6vw,76px)]" style={{ ...display, color: T.ink, animationDelay: '.04s' }} data-testid="lt-h1">Finn et hjem uten budrunder<Punkt /></h1>
+              <p className="dh-cover-inn mt-5 max-w-[46ch] text-[17px] leading-[1.5] sm:text-[19px]" style={{ color: 'rgba(21,19,15,0.72)', animationDelay: '.08s' }}>Kvalitetssikrede utleieboliger i Bergen — møblerte og innflyttingsklare. Registrer ønskene dine, så varsler vi deg før boligene annonseres.</p>
+            </div>
+            <div id="lp-form" className="dh-cover-inn scroll-mt-24 lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1" style={{ animationDelay: '.12s' }}>
+              <TenantForm />
+            </div>
+            <div className="dh-cover-inn lg:col-span-6 lg:row-start-2" style={{ animationDelay: '.18s' }}>
+              <ul className="border-t" style={{ borderColor: HAIR }}>
+                {['Møblert og innflyttingsklart', 'Ingen budrunder — vi matcher deg direkte', 'Digital kontrakt med BankID'].map((b) => (
+                  <li key={b} className="flex items-start gap-3 border-b py-3 text-[15px] leading-[1.45]" style={{ borderColor: HAIR, color: 'rgba(21,19,15,0.8)' }}>
+                    <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.lilla }} />{b}
                   </li>
                 ))}
               </ul>
-            </Reveal>
-          </div>
-
-          {/* høyre: lagdelt bilde-komposisjon */}
-          <div className="relative hidden lg:block">
-            <Reveal delay={120}>
-              <div className="relative rounded-[28px] overflow-hidden aspect-[4/5] shadow-[0_50px_120px_-50px_rgba(10,10,10,0.55)]">
-                <img src="/interior-living.webp" alt="Innflyttingsklar utleiebolig i Bergen" fetchPriority="high" className="absolute inset-0 w-full h-full object-cover" width={900} height={1125} />
-                <div className="absolute inset-0 bg-gradient-to-t from-ink/35 via-transparent to-transparent" />
+              <div className="mt-5 flex items-center gap-4 text-[13px]" style={{ color: SVAK }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/bankid-logo.png" alt="BankID" style={{ height: 16 }} loading="lazy" className="w-auto object-contain opacity-70 grayscale" />
+                <span>Signering med BankID · Lokalt team i Bergen</span>
               </div>
-            </Reveal>
-            <div className="absolute -bottom-6 -left-6 rounded-[20px] bg-surface/95 backdrop-blur border border-hairline shadow-[0_30px_70px_-35px_rgba(10,10,10,0.5)] px-6 py-4">
-              <div className="flex items-center gap-2 text-taupe">
-                <CalendarCheck className="w-4 h-4 text-lavender" />
-                <p className="text-[11px] uppercase tracking-[0.12em]">Innflyttingsklar</p>
-              </div>
-              <p className="font-heading font-bold text-[24px] text-ink mt-0.5 leading-none">Møblert &amp; klar</p>
             </div>
-            <div className="absolute top-5 -right-4 rounded-2xl bg-ink text-canvas shadow-[0_24px_50px_-24px_rgba(10,10,10,0.7)] px-4 py-3 flex items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10"><ShieldCheck className="w-4 h-4" /></span>
+          </div>
+        </section>
+
+        {/* Bildet */}
+        <section className="mx-auto w-full max-w-[1400px] px-5 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0">
+          <div className="relative aspect-[16/10] overflow-hidden rounded-[20px] sm:aspect-[16/7] lg:aspect-[21/8]" style={{ background: T.flate, boxShadow: '0 0 0 1px rgba(21,19,15,0.06)' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/interior-living.webp" alt="Innflyttingsklar utleiebolig i Bergen" fetchPriority="high" decoding="async" className="absolute inset-0 h-full w-full select-none object-cover" draggable={false} />
+            <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[60%]" style={{ background: 'linear-gradient(180deg, rgba(21,19,15,0) 0%, rgba(21,19,15,0.6) 100%)' }} />
+            <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5 sm:p-7">
               <div>
-                <p className="text-[12px] font-semibold leading-tight">Trygg signering</p>
-                <p className="text-[11px] text-canvas/60 leading-tight">med BankID</p>
+                <p className="text-[28px] sm:text-[36px]" style={{ ...display, color: T.offwhite }}>Innflyttingsklart</p>
+                <p className="mt-1 text-[13.5px]" style={{ color: 'rgba(244,241,234,0.75)' }}>Møblert · rent · nøkler klare</p>
               </div>
-            </div>
-            <div className="absolute -top-7 left-8 h-20 w-28 rounded-2xl overflow-hidden border-4 border-canvas shadow-[0_20px_40px_-20px_rgba(10,10,10,0.5)] rotate-[-4deg]">
-              <img src="/bergen-rooftops.webp" alt="Bergen" className="h-full w-full object-cover" width={160} height={120} />
+              <p className="hidden text-[13.5px] sm:block" style={{ color: 'rgba(244,241,234,0.75)' }}>Bergen</p>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Trygghets-stripe */}
-      <section className="border-y border-hairline/70 bg-canvas-alt">
-        <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-6 flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-10">
-          <p className="text-[12.5px] font-semibold uppercase tracking-[0.14em] text-taupe">Trygg utleie, hele veien</p>
-          <div className="flex items-center gap-7 sm:gap-10 text-[13px] text-ink-soft">
-            <span className="inline-flex items-center gap-2"><BadgeCheck className="w-4 h-4 text-lavender" /> Kvalitetssikret</span>
-            <span className="inline-flex items-center gap-2"><FileSignature className="w-4 h-4 text-lavender" /> Digital kontrakt</span>
-            <span className="inline-flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-lavender" /> BankID</span>
-          </div>
-        </div>
-      </section>
+        {/* Fordeler */}
+        <Avsloring testid="lt-fordeler">
+          {(inn) => (
+            <div className="mx-auto w-full max-w-[1400px] px-5 py-20 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0 lg:py-28">
+              <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>Derfor DigiHome</p>
+              <h2 className="mt-4 max-w-[16ch] text-[clamp(36px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }}>Trygt, digitalt — og noen som svarer<Punkt /></h2>
+              <ol className="mt-12 grid gap-10 border-t pt-10 md:grid-cols-3 md:gap-8" style={{ borderColor: HAIR }}>
+                {FORDELER.map(([nr, t, d], i) => (
+                  <li key={nr} style={inn(2 + i, 16)}>
+                    <span className="text-[13px] tabular-nums" style={{ color: i === 0 ? T.lilla : SVAK }}>{nr}</span>
+                    <p className="mt-3 text-[24px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.ink }}>{t}</p>
+                    <p className="mt-3 max-w-[36ch] text-[15.5px] leading-[1.55]" style={{ color: DIM }}>{d}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </Avsloring>
 
-      {/* Slik fungerer det */}
-      <section className="max-w-[1100px] mx-auto px-5 sm:px-8 py-16 sm:py-24 w-full">
-        <Reveal className="text-center max-w-[640px] mx-auto">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-lavender">Slik fungerer det</p>
-          <h2 className="font-heading font-bold text-[28px] sm:text-[38px] tracking-[-0.03em] mt-3">Fra ønske til nøkler — i tre steg</h2>
-        </Reveal>
-        <div className="mt-12 grid md:grid-cols-3 gap-5 relative">
-          {steps.map((s, i) => (
-            <Reveal key={i} delay={i * 110}>
-              <div className="relative h-full rounded-[22px] bg-surface p-7 shadow-[0_2px_18px_rgba(10,10,10,0.045)] hover:shadow-[0_34px_70px_-42px_rgba(10,10,10,0.42)] hover:-translate-y-1 transition-all duration-300">
-                <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-ink text-canvas"><s.icon className="w-5 h-5" /></div>
-                <h3 className="font-heading font-bold text-[19px] mt-5">{s.t}</h3>
-                <p className="text-quiet text-[14.5px] mt-2 leading-relaxed">{s.d}</p>
+        <StegSeksjon tittel={['Fra ønske', 'til nøkler.']} under="Tre steg — det første tar under ett minutt." steg={STEG} person={null} testid="lt" />
+        <FaqSeksjon sporsmal={FAQ} />
+
+        <section className="relative" style={{ background: T.charcoal, color: T.offwhite }}>
+          <div className="mx-auto w-full max-w-[1400px] px-5 py-20 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0 lg:py-28">
+            <div className="grid gap-10 lg:grid-cols-12 lg:items-end">
+              <div className="lg:col-span-8">
+                <p className="text-[14px] font-medium" style={{ color: 'rgba(244,241,234,0.55)' }}>Gratis · ingen budrunder · BankID</p>
+                <h2 className="mt-4 max-w-[14ch] text-[clamp(40px,5vw,84px)]" style={{ ...display, color: T.offwhite }}>Bli varslet før boligen annonseres<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span></h2>
               </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* Fordeler */}
-      <section className="bg-canvas-alt border-y border-hairline/70">
-        <div className="max-w-[1100px] mx-auto px-5 sm:px-8 py-16 sm:py-20 grid sm:grid-cols-3 gap-5">
-          {benefits.map((c, i) => (
-            <Reveal key={i} delay={i * 100}>
-              <div className="h-full rounded-[22px] bg-surface p-7 shadow-[0_2px_18px_rgba(10,10,10,0.045)] hover:shadow-[0_28px_60px_-42px_rgba(10,10,10,0.4)] transition-shadow duration-300">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lavender/10"><c.icon className="w-5 h-5 text-lavender" /></span>
-                <h3 className="font-heading font-bold text-[18px] mt-5">{c.t}</h3>
-                <p className="text-quiet text-[14.5px] mt-2 leading-relaxed">{c.b}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* Kundehistorier */}
-      <section className="max-w-[1100px] mx-auto px-5 sm:px-8 py-16 sm:py-24 w-full">
-        <Reveal className="text-center max-w-[640px] mx-auto">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-lavender">Leietakere i Bergen</p>
-          <h2 className="font-heading font-bold text-[28px] sm:text-[38px] tracking-[-0.03em] mt-3">De fant hjem uten stress</h2>
-        </Reveal>
-        <div className="mt-12 grid md:grid-cols-3 gap-5">
-          {testimonials.map((t, i) => (
-            <Reveal key={i} delay={i * 110}>
-              <figure className="h-full rounded-[22px] bg-surface p-7 shadow-[0_2px_18px_rgba(10,10,10,0.045)] flex flex-col">
-                <div className="flex items-center gap-0.5 text-lavender mb-4">
-                  {[0, 1, 2, 3, 4].map((j) => <Star key={j} className="w-4 h-4 fill-current" />)}
-                </div>
-                <blockquote className="text-ink-soft text-[15.5px] leading-relaxed flex-1">“{t.quote}”</blockquote>
-                <figcaption className="mt-6 flex items-center gap-3">
-                  <InitialsAvatar name={t.name} index={i} size={40} />
-                  <div>
-                    <p className="text-[14px] font-semibold text-ink">{t.name}</p>
-                    <p className="text-[12.5px] text-taupe">{t.area}, Bergen</p>
-                  </div>
-                </figcaption>
-              </figure>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* Avsluttende CTA */}
-      <section className="px-5 sm:px-8 pb-16 sm:pb-24">
-        <Reveal className="max-w-[1100px] mx-auto">
-          <div className="relative overflow-hidden rounded-[32px] bg-ink text-canvas px-7 sm:px-14 py-14 sm:py-20 text-center">
-            <div aria-hidden className="pointer-events-none absolute -top-24 right-0 h-[360px] w-[360px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.4) 0%, rgba(207,151,252,0) 70%)' }} />
-            <div aria-hidden className="pointer-events-none absolute -bottom-28 -left-10 h-[320px] w-[320px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(155,91,214,0.3) 0%, rgba(155,91,214,0) 70%)' }} />
-            <div className="relative">
-              <h2 className="font-heading font-bold text-[30px] sm:text-[44px] tracking-[-0.03em] leading-[1.06] max-w-[20ch] mx-auto">
-                Klar for et nytt hjem i Bergen?
-              </h2>
-              <p className="text-canvas/70 text-[16px] sm:text-[18px] mt-4 max-w-[48ch] mx-auto leading-relaxed">
-                Registrer ønskene dine gratis, så tar vi kontakt så snart vi har en bolig som passer. Ingen budrunder, ingen forpliktelser.
-              </p>
-              <button onClick={scrollToForm} className="group mt-8 inline-flex items-center gap-2 h-14 rounded-full bg-canvas text-ink px-8 font-semibold text-[16px] hover:-translate-y-0.5 transition-transform shadow-[0_24px_50px_-20px_rgba(0,0,0,0.5)]">
-                Varsle meg om boliger <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-              </button>
-              <div className="mt-7 flex items-center justify-center gap-5 text-[12.5px] text-canvas/55 flex-wrap">
-                <span className="inline-flex items-center gap-1.5"><Home className="w-3.5 h-3.5" /> Boliger i hele Bergen</span>
-                <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Trygt og kvalitetssikret</span>
-                <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Rask oppfølging</span>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-4 lg:col-span-4 lg:justify-end">
+                <button type="button" onClick={scrollToForm} className="group inline-flex h-12 items-center gap-2 rounded-[12px] px-6 text-[15px] font-medium transition-transform active:scale-[0.97]" style={{ background: T.lilla, color: T.ink }}>Varsle meg om boliger <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.8} /></button>
+                <a href={`tel:${site.phoneHref}`} className="inline-flex items-center gap-2 text-[15px] font-medium transition-colors hover:text-white" style={{ color: 'rgba(244,241,234,0.85)' }}><Phone className="h-4 w-4" strokeWidth={1.8} /> {site.phone}</a>
               </div>
             </div>
           </div>
-        </Reveal>
-      </section>
+        </section>
+      </main>
 
-      {/* FAQ */}
-      <section className="max-w-[760px] mx-auto px-5 sm:px-8 pb-16 sm:pb-24 w-full">
-        <Reveal>
-          <h2 className="font-heading font-bold text-[26px] sm:text-[34px] tracking-[-0.03em] text-center mb-9">Ofte stilte spørsmål</h2>
-        </Reveal>
-        <div className="space-y-3">
-          {faq.map((f, i) => {
-            const open = openFaq === i;
-            return (
-              <Reveal key={i} delay={i * 60}>
-                <div className={`rounded-[18px] bg-surface transition-shadow duration-300 ${open ? 'shadow-[0_14px_44px_-18px_rgba(10,10,10,0.24)]' : 'shadow-[0_2px_12px_rgba(10,10,10,0.035)]'}`}>
-                  <button onClick={() => setOpenFaq(open ? -1 : i)} className="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4">
-                    <span className="font-semibold text-[15.5px] text-ink py-0.5">{f.q}</span>
-                    <span className={`shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-fill text-ink text-[18px] leading-none transition-transform duration-300 ${open ? 'rotate-45' : ''}`}>+</span>
-                  </button>
-                  <div className="grid transition-all duration-300 ease-out" style={{ gridTemplateRows: open ? '1fr' : '0fr' }}>
-                    <div className="overflow-hidden">
-                      <p className="px-5 sm:px-6 pb-5 text-quiet text-[14.5px] leading-relaxed">{f.a}</p>
-                    </div>
-                  </div>
-                </div>
-              </Reveal>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="mt-auto border-t border-hairline/70">
-        <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-[13px] text-taupe">
-          <span>© {new Date().getFullYear()} {site.legalName} · Org.nr {site.orgNr}</span>
-          <div className="flex items-center gap-5">
-            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-success" /> Identitet sikret med BankID</span>
-            <a href={`tel:${site.phoneHref}`} className="text-ink hover:text-lavender transition-colors">{site.phone}</a>
-          </div>
+      <footer className="border-t" style={{ background: T.charcoal, borderColor: 'rgba(244,241,234,0.12)', color: 'rgba(244,241,234,0.5)' }}>
+        <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 px-5 py-6 text-[12.5px] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:w-[calc(100%-64px)] lg:px-0">
+          <p>Digihome AS · Org.nr 835 595 242 · Bergen · <a href={`tel:${site.phoneHref}`} className="transition-colors hover:text-white">{site.phone}</a></p>
+          <p className="flex gap-4"><a href="/personvern" className="transition-colors hover:text-white">Personvern</a><a href="/vilkar" className="transition-colors hover:text-white">Vilkår</a><a href="/ledige-boliger" className="transition-colors hover:text-white">Ledige boliger</a></p>
         </div>
       </footer>
 
-      {/* Sticky mobil-CTA + exit-intent */}
       <StickyMobileCta label="Varsle meg om boliger" onClick={scrollToForm} />
-      <ExitIntent
-        headline="Vent — vil du få varsel når drømmeboligen blir ledig?"
-        body="Det er gratis og tar under ett minutt. Vi varsler deg ofte før boligene annonseres offentlig."
-        cta="Bli varslet gratis"
-        onCta={scrollToForm}
-      />
+      <ExitIntent headline="Vent — vil du bli varslet om nye boliger?" body="Det tar under ett minutt. Gratis — og du får beskjed før boligene annonseres." cta="Varsle meg om boliger" onCta={scrollToForm} />
     </div>
   );
 }

@@ -193,7 +193,7 @@ export function StickyMobileCta({ label = 'Få gratis vurdering', onClick }) {
   return (
     <div
       aria-hidden={hidden}
-      className="lg:hidden fixed inset-x-0 bottom-0 z-[90] px-3 pt-3 bg-gradient-to-t from-white via-white/95 to-transparent transition-all duration-300"
+      className="lg:hidden fixed inset-x-0 bottom-0 z-[90] px-3 pt-3 bg-gradient-to-t from-[#F3F1EC] via-[#F3F1EC]/95 to-transparent transition-all duration-300"
       style={{
         transform: hidden ? 'translateY(110%)' : 'none',
         opacity: hidden ? 0 : 1,
@@ -206,12 +206,12 @@ export function StickyMobileCta({ label = 'Få gratis vurdering', onClick }) {
       }}
     >
       <div className="flex items-center gap-2.5">
-        <button onClick={onClick} tabIndex={hidden ? -1 : 0} className="flex-1 h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_8px_24px_-8px_rgba(31,31,31,0.5)] active:scale-[0.98] transition-transform">
-          {label} <ArrowRight className="w-4 h-4" />
+        <button onClick={onClick} tabIndex={hidden ? -1 : 0} className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-[12px] bg-[#15130F] text-[15px] font-medium text-[#F4F1EA] shadow-[0_12px_28px_-12px_rgba(21,19,15,0.5)] transition-transform active:scale-[0.98]" data-testid="lp-sticky-cta">
+          {label} <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
         </button>
         <a href={`tel:${site.phoneHref}`} aria-label={`Ring oss på ${site.phone}`} tabIndex={hidden ? -1 : 0}
-          className="h-[52px] w-[52px] shrink-0 rounded-full bg-white border border-[#e5e5e5] shadow-[0_4px_16px_rgba(0,0,0,0.08)] flex items-center justify-center">
-          <Phone className="w-5 h-5 text-[#0a0a0a]" />
+          className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[12px] bg-[#FBFAF8]" style={{ boxShadow: '0 0 0 1px rgba(21,19,15,0.14)' }}>
+          <Phone className="h-5 w-5 text-[#15130F]" strokeWidth={1.8} />
         </a>
       </div>
     </div>
@@ -262,29 +262,27 @@ export function ExitIntent({ headline = 'Vent — vil du vite hva boligen din ka
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-5" role="dialog" aria-modal="true" aria-labelledby="lp-exit-title">
-      <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
-      <div className="relative w-full max-w-[440px] rounded-[24px] bg-white shadow-[0_60px_140px_-40px_rgba(0,0,0,0.5)] p-8 text-center">
+      <div className="absolute inset-0" style={{ background: 'rgba(21,19,15,0.56)' }} onClick={() => setOpen(false)} />
+      <div className="relative w-full max-w-[460px] rounded-[24px] p-8 sm:p-10" style={{ background: '#F3F1EC', color: '#15130F', boxShadow: '0 40px 100px -30px rgba(21,19,15,0.5)' }}>
         <button onClick={() => setOpen(false)} aria-label="Lukk"
-          className="absolute top-4 right-4 h-8 w-8 rounded-full bg-[#f5f3f0] flex items-center justify-center text-[#555] hover:bg-[#edeae6] transition-colors">
-          <X className="w-4 h-4" />
+          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[#15130F]/[0.06]" style={{ color: 'rgba(21,19,15,0.7)' }}>
+          <X className="h-5 w-5" strokeWidth={1.6} />
         </button>
-        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl" style={{ background: '#f3ebff' }}>
-          <Clock className="w-5 h-5" style={{ color: '#AE68E4' }} />
-        </span>
-        <p id="lp-exit-title" className="font-heading font-bold text-[24px] leading-tight text-[#0a0a0a] mt-4">{headline}</p>
-        <p className="text-[#6b6b6b] text-[14.5px] mt-2.5 leading-relaxed">{body}</p>
+        <p className="text-[13.5px] font-medium" style={{ color: 'rgba(21,19,15,0.5)' }}>Før du går</p>
+        <p id="lp-exit-title" className="mt-3 text-[30px] sm:text-[34px]" style={{ fontFamily: 'var(--font-heading), sans-serif', fontWeight: 400, letterSpacing: '-0.03em', lineHeight: 1.04 }}>{headline}</p>
+        <p className="mt-4 text-[15.5px] leading-[1.5]" style={{ color: 'rgba(21,19,15,0.64)' }}>{body}</p>
         <button
           ref={ctaRef}
           onClick={() => { setOpen(false); if (onCta) onCta(); }}
-          className="group mt-6 w-full h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)] active:scale-[0.98]"
+          className="group mt-7 flex h-[52px] w-full items-center justify-center gap-2 rounded-[12px] text-[15px] font-medium transition-transform active:scale-[0.98]" style={{ background: '#15130F', color: '#F4F1EA' }}
         >
-          {cta} <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+          {cta} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.8} />
         </button>
-        <a href={`tel:${site.phoneHref}`} className="mt-3 inline-flex items-center gap-2 text-[14px] font-medium text-[#0a0a0a] hover:text-[#a463e8] transition-colors">
-          <Phone className="w-4 h-4" /> …eller ring oss: {site.phone}
+        <a href={`tel:${site.phoneHref}`} className="mt-4 inline-flex items-center gap-2 text-[14px] font-medium transition-colors hover:text-[#15130F]/70" style={{ color: '#15130F' }}>
+          <Phone className="h-4 w-4" strokeWidth={1.8} /> …eller ring oss: {site.phone}
         </a>
-        <p className="mt-4 text-[12px] text-[#6f6f6f] inline-flex items-center gap-1.5 justify-center">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Uforpliktende · 0 kr oppstart · Svar innen 24 t
+        <p className="mt-5 inline-flex items-center gap-1.5 text-[12.5px]" style={{ color: 'rgba(21,19,15,0.5)' }}>
+          <ShieldCheck className="h-3.5 w-3.5" style={{ color: '#1F9D55' }} strokeWidth={1.8} /> Uforpliktende · 0 kr oppstart · Svar innen 24 t
         </p>
       </div>
     </div>

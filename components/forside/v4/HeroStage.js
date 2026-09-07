@@ -396,7 +396,8 @@ const REGISTER = [
   { id: 'okonomi', t: 'Økonomi' },
   { id: 'drift', t: 'Drift' },
 ];
-const FORTELLING_T0 = 1500;   // rommet må komme opp av mørket før teksten begynner
+const FORTELLING_T0 = 1500;   // rommet må komme opp av mørket før teksten begynner (ikke-direkte)
+const FORTELLING_T0_DIREKTE = 380; // direkte: scenen står alt — teksten skal være der før du har rukket å scrolle
 const FORTELLING_PAUSE = 340; // det gamle går ut, så kommer det nye
 
 /* Klokken for fortellingen. `aktiv` = veggen er synlig (hjemme). Returnerer beat (k), om ordene står (vis) og
@@ -420,7 +421,7 @@ function useFortelling(aktiv, redusert) {
         }
         startet.current = true;
         setVis(true);
-      }, startet.current ? FORTELLING_PAUSE : FORTELLING_T0);
+      }, startet.current ? FORTELLING_PAUSE : FORTELLING_T0_DIREKTE);
     }
     return () => window.clearTimeout(t);
   }, [aktiv, redusert, vis, k]);
@@ -435,12 +436,13 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
   const beat = direkte ? FORTELLING[k] : { id: 'auto', ord: ['Utleie', 'på', 'autopilot'], u: 'Én godkjenning. Resten skjedde mens du gikk hjem.', slutt: true };
   const inne = direkte ? hjemme && vis : hjemme;
   const T0 = direkte ? 0 : FORTELLING_T0;
-  const fast = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(12px)', transition: `opacity 900ms ${EASE} ${hjemme ? FORTELLING_T0 + i * 130 : 0}ms, transform 900ms ${EASE} ${hjemme ? FORTELLING_T0 + i * 130 : 0}ms` });
+  const fastT0 = direkte ? FORTELLING_T0_DIREKTE + 260 : FORTELLING_T0;
+  const fast = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(12px)', transition: `opacity 900ms ${EASE} ${hjemme ? fastT0 + i * 130 : 0}ms, transform 900ms ${EASE} ${hjemme ? fastT0 + i * 130 : 0}ms` });
   /* Ordene monteres på nytt per beat (key) — derfor keyframes, ikke transitions: inn (blur, nedenfra) når de står,
      ut (opp, blur) når beatet er over. Før rommet er oppe: bare skjult. */
   const ut = direkte && hjemme && !vis;
   const ordStil = (i) => (inne
-    ? { animation: `v4-ord-inn 900ms ${EASE} ${T0 + 120 + i * 120}ms both`, willChange: 'transform, opacity' }
+    ? { animation: `v4-ord-inn 900ms ${EASE} ${T0 + 80 + i * 95}ms both`, willChange: 'transform, opacity' }
     : ut ? { animation: `v4-ord-ut 320ms ${EASE} ${i * 22}ms both` } : { opacity: 0 });
   const linjeStil = (d) => (inne
     ? { animation: `v4-linje-inn 900ms ${EASE} ${T0 + d}ms both` }
@@ -465,7 +467,7 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
         background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 30%, rgba(243,241,236,0.98) 100%)' : 'none',
         opacity: hjemme ? 1 : 0,
         pointerEvents: hjemme ? 'auto' : 'none',
-        transition: `opacity 500ms ${EASE} ${hjemme ? 900 : 0}ms`,
+        transition: `opacity 500ms ${EASE} ${hjemme ? (direkte ? 150 : 900) : 0}ms`,
       }}
       aria-hidden={!hjemme}
       data-testid="v4-slutt"
@@ -628,7 +630,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom =
   const [direkteInne, setDirekteInne] = useState(false);
   useEffect(() => {
     if (!direkte) { setDirekteInne(false); return undefined; }
-    const t = window.setTimeout(() => setDirekteInne(true), 350);
+    const t = window.setTimeout(() => setDirekteInne(true), 120);
     return () => window.clearTimeout(t);
   }, [direkte]);
   const hjemme = direkte ? direkteInne : hjemmeState;

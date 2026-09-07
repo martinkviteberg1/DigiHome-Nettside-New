@@ -3,7 +3,8 @@
 // To-stegs lead-skjema for utleier-landingssidene (Google Ads).
 // Steg 1: kun adresse (mikroforpliktelse) → Steg 2: kontaktinfo.
 // Beviselig best practice: lav terskel først, detaljer etterpå.
-// Stylet 1:1 mot adressefeltet i root-heroen (/).
+// UI i V4-drakt (canvas/ink/lilla, hårlinjer) — logikken (adresseverifisering,
+// sporing, innsending) er uendret.
 
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Wallet, Phone, Lock, Sparkles } from 'lucide-react';
@@ -17,9 +18,17 @@ const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
 // 16 px på mobil er ikke en smakssak: iOS Safari zoomer inn på et felt med
 // mindre fontstørrelse ved fokus, og da hopper hele landingssiden i skjemaet.
-const inputBase = 'w-full h-12 px-4 rounded-xl border bg-white outline-none text-[16px] sm:text-[15px] placeholder:text-[#737373] transition-all duration-300';
-const inputOk = 'border-[#e5e5e5] focus:border-[#cf97fc]/60 focus:shadow-[0_0_0_3px_rgba(207,151,252,0.16)]';
-const inputErr = 'border-rose-300 shadow-[0_0_0_3px_rgba(244,63,94,0.07)]';
+const inputBase = 'w-full h-14 px-5 rounded-[14px] border-0 bg-[#FBFAF8] outline-none text-[16px] text-[#15130F] placeholder:text-[#15130F]/40 transition-[box-shadow] duration-200 focus:outline-none focus:ring-0';
+const inputOk = 'shadow-[0_0_0_1px_rgba(21,19,15,0.14)] focus:shadow-[0_0_0_2px_#15130F]';
+const inputErr = 'shadow-[0_0_0_2px_#B42318]';
+const INK = '#15130F';
+const LILLA = '#D496FF';
+const GRONN = '#1F9D55';
+const FLATE = '#EDEAE3';
+const DIM = 'rgba(21,19,15,0.62)';
+const SVAK = 'rgba(21,19,15,0.48)';
+const HAIR = 'rgba(21,19,15,0.12)';
+const display = { fontFamily: 'var(--font-heading), sans-serif', fontWeight: 400, letterSpacing: '-0.03em', lineHeight: 1.04 };
 
 export default function LeadFormPro({ cfg }) {
   const [step, setStep] = useState(1);
@@ -179,27 +188,28 @@ export default function LeadFormPro({ cfg }) {
   if (status === 'done') {
     const firstName = form.name.trim().split(/\s+/)[0];
     return (
-      <div className="rounded-2xl border border-[#18794E]/20 bg-[#E8F4EE] px-6 py-7">
+      <div className="rounded-[20px] p-6 sm:p-8" style={{ background: FLATE }} data-testid="lp-form-done">
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white border border-[#18794E]/25">
-            <Check className="h-5 w-5 text-[#18794E]" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(31,157,85,0.14)', color: GRONN }}>
+            <Check className="h-5 w-5" strokeWidth={2.2} />
           </span>
-          <p className="font-heading font-bold text-[20px] text-[#0a0a0a] leading-tight">Takk{firstName ? `, ${firstName}` : ''}! Vurderingen er i gang.</p>
+          <p className="text-[26px] sm:text-[30px]" style={{ ...display, color: INK }}>Takk{firstName ? `, ${firstName}` : ''}<span style={{ color: LILLA }}>.</span></p>
         </div>
-        <ol className="mt-5 space-y-3">
+        <p className="mt-3 text-[15.5px] leading-[1.5]" style={{ color: DIM }}>Vurderingen er i gang. Slik går det videre:</p>
+        <ol className="mt-5 border-t" style={{ borderColor: HAIR }}>
           {[
-            'Vi analyserer boligen og leiemarkedet i området ditt',
+            'Vi ser på boligen og leiemarkedet i området ditt',
             'Du hører fra oss innen 24 timer med en konkret vurdering',
             'Du bestemmer — helt uforpliktende',
           ].map((t, i) => (
-            <li key={i} className="flex items-start gap-3 text-[14.5px] text-[#333]">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white border border-[#18794E]/25 text-[#18794E] text-[12px] font-bold">{i + 1}</span>
+            <li key={i} className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-3 border-b py-3 text-[15px]" style={{ borderColor: HAIR, color: 'rgba(21,19,15,0.8)' }}>
+              <span className="pt-[3px] text-[12.5px] tabular-nums" style={{ color: SVAK }}>0{i + 1}</span>
               {t}
             </li>
           ))}
         </ol>
-        <a href={`tel:${site.phoneHref}`} className="mt-5 inline-flex items-center gap-2 text-[14px] font-semibold text-[#0a0a0a] hover:text-[#a463e8] transition-colors">
-          <Phone className="w-4 h-4" /> Haster det? Ring {site.phone}
+        <a href={`tel:${site.phoneHref}`} className="mt-5 inline-flex items-center gap-2 text-[14.5px] font-medium transition-colors hover:text-[#15130F]/70" style={{ color: INK }}>
+          <Phone className="h-4 w-4" strokeWidth={1.8} /> Haster det? Ring {site.phone}
         </a>
       </div>
     );
@@ -208,21 +218,18 @@ export default function LeadFormPro({ cfg }) {
   /* -------------------------------- Steg 1 -------------------------------- */
   if (step === 1) {
     return (
-      <div
-        onFocus={handleStart}
-        className="relative rounded-2xl bg-white border border-[#eee] shadow-[0_12px_40px_rgba(0,0,0,0.07)] p-5 sm:p-6"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <p className="basis-full sm:basis-auto font-heading font-bold text-[19px] sm:text-[20px] text-[#0a0a0a] leading-tight">{cfg.formTitle || 'Se hva boligen din kan tjene'}</p>
-          <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#E8F4EE] text-[#18794E] text-[11px] font-semibold px-2.5 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#18794E] animate-pulse" /> Svar innen 24 t
+      <div onFocus={handleStart} className="relative rounded-[20px] p-5 sm:p-7" style={{ background: FLATE }} data-testid="lp-form-step1">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+          <p className="basis-full text-[24px] sm:basis-auto sm:text-[28px]" style={{ ...display, color: INK }}>{cfg.formTitle || 'Se hva boligen din kan tjene'}</p>
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-[12.5px] font-medium" style={{ color: GRONN }}>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: GRONN }} /> Svar innen 24 t
           </span>
         </div>
-        <p className="text-[13.5px] text-[#6b6b6b] mt-1.5">Gratis og uforpliktende — det tar under ett minutt.</p>
+        <p className="mt-1.5 text-[14px]" style={{ color: DIM }}>Gratis og uforpliktende — det tar under ett minutt.</p>
 
-        <div className="relative mt-4">
-          <div className="flex items-center rounded-2xl bg-white border pl-4 pr-1.5 py-1.5 transition-all duration-300 border-[#e5e5e5] shadow-[0_2px_12px_rgba(0,0,0,0.04)] focus-within:border-[#cf97fc]/60 focus-within:shadow-[0_0_0_3px_rgba(207,151,252,0.16),0_12px_40px_rgba(0,0,0,0.08)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.07)]">
-            <MapPin className="h-[18px] w-[18px] text-[#737373] shrink-0" />
+        <div className="relative mt-5">
+          <div className="flex items-center rounded-[14px] pl-4 pr-1.5 transition-[box-shadow] duration-200 focus-within:shadow-[0_0_0_2px_#15130F]" style={{ background: '#FBFAF8', boxShadow: '0 0 0 1px rgba(21,19,15,0.14)' }}>
+            <MapPin className="h-[18px] w-[18px] shrink-0" style={{ color: SVAK }} strokeWidth={1.8} />
             <input
               value={ac.query}
               onChange={(e) => { ac.setQuery(e.target.value); if (addrSel) setAddrSel(null); if (addrHint) setAddrHint(''); }}
@@ -237,26 +244,29 @@ export default function LeadFormPro({ cfg }) {
               placeholder="Adressen til boligen din"
               autoComplete="off"
               enterKeyHint="go"
-              className="flex-1 min-w-0 h-12 px-3 bg-transparent outline-none text-[16px] sm:text-[15px] placeholder:text-[#737373]"
+              className="h-14 min-w-0 flex-1 bg-transparent px-3 text-[16px] outline-none placeholder:text-[#15130F]/40 focus:outline-none focus:ring-0"
+              style={{ color: INK }}
+              data-testid="lp-address"
             />
             <button
               type="button"
               onClick={tryGoStep2}
               disabled={addressResolving}
-              className="group hidden sm:inline-flex shrink-0 h-[44px] items-center gap-1.5 rounded-xl bg-[#0a0a0a] text-white hover:bg-black px-6 text-[13px] font-semibold transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
+              className="group hidden h-[46px] shrink-0 items-center gap-1.5 rounded-[11px] px-5 text-[14px] font-medium transition-[background-color,transform] duration-200 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60 sm:inline-flex"
+              style={{ background: INK, color: '#F4F1EA' }}
+              data-testid="lp-step1-next"
             >
-              {addressResolving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Bekrefter</> : <>{cfg.cta || 'Få gratis vurdering'} <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" /></>}
+              {addressResolving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Bekrefter</> : <>{cfg.cta || 'Få gratis vurdering'} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" strokeWidth={1.8} /></>}
             </button>
           </div>
-          {addrHint && <p role="status" aria-live="polite" className={`text-[12px] mt-1.5 ${addrSel ? 'text-[#18794E]' : 'text-amber-700'}`} data-testid="lp-address-hint">{addrHint}</p>}
+          {addrHint && <p role="status" aria-live="polite" className="mt-2 text-[12.5px]" style={{ color: addrSel ? GRONN : '#8A5A00' }} data-testid="lp-address-hint">{addrHint}</p>}
           {ac.open && ac.suggestions.length > 0 && (
-            <ul className="absolute z-30 mt-1.5 w-full rounded-xl border border-[#eee] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.10)] overflow-hidden">
+            <ul className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-[14px]" style={{ background: '#FBFAF8', boxShadow: '0 0 0 1px rgba(21,19,15,0.10), 0 24px 48px -16px rgba(21,19,15,0.25)' }}>
               {ac.suggestions.map((s, i) => (
                 <li key={i}>
-                  <button type="button" onClick={() => chooseSuggestion(s)}
-                    className="w-full text-left px-4 py-2.5 text-[14px] hover:bg-[#fafafa] transition-colors">
-                    <span className="text-[#0a0a0a]">{s.text || s.label}</span>
-                    {s.sub ? <span className="text-[#6f6f6f]"> · {s.sub}</span> : null}
+                  <button type="button" onClick={() => chooseSuggestion(s)} className="w-full px-4 py-3 text-left text-[14.5px] transition-colors hover:bg-[#15130F]/[0.04]">
+                    <span style={{ color: INK }}>{s.text || s.label}</span>
+                    {s.sub ? <span style={{ color: SVAK }}> · {s.sub}</span> : null}
                   </button>
                 </li>
               ))}
@@ -268,14 +278,15 @@ export default function LeadFormPro({ cfg }) {
           type="button"
           onClick={tryGoStep2}
           disabled={addressResolving}
-          className="group sm:hidden mt-3 w-full h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_8px_24px_-8px_rgba(31,31,31,0.35)] active:scale-[0.98] transition-transform disabled:cursor-wait disabled:opacity-60"
+          className="group mt-3 flex h-[52px] w-full items-center justify-center gap-2 rounded-[12px] text-[15px] font-medium transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-60 sm:hidden"
+          style={{ background: INK, color: '#F4F1EA' }}
         >
-          {addressResolving ? <><Loader2 className="w-4 h-4 animate-spin" /> Bekrefter adressen</> : <>{cfg.cta || 'Få gratis vurdering'} <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" /></>}
+          {addressResolving ? <><Loader2 className="h-4 w-4 animate-spin" /> Bekrefter adressen</> : <>{cfg.cta || 'Få gratis vurdering'} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.8} /></>}
         </button>
 
-        <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-[#6f6f6f]">
-          <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Gratis og uforpliktende</span>
-          <span className="inline-flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5 text-[#18794E]" /> 0 kr oppstart</span>
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px]" style={{ color: SVAK }}>
+          <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" style={{ color: GRONN }} strokeWidth={1.8} /> Gratis og uforpliktende</span>
+          <span className="inline-flex items-center gap-1.5"><Wallet className="h-3.5 w-3.5" style={{ color: GRONN }} strokeWidth={1.8} /> 0 kr oppstart</span>
         </div>
       </div>
     );
@@ -283,70 +294,63 @@ export default function LeadFormPro({ cfg }) {
 
   /* -------------------------------- Steg 2 -------------------------------- */
   return (
-    <form
-      onSubmit={submit}
-      onFocus={handleStart}
-      className="relative rounded-2xl bg-white border border-[#eee] shadow-[0_12px_40px_rgba(0,0,0,0.07)] p-5 sm:p-6 space-y-3.5"
-    >
+    <form onSubmit={submit} onFocus={handleStart} className="relative space-y-4 rounded-[20px] p-5 sm:p-7" style={{ background: FLATE }} data-testid="lp-form-step2">
       <div>
         <div className="flex items-center justify-between gap-3">
-          <p className="font-heading font-bold text-[19px] text-[#0a0a0a] leading-tight">Nesten ferdig — hvor når vi deg?</p>
-          <span className="shrink-0 text-[11px] font-semibold text-[#6b6b6b]">Steg 2 av 2</span>
+          <p className="text-[24px] sm:text-[28px]" style={{ ...display, color: INK }}>Nesten ferdig — hvor når vi deg<span style={{ color: LILLA }}>?</span></p>
+          <span className="shrink-0 text-[12px] tabular-nums" style={{ color: SVAK }}>Steg 2 av 2</span>
         </div>
-        <div className="mt-2.5 h-1 rounded-full bg-[#f0f0f0] overflow-hidden">
-          <div className="h-full w-[85%] rounded-full bg-gradient-to-r from-[#AE68E4] to-[#d298ff] transition-all" />
+        <div className="mt-3 h-px w-full overflow-hidden" style={{ background: 'rgba(21,19,15,0.12)' }}>
+          <div className="h-full w-[85%] origin-left" style={{ background: LILLA }} />
         </div>
       </div>
 
       {ac.query.trim() ? (
-        <button type="button" onClick={() => setStep(1)}
-          className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#f5f3f0] px-3.5 py-1.5 text-[13px] text-[#555] hover:bg-[#edeae6] transition-colors">
-          <MapPin className="w-3.5 h-3.5 text-[#AE68E4] shrink-0" />
+        <button type="button" onClick={() => setStep(1)} className="inline-flex max-w-full items-center gap-2 rounded-full px-3.5 py-1.5 text-[13px] transition-colors hover:bg-[#15130F]/[0.08]" style={{ background: 'rgba(21,19,15,0.05)', color: 'rgba(21,19,15,0.75)' }}>
+          <MapPin className="h-3.5 w-3.5 shrink-0" style={{ color: INK }} strokeWidth={1.8} />
           <span className="truncate">{ac.query.trim()}</span>
-          <span className="text-[#6b6b6b] underline underline-offset-2 shrink-0">endre</span>
+          <span className="shrink-0 underline underline-offset-2" style={{ color: SVAK }}>endre</span>
         </button>
       ) : (
-        <button type="button" onClick={() => setStep(1)}
-          className="inline-flex items-center gap-1.5 text-[13px] text-[#6b6b6b] hover:text-[#0a0a0a] transition-colors">
-          <ArrowLeft className="w-3.5 h-3.5" /> Legg til adresse (valgfritt)
+        <button type="button" onClick={() => setStep(1)} className="inline-flex items-center gap-1.5 text-[13px] transition-colors hover:text-[#15130F]" style={{ color: SVAK }}>
+          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.8} /> Legg til adresse (valgfritt)
         </button>
       )}
 
       <div>
-        <label htmlFor="lp-lead-name" className="mb-1.5 block text-[12px] font-semibold text-[#555]">Fullt navn</label>
+        <label htmlFor="lp-lead-name" className="mb-2 block text-[13.5px] font-medium" style={{ color: 'rgba(21,19,15,0.75)' }}>Fullt navn</label>
         <input id="lp-lead-name" ref={nameRef} value={form.name} onChange={set('name')} placeholder="Ola Nordmann" autoComplete="name" enterKeyHint="next" required aria-invalid={!!fieldErr.name}
-          className={`${inputBase} ${fieldErr.name ? inputErr : inputOk}`} />
-        {fieldErr.name ? <p className="text-[12.5px] text-rose-500 mt-1.5 ml-1">{fieldErr.name}</p> : null}
+          className={`${inputBase} ${fieldErr.name ? inputErr : inputOk}`} data-testid="lp-lead-name" />
+        {fieldErr.name ? <p className="mt-1.5 text-[12.5px]" style={{ color: '#B42318' }}>{fieldErr.name}</p> : null}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="lp-lead-phone" className="mb-1.5 block text-[12px] font-semibold text-[#555]">Telefon</label>
+          <label htmlFor="lp-lead-phone" className="mb-2 block text-[13.5px] font-medium" style={{ color: 'rgba(21,19,15,0.75)' }}>Telefon</label>
           <input id="lp-lead-phone" value={form.phone} onChange={set('phone')} type="tel" inputMode="tel" placeholder="8 siffer" autoComplete="tel" enterKeyHint="next" required aria-invalid={!!fieldErr.phone}
-            className={`${inputBase} ${fieldErr.phone ? inputErr : inputOk}`} />
-          {fieldErr.phone ? <p className="text-[12.5px] text-rose-500 mt-1.5 ml-1">{fieldErr.phone}</p> : null}
+            className={`${inputBase} ${fieldErr.phone ? inputErr : inputOk}`} data-testid="lp-lead-phone" />
+          {fieldErr.phone ? <p className="mt-1.5 text-[12.5px]" style={{ color: '#B42318' }}>{fieldErr.phone}</p> : null}
         </div>
         <div>
-          <label htmlFor="lp-lead-email" className="mb-1.5 block text-[12px] font-semibold text-[#555]">E-post</label>
+          <label htmlFor="lp-lead-email" className="mb-2 block text-[13.5px] font-medium" style={{ color: 'rgba(21,19,15,0.75)' }}>E-post</label>
           <input id="lp-lead-email" value={form.email} onChange={set('email')} type="email" inputMode="email" placeholder="ola@eksempel.no" autoComplete="email" enterKeyHint="done" required aria-invalid={!!fieldErr.email}
-            className={`${inputBase} ${fieldErr.email ? inputErr : inputOk}`} />
-          {fieldErr.email ? <p className="text-[12.5px] text-rose-500 mt-1.5 ml-1">{fieldErr.email}</p> : null}
+            className={`${inputBase} ${fieldErr.email ? inputErr : inputOk}`} data-testid="lp-lead-email" />
+          {fieldErr.email ? <p className="mt-1.5 text-[12.5px]" style={{ color: '#B42318' }}>{fieldErr.email}</p> : null}
         </div>
       </div>
-      {err ? <p className="text-[13px] text-rose-500">{err}</p> : null}
-      <button type="submit" disabled={status === 'sending'}
-        className="group w-full h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)] active:scale-[0.98] disabled:opacity-60">
-        {status === 'sending' ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Få gratis vurdering <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" /></>}
+      {err ? <p className="text-[13px]" style={{ color: '#B42318' }}>{err}</p> : null}
+      <button type="submit" disabled={status === 'sending'} className="group flex h-[52px] w-full items-center justify-center gap-2 rounded-[12px] text-[15px] font-medium transition-transform active:scale-[0.98] disabled:opacity-60" style={{ background: INK, color: '#F4F1EA' }} data-testid="lp-submit">
+        {status === 'sending' ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Få gratis vurdering <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.8} /></>}
       </button>
-      <div className="flex items-center justify-center gap-4 text-[12px] text-[#6f6f6f] pt-0.5 flex-wrap">
-        <span className="inline-flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-[#18794E]" /> Vi deler aldri opplysningene dine</span>
-        <span className="inline-flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-[#18794E]" /> Svar innen 24 t</span>
+      <div className="flex flex-wrap items-center justify-center gap-4 pt-0.5 text-[12.5px]" style={{ color: SVAK }}>
+        <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" style={{ color: GRONN }} strokeWidth={1.8} /> Vi deler aldri opplysningene dine</span>
+        <span className="inline-flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" style={{ color: GRONN }} strokeWidth={1.8} /> Svar innen 24 t</span>
       </div>
       {/* Samtykketekst — annonseplattformene krever et synlig personvernpunkt
           på skjemaer som samler inn kontaktopplysninger. Lenken åpnes i ny fane
           så brukeren ikke mister det hen har skrevet. */}
-      <p className="text-[11.5px] text-[#6f6f6f] text-center leading-relaxed">
+      <p className="text-center text-[11.5px] leading-relaxed" style={{ color: SVAK }}>
         Ved å sende inn samtykker du til at vi kontakter deg om utleie av boligen din. Les{' '}
-        <a href="/personvern" target="_blank" rel="noopener noreferrer" className="underline decoration-[#d9c9f5] underline-offset-2 hover:text-[#0a0a0a] transition-colors">personvernerklæringen</a>.
+        <a href="/personvern" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 transition-colors hover:text-[#15130F]" style={{ textDecorationColor: 'rgba(21,19,15,0.3)' }}>personvernerklæringen</a>.
       </p>
     </form>
   );

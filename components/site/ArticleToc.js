@@ -43,11 +43,9 @@ export default function ArticleToc({ headings = [], variant = 'inline', minHeadi
 
   if (isRail) {
     return (
-      <nav aria-label="Innhold i artikkelen" className="sticky top-[104px]">
-        <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#6f6a64] mb-4">
-          <List className="w-3.5 h-3.5" /> Innhold
-        </p>
-        <ol className="space-y-0.5 border-l border-black/[0.08]">
+      <nav aria-label="Innhold i artikkelen" className="sticky top-[96px]">
+        <p className="mb-4 text-[13px] font-medium" style={{ color: 'rgba(21,19,15,0.5)' }}>Innhold</p>
+        <ol className="space-y-0.5 border-l" style={{ borderColor: 'rgba(21,19,15,0.12)' }}>
           {headings.map((h) => {
             const on = active === h.id;
             return (
@@ -55,10 +53,10 @@ export default function ArticleToc({ headings = [], variant = 'inline', minHeadi
                 <a
                   href={`#${h.id}`}
                   aria-current={on ? 'true' : undefined}
-                  className={`block pl-4 -ml-px border-l-2 py-1.5 text-[13.5px] leading-snug transition-colors ${
+                  className={`-ml-px block border-l-2 py-1.5 pl-4 text-[13.5px] leading-snug transition-colors ${
                     on
-                      ? 'border-[#7c3aed] text-[#1f1f1f] font-semibold'
-                      : 'border-transparent text-[#6b665f] hover:text-[#4a4a4a]'
+                      ? 'border-[#D496FF] text-[#15130F]'
+                      : 'border-transparent text-[#15130F]/55 hover:text-[#15130F]'
                   }`}
                 >
                   {h.text}
@@ -72,18 +70,18 @@ export default function ArticleToc({ headings = [], variant = 'inline', minHeadi
   }
 
   return (
-    <details className="group mb-9 rounded-2xl border border-black/[0.07] bg-white overflow-hidden xl:hidden">
-      <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden min-h-[44px]">
-        <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.14em] text-[#716b63]">
-          <List className="w-3.5 h-3.5" /> Innhold
+    <details className="group mb-9 overflow-hidden rounded-[16px] xl:hidden" style={{ background: '#EDEAE3' }}>
+      <summary className="flex min-h-[44px] cursor-pointer select-none list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2 text-[13.5px] font-medium" style={{ color: '#15130F' }}>
+          <List className="h-3.5 w-3.5" strokeWidth={1.8} /> Innhold
         </span>
-        <ChevronDown className="w-4 h-4 text-[#8a837a] transition-transform group-open:rotate-180" />
+        <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" style={{ color: 'rgba(21,19,15,0.5)' }} />
       </summary>
-      <ol className="px-5 pb-5 space-y-1 border-t border-black/[0.05] pt-3">
+      <ol className="space-y-1 border-t px-5 pb-5 pt-3" style={{ borderColor: 'rgba(21,19,15,0.1)' }}>
         {headings.map((h, i) => (
           <li key={h.id} className="flex gap-2.5 text-[14.5px] leading-snug">
-            <span className="text-[#7c7568] tabular-nums shrink-0 py-1.5">{i + 1}.</span>
-            <a href={`#${h.id}`} className="py-1.5 text-[#4a4a4a] hover:text-[#7c3aed] transition-colors">{h.text}</a>
+            <span className="shrink-0 py-1.5 tabular-nums" style={{ color: 'rgba(21,19,15,0.45)' }}>{String(i + 1).padStart(2, '0')}</span>
+            <a href={`#${h.id}`} className="py-1.5 transition-colors hover:text-[#15130F]" style={{ color: 'rgba(21,19,15,0.75)' }}>{h.text}</a>
           </li>
         ))}
       </ol>

@@ -15,6 +15,10 @@ const nextConfig = {
   async redirects() {
     return [
       { source: '/privat', destination: '/boligeiere', permanent: true },
+      // Eksperiment- og kampanjeruter ryddet (sept. 2026): alt går til roten eller riktig V4-side.
+      ...['/2', '/gammel', '/ny', '/ny2', '/ny-forside', '/nyest', '/nyest2', '/nyest3', '/v3', '/v4', '/v5', '/film', '/video', '/bergen-urban'].map((source) => ({ source, destination: '/', permanent: true })),
+      { source: '/tour', destination: '/omvisning', permanent: true },
+      { source: '/sommer', destination: '/boligeiere', permanent: true },
       { source: '/blogg', destination: '/nyheter', permanent: true },
       { source: '/blogg/:slug*', destination: '/nyheter/:slug*', permanent: true },
       { source: '/nyheter/skatt-pa-utleieinntekt-2026', destination: '/guider/skatt-pa-utleie', permanent: true },

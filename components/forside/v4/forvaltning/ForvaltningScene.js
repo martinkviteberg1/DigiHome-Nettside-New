@@ -1,35 +1,32 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { KeyRound, User } from 'lucide-react';
 import { EASE, T, display, tall, useSekvens, useSmal, useSynlig } from '../motion';
 
 /* ---------------------------------------------------------------------------
    ForvaltningScene — «måneden DigiHome forvaltet boligen din».
 
-   Forskjellen fra forsiden og privatsiden: det er ikke systemet som gjør
-   jobben og du som godkjenner — det er MENNESKER hos DigiHome som gjør den,
-   med systemet som ryggrad. Hver rad har derfor en avsender med ansikt:
-   Sarah (din forvalter), vaktmesteren, DigiHome (merket). Den ene tingen
-   som er din, er ikke en rørlegger-regning — det er hvem som skal bo der.
+   Spiller direkte på heroens lyse canvas — ingen papirboks. Øverst: boligen
+   (ekte Bergen-hjem) med adressen på bildet. Under: måneden i ink på
+   hårlinjer, én lilla markør som går gjennom dagene. Det ENESTE mørke
+   objektet er valget ditt: kortet «Venter på deg» (hvem som flytter inn).
 
-   Lag 0  Papirflate på mørk scene (seksjonen rundt er charcoal).
-   Lag 1  Boligen · måneden som tidslinje (markøren går fra dag til dag —
-          travel uke, så stille til husleien) · teamet · ledger, datert.
-   Lag 2  Ett kort i charcoal som bryter ut av høyre kant: «Venter på deg —
-          Emma Sørensen, anbefalt av Sarah». Du godkjenner. Så fortsetter måneden.
+   Forvaltning er roller, ikke én person: avsenderne er «Forvalter»,
+   «Vaktmester» og DigiHome (merket). Ingen navngitt forvalter — teamet er
+   flere, og hvem du får, avtales når du starter.
 
-   Tilstandsmaskin: inn → tid → team → rad1 (visning) → rad2 (søkere) → rad3
+   Tilstandsmaskin: inn → tid → rad1 (visning) → rad2 (søkere) → rad3
    (anbefalt) → sjekk → krev → KORT (venter) → godkjent → rad4 (kontrakt
    BankID) → rad5 (klargjort) → rad6 (husleie · rapport) → ferdig.
    Ubesøkt scene: eier godkjenner etter 5 s så historien alltid fullføres.
-   Kun opacity/transform beveger seg.
+   Kun opacity/transform beveger seg. Radene er alltid i DOM → ingen høydehopp.
 --------------------------------------------------------------------------- */
 
 const FASER = [
   { navn: 'inn', ms: 700 },
-  { navn: 'tid', ms: 700 },
-  { navn: 'team', ms: 900 },
-  { navn: 'rad1', ms: 680 },
+  { navn: 'tid', ms: 900 },
+  { navn: 'rad1', ms: 700 },
   { navn: 'rad2', ms: 640 },
   { navn: 'rad3', ms: 480 },
   { navn: 'sjekk', ms: 380 },
@@ -42,16 +39,17 @@ const FASER = [
   { navn: 'ferdig', ms: 0 },
 ];
 
-const SARAH = { src: '/brand/sarah-sleeman-360.webp', navn: 'Sarah' };
-const VAKT = { src: '/v4/jonas.webp', navn: 'Vaktmester' };
+/* Avsendere — roller. Forvalteren har et ansikt (Sarah er én av forvalterne), men omtales som rolle. */
+const FORV = { src: '/brand/sarah-sleeman-360.webp', navn: 'Forvalter' };
+const VAKT = { rolle: 'vaktmester', navn: 'Vaktmester' };
 const DH = { merke: true, navn: 'DigiHome' };
 const EMMA = { src: '/v4/annonse/leietaker-emma.webp', navn: 'Emma Sørensen' };
 
 /* Hver rad har en avsender — det er poenget med forvaltning. dag = dag i måneden (32 = 1. juni). */
 const RADER = [
-  { fase: 'rad1', dag: 12, dato: '12. mai', t: 'Visning holdt', s: '6 interesserte · to aktuelle', av: SARAH },
+  { fase: 'rad1', dag: 12, dato: '12. mai', t: 'Visning holdt', s: '6 interesserte · to aktuelle', av: FORV },
   { fase: 'rad2', dag: 13, dato: '13. mai', t: 'Søkere vurdert', s: 'Kredittsjekk og referanser', av: DH, skjulMobil: true },
-  { fase: 'rad3', dag: 14, dato: '14. mai', t: 'Anbefalt leietaker', s: `Emma Sørensen · ${tall(14500)} kr/mnd · innflytting 1. juni`, sMobil: `Emma Sørensen · ${tall(14500)} kr/mnd`, s2: 'Kontrakt sendt til Emma · signeres med BankID', s2Mobil: 'Kontrakt sendt · BankID', sak: true, av: SARAH },
+  { fase: 'rad3', dag: 14, dato: '14. mai', t: 'Anbefalt leietaker', s: `Emma Sørensen · ${tall(14500)} kr/mnd · innflytting 1. juni`, sMobil: `Emma Sørensen · ${tall(14500)} kr/mnd`, s2: 'Kontrakt sendt til Emma · signeres med BankID', s2Mobil: 'Kontrakt sendt · BankID', sak: true, av: FORV },
   { fase: 'rad4', dag: 15, dato: '15. mai', t: 'Leiekontrakt signert', s: 'Emma Sørensen · BankID · depositum opprettet', sMobil: 'Emma Sørensen · BankID', av: DH },
   { fase: 'rad5', dag: 31, dato: '31. mai', t: 'Klargjort for innflytting', s: 'Renhold · nøkler · gjennomgang', av: VAKT, skjulMobil: true },
   { fase: 'rad6', dag: 32, dato: '1. jun', t: 'Husleie mottatt', s: `${tall(14500)} kr · månedsrapport sendt til deg`, sMobil: `${tall(14500)} kr · rapport sendt`, av: DH },
@@ -64,31 +62,43 @@ const SPOR = [
 ];
 
 const AUTO_MS = 5000;
-const SCENE_H = 'clamp(720px, 80vh, 800px)';
-const SCENE_H_SMAL = 'clamp(600px, 76vh, 680px)';
-const HAIR = 'rgba(21,19,15,0.08)';
-const PAPIR = '#FBFAF8';
+const OFF = T.offwhite;
+const INK = T.ink;
+const DIM = 'rgba(21,19,15,0.62)';
+const SVAK = 'rgba(21,19,15,0.45)';
+const HAIR = 'rgba(21,19,15,0.10)';
+const GRONN_LYS = '#5FD39A';
+const FOTO = { src: '/v4/annonse/stue-moblert-1920.webp', srcSet: '/v4/annonse/stue-moblert-1200.webp 1200w, /v4/annonse/stue-moblert-1920.webp 1920w, /v4/annonse/stue-moblert-2400.webp 2400w' };
 const SPRETT = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
-/* Avsender-merke: foto (rund) eller DigiHome-ikonet (avrundet kvadrat) */
-function Ansikt({ av, size = 22 }) {
+/* Avsender-merke: rolleglyf (sirkel), DigiHome-ikonet (avrundet kvadrat) eller foto (leietaker) */
+export function Ansikt({ av, size = 22, moerk = false }) {
   if (av.merke) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img src="/brand/digihome-icon-purple.svg" alt="" width={size} height={size} className="shrink-0 select-none" style={{ width: size, height: size, borderRadius: Math.round(size * 0.28) }} draggable={false} />
     );
   }
+  if (av.rolle) {
+    const Ikon = av.rolle === 'vaktmester' ? KeyRound : User;
+    const ik = Math.round(size * 0.5);
+    return (
+      <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center rounded-full" style={{ width: size, height: size, background: moerk ? 'rgba(244,241,234,0.08)' : 'rgba(21,19,15,0.05)', boxShadow: `inset 0 0 0 1px ${moerk ? 'rgba(244,241,234,0.34)' : 'rgba(21,19,15,0.2)'}`, color: moerk ? OFF : T.ink }}>
+        <Ikon style={{ width: ik, height: ik }} strokeWidth={1.8} />
+      </span>
+    );
+  }
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={av.src} alt={av.navn} width={size} height={size} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size, boxShadow: '0 0 0 1px rgba(21,19,15,0.10)' }} draggable={false} />
+    <img src={av.src} alt={av.navn} width={size} height={size} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size, boxShadow: `0 0 0 1px ${moerk ? 'rgba(244,241,234,0.2)' : 'rgba(21,19,15,0.1)'}` }} draggable={false} />
   );
 }
 
-/* Avsender: ansikt + navn (navnet bare fra sm) */
+/* Avsender: glyf + navn (navnet bare fra sm) */
 function Av({ av, size = 20 }) {
   if (!av) return null;
   return (
-    <span className="inline-flex items-center gap-1.5 text-[12.5px] text-[#15130F]/55">
+    <span className="inline-flex items-center gap-1.5 text-[12.5px]" style={{ color: 'rgba(21,19,15,0.55)' }}>
       <Ansikt av={av} size={size} />
       <span className="hidden whitespace-nowrap sm:inline">{av.navn}</span>
     </span>
@@ -96,10 +106,8 @@ function Av({ av, size = 20 }) {
 }
 
 function Prikk({ tilstand }) {
-  const fylt = tilstand !== 'ferdig';
-  return (
-    <span aria-hidden="true" className="block h-[7px] w-[7px] rounded-full" style={{ background: tilstand === 'aktiv' ? T.lilla : tilstand === 'godkjent' ? T.gronn : T.flate, boxShadow: fylt ? 'none' : 'inset 0 0 0 1px rgba(21,19,15,0.35)', transition: 'background 400ms, box-shadow 400ms' }} />
-  );
+  const bg = tilstand === 'aktiv' ? T.lilla : tilstand === 'godkjent' ? T.gronn : 'rgba(21,19,15,0.55)';
+  return <span aria-hidden="true" className="block h-[7px] w-[7px] rounded-full" style={{ background: bg, transition: 'background 400ms' }} />;
 }
 
 function HakeIkon({ className = '' }) {
@@ -110,8 +118,8 @@ function HakeIkon({ className = '' }) {
   );
 }
 
-/* ── Måneden som linje: 1. mai → 1. juni. Ett merke per hendelse; markøren glir fra dag til dag.
-   Den travle uka (12.–15.) ligger tett, så er det stille til husleien — det ER poenget. ── */
+/* ── Måneden som linje: 1. mai → 1. juni. 31 små dagsmerker, ett merke per hendelse,
+   markøren glir fra dag til dag. Travel uke (12.–15.), så stille til husleien. ── */
 function Maanedslinje({ vis, dag, aktiv, godkjent }) {
   const ref = useRef(null);
   const [w, setW] = useState(0);
@@ -126,23 +134,30 @@ function Maanedslinje({ vis, dag, aktiv, godkjent }) {
   const x = (d) => ((d - 1) / 31) * w;
   const naa = RADER.find((r) => r.dag === dag);
   return (
-    <div ref={ref} className="relative mt-6 shrink-0 sm:mt-7" style={{ height: 40, opacity: vis ? 1 : 0, transition: `opacity 600ms ${EASE}` }} aria-hidden="true" data-testid="v4f-tidslinje">
+    <div ref={ref} className="relative mt-7 shrink-0 sm:mt-8" style={{ height: 44, opacity: vis ? 1 : 0, transition: `opacity 600ms ${EASE}` }} aria-hidden="true" data-testid="v4f-tidslinje">
       {/* linjen tegnes fra venstre */}
-      <span className="absolute left-0 right-0 top-[9px] h-px" style={{ background: 'rgba(21,19,15,0.14)', transformOrigin: 'left', transform: vis ? 'scaleX(1)' : 'scaleX(0)', transition: `transform 900ms ${EASE} 100ms` }} />
+      <span className="absolute left-0 right-0 top-[9px] h-px" style={{ background: 'rgba(21,19,15,0.16)', transformOrigin: 'left', transform: vis ? 'scaleX(1)' : 'scaleX(0)', transition: `transform 900ms ${EASE} 100ms` }} />
+      {/* dagsmerker */}
+      {w > 0 && Array.from({ length: 32 }, (_, i) => i + 1).map((d) => (
+        <span key={d} className="absolute top-[7px] h-[5px] w-px" style={{ left: 0, transform: `translateX(${x(d)}px)`, background: 'rgba(21,19,15,0.14)', opacity: vis ? 1 : 0, transition: `opacity 500ms ${EASE} ${200 + d * 12}ms` }} />
+      ))}
       {/* hendelsene som merker — fylles etter hvert */}
       {w > 0 && RADER.map((r) => {
         const passert = dag >= r.dag;
-        return <span key={r.fase} className="absolute top-[6px] h-[7px] w-[7px] rounded-full" style={{ left: 0, transform: `translateX(${x(r.dag) - 3.5}px)`, background: passert ? (r.sak && !godkjent && aktiv ? T.lilla : T.ink) : 'transparent', boxShadow: passert ? 'none' : 'inset 0 0 0 1px rgba(21,19,15,0.3)', transition: `background 400ms ${EASE} 300ms, box-shadow 400ms ${EASE} 300ms` }} />;
+        return <span key={r.fase} className="absolute top-[6px] h-[7px] w-[7px] rounded-full" style={{ left: 0, transform: `translateX(${x(r.dag) - 3.5}px)`, background: passert ? (r.sak && !godkjent && aktiv ? T.lilla : INK) : 'transparent', boxShadow: passert ? 'none' : 'inset 0 0 0 1px rgba(21,19,15,0.3)', transition: `background 400ms ${EASE} 300ms, box-shadow 400ms ${EASE} 300ms` }} />;
       })}
       {/* markøren — dagens dato */}
       {w > 0 && (
         <span className="absolute left-0 top-0" style={{ transform: `translateX(${x(dag)}px)`, opacity: dag >= 12 ? 1 : 0, transition: `transform 700ms ${EASE}, opacity 400ms ${EASE}` }} data-testid="v4f-markor" data-dag={dag}>
-          <span className="absolute left-0 top-[3px] block h-[13px] w-[13px] -translate-x-1/2 rounded-full" style={{ background: T.lilla, boxShadow: '0 0 0 3px rgba(212,150,255,0.25)' }} />
-          <span className="absolute top-[18px] whitespace-nowrap text-[11.5px] font-medium tabular-nums text-[#15130F]/70" style={{ left: 0, transform: dag > 26 ? 'translateX(calc(-100% + 6px))' : 'translateX(-6px)' }}>
+          <span className="absolute left-0 top-[3px] block h-[13px] w-[13px] -translate-x-1/2 rounded-full" style={{ background: T.lilla, boxShadow: '0 0 0 4px rgba(212,150,255,0.25)' }} />
+          <span className="absolute top-[20px] whitespace-nowrap text-[11.5px] font-medium tabular-nums" style={{ left: 0, color: DIM, transform: dag > 26 ? 'translateX(calc(-100% + 6px))' : 'translateX(-6px)' }}>
             <span key={dag} className="inline-block animate-in fade-in-0 slide-in-from-bottom-1 duration-300">{naa ? naa.dato : ''}</span>
           </span>
         </span>
       )}
+      {/* månedsnavn i endene */}
+      <span className="absolute left-0 top-[24px] text-[11px] tabular-nums" style={{ color: SVAK }}>1. mai</span>
+      <span className="absolute right-0 top-[24px] text-[11px] tabular-nums" style={{ color: SVAK, opacity: dag > 26 ? 0 : 1, transition: `opacity 300ms ${EASE}` }}>1. jun</span>
     </div>
   );
 }
@@ -152,13 +167,11 @@ export default function ForvaltningScene() {
   const figRef = useRef(null);
   const radRef = useRef(null);
   const smal = useSmal();
-  const synlig = useSynlig(ref, smal ? 0.5 : 0.35);
+  const synlig = useSynlig(ref, smal ? 0.35 : 0.3);
   const { fase, er, ferdig, replay, videre, holder } = useSekvens(FASER, synlig);
-  const sceneH = smal ? SCENE_H_SMAL : SCENE_H;
 
   const inne = er('inn');
   const tid = er('tid');
-  const team = er('team');
   const godkjent = er('godkjent');
   const aktiv = er('rad3') && !godkjent;
   const visKort = er('kort') && !godkjent;
@@ -217,15 +230,16 @@ export default function ForvaltningScene() {
       const fig = figRef.current.getBoundingClientRect();
       const rad = radRef.current.getBoundingClientRect();
       const kortH = kortRef.current.offsetHeight;
-      const midt = rad.top - fig.top - 6;
-      const maks = ref.current.offsetHeight - kortH - 20;
-      setKortTop(Math.round(Math.max(24, Math.min(midt, maks))));
+      // Desktop: kortet bryter ut ved saksraden. Mobil: rett under saksraden (radene etter er ennå usynlige).
+      const midt = smal ? rad.bottom - fig.top + 10 : rad.top - fig.top - 10;
+      const maks = ref.current.offsetHeight - kortH - 8;
+      setKortTop(Math.round(Math.max(0, Math.min(midt, maks))));
     };
     mal();
     window.addEventListener('resize', mal);
     return () => window.removeEventListener('resize', mal);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fase]);
+  }, [fase, smal]);
 
   const knappTekst = trykket ? 'Godkjent' : 'Godkjenn leietaker';
   const godkjentAv = hvem === 'deg' ? 'Godkjent av deg · nå' : 'Godkjent av deg · 16:12';
@@ -234,134 +248,117 @@ export default function ForvaltningScene() {
     <figure ref={figRef} className="relative m-0" data-testid="v4f-scene-wrap">
       <div
         ref={ref}
-        className="relative overflow-hidden rounded-[22px]"
-        style={{ height: sceneH, background: PAPIR, boxShadow: '0 0 0 1px rgba(21,19,15,0.07), 0 60px 120px -60px rgba(0,0,0,0.6)' }}
+        className="relative"
         role="img"
-        aria-label="Animert eksempel: en måned med full forvaltning i Nygårdsgaten 5A — DigiHome holder visning, vurderer søkere og anbefaler en leietaker. Du godkjenner hvem som skal bo der. Kontrakten signeres med BankID, boligen klargjøres, husleien kommer inn og du får månedsrapporten."
+        aria-label="Animert eksempel: en måned med full forvaltning i Nygårdsgaten 5A — forvalteren holder visning, DigiHome vurderer søkere og forvalteren anbefaler en leietaker. Du godkjenner hvem som skal bo der. Kontrakten signeres med BankID, boligen klargjøres, husleien kommer inn og du får månedsrapporten."
         data-testid="v4f-scene"
       >
-        <div className="flex h-full flex-col px-6 pb-5 pt-6 sm:px-8 sm:pt-7">
-          {/* ── Header: boligen · status ── */}
-          <div className="flex shrink-0 items-start justify-between gap-4" style={{ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'translateY(8px)', transition: `opacity 600ms ${EASE}, transform 600ms ${EASE}` }}>
-            <div className="flex min-w-0 items-center gap-3.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/v4/privat/bolig-thumb.webp" alt="" width={46} height={46} className="h-[46px] w-[46px] shrink-0 rounded-[12px] object-cover" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.08)' }} />
-              <div className="min-w-0">
-                <p className="truncate text-[20px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.ink }} data-testid="v4f-adresse">Nygårdsgaten 5A</p>
-                <p className="mt-0.5 truncate text-[13px] text-[#15130F]/55 sm:text-[13.5px]">Full forvaltning · Bergen · mai</p>
-              </div>
+        {/* ── Boligen — ekte Bergen-hjem, adressen står på bildet ── */}
+        <div className="relative aspect-[16/10] overflow-hidden rounded-[20px] sm:aspect-[16/7] lg:aspect-[16/6.4]" style={{ background: T.flate, boxShadow: '0 0 0 1px rgba(21,19,15,0.06)', opacity: inne ? 1 : 0, transform: inne ? 'none' : 'translateY(10px) scale(0.995)', transition: `opacity 700ms ${EASE}, transform 900ms ${EASE}` }} data-testid="v4f-bolig">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={FOTO.src} srcSet={FOTO.srcSet} sizes="(min-width: 1024px) 60vw, 100vw" alt="" className="absolute inset-0 h-full w-full select-none object-cover" style={{ objectPosition: '50% 58%' }} draggable={false} />
+          <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[62%]" style={{ background: 'linear-gradient(180deg, rgba(21,19,15,0) 0%, rgba(21,19,15,0.3) 45%, rgba(21,19,15,0.66) 100%)' }} />
+          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5 sm:p-6">
+            <div className="min-w-0">
+              <p className="truncate text-[24px] sm:text-[30px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.02, color: OFF }} data-testid="v4f-adresse">Nygårdsgaten 5A</p>
+              <p className="mt-1 truncate text-[13px] sm:text-[13.5px]" style={{ color: 'rgba(244,241,234,0.72)' }}>Full forvaltning · Bergen · mai</p>
             </div>
-            <p className="flex shrink-0 items-center gap-2 pt-1 text-[13px] text-[#15130F]/60">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: aktiv ? T.lilla : T.gronn, transition: 'background 400ms' }} />
+            <p className="flex shrink-0 items-center gap-2 pb-0.5 text-[13px]" style={{ color: 'rgba(244,241,234,0.85)' }}>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: aktiv ? T.lilla : GRONN_LYS, transition: 'background 400ms' }} />
               <span className="inline-grid">
                 <span className="col-start-1 row-start-1 whitespace-nowrap" style={{ opacity: aktiv ? 0 : 1, transition: `opacity 300ms ${EASE}` }}>Alt håndtert</span>
                 <span className="col-start-1 row-start-1 whitespace-nowrap" style={{ opacity: aktiv ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>{smal ? 'Ett valg venter' : 'Ett valg venter på deg'}</span>
               </span>
             </p>
           </div>
+        </div>
 
-          {/* ── Måneden som linje ── */}
-          <Maanedslinje vis={tid} dag={dag} aktiv={aktiv} godkjent={godkjent} />
+        {/* ── Måneden som linje ── */}
+        <Maanedslinje vis={tid} dag={dag} aktiv={aktiv} godkjent={godkjent} />
 
-          {/* ── Teamet ditt — menneskene som gjør jobben — på én hårlinje, ingen boks ── */}
-          <div className="mt-4 flex shrink-0 items-center justify-between gap-4 border-b pb-4 sm:mt-5" style={{ borderColor: HAIR, opacity: team ? 1 : 0, transform: team ? 'none' : 'translateY(8px)', transition: `opacity 600ms ${EASE}, transform 600ms ${EASE}` }} data-testid="v4f-team">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="flex -space-x-2">
-                <Ansikt av={SARAH} size={30} />
-                <Ansikt av={VAKT} size={30} />
-                <Ansikt av={DH} size={30} />
-              </span>
-              <span className="min-w-0 text-[13.5px]">
-                <span className="block truncate font-medium text-[#15130F]">Sarah er din forvalter</span>
-                <span className="block text-[#15130F]/55 sm:truncate">Med vaktmester, renhold og DigiHome i ryggen</span>
-              </span>
-            </div>
-            <span className="hidden shrink-0 text-[13px] text-[#15130F]/50 md:inline">Svarer innen 24 timer</span>
-          </div>
-
-          {/* ── Måneden — ledger med dato i margen og avsender til høyre ── */}
-          <ul className="relative mt-2 sm:mt-3" style={{ opacity: team ? 1 : 0, transition: `opacity 500ms ${EASE} 300ms` }} aria-hidden={!team}>
-            <span aria-hidden="true" className="absolute bottom-0 top-0 left-[67px] hidden w-px sm:block" style={{ background: 'rgba(21,19,15,0.14)', transformOrigin: 'top', transform: team ? 'scaleY(1)' : 'scaleY(0)', transition: `transform 700ms ${EASE} 450ms` }} />
-            {RADER.map((r) => {
-              const vis = er(r.fase);
-              const erAktiv = r.sak && aktiv;
-              const dempet = !r.sak;
-              const tilstand = r.sak ? (godkjent ? 'godkjent' : 'aktiv') : 'ferdig';
-              return (
-                <li key={r.fase} ref={r.sak ? radRef : undefined} className={`relative ${r.skjulMobil ? 'hidden sm:block' : ''}`} style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(12px)', transition: `opacity 560ms ${EASE}, transform 640ms ${SPRETT}` }}>
-                  <span aria-hidden="true" className="absolute -inset-x-3 inset-y-0.5 rounded-[12px]" style={{ background: 'rgba(212,150,255,0.10)', opacity: erAktiv ? 1 : 0, transition: `opacity 500ms ${EASE}` }} />
-                  <div className="relative grid grid-cols-[16px_minmax(0,1fr)_auto] items-start gap-x-3 py-2.5 sm:grid-cols-[60px_16px_minmax(0,1fr)_auto]" style={{ paddingTop: 11, paddingBottom: 11 }}>
-                    <span className="hidden whitespace-nowrap pt-[3px] text-[13px] tabular-nums text-[#15130F]/45 sm:block">{r.dato}</span>
-                    <span className="flex justify-center pt-[7px]"><Prikk tilstand={tilstand} /></span>
-                    <span className="min-w-0">
-                      <span className="flex items-center gap-2 text-[15px] font-medium sm:text-[15.5px]" style={{ color: dempet ? 'rgba(21,19,15,0.66)' : godkjent && r.sak ? 'rgba(21,19,15,0.85)' : T.ink, transition: 'color 400ms' }}>
-                        {r.t}
-                        <span className="text-[12.5px] font-normal text-[#15130F]/45 sm:hidden">{r.dato}</span>
-                      </span>
-                      <span className="mt-0.5 block text-[13.5px] sm:truncate" style={{ color: dempet ? 'rgba(21,19,15,0.45)' : 'rgba(21,19,15,0.62)' }}>{smal && r.sMobil ? r.sMobil : r.s}</span>
-
-                      {r.sak && (
-                        <span className="grid" style={{ gridTemplateRows: visSpor ? '1fr' : '0fr', transition: `grid-template-rows 450ms ${EASE}` }}>
-                          <span className="block min-h-0 overflow-hidden">
-                            <span className="mt-2 block" data-testid="v4f-spor">
-                              {SPOR.map((sp) => {
-                                const v = er(sp.fase) && !godkjent;
-                                return (
-                                  <span key={sp.fase} className="flex items-baseline gap-2 py-[3px] text-[13px]" style={{ opacity: v ? 1 : 0, transform: v ? 'none' : 'translateY(4px)', transition: `opacity 260ms ${EASE}, transform 260ms ${EASE}` }}>
-                                    <span className="shrink-0 font-medium text-[#15130F]/85">{sp.t}</span>
-                                    <span className="min-w-0 truncate text-[#15130F]/50">{sp.d}</span>
-                                  </span>
-                                );
-                              })}
-                            </span>
-                          </span>
-                        </span>
-                      )}
-
-                      {r.sak && (
-                        <span className="grid" style={{ gridTemplateRows: godkjent ? '1fr' : '0fr', transition: `grid-template-rows 500ms ${EASE}` }}>
-                          <span className="block min-h-0 overflow-hidden">
-                            <span className="mt-1 block text-[13.5px] text-[#15130F] sm:truncate" style={{ opacity: godkjent ? 1 : 0, transition: `opacity 400ms ${EASE} 250ms` }}>{smal && r.s2Mobil ? r.s2Mobil : r.s2}</span>
-                            <span className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-[#15130F]/60 sm:hidden" style={{ opacity: godkjent ? 1 : 0, transition: `opacity 400ms ${EASE} 300ms` }}>
-                              <HakeIkon className="text-[#1F9D55]" />
-                              <span>{godkjentAv}</span>
-                            </span>
-                          </span>
-                        </span>
-                      )}
+        {/* ── Måneden — ledger med dato i margen og avsender til høyre ── */}
+        <ul className="relative mt-3 border-t sm:mt-4" style={{ borderColor: HAIR, opacity: tid ? 1 : 0, transition: `opacity 500ms ${EASE} 300ms` }} aria-hidden={!tid}>
+          <span aria-hidden="true" className="absolute bottom-0 top-0 left-[67px] hidden w-px sm:block" style={{ background: 'rgba(21,19,15,0.12)', transformOrigin: 'top', transform: tid ? 'scaleY(1)' : 'scaleY(0)', transition: `transform 700ms ${EASE} 450ms` }} />
+          {RADER.map((r) => {
+            const vis = er(r.fase);
+            const erAktiv = r.sak && aktiv;
+            const dempet = !r.sak;
+            const tilstand = r.sak ? (godkjent ? 'godkjent' : 'aktiv') : 'ferdig';
+            return (
+              <li key={r.fase} ref={r.sak ? radRef : undefined} className={`relative ${r.skjulMobil ? 'hidden sm:block' : ''}`} style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(12px)', transition: `opacity 560ms ${EASE}, transform 640ms ${SPRETT}` }}>
+                <span aria-hidden="true" className="absolute -inset-x-3 inset-y-0.5 rounded-[12px]" style={{ background: 'rgba(212,150,255,0.11)', opacity: erAktiv ? 1 : 0, transition: `opacity 500ms ${EASE}` }} />
+                <div className="relative grid grid-cols-[16px_minmax(0,1fr)_auto] items-start gap-x-3 sm:grid-cols-[60px_16px_minmax(0,1fr)_auto]" style={{ paddingTop: 12, paddingBottom: 12 }}>
+                  <span className="hidden whitespace-nowrap pt-[3px] text-[13px] tabular-nums sm:block" style={{ color: SVAK }}>{r.dato}</span>
+                  <span className="flex justify-center pt-[7px]"><Prikk tilstand={tilstand} /></span>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 text-[15px] font-medium sm:text-[15.5px]" style={{ color: dempet ? 'rgba(21,19,15,0.7)' : INK, transition: 'color 400ms' }}>
+                      {r.t}
+                      <span className="text-[12.5px] font-normal sm:hidden" style={{ color: SVAK }}>{r.dato}</span>
                     </span>
-                    {/* Høyre marg: avsender — eller din godkjenning på saksraden */}
-                    {r.sak ? (
-                      <span className="hidden items-center gap-2 pt-[2px] text-[12.5px] text-[#15130F]/60 sm:inline-flex" style={{ opacity: godkjent ? 1 : 0, transform: godkjent ? 'none' : 'translateY(4px)', transition: `opacity 400ms ${EASE} 200ms, transform 400ms ${EASE} 200ms` }} data-testid="v4f-godkjent">
-                        <HakeIkon className="text-[#1F9D55]" />
-                        <span className="whitespace-nowrap">{godkjentAv}</span>
-                      </span>
-                    ) : (
-                      <span className="pt-[2px]"><Av av={r.av} /></span>
-                    )}
-                  </div>
-                  <span aria-hidden="true" className="block h-px" style={{ background: HAIR }} />
-                </li>
-              );
-            })}
-          </ul>
+                    <span className="mt-0.5 block text-[13.5px] sm:truncate" style={{ color: dempet ? 'rgba(21,19,15,0.45)' : DIM }}>{smal && r.sMobil ? r.sMobil : r.s}</span>
 
-          <div className="mt-auto flex items-center justify-between gap-4 pt-4 text-[13.5px] text-[#15130F]/50" style={{ opacity: ferdig ? 1 : 0, transition: `opacity 600ms ${EASE}` }} aria-hidden={!ferdig}>
-            <span data-testid="v4f-scene-tekst">Én måned. Ett valg var ditt. Resten gjorde DigiHome.</span>
-            <button type="button" onClick={replay} className="shrink-0 underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" style={{ pointerEvents: ferdig ? 'auto' : 'none' }} tabIndex={ferdig ? 0 : -1} data-testid="v4f-replay">Spill igjen</button>
-          </div>
+                    {r.sak && (
+                      <span className="grid" style={{ gridTemplateRows: visSpor ? '1fr' : '0fr', transition: `grid-template-rows 450ms ${EASE}` }}>
+                        <span className="block min-h-0 overflow-hidden">
+                          <span className="mt-2 block" data-testid="v4f-spor">
+                            {SPOR.map((sp) => {
+                              const v = er(sp.fase) && !godkjent;
+                              return (
+                                <span key={sp.fase} className="flex items-baseline gap-2 py-[3px] text-[13px]" style={{ opacity: v ? 1 : 0, transform: v ? 'none' : 'translateY(4px)', transition: `opacity 260ms ${EASE}, transform 260ms ${EASE}` }}>
+                                  <span className="shrink-0 font-medium" style={{ color: 'rgba(21,19,15,0.85)' }}>{sp.t}</span>
+                                  <span className="min-w-0 truncate" style={{ color: SVAK }}>{sp.d}</span>
+                                </span>
+                              );
+                            })}
+                          </span>
+                        </span>
+                      </span>
+                    )}
+
+                    {r.sak && (
+                      <span className="grid" style={{ gridTemplateRows: godkjent ? '1fr' : '0fr', transition: `grid-template-rows 500ms ${EASE}` }}>
+                        <span className="block min-h-0 overflow-hidden">
+                          <span className="mt-1 block text-[13.5px] sm:truncate" style={{ color: INK, opacity: godkjent ? 1 : 0, transition: `opacity 400ms ${EASE} 250ms` }}>{smal && r.s2Mobil ? r.s2Mobil : r.s2}</span>
+                          <span className="mt-2 inline-flex items-center gap-2 text-[12.5px] sm:hidden" style={{ color: DIM, opacity: godkjent ? 1 : 0, transition: `opacity 400ms ${EASE} 300ms` }}>
+                            <HakeIkon className="text-[#1F9D55]" />
+                            <span>{godkjentAv}</span>
+                          </span>
+                        </span>
+                      </span>
+                    )}
+                  </span>
+                  {/* Høyre marg: avsender — eller din godkjenning på saksraden */}
+                  {r.sak ? (
+                    <span className="hidden items-center gap-2 pt-[2px] text-[12.5px] sm:inline-flex" style={{ color: DIM, opacity: godkjent ? 1 : 0, transform: godkjent ? 'none' : 'translateY(4px)', transition: `opacity 400ms ${EASE} 200ms, transform 400ms ${EASE} 200ms` }} data-testid="v4f-godkjent">
+                      <HakeIkon className="text-[#1F9D55]" />
+                      <span className="whitespace-nowrap">{godkjentAv}</span>
+                    </span>
+                  ) : (
+                    <span className="pt-[2px]"><Av av={r.av} /></span>
+                  )}
+                </div>
+                <span aria-hidden="true" className="block h-px" style={{ background: HAIR }} />
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="flex items-center justify-between gap-4 pt-4 text-[13.5px]" style={{ color: SVAK, opacity: ferdig ? 1 : 0, transition: `opacity 600ms ${EASE}` }} aria-hidden={!ferdig}>
+          <span data-testid="v4f-scene-tekst">Én måned. Ett valg var ditt. Resten gjorde DigiHome.</span>
+          <button type="button" onClick={replay} className="shrink-0 underline underline-offset-4 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" style={{ textDecorationColor: 'rgba(21,19,15,0.3)', pointerEvents: ferdig ? 'auto' : 'none' }} tabIndex={ferdig ? 0 : -1} data-testid="v4f-replay">Spill igjen</button>
         </div>
       </div>
 
-      {/* ── Lag 2: kortet — ikke en regning, men et menneske. Hvem som bor hos deg, bestemmer du. ── */}
+      {/* ── Kortet — det eneste mørke objektet: ikke en regning, men et menneske. Hvem som bor hos deg, bestemmer du. ── */}
       <div
         ref={kortRef}
         aria-hidden={!visKort}
-        className="absolute z-10 rounded-[20px] text-[#F4F1EA]"
+        className="absolute z-10 rounded-[20px]"
         style={{
           background: T.charcoal,
-          boxShadow: '0 40px 80px -30px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px rgba(21,19,15,0.18)',
-          ...(smal ? { left: 16, right: 16, bottom: 16 } : { right: -28, width: 324, top: kortTop == null ? '46%' : kortTop }),
+          color: OFF,
+          boxShadow: '0 40px 80px -30px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px rgba(21,19,15,0.18)',
+          ...(smal ? { left: 0, right: 0, top: kortTop == null ? '58%' : kortTop } : { right: -28, width: 324, top: kortTop == null ? '40%' : kortTop }),
           opacity: visKort ? 1 : 0,
           pointerEvents: visKort ? 'auto' : 'none',
           transform: visKort ? 'none' : godkjent ? 'translate(-16px, -8px) scale(0.96)' : 'translateX(40px) scale(0.98)',
@@ -372,11 +369,11 @@ export default function ForvaltningScene() {
         {smal ? (
           <div className="flex items-center justify-between gap-4 p-3.5 pl-4">
             <div className="flex min-w-0 items-center gap-3">
-              <Ansikt av={EMMA} size={38} />
+              <Ansikt av={EMMA} size={38} moerk />
               <div className="min-w-0">
-                <p className="flex items-center gap-2 text-[12px] text-white/60"><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Venter på deg</p>
+                <p className="flex items-center gap-2 text-[12px]" style={{ color: 'rgba(244,241,234,0.6)' }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Venter på deg</p>
                 <p className="mt-0.5 truncate text-[14px] font-medium">Emma Sørensen</p>
-                <p className="text-[13px] text-white/60">{tall(14500)} kr/mnd · fra 1. juni</p>
+                <p className="text-[13px]" style={{ color: 'rgba(244,241,234,0.6)' }}>{tall(14500)} kr/mnd · fra 1. juni</p>
               </div>
             </div>
             <button type="button" onClick={() => godkjenn('deg')} tabIndex={visKort ? 0 : -1} aria-label="Godkjenn Emma Sørensen som leietaker" className={`inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-[10px] px-4 text-[14px] font-medium transition-[background-color,transform] duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${venter && !trykket ? 'v4-puls' : ''}`} style={{ background: trykket ? T.gronn : T.lilla, color: trykket ? '#fff' : T.ink }} data-testid="v4f-godkjenn">
@@ -385,15 +382,15 @@ export default function ForvaltningScene() {
           </div>
         ) : (
           <div className="p-5">
-            <div className="flex items-center justify-between text-[12.5px] text-white/60">
+            <div className="flex items-center justify-between text-[12.5px]" style={{ color: 'rgba(244,241,234,0.6)' }}>
               <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Venter på deg</span>
               <span className="tabular-nums">14. mai</span>
             </div>
             <div className="mt-4 flex items-center gap-3">
-              <Ansikt av={EMMA} size={44} />
+              <Ansikt av={EMMA} size={44} moerk />
               <span className="min-w-0">
                 <span className="block text-[15.5px] font-medium">Emma Sørensen</span>
-                <span className="block text-[13px] text-white/60">Anbefalt av Sarah</span>
+                <span className="mt-0.5 flex items-center gap-1.5 text-[13px]" style={{ color: 'rgba(244,241,234,0.6)' }}><Ansikt av={FORV} size={16} moerk />Anbefalt av forvalteren din</span>
               </span>
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -401,15 +398,15 @@ export default function ForvaltningScene() {
                 <span key={d} className="inline-flex h-[22px] items-center gap-1 rounded-full px-2 text-[11px] font-medium" style={{ background: 'rgba(31,157,85,0.22)', color: '#9BE7B8' }}><HakeIkon className="h-[9px] w-[9px]" />{d}</span>
               ))}
             </div>
-            <p className="mt-4 text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>{tall(14500)} kr<span className="text-[15px] text-white/55">/mnd</span></p>
-            <p className="mt-1 text-[13px] text-white/60">Innflytting 1. juni · 3 års kontrakt</p>
+            <p className="mt-4 text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>{tall(14500)} kr<span className="text-[15px]" style={{ color: 'rgba(244,241,234,0.55)' }}>/mnd</span></p>
+            <p className="mt-1 text-[13px]" style={{ color: 'rgba(244,241,234,0.6)' }}>Innflytting 1. juni · 3 års kontrakt</p>
             <button type="button" onClick={() => godkjenn('deg')} tabIndex={visKort ? 0 : -1} aria-label="Godkjenn Emma Sørensen som leietaker" className={`mt-4 inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-[11px] text-[14.5px] font-medium transition-[background-color,transform] duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${venter && !trykket ? 'v4-puls' : ''}`} style={{ background: trykket ? T.gronn : T.lilla, color: trykket ? '#fff' : T.ink }} data-testid="v4f-godkjenn">
               {trykket && <HakeIkon />}{knappTekst}
             </button>
-            {/* Kjeden — hva Sarah gjorde før det landet hos deg */}
-            <ol className="mt-4 flex flex-col gap-1 border-t pt-3 text-[11.5px] text-white/50" style={{ borderColor: 'rgba(255,255,255,0.10)' }}>
-              <li className="flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-white/35" />Visning · Sarah · 12. mai</li>
-              <li className="flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-white/35" />Kredittsjekk og referanser · OK</li>
+            {/* Kjeden — hva teamet gjorde før det landet hos deg */}
+            <ol className="mt-4 flex flex-col gap-1 border-t pt-3 text-[11.5px]" style={{ borderColor: 'rgba(255,255,255,0.10)', color: 'rgba(244,241,234,0.5)' }}>
+              <li className="flex items-center gap-2"><span className="h-1 w-1 rounded-full" style={{ background: 'rgba(244,241,234,0.35)' }} />Visning · forvalter · 12. mai</li>
+              <li className="flex items-center gap-2"><span className="h-1 w-1 rounded-full" style={{ background: 'rgba(244,241,234,0.35)' }} />Kredittsjekk og referanser · OK</li>
               <li className="flex items-center gap-2" style={{ color: 'rgba(244,241,234,0.85)' }}><span className="h-1 w-1 rounded-full" style={{ background: T.lilla }} />Hvem som flytter inn — deg</li>
             </ol>
           </div>

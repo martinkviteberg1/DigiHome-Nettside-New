@@ -271,7 +271,7 @@ export default function PriceWizard() {
             <div className="w-[72px] h-[72px] rounded-full bg-[#f5edfc] border border-[#e9d9fa] flex items-center justify-center mx-auto mb-7">
               <PartyPopper className="w-8 h-8 text-[#a765e0]" strokeWidth={1.5} />
             </div>
-            <h1 className="text-[34px] sm:text-[44px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-4" style={{ fontFamily: 'var(--font-heading)' }}>Takk, {form.name.split(' ')[0]}!</h1>
+            <h2 className="text-[34px] sm:text-[44px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-4" style={{ fontFamily: 'var(--font-heading)' }}>Takk, {form.name.split(' ')[0]}!</h2>
             <p className="text-[16px] text-[#666] leading-[1.75] mb-8">Pakken din er mottatt. En av oss kontakter deg <strong className="text-[#0a0a0a]">innen 24 timer</strong> med en konkret vurdering.</p>
             <div className="rounded-[22px] bg-[#0a0a0a] text-white p-6 mb-8 flex items-center justify-between gap-4 text-left relative overflow-hidden">
               <div className="absolute -top-16 -right-16 w-[220px] h-[220px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(210,152,255,0.18) 0%, transparent 65%)' }} />
@@ -321,13 +321,13 @@ export default function PriceWizard() {
                 <span aria-hidden className="absolute -top-7 -left-2 text-[110px] font-bold leading-none select-none pointer-events-none text-[#f2ebfa]" style={{ fontFamily: 'var(--font-heading)' }}>{ghostNum}</span>
                 <div className="relative pt-6">
                   <p className="text-[11.5px] font-semibold uppercase tracking-[0.16em] text-[#9b6cc4] mb-3">Steg {stepIdx + 1} av {totalSteps}</p>
-                  <h1 className="text-[30px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.06] text-[#0a0a0a] mb-3" style={{ fontFamily: 'var(--font-heading)' }}>
+                  <h2 className="text-[30px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.06] text-[#0a0a0a] mb-3" style={{ fontFamily: 'var(--font-heading)' }}>
                     {step === 0 && 'Fortell oss om boligen'}
                     {step === 1 && 'Hvor mye vil du gjøre selv?'}
                     {step === 2 && 'Velg utleiemodell'}
                     {step === 3 && 'Vil du ha en flying start?'}
                     {step === 4 && 'Hvem skal vi kontakte?'}
-                  </h1>
+                  </h2>
                   <p className="text-[15px] text-[#666] leading-relaxed max-w-[54ch]">
                     {step === 0 && 'Tar under 2 minutter — du ser prisen live til høyre.'}
                     {step === 1 && 'Velg servicenivået som passer deg — du kan bytte senere.'}
