@@ -47,7 +47,7 @@ import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead
 import { renderFinnBanners, FINN_THEMES } from '@/lib/finn-banners';
 import {
   DD_SECTIONS, DD_CATEGORIES,
-  createLink as ddCreateLink, listLinks as ddListLinks, updateLink as ddUpdateLink, deleteLink as ddDeleteLink,
+  createLink as ddCreateLink, listLinks as ddListLinks, updateLink as ddUpdateLink, deleteLink as ddDeleteLink, listDeckShares as ddListDeckShares,
   validateToken as ddValidateToken, recordView as ddRecordView, logAudit as ddLogAudit, listAudit as ddListAudit,
   validateFileMeta as ddValidateFileMeta, createDocument as ddCreateDocument, addVersion as ddAddVersion,
   listDocuments as ddListDocuments, updateDocument as ddUpdateDocument, getDocument as ddGetDocument,
@@ -9486,6 +9486,46 @@ async function handleRoute(request, { params }) {
       const dUrl = new URL(request.url);
       const t = dUrl.searchParams.get('t') || '';
       const presenter = !t && (await modulAuthed(request, db, 'budsjett'));
+
+      // ── Ekstern deling (presenter/admin): rene deck-lenker /deck/<token>, låst til valgt plan, valgfritt passord ──
+      if (route === '/investor/deck/deling') {
+        if (!presenter) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+        if (method === 'GET') {
+          const planId = (dUrl.searchParams.get('plan') || '').trim();
+          const lenker = await ddListDeckShares(db, { planId: planId || undefined });
+          return cors(NextResponse.json({ ok: true, lenker }));
+        }
+        if (method === 'POST') {
+          let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+          const planId = String(body.planId || '').trim();
+          if (!planId) return cors(NextResponse.json({ ok: false, error: 'Mangler plan' }, { status: 400 }));
+          const p = await hentPlan(db, planId);
+          if (!p || p.type !== 'modell' || p.selskap === 'tech') return cors(NextResponse.json({ ok: false, error: 'Planen finnes ikke (må være en Digihome AS-modell)' }, { status: 400 }));
+          let techPlanId = String(body.techPlanId || '').trim() || null;
+          if (techPlanId) { const tp = await hentPlan(db, techPlanId); if (!tp || tp.selskap !== 'tech') techPlanId = null; }
+          const result = await ddCreateLink(db, { kind: 'deck', label: body.label, pin: body.pin, expiresDays: body.expiresDays, note: body.note, planId, techPlanId });
+          if (result.ok) { try { await ddLogAudit(db, { linkId: result.link.id, label: result.link.label, event: 'deck_delt', meta: { planId, techPlanId, passord: Boolean(body.pin) } }); } catch (e) { /* ok */ } }
+          return cors(NextResponse.json(result, { status: result.ok ? 201 : 400 }));
+        }
+        if (method === 'PUT') {
+          let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+          const eksisterende = await db.collection('investor_links').findOne({ id: String(body.id || ''), kind: 'deck' }, { projection: { id: 1 } });
+          if (!eksisterende) return cors(NextResponse.json({ ok: false, error: 'Lenke ikke funnet' }, { status: 404 }));
+          const patch = {};
+          for (const k of ['revoked', 'label', 'pin', 'expiresDays', 'note']) if (body.patch?.[k] !== undefined) patch[k] = body.patch[k];
+          const result = await ddUpdateLink(db, { id: body.id, patch });
+          return cors(NextResponse.json(result, { status: result.ok ? 200 : 400 }));
+        }
+        if (method === 'DELETE') {
+          const id = (dUrl.searchParams.get('id') || '').trim();
+          const eksisterende = await db.collection('investor_links').findOne({ id, kind: 'deck' }, { projection: { id: 1 } });
+          if (!eksisterende) return cors(NextResponse.json({ ok: false, error: 'Lenke ikke funnet' }, { status: 404 }));
+          const result = await ddDeleteLink(db, id);
+          return cors(NextResponse.json(result, { status: result.ok ? 200 : 400 }));
+        }
+        return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));
+      }
+
       let link = null;
       if (!presenter) {
         link = await ddValidateToken(db, t);
@@ -9525,20 +9565,29 @@ async function handleRoute(request, { params }) {
       }
 
       if (route === '/investor/deck' && method === 'GET') {
-        if (link && !pinOk(link)) return cors(NextResponse.json({ ok: false, needsPin: true, label: link.label }, { status: 401 }));
-        // Plan: presenter kan velge fritt (?plan=); investor ser bare investorSynlige — «vedtatt» først, så nyeste.
+        if (link && !pinOk(link)) return cors(NextResponse.json({ ok: false, needsPin: true, label: link.label, ekstern: link.kind === 'deck' }, { status: 401 }));
+        const erEkstern = Boolean(link && link.kind === 'deck' && link.planId);
+        // Plan: presenter kan velge fritt (?plan=); ekstern deck-lenke er låst til planen den ble delt med;
+        // investorrom-lenke ser bare investorSynlige — «vedtatt» først, så nyeste.
         const onsket = dUrl.searchParams.get('plan') || '';
-        const alle = await listPlaner(db, { kunInvestorSynlige: !presenter });
+        const alle = await listPlaner(db, { kunInvestorSynlige: !presenter && !erEkstern });
         // Decket forteller hele konseptet: Digihome AS (forvaltning) er hovedplanen; Tech-planen
         // (SaaS) hentes i tillegg — koblet (kobletPlanId), ellers vedtatt m/ samme start, ellers nyeste.
         const modeller = alle.filter((p) => p.type === 'modell' && p.selskap !== 'tech');
         const techPlaner = alle.filter((p) => p.type === 'modell' && p.selskap === 'tech');
-        let valgt = onsket ? modeller.find((p) => p.id === onsket) : null;
-        if (!valgt) valgt = modeller.find((p) => p.status === 'vedtatt') || modeller[0] || null;
-        if (!valgt) return cors(NextResponse.json({ ok: false, error: 'Ingen plan er delt med investorrommet ennå' }, { status: 404 }));
-        const plan = await hentPlan(db, valgt.id);
-        if (!plan) return cors(NextResponse.json({ error: 'Plan ikke funnet' }, { status: 404 }));
-        const onsketTech = dUrl.searchParams.get('tech') || '';
+        let plan = null;
+        if (erEkstern) {
+          const p = await hentPlan(db, link.planId);
+          if (!p || p.selskap === 'tech' || p.type !== 'modell') return cors(NextResponse.json({ ok: false, error: 'Planen som ble delt finnes ikke lenger' }, { status: 404 }));
+          plan = p;
+        } else {
+          let valgt = onsket ? modeller.find((p) => p.id === onsket) : null;
+          if (!valgt) valgt = modeller.find((p) => p.status === 'vedtatt') || modeller[0] || null;
+          if (!valgt) return cors(NextResponse.json({ ok: false, error: 'Ingen plan er delt med investorrommet ennå' }, { status: 404 }));
+          plan = await hentPlan(db, valgt.id);
+          if (!plan) return cors(NextResponse.json({ error: 'Plan ikke funnet' }, { status: 404 }));
+        }
+        const onsketTech = erEkstern ? (link.techPlanId || '') : (dUrl.searchParams.get('tech') || '');
         const techValgt = (onsketTech && techPlaner.find((p) => p.id === onsketTech))
           || techPlaner.find((p) => p.kobletPlanId === plan.id && p.status === 'vedtatt')
           || techPlaner.find((p) => p.kobletPlanId === plan.id)
@@ -9549,7 +9598,7 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({
           ok: true,
           presenter: Boolean(presenter),
-          investor: link ? { label: link.label, harPassord: Boolean(link.pinHash), kanSporre: (link.sections || []).includes('qa') } : null,
+          investor: link ? { label: link.label, harPassord: Boolean(link.pinHash), kanSporre: (link.sections || []).includes('qa'), ekstern: link.kind === 'deck' } : null,
           planer: presenter ? modeller.map((p) => ({ id: p.id, navn: p.navn, status: p.status, investorSynlig: p.investorSynlig })) : undefined,
           techPlaner: presenter ? techPlaner.map((p) => ({ id: p.id, navn: p.navn, status: p.status, investorSynlig: p.investorSynlig, kobletPlanId: p.kobletPlanId || null })) : undefined,
           plan: {

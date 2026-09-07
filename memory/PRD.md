@@ -1360,3 +1360,32 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   (beforeprint) gjør alt aktivt.
 - Obs: brukerens tidligere testplaner («Test Martin», «Test 2», «Investormodell…», «Budsjett DigiHome») finnes ikke lenger i DB — trolig
   slettet av bruker via ny ⋯-meny; testagentene slettet kun egne QA-planer (verifisert i skript). QA-planene mine er slettet.
+
+## Deck runde 3 — ekstern deling, ny kapittelmotor, orgkart-korreksjon (DeckKonsept.js)
+- **Ekstern deling («Del»-knapp øverst til høyre i presenter):** dialog `Deling` lager rene lenker `/deck/<token>` (16 tegn) låst til
+  planen (+ tech-planen) som vises nå; valgfritt passord (min 4 tegn), valgfritt utløp (7/30/90 d). Lista viser status (aktiv/trukket/utløpt),
+  passord-merke, åpninger + sist aktiv, kopier, endre/sett/fjern passord, trekk tilbake/aktiver, slett. URL kopieres automatisk ved opprettelse.
+  Rute: `app/deck/[token]/page.js` (+ `app/deck/layout.js` noindex). ConsentBanner/SiteAnalytics/CallTracking skjules på `/deck`.
+- **API:** `/api/investor/deck/deling` GET(?plan=)/POST/PUT/DELETE (krever presenter = `modulAuthed 'budsjett'`). `lib/investor-room.js`:
+  `createLink` m/ `kind:'deck'|'room'`, `planId`, `techPlanId`; `listDeckShares`; `listLinks` ekskluderer kind 'deck'. GET `/api/investor/deck?t=`
+  m/ deck-lenke er låst til `link.planId`/`link.techPlanId` uavhengig av investorSynlig; `investor.ekstern:true`; 401 `{needsPin, ekstern}`.
+  Backend-agent 20/20.
+- **Ekstern modus (alle `?t=`/`/deck/`-lenker):** ingen valg øverst til høyre (planvalg, notater, PDF, del). Kun kapittelknapp (01/14),
+  fremdriftslinje, opp/ned. «Tilbake til planen» ligger inne i skru-panelene (DH/Tech) og som preset «Planen» i Hva om. PDF-knapp nederst
+  på siste kapittel for eksterne.
+- **Kapittelmotor (erstatter CSS scroll-snap, som bruker sa fungerte dårlig):** roten er `fixed inset-0 overflow:hidden`; hvert kapittel er
+  et absolutt lag (`.deck-side`, `data-pos` aktiv/over/under) med egen innvendig scroll; inn/ut = opacity + translateY(±9vh), 620/840 ms expo.
+  `side` er sannheten. Hjul: én gest = ett kapittel; treghets-hale gjenkjennes (gap < 160 ms og ikke-økende delta) og ignoreres; ny gest
+  = gap > 160 ms eller delta ≥ 1,6× forrige; lås 720 ms etter bytte; en gest som scrollet innvendig bytter aldri kapittel. Touch: sveip
+  (> 56 px, eller > 32 px raskt) bytter bare når kapitlet står ved kanten i sveiperetningen ved touchstart. Tastatur som før.
+  «Mer på dette kapitlet»-pille når kapitlet er høyere enn skjermen. `#kapittel`-hash leses ved last, skrives ved bytte, følges ved
+  hashchange. Utgående kapittel holdes «aktivt» (tall/inn-animasjoner) til det er borte. Overlays (`data-deck-overlay`) fanger ikke hjul/touch.
+  Print: alle kapitler statiske. Reduced motion: kun fade.
+- **Orgkart:** Styret felles for begge selskaper = Erik Hoffmann-Dahl (styreleder), **Jens-Petter Glittenberg (foto `/team/jens-petter-
+  glittenberg.webp`)**, **Sarah Sleeman og Martin C. Kviteberg (styremedlemmer i begge selskaper)**. Ledelse: Sarah (CEO) / Martin (CPO).
+  Bios for alle fem under kartet. Innholdsliste på forsiden vises kun ≥ lg (mobil: kapittelknappen).
+- **Copy:** Hvorfor-kort («Ti verktøy og én innboks», «Én feil koster mer enn et års honorar», «Fem systemer, ingen oversikt», «Folk gjør det
+  maskiner bør gjøre»), For hvem «Én plattform. Tre veier inn.», Strukturen «Programvare skalerer …», forside-ingress.
+- **DB-status:** ingen Digihome AS-modellplan finnes (bruker slettet). Main-agent la inn `QA Deck DH (slettes)` (2027-01, 24 mnd, partner på)
+  så decket kan verifiseres — skal slettes av bruker/agent når egen plan finnes. Alle QA-deck-lenker slettet.
+- Ikke brukergodkjent. Frontend-agent ikke kjørt.

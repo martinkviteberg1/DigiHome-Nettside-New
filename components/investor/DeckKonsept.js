@@ -2,21 +2,22 @@
 /* ─────────────────────────────────────────────────────────────────────────────
    DeckKonsept — DigiHomes investordeck for HELE konseptet, med levende budsjetter.
 
-   · Én URL, to roller: investor (?t=lenke, ev. passord) eller presenter (admin-
-     sesjon via ?key=). Samme motorer som budsjettmodulen (lib/budsjett-modell.js)
-     — alt regnes i nettleseren, ingenting lagres.
-   · 13 kapitler: Forside → Hvorfor → Konseptet (forsidens levende scene) →
-     Strukturen (diagram) → Organisasjon (org-kart) → Hvor vi står → Unit
-     economics → Go-to-market → Planen Digihome AS → Planen Tech → Konsern →
-     Hva om → Det vi trenger.
+   · Én URL, tre roller: presenter (admin-sesjon via ?key=), investorrom-lenke (?t=) eller
+     ren ekstern lenke (/deck/<token>, låst til én plan, valgfritt passord). Samme motorer
+     som budsjettmodulen (lib/budsjett-modell.js) — alt regnes i nettleseren, ingenting lagres.
+   · 14 kapitler: Forside → Hvorfor → Konseptet (forsidens levende scene) → For hvem →
+     Strukturen → Organisasjon → Hvor vi står → Unit economics → Go-to-market →
+     Planen Digihome AS → Planen Tech → Konsern → Hva om → Det vi trenger.
    · Bevegelse som på forsiden: opacity/transform, expo-ease, én ting i bevegelse
      om gangen. Hvert kapittel «kommer inn» når det er aktivt (.deck-inn m/ --i),
      tall teller opp, grafer bygger seg fra grunnlinjen, strømmer pulserer.
-   · Navigasjon: scroll-snap, tastatur (↑↓ ←→ Home End, N = notater), fremdrifts-
-     linje øverst, kapittelvelger nederst, «Bla nedover»-pil. Print = PDF.
+   · Navigasjon: deterministisk kapittelmotor (ikke CSS scroll-snap): én gest = ett kapittel.
+     Hjul/styreflate med treghetsdeteksjon, sveip på touch, tastatur (↑↓ ←→ PgUp/PgDn Home
+     End, N = notater). Kapitler høyere enn skjermen scroller innvendig først — så byttes
+     kapittel. Fremdriftslinje øverst, kapittelvelger, #hash for dyplenke. Print = PDF.
    ───────────────────────────────────────────────────────────────────────────── */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUp, Download, Lock, RotateCcw, Send, Check, Megaphone, Home, Building2, Link2, List, X, StickyNote } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUp, Download, Lock, RotateCcw, Send, Check, Megaphone, Home, Building2, Link2, List, X, StickyNote, Share2, Copy, Trash2, Eye, KeyRound, Ban, ChevronDown } from 'lucide-react';
 import { T, display, EASE, DIM, SVAK, HAIR } from '@/components/forside/v4/tokens';
 import HeroScene from '@/components/forside/v4/HeroScene';
 import {
@@ -80,10 +81,14 @@ function usePrint() {
 }
 
 /* ══════════════════════════ Primitiver ══════════════════════════ */
-function Side({ id, children, morkt = false, aktiv = false, bred = false }) {
+/* Ett kapittel = ett lag som fyller skjermen. pos: 'aktiv' | 'over' | 'under' styrer inn/ut-bevegelsen
+   (CSS i roten). Innholdet kan være høyere enn skjermen — da scroller kapitlet innvendig. */
+function Side({ id, children, morkt = false, aktiv = false, pos = 'under', bred = false }) {
   return (
-    <section id={`deck-${id}`} data-aktiv={aktiv ? '1' : '0'} className="deck-side relative flex min-h-[100svh] snap-start [scroll-snap-stop:always] flex-col justify-center px-6 pb-24 pt-20 sm:px-10 lg:px-16" style={{ background: morkt ? T.charcoal : T.canvas, color: morkt ? T.offwhite : T.ink }} data-testid={`deck-${id}`}>
-      <div className={`mx-auto w-full ${bred ? 'max-w-[1360px]' : 'max-w-[1180px]'}`}>{children}</div>
+    <section id={`deck-${id}`} data-aktiv={aktiv ? '1' : '0'} data-pos={pos} className="deck-side" style={{ background: morkt ? T.charcoal : T.canvas, color: morkt ? T.offwhite : T.ink }} data-testid={`deck-${id}`} aria-hidden={pos === 'aktiv' ? undefined : 'true'}>
+      <div className="deck-side-indre flex min-h-full flex-col justify-center px-6 pb-24 pt-20 sm:px-10 lg:px-16">
+        <div className={`mx-auto w-full ${bred ? 'max-w-[1360px]' : 'max-w-[1180px]'}`}>{children}</div>
+      </div>
     </section>
   );
 }
@@ -333,15 +338,16 @@ function Strukturdiagram({ basisT, basisF, prisHuseier }) {
   );
 }
 
-/* Organisasjonskart: styre → ledelse → to selskaper med funksjoner. Linjer tegnes når kapitlet er aktivt. */
+/* Organisasjonskart: styre → ledelse → to selskaper med funksjoner. Linjer tegnes når kapitlet er aktivt.
+   Styret er felles for Digihome AS og Digihome Tech AS: Erik (leder), Jens-Petter, Sarah og Martin. */
 const TEAM = [
-  { n: 'Sarah Sleeman', r: 'Daglig leder · CEO', img: '/team-sarah.webp', pos: '50% 20%', s: 'Eiendomsmegler, seks år i rådgivende roller i DNB. Leder kundeakkvisisjon og forvaltning.' },
-  { n: 'Martin C. Kviteberg', r: 'Produktsjef · CPO', img: '/team/martin-kviteberg-face.jpg', pos: 'top', s: 'Gründer av BnbSpesialisten – en av Norges første profesjonelle utleieforvaltere. 10 år i Adonis AS frem mot exit.' },
-  { n: 'Erik Hoffmann-Dahl', r: 'Styrets leder · Jus', img: '/team-erik.webp', pos: 'top', s: 'Advokat og partner i Hoffmann Thinn. Tegnet selskapsstrukturen som skal bære vekst og emisjon.' },
-  { n: 'Kevin Ha', r: 'AI-rådgiver', img: '/team/kevin-ai.jpg', pos: '50% 16%', s: 'Analytiker i DNB, siviløkonom NHH. Bygger og automatiserer plattformen med AI-drevet utvikling.' },
-  { n: 'Jens-Petter Glittenberg', r: 'Styremedlem · begge selskaper', img: null, s: 'Styremedlem i Digihome AS og Digihome Tech AS.' },
+  { n: 'Sarah Sleeman', r: 'Daglig leder · styremedlem', kort: 'Daglig leder', img: '/team-sarah.webp', pos: '50% 20%', s: 'Eiendomsmegler, seks år i rådgivende roller i DNB. Leder kundeakkvisisjon og forvaltning. Styremedlem i begge selskaper.' },
+  { n: 'Martin C. Kviteberg', r: 'Produktsjef · styremedlem', kort: 'Produktsjef', img: '/team/martin-kviteberg-face.jpg', pos: 'top', s: 'Gründer av BnbSpesialisten – en av Norges første profesjonelle utleieforvaltere. 10 år i Adonis AS frem mot exit. Styremedlem i begge selskaper.' },
+  { n: 'Erik Hoffmann-Dahl', r: 'Styreleder · begge selskaper', kort: 'Styreleder', img: '/team-erik.webp', pos: 'top', s: 'Advokat og partner i Hoffmann Thinn. Tegnet selskapsstrukturen som skal bære vekst og emisjon.' },
+  { n: 'Kevin Ha', r: 'AI-rådgiver', kort: 'AI-rådgiver', img: '/team/kevin-ai.jpg', pos: '50% 16%', s: 'Analytiker i DNB, siviløkonom NHH. Bygger og automatiserer plattformen med AI-drevet utvikling.' },
+  { n: 'Jens-Petter Glittenberg', r: 'Styremedlem · begge selskaper', kort: 'Styremedlem', img: '/team/jens-petter-glittenberg.webp', pos: '50% 30%', s: 'Styremedlem i Digihome AS og Digihome Tech AS.' },
 ];
-function Person({ p, liten = false }) {
+function Person({ p, liten = false, rolle }) {
   return (
     <div className="flex items-center gap-3">
       <span className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-full ${liten ? 'h-10 w-10' : 'h-12 w-12'}`} style={{ boxShadow: `0 0 0 2px ${T.canvas}, 0 0 0 3px ${HAIR}`, background: p.img ? undefined : T.charcoal }}>
@@ -349,8 +355,8 @@ function Person({ p, liten = false }) {
           : <span className="text-[13px] font-semibold" style={{ color: T.offwhite, letterSpacing: '0.02em' }}>{p.n.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join('')}</span>}
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-[14px] font-semibold" style={{ color: T.ink }}>{p.n}</span>
-        <span className="block truncate text-[11.5px]" style={{ color: LILLA_M }}>{p.r}</span>
+        <span className="block text-[14px] font-semibold leading-[1.15]" style={{ color: T.ink }}>{p.n}</span>
+        <span className="mt-0.5 block text-[11.5px] leading-[1.2]" style={{ color: LILLA_M }}>{rolle || p.r}</span>
       </span>
     </div>
   );
@@ -365,11 +371,16 @@ function OrgKart({ aarsverkStart, aarsverkSlutt, utviklingPerMnd, enheterPerAars
   );
   return (
     <div className="relative mx-auto max-w-[1080px]" data-testid="deck-orgkart">
-      {/* Styret */}
-      <Inn i={2} className="mx-auto max-w-[560px]">
+      {/* Styret — felles for begge selskaper: Erik (leder), Jens-Petter, Sarah, Martin */}
+      <Inn i={2} className="mx-auto max-w-[1000px]">
         <Boks testid="deck-org-styret">
-          <p className="flex items-baseline justify-between text-[11.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: SVAK }}>Styret <span className="font-medium normal-case tracking-normal" style={{ color: LILLA_M }}>felles for begge selskaper</span></p>
-          <div className="mt-2.5 grid gap-3 sm:grid-cols-2"><Person p={TEAM[2]} /><Person p={TEAM[4]} /></div>
+          <p className="flex items-baseline justify-between text-[11.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: SVAK }}>Styret <span className="font-medium normal-case tracking-normal" style={{ color: LILLA_M }}>felles for Digihome AS og Digihome Tech AS</span></p>
+          <div className="mt-2.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Person p={TEAM[2]} rolle="Styreleder" />
+            <Person p={TEAM[4]} rolle="Styremedlem" />
+            <Person p={TEAM[0]} rolle="Styremedlem" />
+            <Person p={TEAM[1]} rolle="Styremedlem" />
+          </div>
         </Boks>
       </Inn>
       <div className="mx-auto h-8 w-px"><Linje className="h-full w-px origin-top" style={{ transform: 'scaleY(var(--l,0))' }} /></div>
@@ -379,7 +390,7 @@ function OrgKart({ aarsverkStart, aarsverkSlutt, utviklingPerMnd, enheterPerAars
           <span className="hidden sm:block" />
           <Boks testid="deck-org-ledelse">
             <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: SVAK }}>Ledelse</p>
-            <div className="mt-2.5 grid gap-3 sm:grid-cols-2"><Person p={TEAM[0]} /><Person p={TEAM[1]} /></div>
+            <div className="mt-2.5 grid gap-3 sm:grid-cols-2"><Person p={TEAM[0]} rolle="Daglig leder · CEO" /><Person p={TEAM[1]} rolle="Produktsjef · CPO" /></div>
           </Boks>
           <div className="flex items-center sm:justify-self-start">
             <Linje className="hidden h-px w-6 origin-left sm:block" style={{ transform: 'scaleX(var(--l,0))', background: 'rgba(122,63,168,0.45)' }} />
@@ -461,6 +472,131 @@ const PRESETS = [
   { id: 'organisk', navn: 'Uten annonser', tekst: 'Plattformen vokser bare organisk – ingen betalt trafikk.', kreverTech: true, fakt: { forv: 1, tech: 0 }, over: () => ({}) },
 ];
 
+/* ══════════════════════════ Ekstern deling ══════════════════════════ */
+/* Presenter lager rene lenker (/deck/<token>) låst til planen som vises nå. Valgfritt passord,
+   valgfritt utløp. Lista viser åpninger og sist aktiv, og lenker kan trekkes tilbake eller slettes. */
+function Deling({ qs, plan, techPlan, onClose }) {
+  const [lenker, setLenker] = useState(null);
+  const [label, setLabel] = useState(''); const [pin, setPin] = useState(''); const [utlop, setUtlop] = useState('0');
+  const [lager, setLager] = useState(false); const [feil, setFeil] = useState('');
+  const [ny, setNy] = useState(null); const [kopiert, setKopiert] = useState('');
+  const [pinRed, setPinRed] = useState(null); // { id, verdi }
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const url = (l) => `${origin}/deck/${l.token}`;
+  const q = useMemo(() => { const p = new URLSearchParams(qs); p.set('plan', plan.id); p.delete('tech'); return p.toString(); }, [qs, plan.id]);
+  const hent = useCallback(async () => {
+    try { const r = await fetch(`/api/investor/deck/deling?${q}`, { cache: 'no-store' }); const j = await r.json().catch(() => ({})); setLenker(j.ok ? j.lenker : []); } catch (e) { setLenker([]); }
+  }, [q]);
+  useEffect(() => { hent(); }, [hent]);
+  const opprett = async (e) => {
+    e.preventDefault(); setFeil('');
+    if (!label.trim()) { setFeil('Gi lenken et navn – gjerne hvem den går til.'); return; }
+    if (pin.trim() && pin.trim().length < 4) { setFeil('Passordet må ha minst 4 tegn.'); return; }
+    setLager(true);
+    try {
+      const r = await fetch(`/api/investor/deck/deling?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label: label.trim(), pin: pin.trim(), expiresDays: Number(utlop) || 0, planId: plan.id, techPlanId: techPlan?.id || null }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) { setFeil(j.error || 'Kunne ikke lage lenken'); return; }
+      setNy({ ...j.link, medPassord: Boolean(pin.trim()) }); setLabel(''); setPin(''); hent();
+      try { await navigator.clipboard.writeText(url(j.link)); setKopiert(j.link.id); window.setTimeout(() => setKopiert(''), 2200); } catch (e2) { /* ok */ }
+    } catch (e3) { setFeil('Nettverksfeil'); } finally { setLager(false); }
+  };
+  const kopier = async (l) => { try { await navigator.clipboard.writeText(url(l)); setKopiert(l.id); window.setTimeout(() => setKopiert(''), 1800); } catch (e) { window.prompt('Kopier lenken', url(l)); } };
+  const oppdater = async (id, patch) => { try { await fetch(`/api/investor/deck/deling?${q}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, patch }) }); } catch (e) { /* ok */ } setPinRed(null); hent(); };
+  const slett = async (id) => { if (!window.confirm('Slette lenken? Den slutter å virke umiddelbart.')) return; try { await fetch(`/api/investor/deck/deling?${q}&id=${encodeURIComponent(id)}`, { method: 'DELETE' }); } catch (e) { /* ok */ } if (ny?.id === id) setNy(null); hent(); };
+  const dato = (iso) => (iso ? new Date(iso).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' }) : null);
+  const felt = 'h-11 w-full rounded-[12px] px-4 text-[14px] outline-none';
+  const feltStil = { background: '#fff', boxShadow: `inset 0 0 0 1px ${HAIR}`, color: T.ink };
+  const knappLiten = 'flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium transition-colors';
+  return (
+    <div className="deck-skjul-print fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8" style={{ background: 'rgba(21,19,15,0.42)' }} onClick={onClose} data-testid="deck-deling" data-deck-overlay>
+      <div className="max-h-[88svh] w-full max-w-[600px] overflow-y-auto rounded-[24px] p-6 shadow-[0_32px_90px_rgba(20,17,14,0.35)] sm:p-7" style={{ background: '#FBFAF8', color: T.ink }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="flex items-center gap-2 text-[12.5px] font-medium" style={{ color: LILLA_M }}><Share2 className="h-3.5 w-3.5" /> Del eksternt</p>
+            <h3 className="mt-2 text-[26px]" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.05 }}>En ren lenke til decket.</h3>
+            <p className="mt-2 text-[13.5px] leading-[1.5]" style={{ color: DIM }}>Låst til <b style={{ color: T.ink }}>{plan.navn}</b>{techPlan ? <> og <b style={{ color: T.ink }}>{techPlan.navn}</b></> : null}. Mottakeren ser decket uten planvalg og notater – men kan skru på driverne. Tallene følger planen: oppdaterer du den, oppdateres decket.</p>
+          </div>
+          <button onClick={onClose} className="shrink-0 rounded-full p-2" style={{ color: SVAK, background: 'rgba(21,19,15,0.05)' }} aria-label="Lukk" data-testid="deck-deling-lukk"><X className="h-4 w-4" /></button>
+        </div>
+
+        <form onSubmit={opprett} className="mt-5 rounded-[18px] p-4" style={{ background: T.canvas }} data-testid="deck-deling-skjema">
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr]">
+            <label className="block sm:col-span-2">
+              <span className="mb-1.5 block text-[12px] font-medium" style={{ color: DIM }}>Hvem går lenken til?</span>
+              <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="f.eks. Investinor, Ola Nordmann, styret" className={felt} style={feltStil} data-testid="deck-deling-navn" autoFocus />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 flex items-center gap-1.5 text-[12px] font-medium" style={{ color: DIM }}><KeyRound className="h-3 w-3" /> Passord <span style={{ color: SVAK }}>· valgfritt</span></span>
+              <input value={pin} onChange={(e) => setPin(e.target.value)} placeholder="Minst 4 tegn" className={felt} style={feltStil} autoComplete="off" data-testid="deck-deling-passord" />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] font-medium" style={{ color: DIM }}>Utløper</span>
+              <select value={utlop} onChange={(e) => setUtlop(e.target.value)} className={felt} style={feltStil} data-testid="deck-deling-utlop">
+                <option value="0">Aldri – til du trekker den tilbake</option>
+                <option value="7">Om 7 dager</option>
+                <option value="30">Om 30 dager</option>
+                <option value="90">Om 90 dager</option>
+              </select>
+            </label>
+          </div>
+          {feil ? <p className="mt-3 text-[13px]" style={{ color: FARGE.kost }} data-testid="deck-deling-feil">{feil}</p> : null}
+          <button type="submit" disabled={lager} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-[12px] text-[14px] font-medium disabled:opacity-60 sm:w-auto sm:px-5" style={{ background: T.ink, color: T.offwhite }} data-testid="deck-deling-lag"><Link2 className="h-4 w-4" /> {lager ? 'Lager lenke …' : 'Lag lenke'}</button>
+        </form>
+
+        {ny ? (
+          <div className="mt-4 rounded-[18px] p-4" style={{ background: '#F6F0FB', boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.22)' }} data-testid="deck-deling-ny">
+            <p className="flex items-center gap-2 text-[12.5px] font-medium" style={{ color: LILLA_M }}><Check className="h-3.5 w-3.5" /> Lenken er klar{kopiert === ny.id ? ' – og kopiert' : ''}</p>
+            <div className="mt-2 flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-[10px] px-3 py-2 text-[13px]" style={{ background: '#fff', color: T.ink }} data-testid="deck-deling-url">{url(ny)}</code>
+              <button onClick={() => kopier(ny)} className="flex h-9 shrink-0 items-center gap-1.5 rounded-[10px] px-3 text-[12.5px] font-medium" style={{ background: T.ink, color: T.offwhite }} data-testid="deck-deling-kopier">{kopiert === ny.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {kopiert === ny.id ? 'Kopiert' : 'Kopier'}</button>
+            </div>
+            <p className="mt-2 text-[12px]" style={{ color: DIM }}>{ny.medPassord ? 'Send passordet i en annen kanal enn lenken – SMS eller muntlig.' : 'Alle med lenken kan åpne decket. Legg på passord hvis den skal videre til flere.'}</p>
+          </div>
+        ) : null}
+
+        <div className="mt-6">
+          <p className="flex items-baseline justify-between text-[11.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: SVAK }}>Delte lenker <span className="font-medium normal-case tracking-normal">{lenker ? `${lenker.length} for denne planen` : ''}</span></p>
+          {lenker === null ? <p className="mt-3 text-[13px]" style={{ color: SVAK }}>Henter …</p> : !lenker.length ? <p className="mt-3 text-[13px]" style={{ color: SVAK }}>Ingen lenker ennå. Den første lager du over.</p> : (
+            <ul className="mt-2 divide-y" style={{ borderColor: HAIR }} data-testid="deck-deling-liste">
+              {lenker.map((l) => {
+                const aktiv = l.status === 'active';
+                return (
+                  <li key={l.id} className="py-3" data-testid={`deck-deling-rad-${l.id}`}>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <p className="text-[14px] font-semibold" style={{ color: T.ink }}>{l.label}</p>
+                      <span className="rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: aktiv ? 'rgba(46,125,50,0.12)' : 'rgba(21,19,15,0.07)', color: aktiv ? T.gronn : DIM }}>{aktiv ? 'aktiv' : l.status === 'revoked' ? 'trukket tilbake' : 'utløpt'}</span>
+                      {l.harPassord ? <span className="flex items-center gap-1 text-[11.5px]" style={{ color: LILLA_M }}><Lock className="h-3 w-3" /> passord</span> : null}
+                      <span className="ml-auto flex items-center gap-1 text-[12px]" style={{ color: SVAK }}><Eye className="h-3.5 w-3.5" /> {l.stats?.aapninger || 0} {l.stats?.aapninger === 1 ? 'åpning' : 'åpninger'}{l.stats?.sistAktiv ? ` · sist ${dato(l.stats.sistAktiv)}` : ''}{l.expiresAt ? ` · utløper ${dato(l.expiresAt)}` : ''}</span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <code className="min-w-0 flex-1 truncate rounded-[10px] px-3 py-1.5 text-[12.5px]" style={{ background: 'rgba(21,19,15,0.04)', color: aktiv ? T.ink : SVAK, textDecoration: aktiv ? 'none' : 'line-through' }}>{url(l)}</code>
+                      <button onClick={() => kopier(l)} className={knappLiten} style={{ background: 'rgba(21,19,15,0.06)', color: T.ink }} data-testid={`deck-deling-kopier-${l.id}`}>{kopiert === l.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}<span className="hidden sm:inline">{kopiert === l.id ? 'Kopiert' : 'Kopier'}</span></button>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {pinRed?.id === l.id ? (
+                        <form onSubmit={(e) => { e.preventDefault(); if (pinRed.verdi && pinRed.verdi.length < 4) return; oppdater(l.id, { pin: pinRed.verdi }); }} className="flex items-center gap-1.5">
+                          <input value={pinRed.verdi} onChange={(e) => setPinRed({ id: l.id, verdi: e.target.value })} placeholder="Nytt passord (tomt = fjern)" className="h-8 w-[220px] rounded-full px-3 text-[12.5px] outline-none" style={feltStil} autoFocus data-testid={`deck-deling-pin-${l.id}`} />
+                          <button type="submit" className={knappLiten} style={{ background: T.ink, color: T.offwhite }}>Lagre</button>
+                          <button type="button" onClick={() => setPinRed(null)} className={knappLiten} style={{ color: DIM }}>Avbryt</button>
+                        </form>
+                      ) : (
+                        <button onClick={() => setPinRed({ id: l.id, verdi: '' })} className={knappLiten} style={{ background: 'rgba(21,19,15,0.06)', color: T.ink }} data-testid={`deck-deling-passord-${l.id}`}><KeyRound className="h-3.5 w-3.5" /> {l.harPassord ? 'Endre passord' : 'Sett passord'}</button>
+                      )}
+                      {l.status !== 'expired' ? <button onClick={() => oppdater(l.id, { revoked: aktiv })} className={knappLiten} style={{ background: aktiv ? 'rgba(179,38,30,0.08)' : 'rgba(46,125,50,0.12)', color: aktiv ? FARGE.kost : T.gronn }} data-testid={`deck-deling-trekk-${l.id}`}><Ban className="h-3.5 w-3.5" /> {aktiv ? 'Trekk tilbake' : 'Aktiver igjen'}</button> : null}
+                      <button onClick={() => slett(l.id)} className={knappLiten} style={{ color: DIM }} data-testid={`deck-deling-slett-${l.id}`}><Trash2 className="h-3.5 w-3.5" /> Slett</button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DeckKonsept({ token = '', adminKey = '', planId = '', techId = '' }) {
   const [data, setData] = useState(null);
   const [feil, setFeil] = useState('');
@@ -472,6 +608,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   const [side, setSide] = useState(0);
   const [visKapitler, setVisKapitler] = useState(false);
   const [visNotater, setVisNotater] = useState(false);
+  const [visDeling, setVisDeling] = useState(false);
   const [sporsmal, setSporsmal] = useState(''); const [spurt, setSpurt] = useState(false);
   const [musAktiv, setMusAktiv] = useState(true);
   const [smal, setSmal] = useState(false);
@@ -537,62 +674,125 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   const skruFerdig = (label) => () => hendelse({ type: 'deck_driver', valg: label });
   const nullstill = () => { setPreset('plan'); setFakt({ forv: 1, tech: 1 }); setOver({ forv: {}, tech: {} }); };
 
-  /* ── Navigasjon ── */
+  /* ── Navigasjon: deterministisk kapittelmotor ──
+     `side` er sannheten. Kapitlene ligger som lag (absolutt) og glir inn/ut med CSS på data-pos.
+     Én gest = ett kapittel. Kapitler høyere enn skjermen scroller innvendig først. */
   const sider = useMemo(() => KAPITLER.map((c) => c.id), []);
-  const gaaTil = useCallback((i) => { const el = document.getElementById(`deck-${sider[klem(i, 0, sider.length - 1)]}`); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); setVisKapitler(false); }, [sider]);
+  const sideRef = useRef(0);
+  const [utgaaende, setUtgaaende] = useState(null); // forrige kapittel holdes «aktivt» mens det glir ut
+  const [merUnder, setMerUnder] = useState(false);   // aktivt kapittel har mer innhold under kanten
+  const laastTilRef = useRef(0);
+  const seksjon = useCallback((i) => document.getElementById(`deck-${sider[klem(i, 0, sider.length - 1)]}`), [sider]);
+  const gaaTil = useCallback((i) => {
+    const ny = klem(i, 0, sider.length - 1); const naa = sideRef.current;
+    setVisKapitler(false);
+    if (ny === naa) return;
+    const el = seksjon(ny); if (el) el.scrollTop = 0;
+    sideRef.current = ny; laastTilRef.current = performance.now() + 720;
+    setUtgaaende(naa); setSide(ny);
+  }, [sider, seksjon]);
+  useEffect(() => { if (utgaaende === null) return undefined; const t = window.setTimeout(() => setUtgaaende(null), 880); return () => window.clearTimeout(t); }, [utgaaende, side]);
+  /* Dyplenke: #kapittel i URL — leses ved start, oppdateres ved bytte, og følges ved hashchange. */
+  useEffect(() => {
+    if (!data) return undefined;
+    const h = (window.location.hash || '').replace('#', ''); const i = sider.indexOf(h);
+    if (i > 0 && sideRef.current === 0) { sideRef.current = i; setSide(i); }
+    const paaHash = () => { const hh = (window.location.hash || '').replace('#', ''); const ii = sider.indexOf(hh); if (ii >= 0 && ii !== sideRef.current) gaaTil(ii); };
+    window.addEventListener('hashchange', paaHash);
+    return () => window.removeEventListener('hashchange', paaHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+  useEffect(() => {
+    if (!data) return;
+    try { window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${sider[side]}`); } catch (e) { /* ok */ }
+    if (!setteSider.current.has(sider[side])) { setteSider.current.add(sider[side]); hendelse({ type: 'deck_side', side: sider[side] }); }
+  }, [side, data, sider, hendelse]);
+  /* Tastatur */
   useEffect(() => {
     const tast = (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
-      if (['ArrowDown', 'ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); gaaTil(side + 1); }
-      if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); gaaTil(side - 1); }
+      if (visDeling) return;
+      if (['ArrowDown', 'ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); gaaTil(sideRef.current + 1); }
+      if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); gaaTil(sideRef.current - 1); }
       if (e.key === 'Home') gaaTil(0); if (e.key === 'End') gaaTil(sider.length - 1);
-      if (e.key === 'Escape') setVisKapitler(false);
+      if (e.key === 'Escape') { setVisKapitler(false); setVisDeling(false); }
       if ((e.key === 'n' || e.key === 'N') && data?.presenter) setVisNotater((v) => !v);
     };
     window.addEventListener('keydown', tast); return () => window.removeEventListener('keydown', tast);
-  }, [side, gaaTil, sider, data?.presenter]);
-  const sideRef = useRef(0); useEffect(() => { sideRef.current = side; }, [side]);
-  /* Aktivt kapittel = det som dekker øvre tredjedel av skjermen (presist også for høye kapitler). */
+  }, [gaaTil, sider, data?.presenter, visDeling]);
+  /* Hjul/styreflate: én gest = ett kapittel. Treghets-halen (avtagende delta, tette hendelser) gjenkjennes og
+     ignoreres; en ny gest starter når det har vært stille i 160 ms ELLER delta plutselig øker igjen.
+     Er kapitlet høyere enn skjermen, scroller det innvendig til kanten først — og en gest som har scrollet
+     innvendig bytter aldri kapittel (ny gest kreves). */
   useEffect(() => {
     const rot = rotRef.current; if (!rot || !data) return undefined;
-    let raf = 0;
-    const oppd = () => {
-      raf = 0;
-      const rotTop = rot.getBoundingClientRect().top; const linje = rot.clientHeight * 0.35;
-      let best = 0;
-      sider.forEach((id, i) => { const el = document.getElementById(`deck-${id}`); if (el && el.getBoundingClientRect().top - rotTop <= linje) best = i; });
-      if (best !== sideRef.current) { setSide(best); if (!setteSider.current.has(sider[best])) { setteSider.current.add(sider[best]); hendelse({ type: 'deck_side', side: sider[best] }); } }
-    };
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(oppd); };
-    rot.addEventListener('scroll', onScroll, { passive: true }); oppd();
-    return () => { rot.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf); };
-  }, [data, hendelse, sider]);
-  /* Hjul/styreflate: nøyaktig ett kapittel per gest (treghets-halen låses ute). Kapitler som er høyere
-     enn skjermen scrolles fritt til kanten først — så byttes kapittel. */
-  useEffect(() => {
-    const rot = rotRef.current; if (!rot || !data) return undefined;
-    let acc = 0; let laast = false; let laastTil = 0; let tmr = 0;
-    const slippSenere = () => { window.clearTimeout(tmr); tmr = window.setTimeout(() => { if (performance.now() >= laastTil) laast = false; else slippSenere(); }, 220); };
+    let acc = 0; let laast = false; let sisteT = 0; let sisteMag = 0; let gestIndre = false;
     const onWheel = (e) => {
       if (e.ctrlKey || e.metaKey) return;
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      const sec = document.getElementById(`deck-${sider[sideRef.current]}`); if (!sec) return;
-      const r = sec.getBoundingClientRect(); const rr = rot.getBoundingClientRect(); const ned = e.deltaY > 0;
-      const innenfor = ned ? r.bottom - rr.bottom > 2 : rr.top - r.top > 2;
-      if (innenfor) { acc = 0; return; }
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.2) return;
+      if (e.target?.closest?.('[data-deck-overlay]')) return; // dialoger scroller selv
+      const now = performance.now(); const mag = Math.abs(e.deltaY); const gap = now - sisteT;
+      const nyGest = gap > 160 || (mag > 6 && mag >= sisteMag * 1.6 && gap > 30);
+      sisteT = now; sisteMag = mag;
+      if (nyGest) { gestIndre = false; acc = 0; if (now >= laastTilRef.current) laast = false; }
+      const sec = seksjon(sideRef.current); if (!sec) return;
+      const ned = e.deltaY > 0;
+      const kanIndre = ned ? sec.scrollTop + sec.clientHeight < sec.scrollHeight - 1 : sec.scrollTop > 0;
+      if (kanIndre && !laast) { gestIndre = true; return; } // nativ innvendig scroll
       e.preventDefault();
-      if (laast) { slippSenere(); return; }
+      if (laast || gestIndre || now < laastTilRef.current) return;
       acc += e.deltaY;
-      if (Math.abs(acc) < 24) return;
-      const neste = klem(sideRef.current + (ned ? 1 : -1), 0, sider.length - 1);
+      if (Math.abs(acc) < 28) return;
       acc = 0;
+      const neste = klem(sideRef.current + (ned ? 1 : -1), 0, sider.length - 1);
       if (neste === sideRef.current) return;
-      laast = true; laastTil = performance.now() + 650; slippSenere();
-      document.getElementById(`deck-${sider[neste]}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      laast = true;
+      gaaTil(neste);
     };
     rot.addEventListener('wheel', onWheel, { passive: false });
-    return () => { rot.removeEventListener('wheel', onWheel); window.clearTimeout(tmr); };
-  }, [data, sider]);
+    return () => rot.removeEventListener('wheel', onWheel);
+  }, [data, sider, seksjon, gaaTil]);
+  /* Touch: sveip bytter kapittel bare når kapitlet allerede står ved kanten i sveiperetningen
+     (ellers scroller det innvendig, nativt). Terskel 56 px, eller rask flikk > 32 px. */
+  useEffect(() => {
+    const rot = rotRef.current; if (!rot || !data) return undefined;
+    let y0 = 0; let x0 = 0; let t0 = 0; let topp = true; let bunn = true; let aktiv = false;
+    const start = (e) => {
+      if (e.touches.length !== 1 || e.target?.closest?.('[data-deck-overlay]')) { aktiv = false; return; }
+      const sec = seksjon(sideRef.current); if (!sec) return;
+      aktiv = true; y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; t0 = performance.now();
+      topp = sec.scrollTop <= 0; bunn = sec.scrollTop + sec.clientHeight >= sec.scrollHeight - 1;
+    };
+    const slutt = (e) => {
+      if (!aktiv) return; aktiv = false;
+      const t = e.changedTouches?.[0]; if (!t) return;
+      const dy = t.clientY - y0; const dx = t.clientX - x0; const dt = performance.now() - t0;
+      if (Math.abs(dx) > Math.abs(dy)) return;
+      const now = performance.now(); if (now < laastTilRef.current) return;
+      const ned = dy < 0; // fingeren opp = neste
+      if (!(ned ? bunn : topp)) return;
+      const nok = Math.abs(dy) > 56 || (Math.abs(dy) > 32 && dt < 260);
+      if (!nok) return;
+      gaaTil(sideRef.current + (ned ? 1 : -1));
+    };
+    rot.addEventListener('touchstart', start, { passive: true });
+    rot.addEventListener('touchend', slutt, { passive: true });
+    rot.addEventListener('touchcancel', () => { aktiv = false; }, { passive: true });
+    return () => { rot.removeEventListener('touchstart', start); rot.removeEventListener('touchend', slutt); };
+  }, [data, seksjon, gaaTil]);
+  /* «Mer under»-hint når aktivt kapittel er høyere enn skjermen og ikke scrollet til bunnen. */
+  useEffect(() => {
+    if (!data) return undefined;
+    const sec = seksjon(side); if (!sec) return undefined;
+    const sjekk = () => setMerUnder(sec.scrollTop + sec.clientHeight < sec.scrollHeight - 24);
+    sjekk();
+    sec.addEventListener('scroll', sjekk, { passive: true });
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(sjekk) : null;
+    if (ro) { ro.observe(sec); if (sec.firstElementChild) ro.observe(sec.firstElementChild); }
+    const t = window.setTimeout(sjekk, 900);
+    return () => { sec.removeEventListener('scroll', sjekk); if (ro) ro.disconnect(); window.clearTimeout(t); };
+  }, [side, data, seksjon]);
+  const blaMer = () => { const sec = seksjon(sideRef.current); if (sec) sec.scrollBy({ top: Math.round(sec.clientHeight * 0.8), behavior: 'smooth' }); };
   useEffect(() => {
     if (!data?.presenter) { setMusAktiv(true); return undefined; }
     const beveg = () => { setMusAktiv(true); window.clearTimeout(musTimer.current); musTimer.current = window.setTimeout(() => setMusAktiv(false), 2800); };
@@ -604,8 +804,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
     e.preventDefault(); if (!sporsmal.trim() || !token) return;
     try { await fetch(`/api/investor/qa?t=${encodeURIComponent(token)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: `[Deck · ${sider[side]}] ${sporsmal.trim()}` }) }); setSpurt(true); setSporsmal(''); } catch (e2) { /* stille */ }
   };
-  const byttPlan = (param, id) => { const u = new URL(window.location.href); u.searchParams.set(param, id); window.location.href = u.toString(); };
-  const er = (id) => print || sider[side] === id;
+  const byttPlan = (param, id) => { const u = new URL(window.location.href); u.searchParams.set(param, id); u.hash = ''; window.location.href = u.toString(); };
+  const er = (id) => print || sider[side] === id || (utgaaende !== null && sider[utgaaende] === id);
+  const posFor = (i) => (i === side ? 'aktiv' : i < side ? 'over' : 'under');
+  const pos = (id) => posFor(sider.indexOf(id));
 
   /* ── Tilstander før data ── */
   if (trengerPin !== null) {
@@ -664,22 +866,32 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   const konsernLag = [{ navn: 'Digihome AS', serie: k.digihome.inntekt, farge: FARGE.dh }, { navn: 'Tech · ekstern', serie: k.tech.inntekt.map((v, i) => Math.max(0, v - (k.lisens[i] || 0))), farge: FARGE.tech }];
   const kap = (id) => KAPITLER.findIndex((c) => c.id === id) + 1;
 
+  const ekstern = Boolean(token); // delt lenke (investorrom eller ren deck-lenke): ingen admin-valg
   return (
-    <div ref={rotRef} className="deck-rot h-[100svh] snap-y snap-mandatory overflow-y-auto scroll-smooth" style={{ background: T.canvas, cursor: musAktiv ? 'auto' : 'none', overscrollBehavior: 'contain' }} data-testid="deck">
+    <div ref={rotRef} className="deck-rot" style={{ background: morkSide ? T.charcoal : T.canvas, cursor: musAktiv ? 'auto' : 'none', transition: `background 600ms ${EASE}` }} data-testid="deck" data-side={sider[side]}>
       <style>{`
+        .deck-rot { position: fixed; inset: 0; overflow: hidden; overscroll-behavior: none; }
+        .deck-side { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(21,19,15,0.18) transparent;
+          opacity: 0; visibility: hidden; pointer-events: none; transform: translate3d(0, var(--dy, 9vh), 0); will-change: opacity, transform;
+          transition: opacity 620ms ${EASE}, transform 840ms ${EASE}, visibility 0s linear 840ms; }
+        .deck-side[data-pos="over"] { --dy: -9vh; }
+        .deck-side[data-pos="under"] { --dy: 9vh; }
+        .deck-side[data-pos="aktiv"] { --dy: 0px; opacity: 1; visibility: visible; pointer-events: auto; z-index: 2; transition-delay: 0s, 0s, 0s; }
         .dh-slider { -webkit-appearance: none; appearance: none; height: 2px; background: rgba(21,19,15,0.14); border-radius: 2px; outline: none; }
         .dh-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: ${T.ink}; border: 3px solid ${T.offwhite}; box-shadow: 0 0 0 1px rgba(21,19,15,0.2); cursor: pointer; }
         .dh-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: ${T.ink}; border: 3px solid ${T.offwhite}; cursor: pointer; }
-        .deck-side .deck-inn { opacity: 0; transform: translateY(22px); transition: opacity 800ms ${EASE}, transform 800ms ${EASE}; transition-delay: calc(var(--i, 0) * 90ms); }
+        .deck-side .deck-inn { opacity: 0; transform: translateY(22px); transition: opacity 800ms ${EASE}, transform 800ms ${EASE}; transition-delay: calc(var(--i, 0) * 90ms + 120ms); }
         .deck-side[data-aktiv="1"] .deck-inn { opacity: 1; transform: none; }
         .deck-side .deck-linje { --l: 0; transition: transform 700ms ${EASE} 500ms; }
         .deck-side[data-aktiv="1"] .deck-linje { --l: 1; }
-        .deck-ord { display: inline-block; opacity: 0; transform: translateY(0.35em); transition: opacity 700ms ${EASE}, transform 700ms ${EASE}; transition-delay: calc(var(--o, 0) * 70ms + 200ms); }
+        .deck-ord { display: inline-block; opacity: 0; transform: translateY(0.35em); transition: opacity 700ms ${EASE}, transform 700ms ${EASE}; transition-delay: calc(var(--o, 0) * 70ms + 260ms); }
         .deck-side[data-aktiv="1"] .deck-ord { opacity: 1; transform: none; }
         @keyframes deck-strom { to { stroke-dashoffset: -28; } }
         .deck-strom { stroke-dasharray: 6 8; animation: deck-strom 1.6s linear infinite; }
-        @media (prefers-reduced-motion: reduce) { .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom { animation: none; } .deck-side .deck-linje { --l: 1; transition: none; } }
-        @media print { .deck-rot { height: auto !important; overflow: visible !important; } .deck-side { min-height: auto !important; page-break-after: always; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
+        @keyframes deck-nikk { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+        .deck-nikk { animation: deck-nikk 1.6s ${EASE} infinite; }
+        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk { animation: none; } .deck-side .deck-linje { --l: 1; transition: none; } }
+        @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
 
       {/* Fremdriftslinje */}
@@ -687,41 +899,52 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         <div className="h-full" style={{ width: `${((side + 1) / sider.length) * 100}%`, background: morkSide ? T.lilla : T.ink, transition: `width 600ms ${EASE}, background 500ms` }} />
       </div>
 
-      {/* Toppstripe: kapittel + handlinger — skjules ved ro i presenter */}
+      {/* Toppstripe: kapittel (alle) + handlinger (kun presenter) — skjules ved ro i presenter */}
       <div className="deck-skjul-print pointer-events-none fixed inset-x-0 top-0 z-20 flex items-center justify-between px-5 pt-5 sm:px-8" style={{ opacity: musAktiv || side === 0 ? 1 : 0, transition: `opacity 500ms ${EASE}` }}>
-        <button onClick={() => setVisKapitler((v) => !v)} className="pointer-events-auto flex h-9 items-center gap-2 rounded-full pl-3 pr-3.5 text-[12.5px] font-medium transition-colors duration-500" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)', color: morkSide ? T.offwhite : T.ink }} data-testid="deck-kapitler">
+        <button onClick={() => setVisKapitler((v) => !v)} className="pointer-events-auto flex h-9 items-center gap-2 rounded-full pl-3 pr-3.5 text-[12.5px] font-medium transition-colors duration-500" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)', color: morkSide ? T.offwhite : T.ink }} data-testid="deck-kapitler" aria-label="Kapitler">
           <List className="h-3.5 w-3.5" /> <span className="tabular-nums">{String(side + 1).padStart(2, '0')}</span><span style={{ opacity: 0.5 }}>/ {sider.length}</span><span className="hidden sm:inline"> · {KAPITLER[side].navn}</span>
         </button>
-        <div className="pointer-events-auto flex items-center gap-2">
-          {data.presenter && data.planer?.length > 1 ? (
-            <select value={plan.id} onChange={(e) => byttPlan('plan', e.target.value)} className="hidden h-9 max-w-[200px] rounded-full px-3 text-[12.5px] transition-colors duration-500 sm:block" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)', color: morkSide ? T.offwhite : T.ink }} data-testid="deck-planvalg" title="Digihome AS-plan">
-              {data.planer.map((p) => <option key={p.id} value={p.id} style={{ color: T.ink }}>DH · {p.navn}{p.investorSynlig ? '' : ' (ikke delt)'}</option>)}
-            </select>
-          ) : null}
-          {data.presenter && data.techPlaner?.length > 1 && techPlan ? (
-            <select value={techPlan.id} onChange={(e) => byttPlan('tech', e.target.value)} className="hidden h-9 max-w-[200px] rounded-full px-3 text-[12.5px] transition-colors duration-500 lg:block" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)', color: morkSide ? T.offwhite : T.ink }} data-testid="deck-techvalg" title="Tech AS-plan">
-              {data.techPlaner.map((p) => <option key={p.id} value={p.id} style={{ color: T.ink }}>Tech · {p.navn}{p.investorSynlig ? '' : ' (ikke delt)'}</option>)}
-            </select>
-          ) : null}
-          {data.presenter ? <button onClick={() => setVisNotater((v) => !v)} title="Notater (N)" className="hidden h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium transition-colors duration-500 lg:flex" style={{ background: visNotater ? (morkSide ? T.offwhite : T.ink) : (morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)'), color: visNotater ? (morkSide ? T.ink : T.offwhite) : (morkSide ? T.offwhite : T.ink) }} data-testid="deck-notater"><StickyNote className="h-3.5 w-3.5" /> Notater</button> : null}
-          {preset !== 'plan' ? <button onClick={nullstill} className="flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium" style={{ background: morkSide ? 'rgba(212,150,255,0.18)' : 'rgba(122,63,168,0.12)', color: morkSide ? T.lilla : LILLA_M }} data-testid="deck-nullstill"><RotateCcw className="h-3.5 w-3.5" /><span className="hidden sm:inline">Tilbake til planen</span><span className="sm:hidden">Planen</span></button> : null}
-          <button onClick={lastNed} className="flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium transition-colors duration-500" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)', color: morkSide ? T.offwhite : T.ink }} data-testid="deck-lastned"><Download className="h-3.5 w-3.5" /><span className="hidden sm:inline">PDF</span></button>
-        </div>
+        {!ekstern && data.presenter ? (
+          <div className="pointer-events-auto flex items-center gap-2" data-testid="deck-presenter-valg">
+            {data.planer?.length > 1 ? (
+              <select value={plan.id} onChange={(e) => byttPlan('plan', e.target.value)} className="hidden h-9 max-w-[200px] rounded-full px-3 text-[12.5px] transition-colors duration-500 sm:block" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)', color: morkSide ? T.offwhite : T.ink }} data-testid="deck-planvalg" title="Digihome AS-plan">
+                {data.planer.map((p) => <option key={p.id} value={p.id} style={{ color: T.ink }}>DH · {p.navn}{p.investorSynlig ? '' : ' (ikke delt)'}</option>)}
+              </select>
+            ) : null}
+            {data.techPlaner?.length > 1 && techPlan ? (
+              <select value={techPlan.id} onChange={(e) => byttPlan('tech', e.target.value)} className="hidden h-9 max-w-[200px] rounded-full px-3 text-[12.5px] transition-colors duration-500 lg:block" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)', color: morkSide ? T.offwhite : T.ink }} data-testid="deck-techvalg" title="Tech AS-plan">
+                {data.techPlaner.map((p) => <option key={p.id} value={p.id} style={{ color: T.ink }}>Tech · {p.navn}{p.investorSynlig ? '' : ' (ikke delt)'}</option>)}
+              </select>
+            ) : null}
+            <button onClick={() => setVisNotater((v) => !v)} title="Notater (N)" className="hidden h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium transition-colors duration-500 lg:flex" style={{ background: visNotater ? (morkSide ? T.offwhite : T.ink) : (morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)'), color: visNotater ? (morkSide ? T.ink : T.offwhite) : (morkSide ? T.offwhite : T.ink) }} data-testid="deck-notater"><StickyNote className="h-3.5 w-3.5" /> Notater</button>
+            {preset !== 'plan' ? <button onClick={nullstill} className="flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium" style={{ background: morkSide ? 'rgba(212,150,255,0.18)' : 'rgba(122,63,168,0.12)', color: morkSide ? T.lilla : LILLA_M }} data-testid="deck-nullstill"><RotateCcw className="h-3.5 w-3.5" /><span className="hidden sm:inline">Tilbake til planen</span><span className="sm:hidden">Planen</span></button> : null}
+            <button onClick={lastNed} className="flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium transition-colors duration-500" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)', color: morkSide ? T.offwhite : T.ink }} data-testid="deck-lastned"><Download className="h-3.5 w-3.5" /><span className="hidden sm:inline">PDF</span></button>
+            <button onClick={() => setVisDeling(true)} className="flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-medium transition-colors duration-500" style={{ background: morkSide ? T.offwhite : T.ink, color: morkSide ? T.ink : T.offwhite }} data-testid="deck-del"><Share2 className="h-3.5 w-3.5" /> Del</button>
+          </div>
+        ) : null}
       </div>
 
       {/* Kapittelvelger */}
       {visKapitler ? (
-        <div className="deck-skjul-print fixed inset-0 z-40 flex items-start justify-start p-5 sm:p-8" onClick={() => setVisKapitler(false)}>
+        <div className="deck-skjul-print fixed inset-0 z-40 flex items-start justify-start p-5 sm:p-8" onClick={() => setVisKapitler(false)} data-deck-overlay>
           <div className="mt-12 w-full max-w-[380px] rounded-[22px] p-2 shadow-[0_24px_80px_rgba(20,17,14,0.25)]" style={{ background: '#FBFAF8' }} onClick={(e) => e.stopPropagation()} data-testid="deck-kapittelliste">
-            <div className="flex items-center justify-between px-3 pb-1 pt-2"><p className="text-[12px] font-medium" style={{ color: SVAK }}>Kapitler</p><button onClick={() => setVisKapitler(false)} className="rounded-full p-1" style={{ color: SVAK }}><X className="h-4 w-4" /></button></div>
+            <div className="flex items-center justify-between px-3 pb-1 pt-2"><p className="text-[12px] font-medium" style={{ color: SVAK }}>Kapitler</p><button onClick={() => setVisKapitler(false)} className="rounded-full p-1" style={{ color: SVAK }} aria-label="Lukk"><X className="h-4 w-4" /></button></div>
             {KAPITLER.map((c, i) => (
-              <button key={c.id} onClick={() => gaaTil(i)} className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2 text-left text-[14px] transition-colors" style={{ background: side === i ? T.ink : 'transparent', color: side === i ? T.offwhite : T.ink }}>
+              <button key={c.id} onClick={() => gaaTil(i)} className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2 text-left text-[14px] transition-colors" style={{ background: side === i ? T.ink : 'transparent', color: side === i ? T.offwhite : T.ink }} data-testid={`deck-kap-${c.id}`}>
                 <span className="w-6 text-[12px] tabular-nums" style={{ color: side === i ? T.lilla : LILLA_M }}>{String(i + 1).padStart(2, '0')}</span>{c.navn}
               </button>
             ))}
           </div>
         </div>
       ) : null}
+
+      {/* Ekstern deling (presenter) */}
+      {visDeling && data.presenter ? <Deling qs={qs} plan={plan} techPlan={techPlan} onClose={() => setVisDeling(false)} /> : null}
+
+      {/* «Mer under»-hint: kapitlet er høyere enn skjermen */}
+      <div className="deck-skjul-print pointer-events-none fixed inset-x-0 bottom-5 z-20 flex justify-center" style={{ opacity: merUnder ? 1 : 0, transition: `opacity 400ms ${EASE}` }}>
+        <button onClick={blaMer} tabIndex={merUnder ? 0 : -1} className="pointer-events-auto flex h-8 items-center gap-1.5 rounded-full pl-3 pr-2.5 text-[12px] font-medium shadow-[0_8px_24px_rgba(20,17,14,0.14)]" style={{ background: morkSide ? T.offwhite : T.ink, color: morkSide ? T.ink : T.offwhite }} data-testid="deck-mer">Mer på dette kapitlet <ChevronDown className="deck-nikk h-3.5 w-3.5" /></button>
+      </div>
 
       {/* Bunn: opp/ned + notater (presenter) */}
       <div className="deck-skjul-print pointer-events-none fixed inset-x-0 bottom-0 z-20 flex items-end justify-between px-5 pb-5 sm:px-8" style={{ opacity: musAktiv ? 1 : 0, transition: `opacity 500ms ${EASE}` }}>
@@ -735,16 +958,16 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </div>
 
       {/* 01 · Forside */}
-      <Side id="forside" aktiv={er('forside')}>
+      <Side id="forside" pos={pos('forside')} aktiv={er('forside')}>
         <div className="grid items-end gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]">
           <div>
             <Inn i={0}><Etikett>{investor ? `Utarbeidet for ${investor.label}` : data.presenter ? 'Presenter' : 'Konfidensielt'} · {new Date().toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</Etikett></Inn>
             <h1 className="mt-8 max-w-[11ch] text-[60px] sm:text-[92px] lg:text-[124px]" style={{ ...display, color: T.ink }}>
               {['Utleie', 'på', 'autopilot'].map((o, i) => <span key={o} className={`deck-ord ${i < 2 ? 'mr-[0.22em]' : ''}`} style={{ '--o': i }}>{o}{i === 2 ? <span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span> : null}</span>)}
             </h1>
-            <Inn i={3}><p className="mt-8 max-w-[52ch] text-[17px] leading-[1.5] sm:text-[20px]" style={{ color: DIM }}>Programvaren som driver utleieboligen – for private huseiere og for eiendomsselskaper med hele porteføljer. Og forvaltningsselskapet som gjør jobben for dem som ikke vil. Planen for de neste {N} månedene er levende: skru på den, og se hva som skjer.</p></Inn>
+            <Inn i={3}><p className="mt-8 max-w-[52ch] text-[17px] leading-[1.5] sm:text-[20px]" style={{ color: DIM }}>DigiHome er programvaren som driver utleieboligen – for private huseiere og for eiendomsselskaper med hele porteføljer. Og forvaltningsselskapet som gjør jobben for dem som ikke vil. To selskaper, én plattform – og en plan for de neste {N} månedene som er levende: skru på den, og se hva som skjer.</p></Inn>
           </div>
-          <Inn i={4} className="deck-skjul-print">
+          <Inn i={4} className="deck-skjul-print hidden lg:block">
             <p className="text-[12px] font-medium" style={{ color: SVAK }}>Innhold</p>
             <ol className="mt-2 border-t" style={{ borderColor: HAIR }}>
               {KAPITLER.slice(1).map((c, i) => (
@@ -757,13 +980,13 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </Side>
 
       {/* 02 · Hvorfor — samme smerte, to skalaer */}
-      <Side id="hvorfor" aktiv={er('hvorfor')} bred>
+      <Side id="hvorfor" pos={pos('hvorfor')} aktiv={er('hvorfor')} bred>
         <Kapittel nr={kap('hvorfor')} navn="Hvorfor" under="jobben ingen ba om – i to skalaer" />
-        <Inn i={1}><H2 maks="22ch">Å leie ut er en jobb. Den private gjør den ved siden av en annen. Selskapet gjør den i regneark.</H2></Inn>
+        <Inn i={1}><H2 maks="22ch">Å leie ut er en jobb. Den private gjør den på kvelden. Selskapet gjør den i regneark.</H2></Inn>
         <div className="mt-10 grid gap-4 lg:grid-cols-2">
           {[
-            { t: 'Den private huseieren', u: 'én bolig – eller noen få', ikon: Home, p: [['Manuelt', 'Annonse, visning, kredittsjekk, kontrakt, depositum, husleie, purring, regulering, saker. Spredt på ti verktøy – og en innboks.'], ['Risikabelt', 'Husleieloven har regler for alt fra depositum til oppsigelse. Én feil kontrakt eller én glemt frist koster mer enn et års honorar.']] },
-            { t: 'Eiendomsselskapet', u: 'porteføljer med mange enheter', ikon: Building2, p: [['Fragmentert', 'Leietakere i ett system, betaling i et annet, saker på e-post og kontrakter i mapper. Ingen ser hele porteføljen i sanntid.'], ['Dyrt i timer', 'Ansatte bruker dagene på purring, visninger og leverandøroppfølging – arbeid som kan gå av seg selv, per enhet, i ett system.']] },
+            { t: 'Den private huseieren', u: 'én bolig – eller noen få', ikon: Home, p: [['Ti verktøy og én innboks', 'Annonse, visning, kredittsjekk, kontrakt, depositum, husleie, purring, regulering. Alt manuelt – og alt på fritiden.'], ['Én feil koster mer enn et års honorar', 'Husleieloven regulerer alt fra depositum til oppsigelse. En feil kontrakt eller en glemt frist er dyrere enn hjelpen.']] },
+            { t: 'Eiendomsselskapet', u: 'porteføljer med mange enheter', ikon: Building2, p: [['Fem systemer, ingen oversikt', 'Leietakere ett sted, betaling et annet, saker på e-post og kontrakter i mapper. Ingen ser porteføljen i sanntid.'], ['Folk gjør det maskiner bør gjøre', 'Purring, visninger og leverandøroppfølging spiser dagene – arbeid som kan gå av seg selv, per enhet, i ett system.']] },
           ].map((g, gi) => (
             <Inn key={g.t} i={2 + gi} className="rounded-[24px] p-6 sm:p-8" style={{ background: gi === 0 ? '#FBFAF8' : T.charcoal, color: gi === 0 ? T.ink : T.offwhite, boxShadow: gi === 0 ? `inset 0 0 0 1px ${HAIR}` : 'none' }}>
               <p className="flex items-center gap-2 text-[12.5px] font-medium" style={{ color: gi === 0 ? LILLA_M : T.lilla }}><g.ikon className="h-4 w-4" /> {g.t} <span style={{ color: gi === 0 ? SVAK : LYS_SVAK }}>· {g.u}</span></p>
@@ -782,7 +1005,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </Side>
 
       {/* 03 · Konseptet — forsidens levende scene */}
-      <Side id="konsept" aktiv={er('konsept')} bred>
+      <Side id="konsept" pos={pos('konsept')} aktiv={er('konsept')} bred>
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-14">
           <div>
             <Kapittel nr={kap('konsept')} navn="Konseptet" under="slik ser en dag ut" />
@@ -801,10 +1024,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </Side>
 
       {/* 04 · For hvem — samme system, to kundegrupper (+ forvaltning som tjeneste) */}
-      <Side id="hvem" aktiv={er('hvem')} bred>
+      <Side id="hvem" pos={pos('hvem')} aktiv={er('hvem')} bred>
         <Kapittel nr={kap('hvem')} navn="For hvem" under="samme system – fra én bolig til hele porteføljer" />
-        <Inn i={1}><H2 maks="20ch">Laget for private huseiere. Og for eiendomsselskaper.</H2></Inn>
-        <div className="mt-10 grid gap-4 lg:grid-cols-3" data-testid="deck-hvem">
+        <Inn i={1}><H2 maks="20ch">Én plattform. Tre veier inn.</H2></Inn>
+        <div className="mt-10 grid gap-4 lg:grid-cols-3" data-testid="deck-hvem-kort">
           {[
             { ikon: Home, t: 'Private huseiere', u: 'Selvbetjent på plattformen', tone: 'lys', pris: prisHuseier || '—', prisL: 'pris', tall: plEnheterIDag, tallL: 'selvbetjente enheter i dag', p: ['Leietakere, kontrakt med BankID, husleie og drift – styrt fra mobilen.', 'Hele Norge. Ingen binding – eieren har siste ord i alt.', 'Kan når som helst gå over til forvaltning.'] },
             { ikon: Building2, t: 'Eiendomsselskaper', u: 'Hele porteføljen, per enhet', tone: 'lilla', pris: basisT ? `${kr(basisT.bedrift.pris)}/enhet/mnd` : '—', prisL: 'pris', tall: bedriftIDag, tallL: 'selskaper i dag', p: ['Ansatte jobber i ett system: leietakere, betaling, saker og leverandører – per enhet, i sanntid.', 'Rapportering på porteføljenivå. Roller og tilganger for team.', `Typisk ${basisT ? nb(basisT.bedrift.enheterPerSelskap) : '20'} enheter per selskap i planen.`] },
@@ -827,27 +1050,27 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </Side>
 
       {/* 04 · Strukturen */}
-      <Side id="struktur" aktiv={er('struktur')} bred>
+      <Side id="struktur" pos={pos('struktur')} aktiv={er('struktur')} bred>
         <Kapittel nr={kap('struktur')} navn="Strukturen" under="to juridiske enheter, én plattform" />
-        <Inn i={1}><H2 maks="20ch">Software skalerer. Forvaltning gir margin – og volum til softwaren.</H2></Inn>
+        <Inn i={1}><H2 maks="20ch">Programvare skalerer. Forvaltning gir margin – og volum til programvaren.</H2></Inn>
         <div className="mt-10"><Strukturdiagram basisT={basisT} basisF={basisF} prisHuseier={prisHuseier} /></div>
         <Inn i={7}><p className="mt-8 max-w-[72ch] text-[14.5px] leading-[1.6]" style={{ color: DIM }}>Hver forvaltet enhet er samtidig en lisens på plattformen – forvaltningen er Techs største kunde i dag, og et salgsapparat for selvbetjening i morgen. På konsernnivå telles lisensen bare én gang.</p></Inn>
       </Side>
 
       {/* 05 · Organisasjon */}
-      <Side id="org" aktiv={er('org')} bred>
-        <Kapittel nr={kap('org')} navn="Organisasjon" under="fire fagfelt, kjent fra innsiden" />
+      <Side id="org" pos={pos('org')} aktiv={er('org')} bred>
+        <Kapittel nr={kap('org')} navn="Organisasjon" under="felles styre · ledelse · to selskaper" />
         <Inn i={1}><H2 maks="18ch">Bygget av utleiere, for utleiere.</H2></Inn>
         <div className="mt-8"><OrgKart aarsverkStart={aarsverk(0)} aarsverkSlutt={aarsverk(N - 1)} utviklingPerMnd={basisT ? basisT.kost.utviklingFast : 0} enheterPerAarsverk={basisF.enheterPerAarsverk} /></div>
         <Inn i={6}>
-          <div className="mt-6 grid gap-x-8 gap-y-3 text-[13px] leading-[1.5] sm:grid-cols-2 lg:grid-cols-4" style={{ color: DIM }}>
-            {TEAM.slice(0, 4).map((p) => <p key={p.n}><b style={{ color: T.ink }}>{p.n.split(' ')[0]}</b> – {p.s}</p>)}
+          <div className="mt-6 grid gap-x-8 gap-y-3 text-[13px] leading-[1.5] sm:grid-cols-2 lg:grid-cols-3" style={{ color: DIM }}>
+            {TEAM.map((p) => <p key={p.n}><b style={{ color: T.ink }}>{p.n.split(' ')[0]}</b> – {p.s}</p>)}
           </div>
         </Inn>
       </Side>
 
       {/* 06 · Hvor vi står */}
-      <Side id="staar" aktiv={er('staar')}>
+      <Side id="staar" pos={pos('staar')} aktiv={er('staar')}>
         <Kapittel nr={kap('staar')} navn="Hvor vi står" under="fakta fra plattformen" />
         <Inn i={1}><H2>Vi starter ikke fra null.</H2></Inn>
         <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -860,7 +1083,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </Side>
 
       {/* 07 · Unit economics (mørk) */}
-      <Side id="unit" morkt aktiv={er('unit')} bred>
+      <Side id="unit" pos={pos('unit')} morkt aktiv={er('unit')} bred>
         <Kapittel morkt nr={kap('unit')} navn="Unit economics" under="per enhet · full CAC inkluderer performance-partner" />
         <Inn i={1}><H2 morkt maks="18ch">Hver enhet betaler seg – i begge selskaper.</H2></Inn>
         <div className="mt-10 grid gap-8 md:grid-cols-3">
@@ -904,7 +1127,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </Side>
 
       {/* 08 · Go-to-market */}
-      <Side id="gtm" aktiv={er('gtm')} bred>
+      <Side id="gtm" pos={pos('gtm')} aktiv={er('gtm')} bred>
         <Kapittel nr={kap('gtm')} navn="Go-to-market" under="slik henter vi kundene" />
         <Inn i={1}><H2 maks="18ch">Betalt på resultat. Forvaltningen som kanal.</H2></Inn>
         <Inn i={2} className="mt-8">
@@ -927,7 +1150,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </Side>
 
       {/* 09 · Planen — Digihome AS */}
-      <Side id="plan-dh" aktiv={er('plan-dh')} bred>
+      <Side id="plan-dh" pos={pos('plan-dh')} aktiv={er('plan-dh')} bred>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Kapittel nr={kap('plan-dh')} navn="Planen · Digihome AS" under={`${N} måneder · ${mndLabel(plan.startYm, 0, false)} – ${mndLabel(plan.startYm, N - 1, false)}`} />
@@ -951,7 +1174,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             </div>
           </Inn>
           <Inn i={4} className="deck-skjul-print rounded-[20px] p-5" style={{ background: T.flate }} data-testid="deck-drivere-dh">
-            <p className="text-[13px] font-medium" style={{ color: T.ink }}>Skru på forvaltningen</p>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-[13px] font-medium" style={{ color: T.ink }}>Skru på forvaltningen</p>
+              {preset !== 'plan' ? <button onClick={nullstill} className="flex items-center gap-1 text-[12px] font-medium" style={{ color: LILLA_M }} data-testid="deck-nullstill-dh"><RotateCcw className="h-3 w-3" /> Tilbake til planen</button> : null}
+            </div>
             <p className="mt-1 text-[12.5px]" style={{ color: SVAK }}>Endringene lagres ikke – de er dine å utforske.</p>
             <div className="mt-2 divide-y" style={{ borderColor: HAIR }}>
               <Skru label="Veksttempo" verdi={fakt.forv} basis={1} min={0.25} max={3} steg={0.25} format={(v) => `${nb(v * 100)} %`} hint={fakserie()} onChange={(v) => skruTempo('forv', v)} onFerdig={skruFerdig('veksttempo forvaltning')} testid="deck-skru-nye" />
@@ -964,7 +1190,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </Side>
 
       {/* 10 · Planen — Digihome Tech AS */}
-      <Side id="plan-tech" aktiv={er('plan-tech')} bred>
+      <Side id="plan-tech" pos={pos('plan-tech')} aktiv={er('plan-tech')} bred>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Kapittel nr={kap('plan-tech')} navn="Planen · Digihome Tech AS" under={techPlan ? `${NT} måneder · ${mndLabel(techPlan.startYm, 0, false)} – ${mndLabel(techPlan.startYm, NT - 1, false)}` : undefined} />
@@ -997,7 +1223,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
               </div>
             </Inn>
             <Inn i={4} className="deck-skjul-print rounded-[20px] p-5" style={{ background: T.flate }} data-testid="deck-drivere-tech">
-              <p className="text-[13px] font-medium" style={{ color: T.ink }}>Skru på plattformen</p>
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-[13px] font-medium" style={{ color: T.ink }}>Skru på plattformen</p>
+                {preset !== 'plan' ? <button onClick={nullstill} className="flex items-center gap-1 text-[12px] font-medium" style={{ color: LILLA_M }} data-testid="deck-nullstill-tech"><RotateCcw className="h-3 w-3" /> Tilbake til planen</button> : null}
+              </div>
               <p className="mt-1 text-[12.5px]" style={{ color: SVAK }}>Endringene lagres ikke – de er dine å utforske.</p>
               <div className="mt-2 divide-y" style={{ borderColor: HAIR }}>
                 <Skru label="Annonsekjøp" verdi={fakt.tech} basis={1} min={0} max={3} steg={0.25} format={(v) => `${nb(v * 100)} %`} hint={`${kr(drivT.huseier.annonsePerMnd)} per måned i fase 1`} onChange={(v) => skruTempo('tech', v)} onFerdig={skruFerdig('annonsekjøp')} testid="deck-skru-annonse" />
@@ -1017,7 +1246,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </Side>
 
       {/* 11 · Konsern */}
-      <Side id="konsern" aktiv={er('konsern')} bred>
+      <Side id="konsern" pos={pos('konsern')} aktiv={er('konsern')} bred>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Kapittel nr={kap('konsern')} navn="Konsern" under="Digihome AS + Tech · intern lisens eliminert" />
@@ -1070,7 +1299,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </Side>
 
       {/* 12 · Hva om */}
-      <Side id="hvaom" aktiv={er('hvaom')} bred>
+      <Side id="hvaom" pos={pos('hvaom')} aktiv={er('hvaom')} bred>
         <Kapittel nr={kap('hvaom')} navn="Hva om" under="ett trykk, ett svar – gjelder begge selskaper" />
         <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Spørsmål fra salen.</H2></Inn>
         <Inn i={2} className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" data-testid="deck-presets">
@@ -1096,7 +1325,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </Side>
 
       {/* 13 · Det vi trenger (mørk) */}
-      <Side id="trenger" morkt aktiv={er('trenger')} bred>
+      <Side id="trenger" pos={pos('trenger')} morkt aktiv={er('trenger')} bred>
         <Kapittel morkt nr={kap('trenger')} navn="Det vi trenger" under={`avledet av planen${preset !== 'plan' ? ' – med dine valg' : ''}`} />
         <Inn i={1}><H2 morkt maks="18ch">Kapital til break‑even – med margin.</H2></Inn>
         <div className="mt-10 grid gap-8 sm:grid-cols-3">
@@ -1128,7 +1357,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             </form>
           </Inn>
         ) : null}
-        <Inn i={8}><p className="mt-10 text-[12px]" style={{ color: 'rgba(244,241,234,0.42)' }}>Konfidensielt. Planen er en modell basert på oppgitte forutsetninger og faktiske kontrakter per {plan.oppdatertAt ? new Date(plan.oppdatertAt).toLocaleDateString('nb-NO') : 'i dag'}. Ikke et tilbud om tegning.</p></Inn>
+        <Inn i={8} className="mt-10 flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-[70ch] text-[12px] leading-[1.5]" style={{ color: 'rgba(244,241,234,0.42)' }}>Konfidensielt. Planen er en modell basert på oppgitte forutsetninger og faktiske kontrakter per {plan.oppdatertAt ? new Date(plan.oppdatertAt).toLocaleDateString('nb-NO') : 'i dag'}. Ikke et tilbud om tegning.</p>
+          {ekstern ? <button onClick={lastNed} className="deck-skjul-print flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-medium" style={{ background: 'rgba(244,241,234,0.1)', color: T.offwhite }} data-testid="deck-lastned-ekstern"><Download className="h-3.5 w-3.5" /> Last ned som PDF</button> : null}
+        </Inn>
       </Side>
     </div>
   );

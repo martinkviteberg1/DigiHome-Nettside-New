@@ -57,7 +57,7 @@ export default function CallTracking() {
 
         // Admin og investorrom skal ikke forurense statistikken.
         const path = window.location.pathname || '';
-        if (path.startsWith('/admin') || path.startsWith('/investor')) return;
+        if (path.startsWith('/admin') || path.startsWith('/investor') || path.startsWith('/deck')) return;
         if (window.self !== window.top) return; // iframe-forhåndsvisning
 
         const now = Date.now();
