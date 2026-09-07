@@ -3,7 +3,8 @@
 import React from 'react';
 import { EASE, T, display, tall } from '../../motion';
 import { Hake, useFilm } from '../filmdeler';
-import { bilde, dekk, useKino, farger, KinoStage, KinoTekst, Etikett, Flyt, Rad, Sone, Merke, KinoNeste, KinoSms } from './Kino';
+import { dekk, useKino, farger, KinoStage, KinoTekst, Etikett, Flyt, Rad, Sone, Merke, KinoNeste, KinoSms, Teller } from './Kino';
+import { FOTO } from './bilder';
 
 /* ---------------------------------------------------------------------------
    OkonomiKino — kapittel 4 i full bleed. «Fra husleie til ferdig regnskap.»
@@ -28,22 +29,20 @@ const AUTO = {
 };
 const SISTE = F.SLUTT;
 
-const BILDER = [
-  bilde('morgen', '/v4/drift/fasade-morgen-1920.webp', '/v4/drift/fasade-morgen-1200.webp', 1920, 1097, '56% 46%', '62% 50%'),
-  bilde('kveld', '/v4/annonse/fasade-kveld-1920.webp', '/v4/annonse/fasade-kveld-1200.webp', 1920, 1097, '56% 46%', '62% 50%'),
-];
+const BILDER = [FOTO.fasadeMorgen, { ...FOTO.fasadeKveld, id: 'kveld' }];
 const K = Object.fromEntries(BILDER.map((b) => [b.id, b]));
 const erKveld = (fase) => fase >= F.MND;
 const bildeFor = (fase) => (erKveld(fase) ? 'kveld' : 'morgen');
 const temaFor = (fase) => (erKveld(fase) ? 'mork' : 'lys');
+const nesteFor = (fase) => (fase < F.MND ? 'kveld' : null);
 
 const AKTER = [
-  { id: 'inn', fra: F.START, tittel: 'Husleien kommer.', tekst: '1. november, tidlig. Betalingene registreres etter hvert som de kommer inn — leilighet for leilighet. Du trenger ikke sjekke kontoen.' },
-  { id: 'en', fra: F.VENTER, tittel: 'Én mangler.', tekst: 'Sju av åtte har betalt. Leilighet 5 står åpen — DigiHome venter til den tredje, og sier fra slik du ville sagt det selv.' },
-  { id: 'purr', fra: F.DAG3, tittel: 'Påminnelsen går av seg selv.', tekst: 'Mikkel får en SMS med Vipps. Han betaler på under et minutt, beløpet registreres og listen er full — du hørte ikke om det.' },
-  { id: 'fakt', fra: F.MND, tittel: 'Fakturaen lander riktig.', tekst: 'Rørleggerfakturaen fra forrige kapittel bokføres på Leilighet 2, med bilag. Ingen bunke på kjøkkenbordet, ingen leting i mars.' },
-  { id: 'lukk', fra: F.BOKFORT, tittel: 'Måneden lukkes.', tekst: 'Inn, ut og bilag — ført og overført til regnskapet. PowerOffice eller regnskapsføreren din får det ferdig sortert.' },
-  { id: 'slutt', fra: F.SLUTT, tittel: 'Betalt. Bokført.', tekst: 'Husleien inn, én vennlig påminnelse, fakturaen på riktig leilighet. Neste måned skjer det igjen.' },
+  { id: 'inn', fra: F.START, tittel: 'Husleien kommer.', tekst: '1. november. Leilighet for leilighet — uten at du sjekker kontoen.' },
+  { id: 'en', fra: F.VENTER, tittel: 'Én mangler.', tekst: 'Sju av åtte har betalt. DigiHome venter til den tredje.' },
+  { id: 'purr', fra: F.DAG3, tittel: 'Påminnelsen går av seg selv.', tekst: 'Mikkel får SMS med Vipps. Betalt på under et minutt.' },
+  { id: 'fakt', fra: F.MND, tittel: 'Fakturaen lander riktig.', tekst: 'Rørleggerfakturaen bokføres på Leilighet 2 — med bilag.' },
+  { id: 'lukk', fra: F.BOKFORT, tittel: 'Måneden lukkes.', tekst: 'Inn, ut og bilag — ført og sendt til regnskapet.' },
+  { id: 'slutt', fra: F.SLUTT, tittel: 'Betalt. Bokført.', tekst: 'Neste måned skjer det igjen.' },
 ];
 const aktFor = (fase) => { let a = AKTER[0]; AKTER.forEach((x) => { if (fase >= x.fra) a = x; }); return a; };
 
@@ -89,6 +88,8 @@ function Vinduer({ fase, ov }) {
   return (
     <>
       {LEIL.map((l) => <Lys key={l.n} l={l} g={g} fase={fase} ov={ov} />)}
+      {/* Kvelden: rørleggerfakturaen lander på Leilighet 2 — vinduet pulserer */}
+      {!st.kompakt && (() => { const l2 = LEIL[1]; const p = g.punkt(l2.x, l2.y); const vis = fase >= F.FAKTURA && fase < F.SLUTT; return <Etikett vis={vis} x={p.x} y={p.y} tone="gronn" plass="over" delay={200} puls ov={ov} testid="v4-kino-etikett-faktura">Faktura · {tall(RORLEGGER)} kr · Leilighet 2</Etikett>; })()}
       {!st.kompakt && LEIL.filter((l) => l.x < 0.7).map((l) => {
         const p = g.punkt(l.x, l.y);
         const vis = sist?.n === l.n;
@@ -111,19 +112,25 @@ function Liste({ fase, ov }) {
   const sum = LEIL.filter((l) => betalt(l, fase)).reduce((s, l) => s + l.leie, 0);
   const full = antall === LEIL.length;
   return (
-    <Sone testid="v4-kino-o-liste" bredde={440} style={{ opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity ${vis ? 400 : 350}ms ${EASE}`, pointerEvents: 'none' }}>
-      <Flyt vis={vis} ov={ov}><p className="text-[12.5px] font-medium tabular-nums" style={{ color: f.svak }}>Husleie · november · {antall} av {LEIL.length} registrert</p></Flyt>
-      <div className="mt-2">
+    <Sone testid="v4-kino-o-liste" bredde={500} style={{ opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity ${vis ? 400 : 350}ms ${EASE}`, pointerEvents: 'none' }}>
+      <Flyt vis={vis} ov={ov}>
+        <p className="text-[12.5px] font-medium" style={{ color: f.svak }}>Husleie · november</p>
+        <p className={`${kompakt ? 'mt-1 text-[40px]' : 'mt-1.5 text-[clamp(44px,3.6vw,68px)]'} leading-none`} style={{ ...display, color: full ? f.gronn : f.tekst, transition: `color 500ms ${EASE}` }} data-testid="v4-kino-sum">
+          <Teller til={sum} fra={0} aktiv={vis && fase >= F.LYS1} dur={1200} ov={ov} /> <span className={kompakt ? 'text-[16px]' : 'text-[22px]'} style={{ fontFamily: 'inherit', letterSpacing: 0 }}>kr</span>
+        </p>
+        <p className={`${kompakt ? 'mt-1.5 text-[12.5px]' : 'mt-2 text-[13.5px]'}`} style={{ color: f.svak }}>{full ? 'Alt inne' : `av ${tall(SUM)} kr`} · {antall} av {LEIL.length} registrert</p>
+      </Flyt>
+      <div className={kompakt ? 'mt-2' : 'mt-4'}>
         {LISTE_REKKE.map((l, i) => {
           const b = betalt(l, fase);
           const venter = !b && fase >= F.VENTER;
           const purret = l.n === 5 && fase >= F.DAG3 && !b;
           return (
             <Rad key={l.n} vis={vis && (b || venter)} ov={ov} sist={i === LISTE_REKKE.length - 1} testid={`v4-kino-leil-${l.n}`}
-              venstre={<span className={`${kompakt ? 'text-[13.5px]' : 'text-[14.5px]'} font-medium`} style={{ color: b ? f.tekst : f.svak }}>Leilighet {l.n}{l.navn ? <span className="font-normal" style={{ color: f.svak }}> · {l.navn}</span> : null}</span>}
+              venstre={<span className={`${kompakt ? 'text-[13px]' : 'text-[14px]'} font-medium`} style={{ color: b ? f.tekst : f.svak }}>Leilighet {l.n}{l.navn ? <span className="font-normal" style={{ color: f.svak }}> · {l.navn}</span> : null}</span>}
               hoyre={(
                 <span className="inline-flex items-center gap-2.5">
-                  <span className={`tabular-nums ${kompakt ? 'text-[13.5px]' : 'text-[14.5px]'}`} style={{ color: b ? f.tekst : f.svak }}>{tall(l.leie)} kr</span>
+                  <span className={`${kompakt ? 'text-[13.5px]' : 'text-[14.5px]'}`} style={{ color: b ? f.tekst : f.svak }}>{tall(l.leie)} kr</span>
                   {b ? <Merke tekst={l.n === 5 ? 'Vipps · 3. nov' : l.tid} tone="gronn" /> : <Merke tekst={purret ? 'Påminnet' : 'Venter'} tone={purret ? 'lilla' : 'noytral'} />}
                 </span>
               )}
@@ -131,10 +138,6 @@ function Liste({ fase, ov }) {
           );
         })}
       </div>
-      <Flyt vis={vis && fase >= F.VENTER} ov={ov} className={`${kompakt ? 'mt-3' : 'mt-4'} flex items-baseline justify-between`}>
-        <span className="text-[12.5px]" style={{ color: f.svak }}>{full ? 'Alt inne' : 'Registrert'}</span>
-        <span className={`${kompakt ? 'text-[24px]' : 'text-[30px]'} tabular-nums`} style={{ ...display, color: full ? f.gronn : f.tekst }}>{tall(sum)}<span className="text-[14px]" style={{ color: f.svak, fontFamily: 'inherit', letterSpacing: 0 }}> av {tall(SUM)} kr</span></span>
-      </Flyt>
       {!kompakt && <KinoSms vis={vis && fase >= F.DAG3 && fase < F.BETALT} ov={ov} til="Mikkel" tid="3. nov 08:00" tekst="Hei Mikkel! Husleien for november (6 800 kr) er ikke registrert ennå. Betal enkelt med Vipps: digihome.no/v/9m2k – DigiHome" className="mt-4" testid="v4-kino-sms-purr" />}
     </Sone>
   );
@@ -146,24 +149,24 @@ function Maaned({ fase, ov }) {
   const f = farger(tema);
   const vis = fase >= F.MND && fase < F.SLUTT;
   return (
-    <Sone testid="v4-kino-o-maaned" bredde={440} style={{ opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity ${vis ? 400 : 350}ms ${EASE}`, pointerEvents: 'none' }}>
-      <Flyt vis={vis} ov={ov}><p className="text-[12.5px] font-medium tabular-nums" style={{ color: f.svak }}>Månedsslutt · november</p></Flyt>
+    <Sone testid="v4-kino-o-maaned" bredde={500} style={{ opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity ${vis ? 400 : 350}ms ${EASE}`, pointerEvents: 'none' }}>
+      <Flyt vis={vis} ov={ov}><p className="text-[12.5px] font-medium" style={{ color: f.svak }}>Månedsslutt · november</p></Flyt>
       <div className="mt-2">
         <Rad vis={vis} ov={ov} delay={250} sist={false} testid="v4-kino-o-faktura"
           venstre={<span className="min-w-0"><span className={`block font-medium ${kompakt ? 'text-[14px]' : 'text-[15px]'}`} style={{ color: f.tekst }}>Lie VVS · rørlegger</span><span className="block text-[12px]" style={{ color: f.svak }}>Varmtvann · Leilighet 2 · {fase >= F.FAKTURA ? 'bilag lagt ved' : 'faktura mottatt'}</span></span>}
-          hoyre={<span className="inline-flex items-center gap-2.5"><span className={`tabular-nums ${kompakt ? 'text-[13.5px]' : 'text-[14.5px]'}`} style={{ color: f.tekst }}>−{tall(RORLEGGER)} kr</span>{fase >= F.FAKTURA && <Merke tekst="Leilighet 2" tone="gronn" />}</span>}
+          hoyre={<span className="inline-flex items-center gap-2.5"><span className={`${kompakt ? 'text-[13.5px]' : 'text-[14.5px]'}`} style={{ color: f.tekst }}>−{tall(RORLEGGER)} kr</span>{fase >= F.FAKTURA && <Merke tekst="Leilighet 2" tone="gronn" />}</span>}
         />
         <Rad vis={vis && fase >= F.BOKFORT} ov={ov} sist={false} testid="v4-kino-o-inn"
           venstre={<span className={kompakt ? 'text-[13px]' : 'text-[13.5px]'} style={{ color: f.svak }}>Inn · husleie 8 leiligheter</span>}
-          hoyre={<span className={`tabular-nums font-medium ${kompakt ? 'text-[13.5px]' : 'text-[14.5px]'}`} style={{ color: f.tekst }}>{tall(SUM)} kr</span>}
+          hoyre={<span className={`font-medium ${kompakt ? 'text-[13.5px]' : 'text-[14.5px]'}`} style={{ color: f.tekst }}>{tall(SUM)} kr</span>}
         />
         <Rad vis={vis && fase >= F.BOKFORT} ov={ov} delay={180} sist={false} testid="v4-kino-o-ut"
           venstre={<span className={kompakt ? 'text-[13px]' : 'text-[13.5px]'} style={{ color: f.svak }}>Ut · vedlikehold</span>}
-          hoyre={<span className={`tabular-nums font-medium ${kompakt ? 'text-[13.5px]' : 'text-[14.5px]'}`} style={{ color: f.tekst }}>−{tall(RORLEGGER)} kr</span>}
+          hoyre={<span className={`font-medium ${kompakt ? 'text-[13.5px]' : 'text-[14.5px]'}`} style={{ color: f.tekst }}>−{tall(RORLEGGER)} kr</span>}
         />
         <Rad vis={vis && fase >= F.BOKFORT} ov={ov} delay={360} sist testid="v4-kino-o-netto"
           venstre={<span className={`font-medium ${kompakt ? 'text-[14px]' : 'text-[15px]'}`} style={{ color: f.tekst }}>Netto november</span>}
-          hoyre={<span className={`${kompakt ? 'text-[22px]' : 'text-[26px]'} tabular-nums`} style={{ ...display, color: f.tekst }}>{tall(SUM - RORLEGGER)} kr</span>}
+          hoyre={<span className={`${kompakt ? 'text-[22px]' : 'text-[26px]'}`} style={{ ...display, color: f.tekst }}>{tall(SUM - RORLEGGER)} kr</span>}
         />
       </div>
       <Flyt vis={vis && fase >= F.BOKFORT} ov={ov} delay={900} className={kompakt ? 'mt-4' : 'mt-5'}>
@@ -184,10 +187,10 @@ function Slutt({ fase, ov }) {
   return (
     <Sone testid="v4-kino-o-slutt" bredde={420} style={{ pointerEvents: 'none' }}>
       <Flyt vis={vis} ov={ov} delay={300}>
-        <p className="text-[12.5px] font-medium tabular-nums" style={{ color: f.svak }}>November · Nygårdsgaten 5</p>
+        <p className="text-[12.5px] font-medium" style={{ color: f.svak }}>November · Nygårdsgaten 5</p>
         <div className={`${kompakt ? 'mt-3' : 'mt-4'} grid grid-cols-3 gap-4`}>
           {[['Husleie inn', `${tall(SUM)} kr`], ['Påminnelser', '1 · Vipps'], ['Bilag', '1 · riktig sted']].map(([k, v]) => (
-            <div key={k}><p className="text-[11.5px]" style={{ color: f.svak }}>{k}</p><p className={`mt-0.5 font-medium tabular-nums tracking-[-0.005em] ${kompakt ? 'text-[14px]' : 'text-[16px]'}`} style={{ color: f.tekst }}>{v}</p></div>
+            <div key={k}><p className="text-[11.5px]" style={{ color: f.svak }}>{k}</p><p className={`mt-0.5 font-medium tracking-[-0.005em] ${kompakt ? 'text-[14px]' : 'text-[16px]'}`} style={{ color: f.tekst }}>{v}</p></div>
           ))}
         </div>
       </Flyt>
@@ -207,7 +210,7 @@ export default function OkonomiKino({ synlig, spiller, onFerdig, onFremdrift, ne
   React.useEffect(() => { onTema?.(tema); }, [onTema, tema]);
   const sone = fase >= F.LYS1;
   return (
-    <KinoStage bilder={BILDER} aktiv={bildeFor(fase)} tema={tema} sone={sone} driv={false} ov={ov} synlig={synlig} morkt={morkt} fase={fase} testid="v4-kino-okonomi">
+    <KinoStage bilder={BILDER} aktiv={bildeFor(fase)} neste={nesteFor(fase)} tema={tema} sone={sone} driv="av" ov={ov} synlig={synlig} morkt={morkt} fase={fase} testid="v4-kino-okonomi">
       <Vinduer fase={fase} ov={ov} />
       <Liste fase={fase} ov={ov} />
       <Maaned fase={fase} ov={ov} />

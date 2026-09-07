@@ -144,11 +144,11 @@ export function AutoKnapp({ presser, trykket, hover = false, children, etter, te
 }
 
 /* Pekeren — glir inn fra nede til høyre, hviler på knappen, trykker (krymper mot spissen + tynn ring), tones bort. */
-export function Peker({ pos, vis, presser, hopp, ring }) {
+export function Peker({ pos, vis, presser, hopp, ring, holder = false, children = null }) {
   return (
     <div
-      className="pointer-events-none absolute z-[9]"
-      style={{ left: pos.x, top: pos.y, opacity: vis ? 1 : 0, transition: hopp ? 'none' : vis ? `left 950ms cubic-bezier(0.55, 0, 0.15, 1), top 950ms cubic-bezier(0.35, 0, 0.1, 1), opacity 350ms ${EASE}` : `opacity 260ms ${EASE}` }}
+      className="pointer-events-none absolute left-0 top-0 z-[9]"
+      style={{ transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`, opacity: vis ? 1 : 0, transition: hopp ? 'none' : vis ? `transform 950ms cubic-bezier(0.5, 0, 0.12, 1), opacity 350ms ${EASE}` : `opacity 260ms ${EASE}`, willChange: 'transform' }}
       aria-hidden="true"
       data-testid="v4-peker"
       data-vis={vis ? '1' : '0'}
@@ -156,7 +156,8 @@ export function Peker({ pos, vis, presser, hopp, ring }) {
       {ring > 0 && (
         <span key={ring} className="absolute -left-[13px] -top-[13px] block h-[26px] w-[26px] rounded-full" style={{ boxShadow: `inset 0 0 0 1.5px ${T.ink}`, animation: 'v4-ring 560ms cubic-bezier(0.2, 0.6, 0.2, 1) forwards' }} />
       )}
-      <svg width="22" height="26" viewBox="0 0 22 26" style={{ display: 'block', transform: presser ? 'scale(0.86)' : 'scale(1)', transformOrigin: '3px 2px', transition: `transform 160ms ${EASE}`, filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.35))' }}>
+      {children}
+      <svg width="22" height="26" viewBox="0 0 22 26" className="relative z-[1]" style={{ display: 'block', transform: presser ? 'scale(0.86)' : holder ? 'scale(0.92)' : 'scale(1)', transformOrigin: '3px 2px', transition: `transform 160ms ${EASE}`, filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.35))' }}>
         <path d="M3 2.5v18.6l4.6-4.3 3.3 7.4 3.6-1.6-3.2-7.2 6.4-.6z" fill={T.ink} stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" />
       </svg>
     </div>
@@ -165,7 +166,7 @@ export function Peker({ pos, vis, presser, hopp, ring }) {
 
 /* Peker-logikk: `maal` = { fase: knappnavn }, `presser` = Set av trykkfaser. Måler målknappen relativt til rammen,
    kommer inn fra en forskjøvet posisjon og glir til målet. */
-export function usePeker(fase, rammeRef, knapper, maal, presser) {
+export function usePeker(fase, rammeRef, knapper, maal, presser, inn = null) {
   const [st, setSt] = useState({ x: 0, y: 0, vis: false, hopp: true, ring: 0 });
   const forrige = useRef(null);
   useEffect(() => {
@@ -184,14 +185,15 @@ export function usePeker(fase, rammeRef, knapper, maal, presser) {
       const r = ramme.getBoundingClientRect(); const b = el.getBoundingClientRect();
       const x = Math.round(b.left - r.left + b.width * 0.6); const y = Math.round(b.top - r.top + b.height * 0.62);
       if (nytt) {
-        setSt((s) => ({ ...s, x: x + 230, y: y + 150, vis: false, hopp: true }));
+        const fra = inn?.(navn) || { x: 230, y: 150 };   // der pekeren kommer inn fra (relativt til målet)
+        setSt((s) => ({ ...s, x: x + fra.x, y: y + fra.y, vis: false, hopp: true }));
         raf = window.requestAnimationFrame(() => { raf = window.requestAnimationFrame(() => setSt((s) => ({ ...s, x, y, vis: true, hopp: false }))); });
       } else {
         setSt((s) => ({ ...s, x, y, vis: true, hopp: false }));
       }
     }, nytt ? 320 : 0);
     return () => { window.clearTimeout(t); window.cancelAnimationFrame(raf); };
-  }, [fase, rammeRef, knapper, maal]);
+  }, [fase, rammeRef, knapper, maal, inn]);
   useEffect(() => { if (presser.has(fase)) setSt((s) => ({ ...s, ring: s.ring + 1 })); }, [fase, presser]);
   return { ...st, presser: presser.has(fase) };
 }

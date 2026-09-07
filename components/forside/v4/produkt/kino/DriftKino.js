@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { EASE, T, tall } from '../../motion';
+import { EASE, T, display, tall } from '../../motion';
 import { Hake, Portrett, useFilm, BOLIG, EMMA } from '../filmdeler';
-import { bilde, dekk, useKino, farger, KinoStage, KinoTekst, Etikett, Flyt, Fold, Rad, Sone, Merke, KinoNeste, KinoKnapp, KinoSms } from './Kino';
+import { dekk, useKino, farger, KinoStage, KinoTekst, Etikett, Flyt, Fold, Rad, Sone, Merke, KinoNeste, KinoKnapp, KinoSms, Prikker, Tid } from './Kino';
+import { FOTO } from './bilder';
 
 /* ---------------------------------------------------------------------------
    DriftKino — kapittel 3 i full bleed. «Fra melding til løst. Du trykker én gang.»
@@ -31,26 +32,26 @@ const AUTO = {
 };
 const SISTE = F.SLUTT;
 
-const BILDER = [
-  bilde('natt', '/v4/drift/fasade-natt-1920.webp', '/v4/drift/fasade-natt-1200.webp', 1920, 1097, '56% 46%', '70% 50%'),
-  bilde('morgen', '/v4/drift/fasade-morgen-1920.webp', '/v4/drift/fasade-morgen-1200.webp', 1920, 1097, '56% 46%', '70% 50%'),
-];
+const BILDER = [FOTO.fasadeNatt, FOTO.fasadeMorgen];
 const K = Object.fromEntries(BILDER.map((b) => [b.id, b]));
 const erMorgen = (fase) => fase >= F.TID;
 const bildeFor = (fase) => (erMorgen(fase) ? 'morgen' : 'natt');
+/* Natten setter seg idet kapittelet åpner; morgenen står stille (etiketten på vinduet skal ikke gli). */
+const drivFor = (fase) => (erMorgen(fase) ? 'av' : 'sett');
+const nesteFor = (fase) => (fase < F.TID ? 'morgen' : null);
 const temaFor = (fase) => (erMorgen(fase) ? 'lys' : 'mork');
 
 /* Vinduet til Leilighet 2 i fasadebildet (andel av bildet) */
 const VINDU = { x: 0.755, y: 0.57 };
 
 const AKTER = [
-  { id: 'meld', fra: F.START, tittel: 'Emma melder fra.', tekst: '22:41. Leietakeren skriver i DigiHome og legger ved et bilde. Ett oppfølgingsspørsmål avgrenser feilen — før noen rekker å ringe deg.' },
-  { id: 'sak', fra: F.SAK, tittel: 'Meldingen blir en sak.', tekst: 'Bolig, leietaker, kategori og hastegrad settes fra samtalen. Du får en ferdig sortert sak — ikke en melding du må tolke.' },
-  { id: 'lev', fra: F.LEV0, tittel: 'Rørleggeren får saken.', tekst: 'Rørleggeren du bruker får bildet og beskrivelsen direkte — og svarer med tidsvindu og pris, rett i saken.' },
-  { id: 'god', fra: F.KLAR, tittel: 'Du godkjenner. Én gang.', tekst: 'Hvem, når og hva det koster står på ett sted. Ett trykk — så går resten av seg selv.' },
-  { id: 'sms', fra: F.SMS, tittel: 'Emma får beskjed.', tekst: 'Tidspunktet går til Emma automatisk. Hun bekrefter, og rørleggeren vet at han slipper inn torsdag morgen.' },
-  { id: 'tid', fra: F.TID, tittel: 'Torsdag: utført og dokumentert.', tekst: 'Rørleggeren kvitterer med bilde. Emma bekrefter at vannet er varmt. Fakturaen legger seg i saken — og i regnskapet.' },
-  { id: 'slutt', fra: F.SLUTT, tittel: 'Løst. Du ringte ingen.', tekst: 'Én melding, ett trykk. Saken ligger i historikken med bilder, pris og faktura — klar for regnskapet.' },
+  { id: 'meld', fra: F.START, tittel: 'Emma melder fra.', tekst: '22:41. Melding med bilde. Ett oppfølgingsspørsmål avgrenser feilen.' },
+  { id: 'sak', fra: F.SAK, tittel: 'Meldingen blir en sak.', tekst: 'Bolig, leietaker, kategori og hastegrad — satt fra samtalen.' },
+  { id: 'lev', fra: F.LEV0, tittel: 'Rørleggeren får saken.', tekst: 'Bildet og beskrivelsen går rett til rørleggeren du bruker.' },
+  { id: 'god', fra: F.KLAR, tittel: 'Du godkjenner. Én gang.', tekst: 'Hvem, når og hva det koster — ett trykk.' },
+  { id: 'sms', fra: F.SMS, tittel: 'Emma får beskjed.', tekst: 'Tidspunktet går til Emma automatisk. Hun bekrefter.' },
+  { id: 'tid', fra: F.TID, tittel: 'Torsdag: utført og dokumentert.', tekst: 'Bilde fra rørleggeren, bekreftelse fra Emma, faktura i regnskapet.' },
+  { id: 'slutt', fra: F.SLUTT, tittel: 'Løst. Du ringte ingen.', tekst: 'Én melding, ett trykk. Alt ligger i historikken.' },
 ];
 const aktFor = (fase) => { let a = AKTER[0]; AKTER.forEach((x) => { if (fase >= x.fra) a = x; }); return a; };
 
@@ -76,7 +77,7 @@ function Vindu({ fase, ov }) {
   /* På mobil ligger sonen der vinduet er — etiketten vises bare når sonen er tom */
   const vis = !st.kompakt || fase === F.START || fase >= F.SLUTT;
   const plass = st.kompakt ? 'venstre' : 'over';
-  return <Etikett vis={vis} x={p.x} y={p.y} tone={tone} plass={plass} delay={fase === F.START ? 700 : 0} ov={ov} testid="v4-kino-vindu"><span key={t} className="animate-in fade-in-0 duration-500">{t}</span></Etikett>;
+  return <Etikett vis={vis} x={p.x} y={p.y} tone={tone} plass={plass} delay={fase === F.START ? 1100 : 0} ov={ov} testid="v4-kino-vindu"><span key={t} className="animate-in fade-in-0 duration-500">{t}</span></Etikett>;
 }
 
 /* Chat-boble — Emma (venstre, portrett) eller DigiHome (høyre) */
@@ -94,8 +95,8 @@ function Boble({ vis, ov, delay = 0, fra = 'emma', tid, children, bilde: foto, t
             <img src={foto} alt="" className="h-full w-full object-cover" draggable={false} />
           </div>
         )}
-        <p className={`${kompakt ? 'text-[13px]' : 'text-[13.5px]'} leading-[1.45]`} style={{ color: f.brod }}>{children}</p>
-        {tid && <p className="mt-1 text-[11px] tabular-nums" style={{ color: f.svak }}>{tid}</p>}
+        <p className={`${kompakt ? 'text-[13.5px]' : 'text-[15px]'} leading-[1.45]`} style={{ color: f.brod }}>{children}</p>
+        {tid && <p className="mt-1 text-[11px]" style={{ color: f.svak }}>{tid}</p>}
       </div>
     </Flyt>
   );
@@ -105,9 +106,14 @@ function Boble({ vis, ov, delay = 0, fra = 'emma', tid, children, bilde: foto, t
 function Melding({ fase, ov, anker }) {
   const vis = fase >= F.MELD && fase <= F.SVAR;
   return (
-    <Sone testid="v4-kino-d-melding" bredde={420} anker={anker} style={{ opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity ${vis ? 400 : 350}ms ${EASE}`, pointerEvents: 'none' }}>
+    <Sone testid="v4-kino-d-melding" bredde={460} anker={anker} style={{ opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity ${vis ? 400 : 350}ms ${EASE}`, pointerEvents: 'none' }}>
       <Boble vis={fase >= F.MELD} ov={ov} fra="emma" tid="22:41" bilde={BEREDER} testid="v4-kino-melding-1">Hei! Varmtvannet er borte. Har prøvd å slå berederen av og på, men ingenting skjer.</Boble>
       <Boble vis={fase >= F.SPM} ov={ov} fra="dh" tid="22:41 · DigiHome" testid="v4-kino-melding-2">Er det kaldt i alle kraner, eller bare på badet?</Boble>
+      {/* Emma skriver … */}
+      <Flyt vis={fase === F.SPM} ov={ov} delay={700} className="mt-2.5 flex items-end gap-2.5" style={{ position: fase === F.SPM ? 'relative' : 'absolute' }}>
+        <Portrett src={EMMA.bilde} alt="" size={26} />
+        <span className="inline-flex h-9 items-center rounded-[16px] rounded-bl-[6px] px-3.5" style={{ background: 'rgba(244,241,234,0.12)', boxShadow: 'inset 0 0 0 1px rgba(244,241,234,0.16)' }}><Prikker vis={fase === F.SPM} /></span>
+      </Flyt>
       <Boble vis={fase >= F.SVAR} ov={ov} fra="emma" tid="22:42" testid="v4-kino-melding-3">Alle.</Boble>
     </Sone>
   );
@@ -126,8 +132,8 @@ function Sak({ fase, ov, anker }) {
   ];
   const godkjent = fase >= F.GODKJENT;
   return (
-    <Sone testid="v4-kino-d-sak" bredde={460} anker={anker} style={{ opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity ${vis ? 400 : 350}ms ${EASE}`, pointerEvents: 'none' }}>
-      <Flyt vis={vis} ov={ov}><p className="inline-flex items-center gap-2 text-[12.5px] font-medium tabular-nums" style={{ color: f.svak }}>Sak · Nygårdsgaten 5 {fase >= F.DETALJ && <Merke tekst={godkjent ? 'Godkjent 22:58' : 'Opprettet 22:42'} tone={godkjent ? 'gronn' : 'noytral'} />}</p></Flyt>
+    <Sone testid="v4-kino-d-sak" bredde={500} anker={anker} style={{ opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity ${vis ? 400 : 350}ms ${EASE}`, pointerEvents: 'none' }}>
+      <Flyt vis={vis} ov={ov}><p className="inline-flex items-center gap-2 text-[12.5px] font-medium" style={{ color: f.svak }}>Sak · Nygårdsgaten 5 {fase >= F.DETALJ && <Merke tekst={godkjent ? 'Godkjent 22:58' : 'Opprettet 22:42'} tone={godkjent ? 'gronn' : 'noytral'} />}</p></Flyt>
       <div className="mt-2">
         {/* På mobil klappes saksradene sammen når SMS-en kommer — én ting om gangen */}
         <Fold open={!kompakt || fase < F.SMS} ov={ov}>
@@ -143,8 +149,8 @@ function Sak({ fase, ov, anker }) {
           venstre={<><Portrett src={JONAS.bilde} alt={JONAS.navn} size={kompakt ? 30 : 34} /><span className="min-w-0"><span className={`block truncate font-medium ${kompakt ? 'text-[14px]' : 'text-[15px]'}`} style={{ color: f.tekst }}>{JONAS.navn}</span><span className="block text-[12px]" style={{ color: f.svak }}>{JONAS.rolle}</span></span></>}
           hoyre={fase >= F.LEV1 ? (
             <span className="block text-right">
-              <span key="svar" className={`block font-medium tabular-nums animate-in fade-in-0 duration-300 ${kompakt ? 'text-[13.5px]' : 'text-[14.5px]'}`} style={{ color: f.tekst }}>Torsdag 09:00–11:00</span>
-              <span className="block text-[12px] tabular-nums" style={{ color: f.svak }}>{tall(PRIS)} kr inkl. mva</span>
+              <span key="svar" className={`block font-medium animate-in fade-in-0 duration-300 ${kompakt ? 'text-[13.5px]' : 'text-[14.5px]'}`} style={{ color: f.tekst }}>Torsdag 09:00–11:00</span>
+              <span className="block text-[12px]" style={{ color: f.svak }}>{tall(PRIS)} kr inkl. mva</span>
             </span>
           ) : <span key="fikk" className="text-[12.5px] animate-in fade-in-0 duration-300" style={{ color: f.svak }}>Har fått bildet og saken</span>}
         />
@@ -163,8 +169,12 @@ function Morgen({ fase, ov, anker }) {
   const f = farger(tema);
   const vis = fase >= F.TID && fase <= F.FAKTURA;
   return (
-    <Sone testid="v4-kino-d-morgen" bredde={440} anker={anker} style={{ opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity ${vis ? 400 : 350}ms ${EASE}`, pointerEvents: 'none' }}>
-      <Flyt vis={vis} ov={ov}><p className="text-[12.5px] font-medium tabular-nums" style={{ color: f.svak }}>Torsdag · Sak lukkes</p></Flyt>
+    <Sone testid="v4-kino-d-morgen" bredde={500} anker={anker} style={{ opacity: vis ? 1 : 0, transition: ov ? 'none' : `opacity ${vis ? 400 : 350}ms ${EASE}`, pointerEvents: 'none' }}>
+      {/* Tiden går: klokka teller fra godkjenningen 22:58 til rørleggeren er ferdig torsdag 09:40 */}
+      <Flyt vis={vis} ov={ov}>
+        <p className="text-[12.5px] font-medium" style={{ color: f.svak }}>Torsdag</p>
+        <p className={`${kompakt ? 'text-[34px]' : 'text-[clamp(38px,3vw,56px)]'} leading-none`} style={{ ...display, color: f.tekst }} data-testid="v4-kino-tid"><Tid fra={22 * 60 + 58} til={24 * 60 + 9 * 60 + 40} aktiv={vis} dur={1800} ov={ov} /></p>
+      </Flyt>
       <div className="mt-2">
         <Rad vis={vis} ov={ov} delay={250} sist={false} testid="v4-kino-utfort"
           venstre={(
@@ -199,10 +209,10 @@ function Slutt({ fase, ov, anker }) {
   return (
     <Sone testid="v4-kino-d-slutt" bredde={420} anker={anker} style={{ pointerEvents: 'none' }}>
       <Flyt vis={vis} ov={ov} delay={300}>
-        <p className="text-[12.5px] font-medium tabular-nums" style={{ color: f.svak }}>Sak · Nygårdsgaten 5 · lukket</p>
+        <p className="text-[12.5px] font-medium" style={{ color: f.svak }}>Sak · Nygårdsgaten 5 · lukket</p>
         <div className={`${kompakt ? 'mt-3' : 'mt-4'} grid grid-cols-3 gap-4`}>
           {[['Melding', '22:41'], ['Ditt trykk', '22:58'], ['Løst', 'tor 09:58']].map(([k, v]) => (
-            <div key={k}><p className="text-[11.5px]" style={{ color: f.svak }}>{k}</p><p className={`mt-0.5 font-medium tabular-nums tracking-[-0.005em] ${kompakt ? 'text-[15px]' : 'text-[17px]'}`} style={{ color: f.tekst }}>{v}</p></div>
+            <div key={k}><p className="text-[11.5px]" style={{ color: f.svak }}>{k}</p><p className={`mt-0.5 font-medium tracking-[-0.005em] ${kompakt ? 'text-[15px]' : 'text-[17px]'}`} style={{ color: f.tekst }}>{v}</p></div>
           ))}
         </div>
       </Flyt>
@@ -238,7 +248,7 @@ export default function DriftKino({ synlig, spiller, onFerdig, onFremdrift, nest
   React.useEffect(() => { onTema?.(tema); }, [onTema, tema]);
   const sone = fase >= F.MELD && fase < F.SLUTT;
   return (
-    <KinoStage bilder={BILDER} aktiv={bildeFor(fase)} tema={tema} sone={sone} driv={false} ov={ov} synlig={synlig} morkt={morkt} fase={fase} testid="v4-kino-drift">
+    <KinoStage bilder={BILDER} aktiv={bildeFor(fase)} neste={nesteFor(fase)} tema={tema} sone={sone} driv={drivFor(fase)} ov={ov} synlig={synlig} morkt={morkt} fase={fase} testid="v4-kino-drift">
       <Scener fase={fase} ov={ov} />
       <KinoTekst nr="03" kapittel="Driften" akter={AKTER} id={akt.id} ov={ov} />
       <KinoNeste vis={fase >= F.SLUTT} navn={neste} dur={AUTO[F.SLUTT]} ov={ov} />

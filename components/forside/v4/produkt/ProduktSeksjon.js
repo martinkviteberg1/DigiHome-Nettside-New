@@ -246,10 +246,10 @@ export default function ProduktSeksjon({ variant = 'ramme' }) {
             {aktiv === 'drift' && <DriftKino {...filmProps} />}
             {aktiv === 'okonomi' && <OkonomiKino {...filmProps} />}
           </div>
-          {/* Kapitlene — ord rett på fotoet, øverst. Den lilla linjen under det aktive ordet er kapittelets fremdrift. */}
+          {/* Kapittelindeksen — «01 Annonse · 02 Kontrakt …» rett på fotoet, øverst. Den lilla linjen under det aktive kapittelet er fremdriften. */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center pt-[92px] lg:pt-[86px]" style={{ color: tekst, transition: `color 900ms ${EASE}` }}>
-            <div ref={listeRef} role="tablist" aria-label="Produktområder" className="pointer-events-auto flex gap-5 sm:gap-9" data-testid="v4-tabs" data-variant="tekst">
-              {TABS.map((t) => {
+            <div ref={listeRef} role="tablist" aria-label="Produktområder" className="pointer-events-auto flex items-center gap-6 sm:gap-10" data-testid="v4-tabs" data-variant="tekst">
+              {TABS.map((t, i) => {
                 const er = t.id === aktiv;
                 return (
                   <button
@@ -260,13 +260,14 @@ export default function ProduktSeksjon({ variant = 'ramme' }) {
                     aria-selected={er}
                     aria-disabled={!t.klar}
                     onClick={() => { if (t.klar) setAktiv(t.id); }}
-                    className={`relative pb-2.5 text-[13.5px] tracking-[-0.005em] transition-opacity duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/40 sm:text-[15px] ${er ? 'font-medium' : t.klar ? 'hover:opacity-100' : 'cursor-default'}`}
-                    style={{ color: 'currentColor', opacity: er ? 1 : t.klar ? 0.56 : 0.3 }}
+                    className={`relative flex items-baseline gap-2 pb-3 text-[13px] tracking-[-0.005em] transition-opacity duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/40 sm:text-[14.5px] ${er ? 'font-medium' : t.klar ? 'hover:opacity-100' : 'cursor-default'}`}
+                    style={{ color: 'currentColor', opacity: er ? 1 : t.klar ? 0.58 : 0.32 }}
                     data-testid={`v4-tab-${t.id}`}
                   >
-                    {t.navn}
+                    <span className="text-[10.5px] font-medium tabular-nums sm:text-[11px]" style={{ opacity: er ? 0.75 : 0.7 }}>0{i + 1}</span>
+                    <span>{t.navn}</span>
                     <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[2px] overflow-hidden rounded-full" style={{ background: er ? (ink ? 'rgba(21,19,15,0.12)' : 'rgba(244,241,234,0.18)') : 'transparent', transition: `background-color 300ms ${EASE}` }}>
-                      <span className="absolute inset-y-0 left-0 rounded-full" style={{ background: T.lilla, width: er ? `${Math.max(4, Math.round(frem.andel * 1000) / 10)}%` : '0%', transition: er && frem.ms ? `width ${frem.ms}ms linear` : `width 300ms ${EASE}` }} data-testid={er ? 'v4-tabs-fremdrift' : undefined} />
+                      <span className="absolute inset-y-0 left-0 rounded-full" style={{ background: T.lilla, width: er ? `${Math.max(3, Math.round(frem.andel * 1000) / 10)}%` : '0%', transition: er && frem.ms ? `width ${frem.ms}ms linear` : `width 300ms ${EASE}` }} data-testid={er ? 'v4-tabs-fremdrift' : undefined} />
                     </span>
                   </button>
                 );

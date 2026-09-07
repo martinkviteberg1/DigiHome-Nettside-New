@@ -1229,3 +1229,25 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   (pt 92/86 px — under navsonen), farge følger `onTema` fra filmen. Chapter-bytte: 340 ms fade til bunnfarge (uendret mekanisme).
 - **Ikke brukergodkjent.** Kjente avveininger: fasade-morgen er blek → lys scrim kan virke tåkete; nav dekker øverste 64/72 px når seksjonen
   står øverst (designet slik). Standardvarianten `ramme` er urørt.
+
+## Kino-modus forkastet · ny åpning i ramme-varianten (AnnonseFilm) — [denne runden]
+- **Bruker forlot fullskjerm-foto-konseptet** («vi skal gå vekk fra det konseptet med fullscreen bilde»). Kino-filene ligger igjen bak
+  `dh_produkt=full` (kompilerer; `Kino.js` ble delvis omskrevet før pivoten — bigger type, tema per foto, `Blits`, `VinduLys`, `Topp`;
+  `AnnonseKino` omskrevet til montasje-konsept; Kontrakt/Drift/Økonomi-kino uendret). Ingen videre arbeid der uten ny beskjed.
+- **Ny åpning i `produkt/AnnonseFilm.js` (ramme-varianten, standard):** rammen ER DigiHome-appen.
+  Faser: START (1800: tom hvit flate → logoen i to slag: ikonet setter seg m/ overshoot, ordmerket glir ut bak ikonet — `LogoGruppe`,
+  ikon `/brand/digihome-icon-purple.svg` + lockup `/digihome-hero-logo.svg` maskert til teksten) → APP (1500: logoen glir til app-hodet
+  øverst til venstre; «Hei, Kari.», adresselinje og «Lag annonse» midt i flaten) → PEKER/HOVER/TRYKK_START (pekeren trykker) →
+  FELT (1300: knappen blir opplastingsfeltet i scenen, uniform skala fra knappens senter; adressen glir til app-hodet høyre; pekeren ut) →
+  DRA (1450: pekeren kommer tilbake langt utenfra med en fanet bunke på fem miniatyrer — `HoldtBunke` som barn av `Peker`; feltet blir lilla
+  slippsone når den er over) → SLIPP (1100: bunken spretter ut til fem løse bilder i bunken, `LANDING`-easing, 55 ms stagger) → BUNKE (500) →
+  BILDER (2600: sorterer seg i mosaikken; romnavn lander på hver flis + «5 bilder · 4 rom + fasade») → LES1 … som før.
+  Kameraet (søker/utløser/«1 av 5»), `Bakteppe`, `StartTekst`, `KameraKompakt` og «Vi gjør resten»-listen er FJERNET (det siste var dobbelt
+  med LES1–3). Nye AKTER-tekster (kortere, ett poeng per akt): «Begynn med bildene.», «Sortert. Rom for rom.», «Ser hva rommet har.»,
+  «Svarer før noen spør.», «Foreslår det som kan bli bedre.», «Kun sengen. Rommet står urørt.», «Utkastet skriver seg.», «Ute på FINN.no. Ett
+  trykk.», «Visningen booker de selv.», «Du velger.», slutt «Emma flytter inn 1. november.».
+  Mobil (`AapningKompakt`): samme flate/logo/Hei/knapp (trykker seg selv), bunken kommer opp fanet midt i feltet (DRA) og spretter ut (SLIPP).
+- **filmdeler.js:** `Peker` beveger seg nå med `transform: translate3d` (ikke left/top), tar `holder` (holder bunken, skalert 0.92) og
+  `children`; `usePeker` tar valgfri `inn(navn)` → hvor pekeren kommer inn fra (Annonse: 'felt' → 420/290 så den kommer utenfra rammen).
+  Kontrakt/Drift bruker samme API uendret (verifisert: pekeren vises i Kontrakt).
+- **Ikke brukergodkjent** — venter på visuell bekreftelse. Kun screenshot-testet (desktop 1440/1920, mobil 390).
