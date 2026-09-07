@@ -140,15 +140,15 @@ function Tittel({ over, tittel, tekst, testId }) {
   return (
     <div>
       {over ? <p className="mb-3 text-[14px] font-medium text-[#15130F]/55">{over}</p> : null}
-      <h1 className="text-[36px] sm:text-[46px] lg:text-[52px]" style={{ ...display, color: T.ink, maxWidth: '16ch' }} data-testid={testId}>{tittel}</h1>
-      {tekst ? <p className="mt-4 max-w-[46ch] text-[16px] leading-[1.5] text-[#15130F]/65 sm:text-[17px]">{tekst}</p> : null}
+      <h1 className="text-[36px] sm:text-[44px] lg:text-[48px]" style={{ ...display, color: T.ink, maxWidth: '16ch' }} data-testid={testId}>{tittel}</h1>
+      {tekst ? <p className="mt-3 max-w-[46ch] text-[16px] leading-[1.5] text-[#15130F]/65 sm:text-[17px]">{tekst}</p> : null}
     </div>
   );
 }
 
 function Tilbake({ onClick }) {
   return (
-    <button type="button" onClick={onClick} className="mb-7 inline-flex items-center gap-2 text-[13.5px] text-[#15130F]/60 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" data-testid="start-tilbake">
+    <button type="button" onClick={onClick} className="mb-5 inline-flex items-center gap-2 text-[13.5px] text-[#15130F]/60 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" data-testid="start-tilbake">
       <ArrowLeft className="h-4 w-4" strokeWidth={1.8} /> Tilbake
     </button>
   );
@@ -463,7 +463,7 @@ export default function StartV4() {
       <Topplinje steg={sendt ? 'ferdig' : steg} onTil={sendt ? undefined : (s) => setSteg(s)} />
       <div className="mx-auto grid w-full max-w-[1600px] lg:min-h-[calc(100svh-65px)] lg:grid-cols-[minmax(0,1fr)_minmax(400px,44%)]">
         {/* ── Venstre: stegene ── */}
-        <main className="flex min-w-0 flex-col px-5 pb-16 pt-8 sm:px-8 sm:pt-12 lg:justify-center lg:px-14 lg:py-14 xl:px-20">
+        <main className="flex min-w-0 flex-col px-5 pb-16 pt-8 sm:px-8 sm:pt-12 lg:justify-center lg:px-14 lg:py-8 xl:px-20">
           {/* Mobil: boligen som stripe over stegene */}
           {panelKompakt ? <div className="mb-8 lg:hidden">{panelKompakt}</div> : null}
 
@@ -520,58 +520,73 @@ export default function StartV4() {
                 {finnUrl && finnNotat ? <p className="mt-4 text-[13.5px] text-[#15130F]/55" data-testid="start-finn-notat">{finnNotat}</p> : null}
 
                 {/* Valget er system vs. menneske. Samme grammatikk i begge kort (hvem gjør hva), ulikt materiale:
-                    lys flate for systemet, varm mørk for forvalteren. Nøkkeltallet er det visuelle ankeret — ikke dekor. */}
-                <div className="mt-9 grid gap-3 md:grid-cols-2" data-testid="start-tjenester">
+                    lys flate for systemet (DigiHome-merket), varm mørk for forvalteren (én av forvalterne, lite portrett).
+                    Kompakt nok til at hele steget står innenfor viewporten på en laptop. */}
+                <div className="mt-6 grid gap-3 md:grid-cols-2" data-testid="start-tjenester">
                   {[
                     {
                       id: 'selvforvaltning', morkt: false,
-                      over: 'Systemet · hele Norge', tittel: 'Lei ut selv', ingress: 'Du er utleier. Systemet tar rutinen.',
+                      merke: <span aria-hidden="true" className="inline-flex h-8 w-8 items-center justify-center rounded-full" style={{ background: 'rgba(212,150,255,0.18)' }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/brand/digihome-icon-purple.svg" alt="" className="h-4 w-4" />
+                      </span>,
+                      over: 'Systemet', omrade: 'Hele Norge', tittel: 'Lei ut selv', ingress: 'Du er utleier. Systemet tar rutinen.',
                       rader: [['Du', 'Annonse og visninger · godkjenner leietaker · bestemmer i saker', true], ['Systemet', 'Kontrakt · husleie · purring · foreslår løsninger på saker', false]],
-                      tall: '5 %', under: 'av husleien · ingen bindingstid',
+                      meta: <><span className="font-medium">5 % av husleien</span> · ingen bindingstid</>,
                       knapp: 'Lei ut selv', testId: 'service-selvforvaltning',
                     },
                     {
                       id: 'full_forvaltning', morkt: true,
-                      over: fullUtilgjengelig ? `Forvalteren · kommer til ${form.city || 'ditt område'}` : 'Forvalteren · Bergen og omegn',
+                      merke: (
+                        // Én av forvalterne — teamet, ikke én navngitt person
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src="/brand/sarah-sleeman-360.webp" alt="" className="h-8 w-8 rounded-full object-cover" style={{ boxShadow: '0 0 0 2px rgba(244,241,234,0.22)' }} />
+                      ),
+                      over: 'Forvalterteamet', omrade: fullUtilgjengelig ? `Kommer til ${form.city || 'ditt område'}` : 'Bergen og omegn',
                       tittel: 'Full forvaltning', ingress: 'Én fast forvalter gjør jobben. Du har siste ord.',
                       rader: [['Forvalteren', 'Annonse og visninger · anbefaler leietaker · håndterer saker', false], ['Du', 'Godkjenner leietaker · har siste ord', true]],
-                      tall: fullUtilgjengelig ? 'Snart' : '24 t', under: fullUtilgjengelig ? 'vi sier fra når vi lanserer' : 'til personlig tilbud · fast forvalter',
+                      meta: fullUtilgjengelig ? 'Vi sier fra når vi lanserer' : <><span className="font-medium">Personlig tilbud</span> · svar innen 24 timer</>,
                       knapp: fullUtilgjengelig ? 'Registrer interesse' : 'Få et tilbud', testId: 'service-full_forvaltning',
                     },
                   ].map((o) => {
                     const fg = o.morkt ? '#F4F1EA' : T.ink;
                     const svak = o.morkt ? 'rgba(244,241,234,0.72)' : 'rgba(21,19,15,0.62)';
-                    const dim = o.morkt ? 'rgba(244,241,234,0.6)' : 'rgba(21,19,15,0.5)';
+                    const dim = o.morkt ? 'rgba(244,241,234,0.55)' : 'rgba(21,19,15,0.5)';
                     const haar = o.morkt ? 'rgba(244,241,234,0.16)' : 'rgba(21,19,15,0.10)';
                     return (
                       <div
                         key={o.id}
                         role="presentation"
                         onClick={() => velgTjeneste(o.id)}
-                        className={`group flex cursor-pointer flex-col rounded-[20px] p-6 transition-colors duration-200 sm:p-7 ${o.morkt ? 'hover:bg-[#2A2620]' : 'hover:bg-white'}`}
+                        className={`group flex cursor-pointer flex-col rounded-[20px] p-5 transition-colors duration-200 sm:p-6 ${o.morkt ? 'hover:bg-[#2A2620]' : 'hover:bg-white'}`}
                         style={{ background: o.morkt ? T.charcoal : '#FBFAF8', boxShadow: o.morkt ? 'none' : 'inset 0 0 0 1px rgba(21,19,15,0.10)', color: fg }}
                         data-testid={`${o.testId}-kolonne`}
                       >
-                        <p className="text-[13px] font-medium" style={{ color: dim }}>{o.over}</p>
-                        <h2 className="mt-4 text-[30px] sm:text-[34px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.02, color: fg }}>{o.tittel}</h2>
-                        <p className="mt-2 max-w-[30ch] text-[15px] leading-[1.45]" style={{ color: svak }}>{o.ingress}</p>
-                        <dl className="mt-6 border-t" style={{ borderColor: haar }}>
+                        <div className="flex items-center gap-3">
+                          {o.merke}
+                          <p className="text-[13px] leading-tight">
+                            <span className="font-medium" style={{ color: fg }}>{o.over}</span>
+                            <span style={{ color: dim }}> · {o.omrade}</span>
+                          </p>
+                        </div>
+                        <h2 className="mt-4 text-[26px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.04, color: fg }}>{o.tittel}</h2>
+                        <p className="mt-1.5 max-w-[30ch] text-[14.5px] leading-[1.45]" style={{ color: svak }}>{o.ingress}</p>
+                        <dl className="mt-4 border-t" style={{ borderColor: haar }}>
                           {o.rader.map(([hvem, hva, deg]) => (
-                            <div key={hvem} className="grid grid-cols-[92px_1fr] gap-3 border-b py-3.5" style={{ borderColor: haar }}>
-                              <dt className="flex items-center gap-2 self-start text-[14px] font-medium" style={{ color: fg }}>
+                            <div key={hvem} className="grid grid-cols-[88px_1fr] gap-3 border-b py-2.5" style={{ borderColor: haar }}>
+                              <dt className="flex items-center gap-2 self-start text-[13.5px] font-medium" style={{ color: fg }}>
                                 {deg ? <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.lilla }} /> : null}{hvem}
                               </dt>
-                              <dd className="text-[14px] leading-[1.5]" style={{ color: svak }}>{hva}</dd>
+                              <dd className="text-[13.5px] leading-[1.45]" style={{ color: svak }}>{hva}</dd>
                             </div>
                           ))}
                         </dl>
-                        <div className="mt-auto pt-8">
-                          <p className="text-[40px] sm:text-[44px]" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 1, color: fg }}>{o.tall}</p>
-                          <p className="mt-1.5 text-[13.5px]" style={{ color: svak }}>{o.under}</p>
+                        <div className="mt-auto pt-5">
+                          <p className="text-[13px]" style={{ color: svak }}>{o.meta}</p>
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); velgTjeneste(o.id); }}
-                            className={`mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14.5px] font-medium transition-[background-color,transform] duration-200 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 ${o.morkt ? 'group-hover:bg-white focus-visible:ring-white/40' : 'group-hover:bg-[#2A2620] focus-visible:ring-[#15130F]/30'}`}
+                            className={`mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14.5px] font-medium transition-[background-color,transform] duration-200 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 ${o.morkt ? 'group-hover:bg-white focus-visible:ring-white/40' : 'group-hover:bg-[#2A2620] focus-visible:ring-[#15130F]/30'}`}
                             style={o.morkt ? { background: '#F4F1EA', color: T.ink } : { background: T.ink, color: '#F4F1EA' }}
                             data-testid={o.testId}
                           >
@@ -582,7 +597,7 @@ export default function StartV4() {
                     );
                   })}
                 </div>
-                <p className="mt-5 text-[13px] text-[#15130F]/45">Begge kan endres senere. Ingenting sendes før du sier ja.</p>
+                <p className="mt-3 text-[13px] text-[#15130F]/45">Begge kan endres senere. Ingenting sendes før du sier ja.</p>
               </section>
             ) : null}
 
