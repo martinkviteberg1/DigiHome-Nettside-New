@@ -8,7 +8,8 @@ import { EASE, Knapp, T, display } from '../motion';
 import PortefoljeScene, { STORRELSER } from './PortefoljeScene';
 import VeiskilleSeksjon from '../VeiskilleSeksjon';
 import SammenligningSeksjon from '../SammenligningSeksjon';
-import AltSamletSeksjon from '../AltSamletSeksjon';
+import TillitStripe from '../TillitStripe';
+import ModulSeksjon from './ModulSeksjon';
 import StegSeksjon from '../StegSeksjon';
 import FaqSeksjon from '../FaqSeksjon';
 import AvslutningSeksjon from '../AvslutningSeksjon';
@@ -127,8 +128,9 @@ export default function BedriftV4() {
     <div className="min-h-screen overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="bedrift-v4">
       <NavV4 />
       <main>
-        <section className="relative lg:flex lg:min-h-[calc(100svh-64px)] lg:flex-col lg:justify-center" data-testid="v4b-hero">
-          <div className="mx-auto grid w-full max-w-[1440px] gap-14 px-5 pb-16 pt-10 sm:px-8 sm:pt-12 lg:w-[calc(100%-128px)] lg:grid-cols-[minmax(0,5fr)_minmax(0,8fr)] lg:items-center lg:gap-12 lg:px-0 lg:py-10 2xl:gap-16">
+        <section className="relative overflow-hidden lg:flex lg:min-h-[calc(100svh-64px)] lg:flex-col lg:justify-center" data-testid="v4b-hero">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 50% 60% at 72% 50%, rgba(212,150,255,0.12) 0%, rgba(212,150,255,0.04) 45%, rgba(212,150,255,0) 72%)' }} />
+          <div className="relative mx-auto grid w-full max-w-[1440px] gap-14 px-5 pb-16 pt-10 sm:px-8 sm:pt-12 lg:w-[calc(100%-128px)] lg:grid-cols-[minmax(0,5fr)_minmax(0,8fr)] lg:items-center lg:gap-12 lg:px-0 lg:py-10 2xl:gap-16">
             <div className="max-w-[560px]">
               <p className="dh-cover-inn text-[15px] font-medium" style={{ color: 'rgba(21,19,15,0.55)' }} data-testid="v4b-label">For eiendomsselskap</p>
               <h1
@@ -178,6 +180,7 @@ export default function BedriftV4() {
             </div>
           </div>
         </section>
+        <TillitStripe />
 
         {/* ── 2. Én motor, to måter å bruke den ── */}
         <VeiskilleSeksjon
@@ -197,8 +200,8 @@ export default function BedriftV4() {
           kolonner={['Hendelse', 'Du', 'Systemet']}
           testid="v4e"
         />
-        {/* ── 4. Hele utleien, ett sted ── */}
-        <AltSamletSeksjon />
+        {/* ── 4. Plattformen — bygget for team med portefølje ── */}
+        <ModulSeksjon />
         {/* ── 5. Slik kommer dere i gang ── */}
         <StegSeksjon
           tittel={['Slik kommer', 'dere i gang.']}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import Link from 'next/link';
 import { EASE, Knapp, Lenke, T, display, useSynlig } from '../motion';
 import { site } from '@/lib/site';
@@ -33,81 +33,79 @@ const HAIR = 'rgba(21,19,15,0.12)';
 /* Felles «inn»-bevegelse for seksjoner: opacity + 18 px løft, forskjøvet per element */
 const innFor = (synlig) => (i, y = 18) => ({ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : `translateY(${y}px)`, transition: `opacity 800ms ${EASE} ${i * 90}ms, transform 900ms ${EASE} ${i * 90}ms` });
 
-/* ── 1. Hero — teksten til venstre, Sarah til høyre ── */
-export function ForvaltningHero() {
-  const bildeRef = useRef(null);
-  const [inne, setInne] = useState(false);     // portrettet setter seg (1.06 → 1) rett etter innlasting
-  const [rolig, setRolig] = useState(false);   // … og når det har satt seg, tar parallaksen over (uten overgang)
-  useEffect(() => {
-    const t1 = window.setTimeout(() => setInne(true), 60);
-    const t2 = window.setTimeout(() => setRolig(true), 2000);
-    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
-  }, []);
-  /* Parallakse: portrettet følger scrollen litt saktere enn siden. Kun transform, i rAF, først etter at bildet har satt seg. */
-  useEffect(() => {
-    const el = bildeRef.current;
-    if (!rolig || !el || typeof window === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined;
-    let raf = 0;
-    const tikk = () => {
-      raf = 0;
-      const y = Math.min(window.scrollY, 1200);
-      el.style.transform = `translate3d(0, ${(y * 0.08).toFixed(1)}px, 0)`;
-    };
-    const paa = () => { if (!raf) raf = requestAnimationFrame(tikk); };
-    window.addEventListener('scroll', paa, { passive: true });
-    tikk();
-    return () => { window.removeEventListener('scroll', paa); if (raf) cancelAnimationFrame(raf); };
-  }, [rolig]);
-  return (
-    <section className="relative lg:flex lg:min-h-[calc(100svh-64px)] lg:flex-col lg:justify-center" data-testid="v4f-hero">
-      <div className="mx-auto grid w-full max-w-[1440px] gap-12 px-5 pb-16 pt-10 sm:px-8 sm:pt-12 lg:w-[calc(100%-128px)] lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-center lg:gap-16 lg:px-0 lg:py-12 2xl:gap-20">
-        <div className="min-w-0 max-w-[640px]">
-          <p className="dh-cover-inn text-[15px] font-medium" style={{ color: 'rgba(21,19,15,0.55)' }} data-testid="v4f-label">Full forvaltning · Bergen og omegn</p>
-          <h1
-            className="dh-cover-inn mt-4 max-w-[11ch] text-[52px] sm:text-[68px] lg:text-[clamp(64px,5.2vw,100px)]"
-            style={{ ...display, color: T.ink, animationDelay: '.04s' }}
-            data-testid="v4f-h1"
-          >
-            Vi tar jobben. Du bestemmer<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
-          </h1>
-          <p className="dh-cover-inn mt-7 max-w-[40ch] text-[18px] leading-[1.45] text-[#15130F]/70 sm:mt-8 sm:text-[20px]" style={{ animationDelay: '.08s' }} data-testid="v4f-ingress">
-            <span className="sm:hidden">Vi finner leietaker, tar drift og oppfølging. Du ser alt som skjer — og har siste ord.</span>
-            <span className="hidden sm:inline">Overlat utleien til oss. Vi finner leietaker, tar drift og oppfølging — du ser alt som skjer, og har siste ord om det som betyr noe.</span>
-          </p>
+/* ── 1. Hero — mørk scene: teksten til venstre, måneden (scenen) til høyre, rollene som rulletekst under ── */
+const ROLLER = [
+  { navn: 'Sarah Sleeman', rolle: 'Din forvalter', d: 'Holder visning, anbefaler leietaker, følger opp.', src: '/brand/sarah-sleeman-360.webp' },
+  { navn: 'Vaktmester', rolle: 'Boligen', d: 'Renhold, nøkler og gjennomgang før innflytting.', src: '/v4/jonas.webp' },
+  { navn: 'DigiHome', rolle: 'Systemet', d: 'Kontrakt med BankID, husleie, rapport.', merke: true },
+  { navn: 'Du', rolle: 'Eieren', d: 'Ett valg: hvem som flytter inn.', du: true },
+];
 
-          <div className="dh-cover-inn mt-9 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ animationDelay: '.16s' }}>
-            <Knapp href="/bli-utleier/start?tier=full_forvaltning" data-testid="v4f-cta">Få et uforpliktende tilbud</Knapp>
-            <Lenke href="/book-mote" data-testid="v4f-cta-samtale">Book en samtale</Lenke>
+function RolleAnsikt({ r, size = 34 }) {
+  if (r.merke) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src="/brand/digihome-icon-purple.svg" alt="" width={size} height={size} className="shrink-0 select-none" style={{ width: size, height: size, borderRadius: Math.round(size * 0.28) }} draggable={false} />;
+  }
+  if (r.du) {
+    return <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center rounded-full text-[12.5px] font-medium" style={{ width: size, height: size, background: 'rgba(244,241,234,0.08)', boxShadow: `inset 0 0 0 1.5px ${T.lilla}`, color: T.offwhite }}>Du</span>;
+  }
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={r.src} alt="" width={size} height={size} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size, boxShadow: '0 0 0 1px rgba(244,241,234,0.16)' }} draggable={false} />;
+}
+
+export function ForvaltningHero() {
+  return (
+    <section className="relative overflow-hidden lg:flex lg:min-h-[calc(100svh-64px)] lg:flex-col lg:justify-center" style={{ background: T.charcoal, color: T.offwhite }} data-testid="v4f-hero">
+      {/* Spotlys bak scenen — statisk */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 58% 68% at 70% 46%, rgba(212,150,255,0.11) 0%, rgba(212,150,255,0.03) 45%, rgba(212,150,255,0) 75%)' }} />
+      <div className="relative mx-auto w-full max-w-[1440px] px-5 pb-14 pt-10 sm:px-8 sm:pt-12 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-12 lg:pt-10">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-center lg:gap-12 2xl:gap-16">
+          <div className="min-w-0 max-w-[560px]">
+            <p className="dh-cover-inn text-[15px] font-medium" style={{ color: 'rgba(244,241,234,0.55)' }} data-testid="v4f-label">Full forvaltning · Bergen og omegn</p>
+            <h1
+              className="dh-cover-inn mt-4 max-w-[11ch] text-[52px] sm:text-[68px] lg:text-[clamp(60px,5vw,96px)]"
+              style={{ ...display, color: T.offwhite, animationDelay: '.04s' }}
+              data-testid="v4f-h1"
+            >
+              Vi tar jobben. Du bestemmer<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+            </h1>
+            <p className="dh-cover-inn mt-7 max-w-[38ch] text-[18px] leading-[1.45] sm:mt-8 sm:text-[20px]" style={{ color: 'rgba(244,241,234,0.72)', animationDelay: '.08s' }} data-testid="v4f-ingress">
+              <span className="sm:hidden">Vi finner leietaker, tar drift og oppfølging. Du ser alt som skjer — og har siste ord.</span>
+              <span className="hidden sm:inline">Overlat utleien til oss. Vi finner leietaker, tar drift og oppfølging — du ser alt som skjer, og har siste ord om det som betyr noe.</span>
+            </p>
+            <div className="dh-cover-inn mt-9 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ animationDelay: '.16s' }}>
+              <Knapp href="/bli-utleier/start?tier=full_forvaltning" data-testid="v4f-cta">Få et uforpliktende tilbud</Knapp>
+              <Link href="/book-mote" className="group inline-flex items-center gap-1.5 text-[15px] font-medium transition-colors hover:text-white" style={{ color: 'rgba(244,241,234,0.85)' }} data-testid="v4f-cta-samtale">
+                Book en samtale
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-0.5"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </Link>
+            </div>
+            <p className="dh-cover-inn mt-4 text-[14px]" style={{ color: 'rgba(244,241,234,0.5)', animationDelay: '.22s' }} data-testid="v4f-under">
+              Personlig tilbud innen 24 timer · ingen oppstartskostnad · ingen bindingstid
+            </p>
           </div>
-          <p className="dh-cover-inn mt-4 text-[14px]" style={{ color: 'rgba(21,19,15,0.5)', animationDelay: '.22s' }} data-testid="v4f-under">
-            Personlig tilbud innen 24 timer · ingen oppstartskostnad · ingen bindingstid
-          </p>
+
+          {/* Måneden — scenen spiller fra første sekund */}
+          <div className="dh-cover-inn min-w-0" style={{ animationDelay: '.12s' }} data-testid="v4f-hero-scene">
+            <ForvaltningScene />
+          </div>
         </div>
 
-        {/* Sarah — portrettet står alene, ingen kort over. Bildetekst under på én hårlinje. */}
-        <figure className="dh-cover-inn min-w-0 lg:justify-self-end" style={{ animationDelay: '.12s' }} data-testid="v4f-portrett">
-          <div className="relative overflow-hidden rounded-[24px] sm:rounded-[28px]" style={{ aspectRatio: '4 / 5', background: '#8B7460', boxShadow: '0 40px 90px -50px rgba(21,19,15,0.45), 0 0 0 1px rgba(21,19,15,0.06)' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              ref={bildeRef}
-              src={SARAH.bilde.src}
-              srcSet={SARAH.bilde.srcSet}
-              sizes="(min-width: 1024px) 34vw, 100vw"
-              alt={`${SARAH.navn}, daglig leder i DigiHome`}
-              className="h-full w-full select-none object-cover"
-              style={{ objectPosition: '50% 18%', ...(rolig ? {} : { transform: inne ? 'scale(1)' : 'scale(1.06)', transition: `transform 1800ms ${EASE}` }), willChange: 'transform' }}
-              draggable={false}
-              fetchPriority="high"
-            />
-          </div>
-          <figcaption className="mt-5 flex items-start justify-between gap-6 border-t pt-4" style={{ borderColor: HAIR }}>
-            <div className="min-w-0">
-              <p className="text-[16px] font-medium" style={{ color: T.ink }}>{SARAH.navn}</p>
-              <p className="mt-0.5 text-[14.5px] leading-[1.4]" style={{ color: DIM }}>{SARAH.rolle}. Én person som kjenner boligen din.</p>
-            </div>
-            <p className="shrink-0 pt-0.5 text-[11.5px]" style={{ color: 'rgba(21,19,15,0.38)' }}>{SARAH.foto}</p>
-          </figcaption>
-        </figure>
+        {/* Rollene — som rulletekst under filmen */}
+        <ul className="dh-cover-inn mt-12 grid grid-cols-2 gap-x-6 gap-y-6 border-t pt-6 lg:mt-14 lg:grid-cols-4 lg:gap-x-10" style={{ borderColor: 'rgba(244,241,234,0.12)', animationDelay: '.28s' }} data-testid="v4f-roller">
+          {ROLLER.map((r) => (
+            <li key={r.navn} className="flex items-start gap-3">
+              <RolleAnsikt r={r} />
+              <span className="min-w-0">
+                <span className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-[15px] font-medium" style={{ color: T.offwhite }}>{r.navn}</span>
+                  <span className="text-[12.5px]" style={{ color: r.du ? T.lilla : 'rgba(244,241,234,0.5)' }}>{r.rolle}</span>
+                </span>
+                <span className="mt-0.5 hidden text-[13.5px] leading-[1.45] sm:block" style={{ color: 'rgba(244,241,234,0.58)' }}>{r.d}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );
@@ -177,77 +175,6 @@ export function LofteSeksjon() {
   );
 }
 
-/* ── 3. En måned med oss — scenen på mørk bunn, med rollene til venstre ── */
-const ROLLER = [
-  { navn: 'Sarah Sleeman', rolle: 'Din forvalter', d: 'Holder visning, anbefaler leietaker, følger opp.', src: '/brand/sarah-sleeman-360.webp' },
-  { navn: 'Vaktmester', rolle: 'Boligen', d: 'Renhold, nøkler og gjennomgang før innflytting.', src: '/v4/jonas.webp' },
-  { navn: 'DigiHome', rolle: 'Systemet', d: 'Kontrakt med BankID, husleie, rapport.', merke: true },
-  { navn: 'Du', rolle: 'Eieren', d: 'Ett valg: hvem som flytter inn.', du: true },
-];
-
-function Rolle({ r }) {
-  return (
-    <li className="flex items-start gap-3.5 border-t py-4" style={{ borderColor: 'rgba(244,241,234,0.12)' }}>
-      {r.merke ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src="/brand/digihome-icon-purple.svg" alt="" width={36} height={36} className="mt-0.5 h-9 w-9 shrink-0 select-none rounded-[10px]" draggable={false} />
-      ) : r.du ? (
-        <span aria-hidden="true" className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-medium" style={{ background: 'rgba(244,241,234,0.10)', boxShadow: `inset 0 0 0 1.5px ${T.lilla}`, color: T.offwhite }}>Du</span>
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={r.src} alt="" width={36} height={36} className="mt-0.5 h-9 w-9 shrink-0 rounded-full object-cover" style={{ boxShadow: '0 0 0 1px rgba(244,241,234,0.14)' }} draggable={false} />
-      )}
-      <span className="min-w-0">
-        <span className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-[15.5px] font-medium" style={{ color: T.offwhite }}>{r.navn}</span>
-          <span className="text-[12.5px]" style={{ color: r.du ? T.lilla : 'rgba(244,241,234,0.5)' }}>{r.rolle}</span>
-        </span>
-        <span className="mt-0.5 block text-[14px] leading-[1.45]" style={{ color: 'rgba(244,241,234,0.62)' }}>{r.d}</span>
-      </span>
-    </li>
-  );
-}
-
-export function MaanedSeksjon() {
-  const ref = useRef(null);
-  const synlig = useSynlig(ref, 0.1);
-  const inn = innFor(synlig);
-  return (
-    <section id="maaneden" ref={ref} className="relative overflow-hidden" style={{ background: T.charcoal, color: T.offwhite }} data-testid="v4f-maaned">
-      {/* Spotlys bak scenen — statisk */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 70% at 68% 50%, rgba(212,150,255,0.10) 0%, rgba(212,150,255,0.03) 45%, rgba(212,150,255,0) 75%)' }} />
-      <div className="relative mx-auto w-full max-w-[1360px] px-5 pb-20 pt-20 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-28 lg:pt-28">
-        <div className="grid gap-12 lg:grid-cols-12 lg:gap-10">
-          <div className="lg:col-span-4">
-            <p className="text-[14px] font-medium" style={{ color: 'rgba(244,241,234,0.5)', ...inn(0) }}>En måned med oss</p>
-            <h2 className="mt-4 text-[clamp(38px,3.8vw,64px)]" style={{ ...display, color: T.offwhite, ...inn(1) }} data-testid="v4f-maaned-tittel">
-              Slik ser en måned ut<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
-            </h2>
-            <p className="mt-6 max-w-[38ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: 'rgba(244,241,234,0.7)', ...inn(2) }}>
-              Hver rad har en avsender. Det eneste som venter på deg, er hvem som skal bo der — og det venter til du har svart.
-            </p>
-            <div className="mt-10 hidden lg:block" style={inn(3)}>
-              <p className="mb-1 text-[12.5px] font-medium uppercase tracking-[0.08em]" style={{ color: 'rgba(244,241,234,0.45)' }}>Rollene</p>
-              <ul className="border-b" style={{ borderColor: 'rgba(244,241,234,0.12)' }} data-testid="v4f-roller">
-                {ROLLER.map((r) => <Rolle key={r.navn} r={r} />)}
-              </ul>
-            </div>
-          </div>
-          <div className="lg:col-span-8" style={inn(2, 28)}>
-            <ForvaltningScene />
-          </div>
-          <div className="lg:hidden" style={inn(3)}>
-            <p className="mb-1 text-[12.5px] font-medium uppercase tracking-[0.08em]" style={{ color: 'rgba(244,241,234,0.45)' }}>Rollene</p>
-            <ul className="border-b" style={{ borderColor: 'rgba(244,241,234,0.12)' }}>
-              {ROLLER.map((r) => <Rolle key={r.navn} r={r} />)}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /* ── 4. Brev fra Sarah — ett navn, ett nummer ── */
 export function BrevSeksjon() {
   const ref = useRef(null);
@@ -263,6 +190,7 @@ export function BrevSeksjon() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={SARAH.bilde.src} srcSet={SARAH.bilde.srcSet} sizes="(min-width: 1024px) 30vw, 100vw" alt={SARAH.navn} className="h-full w-full select-none object-cover" style={{ objectPosition: '50% 20%', transform: 'scale(1.32)', transformOrigin: '52% 26%' }} draggable={false} loading="lazy" />
             </div>
+            <figcaption className="mt-3 text-[11.5px]" style={{ color: 'rgba(21,19,15,0.38)' }}>{SARAH.foto}</figcaption>
           </figure>
           <div className="lg:col-span-7 lg:col-start-6">
             <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(1) }}>Fra forvalteren din</p>

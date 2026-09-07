@@ -1267,3 +1267,16 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   dag til dag — travel uke, så stille til husleien), ekte ansikter (Sarah, vaktmester = /v4/jonas.webp, DigiHome-ikonet som avsender),
   teamrad uten boks, «Venter på deg»-kortet med Emmas portrett + BankID/inntekt/referanse-piller og sprett-inn. `TillitStripe` (logoer) lagt
   mellom hero og arbeidsdelingen. Hero-portrettet setter seg (1.06 → 1) og får svak scroll-parallakse (transform, rAF) etter 2 s.
+
+## /forvaltning hero uten Sarah + /bedrift løftet — [denne runden]
+- **/forvaltning hero (mørk scene):** charcoal med statisk lilla spotlys; tekst («Vi tar jobben. Du bestemmer.», CTA tilbud + «Book en samtale»)
+  til venstre, `ForvaltningScene` (måneden) til høyre og spiller fra første sekund; «Rollene» (Sarah / Vaktmester / DigiHome / Du) som
+  rulletekst under. `MaanedSeksjon` fjernet (duplikat). Sarahs portrett ligger nå kun i `BrevSeksjon` (tett utsnitt + fotokreditt) og
+  StegSeksjon-personen. Scenefiks: flex-kolonnen krympet tidslinjen til 0 px (ingen in-flow-innhold) → `shrink-0` på header/tidslinje/team;
+  SCENE_H 720–800 så alle seks rader + bunntekst får plass; radpadding 11 px.
+- **/bedrift:** `TillitStripe` under heroen; svakt spotlys bak porteføljescenen; `AltSamletSeksjon` byttet ut med ny
+  `bedrift/ModulSeksjon.js` — «Bygget for team med portefølje.»: seks kapitler med produktobjekter rett på flaten (rollekjeden for én sak,
+  husleie per bygg med stolper, saken melding→leverandør→pris→godkjent, signering m/ BankID-ringer, rapport per bygg og selskap m/ sum og
+  PowerOffice, historikk hvem/når) + «Kontroll»-stripe (roller, historikk, BankID via Posten, eksport til regnskap). Hvert kapittel spiller
+  når det kommer i bildet (useSynlig per rad). Tall og navn er eksempeldata (Strandgaten Eiendom AS, Kari Nilsen, Jonas Berg).
+- Kun screenshot-testet. Ikke brukergodkjent.

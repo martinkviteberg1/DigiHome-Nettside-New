@@ -8,7 +8,7 @@ import TillitStripe from '../TillitStripe';
 import StegSeksjon from '../StegSeksjon';
 import FaqSeksjon from '../FaqSeksjon';
 import AvslutningSeksjon from '../AvslutningSeksjon';
-import { ForvaltningHero, LofteSeksjon, MaanedSeksjon, BrevSeksjon, PRIS_SVAR, SARAH } from './ForvaltningDeler';
+import { ForvaltningHero, LofteSeksjon, BrevSeksjon, PRIS_SVAR, SARAH } from './ForvaltningDeler';
 
 /* ---------------------------------------------------------------------------
    ForvaltningV4 — undersiden for full forvaltning.
@@ -18,9 +18,9 @@ import { ForvaltningHero, LofteSeksjon, MaanedSeksjon, BrevSeksjon, PRIS_SVAR, S
    system som ryggrad — og du ser alt som skjer. Løftet er derfor ikke
    «autopilot», men arbeidsdelingen: «Vi tar jobben. Du bestemmer.»
 
-   Rekkefølge: hero (Sarah) → arbeidsdelingen (vi / du) → én måned slik den
-   ser ut (scenen) → brev fra Sarah (ett navn, ett nummer) → slik kommer du i
-   gang → spørsmål og svar → avslutning.
+   Rekkefølge: hero (mørk scene: løftet + måneden som spiller + rollene) →
+   logoene → arbeidsdelingen (vi / du) → brev fra Sarah (ett navn, ett nummer)
+   → slik kommer du i gang → spørsmål og svar → avslutning.
 
    Kun Bergen og omegn. Aldri pris (avtales individuelt), ingen løfter om
    avkastning. Handlingen er et uforpliktende tilbud — eller en samtale.
@@ -59,7 +59,6 @@ export default function ForvaltningV4() {
         <ForvaltningHero />
         <TillitStripe />
         <LofteSeksjon />
-        <MaanedSeksjon />
         <BrevSeksjon />
         <StegSeksjon tittel={['Slik kommer', 'du i gang.']} under="Én samtale. Ett tilbud. Så tar vi over." steg={STEG} person={PERSON} testid="v4f" />
         <FaqSeksjon sporsmal={SPORSMAL} prisSvar={PRIS_SVAR} />

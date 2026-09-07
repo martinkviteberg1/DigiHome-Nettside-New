@@ -64,8 +64,8 @@ const SPOR = [
 ];
 
 const AUTO_MS = 5000;
-const SCENE_H = 'clamp(660px, 74vh, 760px)';
-const SCENE_H_SMAL = 'clamp(580px, 74vh, 660px)';
+const SCENE_H = 'clamp(720px, 80vh, 800px)';
+const SCENE_H_SMAL = 'clamp(600px, 76vh, 680px)';
 const HAIR = 'rgba(21,19,15,0.08)';
 const PAPIR = '#FBFAF8';
 const SPRETT = 'cubic-bezier(0.22, 1, 0.36, 1)';
@@ -126,7 +126,7 @@ function Maanedslinje({ vis, dag, aktiv, godkjent }) {
   const x = (d) => ((d - 1) / 31) * w;
   const naa = RADER.find((r) => r.dag === dag);
   return (
-    <div ref={ref} className="relative mt-6 h-[40px] sm:mt-7" style={{ opacity: vis ? 1 : 0, transition: `opacity 600ms ${EASE}` }} aria-hidden="true" data-testid="v4f-tidslinje">
+    <div ref={ref} className="relative mt-6 shrink-0 sm:mt-7" style={{ height: 40, opacity: vis ? 1 : 0, transition: `opacity 600ms ${EASE}` }} aria-hidden="true" data-testid="v4f-tidslinje">
       {/* linjen tegnes fra venstre */}
       <span className="absolute left-0 right-0 top-[9px] h-px" style={{ background: 'rgba(21,19,15,0.14)', transformOrigin: 'left', transform: vis ? 'scaleX(1)' : 'scaleX(0)', transition: `transform 900ms ${EASE} 100ms` }} />
       {/* hendelsene som merker — fylles etter hvert */}
@@ -242,12 +242,12 @@ export default function ForvaltningScene() {
       >
         <div className="flex h-full flex-col px-6 pb-5 pt-6 sm:px-8 sm:pt-7">
           {/* ── Header: boligen · status ── */}
-          <div className="flex items-start justify-between gap-4" style={{ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'translateY(8px)', transition: `opacity 600ms ${EASE}, transform 600ms ${EASE}` }}>
+          <div className="flex shrink-0 items-start justify-between gap-4" style={{ opacity: inne ? 1 : 0, transform: inne ? 'none' : 'translateY(8px)', transition: `opacity 600ms ${EASE}, transform 600ms ${EASE}` }}>
             <div className="flex min-w-0 items-center gap-3.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/v4/privat/bolig-thumb.webp" alt="" width={46} height={46} className="h-[46px] w-[46px] shrink-0 rounded-[12px] object-cover" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.08)' }} />
               <div className="min-w-0">
-                <p className="truncate text-[23px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.ink }} data-testid="v4f-adresse">Nygårdsgaten 5A</p>
+                <p className="truncate text-[20px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.ink }} data-testid="v4f-adresse">Nygårdsgaten 5A</p>
                 <p className="mt-0.5 truncate text-[13px] text-[#15130F]/55 sm:text-[13.5px]">Full forvaltning · Bergen · mai</p>
               </div>
             </div>
@@ -264,7 +264,7 @@ export default function ForvaltningScene() {
           <Maanedslinje vis={tid} dag={dag} aktiv={aktiv} godkjent={godkjent} />
 
           {/* ── Teamet ditt — menneskene som gjør jobben — på én hårlinje, ingen boks ── */}
-          <div className="mt-4 flex items-center justify-between gap-4 border-b pb-4 sm:mt-5" style={{ borderColor: HAIR, opacity: team ? 1 : 0, transform: team ? 'none' : 'translateY(8px)', transition: `opacity 600ms ${EASE}, transform 600ms ${EASE}` }} data-testid="v4f-team">
+          <div className="mt-4 flex shrink-0 items-center justify-between gap-4 border-b pb-4 sm:mt-5" style={{ borderColor: HAIR, opacity: team ? 1 : 0, transform: team ? 'none' : 'translateY(8px)', transition: `opacity 600ms ${EASE}, transform 600ms ${EASE}` }} data-testid="v4f-team">
             <div className="flex min-w-0 items-center gap-3">
               <span className="flex -space-x-2">
                 <Ansikt av={SARAH} size={30} />
@@ -290,7 +290,7 @@ export default function ForvaltningScene() {
               return (
                 <li key={r.fase} ref={r.sak ? radRef : undefined} className={`relative ${r.skjulMobil ? 'hidden sm:block' : ''}`} style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(12px)', transition: `opacity 560ms ${EASE}, transform 640ms ${SPRETT}` }}>
                   <span aria-hidden="true" className="absolute -inset-x-3 inset-y-0.5 rounded-[12px]" style={{ background: 'rgba(212,150,255,0.10)', opacity: erAktiv ? 1 : 0, transition: `opacity 500ms ${EASE}` }} />
-                  <div className="relative grid grid-cols-[16px_minmax(0,1fr)_auto] items-start gap-x-3 py-2.5 sm:grid-cols-[60px_16px_minmax(0,1fr)_auto] sm:py-3">
+                  <div className="relative grid grid-cols-[16px_minmax(0,1fr)_auto] items-start gap-x-3 py-2.5 sm:grid-cols-[60px_16px_minmax(0,1fr)_auto]" style={{ paddingTop: 11, paddingBottom: 11 }}>
                     <span className="hidden whitespace-nowrap pt-[3px] text-[13px] tabular-nums text-[#15130F]/45 sm:block">{r.dato}</span>
                     <span className="flex justify-center pt-[7px]"><Prikk tilstand={tilstand} /></span>
                     <span className="min-w-0">
