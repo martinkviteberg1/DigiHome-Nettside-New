@@ -1389,3 +1389,34 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - **DB-status:** ingen Digihome AS-modellplan finnes (bruker slettet). Main-agent la inn `QA Deck DH (slettes)` (2027-01, 24 mnd, partner på)
   så decket kan verifiseres — skal slettes av bruker/agent når egen plan finnes. Alle QA-deck-lenker slettet.
 - Ikke brukergodkjent. Frontend-agent ikke kjørt.
+
+## Budsjettmotor v3 + Base-planer + deck «styremedlem-runde» (sept 2026)
+- **Motor (`lib/budsjett-modell.js`)**: `rensTrinn`/`trinnVerdi` (nominelle trinn `{fraMnd, <felt>}` — utløst trinn overstyrer grunnverdi × inflasjon);
+  `kostTrinn` på DH (adminFast/andreFaste/mfFast) og Tech (utviklingFast/hostingFast/andreFaste/markedsforingFast); `grunnleggere`
+  {paa, paslagPct, personer[{navn, rolle rd|sm|ga|drift, andelPct, trinn[{fraMnd, brutto}]}]} i begge (Tech klassifiserer per rolle i SaaS-
+  oppstilling); DH `organiskAndelPct` (CAC bare på betalte nye, `cac.blandetCac`); `sammendrag.partnerHale/partnerHaleMnd` (forpliktelse etter
+  perioden, DH + Tech); Tech `huseier.modus 'kroner'|'kunder'` + `kunderPlan[{fraMnd, nyePerMnd}]` (annonse = nye × CAC); `skatt`
+  {paa, satsPct, konsernbidrag} på DH-plan → `beregnKonsernSammenstilling({skatt, startYm})` regner 22 % per kalenderår per selskap m/
+  fremførbart underskudd, konsernbidrag valgfritt, betalt året etter (feb/apr 50/50) → `skatt.{perAar, betalt, etterPeriode, fremforbart}`,
+  `kontant.{resultat, akkumulert, kapitalbehov}`, `sammendrag.{skatt, resultatEtterSkatt, kapitalbehovEtterSkatt}`. Eksisterende planer uten
+  felt: alt AV → identiske tall (regresjon verifisert). Backend-agent 5/5 roundtrip.
+- **UI**: `GrunnleggerKort.js`, `TrinnFelt.js` (delt). DH-rail: Organisk andel, trinn på admin/andre/mf, seksjon Grunnleggere, seksjon Skatt &
+  konsern, partner-hale-note. Tech-rail: Kunder/Kroner-modus m/ kunderPlan- eller annonsefase-editor, trinn på utvikling/hosting/andre/mf,
+  Grunnleggere (m/ rolle), hale-note, P&L-rad Grunnleggere. Konsern: KPI «Kapitalbehov etter skatt», skattetabell per kalenderår, fremførbart.
+  Excel (DH): trinn-linjer eksporteres som verdiserier (merket), Grunnleggere-rad, R-indekser flyttet +1.
+- **Base-planer (scripts/lag-base-planer.mjs, idempotent)**: «Base 2026–2029 · Digihome AS» (2026-08, 36 mnd, fakta fra portefølje: 31 enheter,
+  31 250 kr/mnd; vekstplan 2→4→6→8→10→12→15→20→25 à 4 mnd; churn 5 %; honorar 10,5 % × 21 867 = 1 837 kr eks. mva; lisens 200; CAC 5 000 i AS
+  (alternativ a); partner 8 %/12 mnd/fast 0; trapp 30→225 % ved 440; årslønn 600 k + 35 %; admin 10 k; grunnleggere Sarah 70/Martin 20,
+  30→35→40→45 k fra okt 26/jan 27/28/29; skatt 22 % uten konsernbidrag; indeks 3/lønn 3,5/kost 3) og «Base 2026–2029 · Digihome Tech AS»
+  (koblet; huseier/bedrift 0 = kun forvaltning; Fable 30→35→40→45 k; hosting 1 500; variabel 70/enhet; andre faste 15 k; grunnleggere Martin
+  80 rd / Sarah 30 sm). Gamle «Plattform 2027–2028» og QA-planen slettet (bruker ba om å erstatte). Resultat: inntekt 10,7 m, konsern −1,2 m før
+  skatt / −1,3 m etter, bunn 2,1 m aug 2028, pluss sep 2028, 417 enheter jul 2029. Avvik mot rådgiverens tabeller (+1,47 m): rådgiver startet på
+  ~90 enheter (system: 31), lavere bemanningskost, hosting 250 kr og CAC i Tech. `scripts/avstem-base.mjs` skriver avstemmingen.
+- **Deck**: 17 kapitler. Nytt: «Kort fortalt»-stripe på forsiden (enheter i dag→slutt, å hente, break-even, ARR), «Markedet» (≈570 000
+  husholdninger leier, 23 % — SSB avrundet, VERIFISER før ekstern bruk; planen = 0,07 % av markedet), «Den ene variabelen» (CAC 4–10 k ×
+  organisk 0/15/30 % → kapitalbehov etter skatt + resultat, live; avledede kort), «Risiko» (kundekost, én kodebase, jus, churn/bemanning m/
+  tiltak og «Se tallene»-lenker), «Det vi trenger» (å hente = kapitalbehov etter skatt × 1,3 rundet til 250 k; hva pengene utløser;
+  grunnleggerne; forpliktelser utenfor perioden: partner-hale + skatt). Konsern-kapittel m/ skatt. GTM-kort og Tech-skru («Selvbetjente
+  huseiere / mnd») tilpasset ren forvaltningsbase. Preset «Med plattformkunder» erstatter «Uten annonser».
+- Konsern-org i systemet: «SHD Gruppen AS» (org.nr 935 431 646) → konsernbidrag kan være mulig; ikke aktivert (avventer bruker).
+- Ikke brukergodkjent. Frontend-agent ikke kjørt.

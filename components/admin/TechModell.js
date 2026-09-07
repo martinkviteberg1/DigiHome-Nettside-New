@@ -11,10 +11,12 @@
    Alt regnes live i nettleseren (lib/budsjett-modell.js → beregnTech).
    ───────────────────────────────────────────────────────────────────────────── */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Loader2, RefreshCw, Home, Building2, Link2, Cpu, CalendarClock, Info, Layers, SlidersHorizontal, Megaphone } from 'lucide-react';
-import { beregnTech, rensTechDrivere } from '@/lib/budsjett-modell';
+import { ChevronDown, Loader2, RefreshCw, Home, Building2, Link2, Cpu, CalendarClock, Info, Layers, SlidersHorizontal, Megaphone, Users } from 'lucide-react';
+import { beregnTech, rensTechDrivere, grunnleggerKost } from '@/lib/budsjett-modell';
 import ModellTopplinje, { PILL, PILL_AKTIV } from '@/components/admin/ModellTopplinje';
 import PartnerKort from '@/components/admin/PartnerKort';
+import GrunnleggerKort from '@/components/admin/GrunnleggerKort';
+import TrinnFelt from '@/components/admin/TrinnFelt';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
 const MND = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
@@ -172,7 +174,7 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
   const [henterFakta, setHenterFakta] = useState(false);
   const [prisliste, setPrisliste] = useState(null);
   const [kontantTech, setKontantTech] = useState(null);
-  const [open, setOpen] = useState({ huseier: true, forvaltning: true, bedrift: false, salg: false, kost: false, rd: false, justering: false });
+  const [open, setOpen] = useState({ huseier: true, forvaltning: true, bedrift: false, salg: false, kost: false, rd: false, grunnleggere: false, justering: false });
   const [visMnd, setVisMnd] = useState(false);
   const [antallMnd, setAntallMnd] = useState(N);
   const [endrerHorisont, setEndrerHorisont] = useState(0);
@@ -187,6 +189,9 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
   const sanert = m.drivere;
   const set = (gruppe, k, v) => { setTech((c) => ({ ...c, [gruppe]: { ...c[gruppe], [k]: v } })); setSkittent(true); };
   const setPartner = (p) => { setTech((c) => ({ ...c, partner: p })); setSkittent(true); };
+  const setGrunnleggere = (g) => { setTech((c) => ({ ...c, grunnleggere: g })); setSkittent(true); };
+  const setTrinn = (felt, liste) => { setTech((c) => ({ ...c, kostTrinn: { ...(c.kostTrinn || {}), [felt]: liste } })); setSkittent(true); };
+  const grNaa = grunnleggerKost(m.drivere.grunnleggere, 0).sum;
 
   const hentFakta = useCallback(async (planId, mnd = antallMnd) => {
     setHenterFakta(true); setFeil('');
@@ -264,8 +269,24 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
           <Seksjon tittel="Huseiere" ikon={Home} open={open.huseier} onToggle={() => setOpen((o) => ({ ...o, huseier: !o.huseier }))} sammendrag={`${tall(u.huseier.arpu)} kr/enh · ${tall(sanert.huseier.aarligChurnPct)} % churn`} testid="tech-sek-huseier">
             <Felt label="Enheter i dag" verdi={tech.huseier.startEnheter} onEndre={(v) => set('huseier', 'startEnheter', v)} enhet="enh." readOnly={readOnly} testid="tech-huseier-start" />
             <Felt label="Organisk vekst" verdi={tech.huseier.organiskPerMnd} onEndre={(v) => set('huseier', 'organiskPerMnd', v)} enhet="enh/mnd" readOnly={readOnly} slider={{ min: 0, max: 30, step: 0.5 }} />
-            <Felt label="Annonsekjøp (media)" verdi={tech.huseier.annonsePerMnd} onEndre={(v) => set('huseier', 'annonsePerMnd', v)} enhet="kr/mnd" readOnly={readOnly} slider={{ min: 0, max: 200000, step: 5000 }} testid="tech-huseier-annonse" hint="betalt trafikk — partnerhonorar og fast markedsføring ligger under Markedsføring & salg" />
-            <Felt label="CAC per aktivert enhet (media)" verdi={tech.huseier.cacPerEnhet} onEndre={(v) => set('huseier', 'cacPerEnhet', v)} enhet="kr" readOnly={readOnly} hint={`≈ ${tall(sanert.huseier.organiskPerMnd + sanert.huseier.annonsePerMnd / Math.max(1, sanert.huseier.cacPerEnhet), 1)} nye enheter/mnd i fase 1`} />
+            <div className="py-[6px]">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[13px] text-[#57534e]">Betalt vekst planlegges i</span>
+                <span className="flex h-8 items-center rounded-[8px] bg-[#f0efec] p-0.5">
+                  {[['kunder', 'Kunder'], ['kroner', 'Kroner']].map(([v, l]) => <button key={v} disabled={readOnly} onClick={() => set('huseier', 'modus', v)} data-testid={`tech-huseier-modus-${v}`} title={v === 'kunder' ? 'Skriv nye kunder per måned i trinn — annonsebudsjettet regnes baklengs (nye × CAC)' : 'Sett annonsebudsjett — nye kunder = budsjett ÷ CAC'} className={`h-7 rounded-[6px] px-2 text-[11.5px] font-bold ${sanert.huseier.modus === v ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#8f8a82]'}`}>{l}</button>)}
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] leading-snug text-[#a6a19a]">{sanert.huseier.modus === 'kunder' ? 'Som Digihome AS’ vekstplan: nye betalte kunder per måned i trinn. Motoren regner annonsebudsjettet (nye × CAC).' : 'Annonsebudsjett i faser — nye kunder følger av budsjett ÷ CAC.'}</p>
+            </div>
+            {sanert.huseier.modus === 'kunder' ? (
+              <TrinnFelt verdi={tech.huseier.kunderPlan || []} onEndre={(l) => set('huseier', 'kunderPlan', l)} felt="nyePerMnd" enhet="nye/mnd" heltall={false} startYm={plan.startYm} antallMnd={antallMnd} readOnly={readOnly} testid="tech-huseier-kunderplan" tom="Ingen betalt vekst planlagt — bare organisk. Legg til første trinn." />
+            ) : (
+              <>
+                <Felt label="Annonsekjøp (media)" verdi={tech.huseier.annonsePerMnd} onEndre={(v) => set('huseier', 'annonsePerMnd', v)} enhet="kr/mnd" readOnly={readOnly} slider={{ min: 0, max: 200000, step: 5000 }} testid="tech-huseier-annonse" hint="betalt trafikk i fase 1 — partnerhonorar og fast markedsføring ligger under Markedsføring & salg" />
+                <TrinnFelt verdi={tech.huseier.vekstplan || []} onEndre={(l) => set('huseier', 'vekstplan', l)} felt="annonsePerMnd" enhet="kr/mnd" minFra={2} startYm={plan.startYm} antallMnd={antallMnd} readOnly={readOnly} testid="tech-huseier-annonsefaser" tom="Ingen faser — samme annonsebudsjett hele perioden" />
+              </>
+            )}
+            <Felt label="CAC per aktivert enhet (media)" verdi={tech.huseier.cacPerEnhet} onEndre={(v) => set('huseier', 'cacPerEnhet', v)} enhet="kr" readOnly={readOnly} testid="tech-huseier-cac" hint={sanert.huseier.modus === 'kunder' ? `annonsebudsjett i fase 1 ≈ ${kr(m.kost.annonser[0] || 0)}/mnd` : `≈ ${tall(sanert.huseier.organiskPerMnd + sanert.huseier.annonsePerMnd / Math.max(1, sanert.huseier.cacPerEnhet), 1)} nye enheter/mnd i fase 1`} />
             <Felt label="Årlig churn" verdi={tech.huseier.aarligChurnPct} onEndre={(v) => set('huseier', 'aarligChurnPct', v)} enhet="%" readOnly={readOnly} slider={{ min: 0, max: 60, step: 1 }} />
             <div className="py-[6px]">
               <div className="flex items-center justify-between gap-3">
@@ -332,6 +353,7 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
             sammendrag={`${kr(sanert.kost.markedsforingFast)}/mnd${sanert.partner.paa ? ` · partner ${tall(sanert.partner.honorarPct, 0)} %` : ''}`} testid="tech-sek-salg">
             <p className="pb-1 pt-0.5 text-[11px] leading-snug text-[#a6a19a]">S&M = annonsekjøp (under Huseiere) + salgskost (under Bedrift) + fast markedsføring + performance-partner.</p>
             <Felt label="Fast markedsføring" verdi={tech.kost.markedsforingFast} onEndre={(v) => set('kost', 'markedsforingFast', v)} enhet="kr/mnd" readOnly={readOnly} testid="tech-kost-mf" hint="merkevare, innhold, verktøy — uavhengig av volum" />
+            {(sanert.kost.markedsforingFast > 0 || (sanert.kostTrinn?.markedsforingFast || []).length > 0) && <TrinnFelt verdi={tech.kostTrinn?.markedsforingFast || []} onEndre={(l) => setTrinn('markedsforingFast', l)} startYm={plan.startYm} antallMnd={antallMnd} readOnly={readOnly} testid="tech-trinn-mf" tom="Ingen trinn — følger kostnadsveksten" />}
             <PartnerKort
               verdi={sanert.partner} readOnly={readOnly} enhetsnavn="kunde" testid="tech-partner"
               onEndre={setPartner}
@@ -340,8 +362,13 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
               iPerioden={sanert.partner.paa ? sa.sm.partner : null}
               andelPct={sanert.partner.paa && s.sumInntekt > 0 ? Math.round((sa.sm.partner / s.sumInntekt) * 100) : null}
             />
+            {sanert.partner.paa && s.partnerHale > 0 && (
+              <p className="mt-1.5 rounded-[8px] bg-[#fdf3e0] px-2.5 py-1.5 text-[10.5px] leading-snug text-[#9a6b1c]" data-testid="tech-partner-hale">
+                Forpliktelse etter perioden: <b>{kr(s.partnerHale)}</b> i partnerhonorar for kunder som allerede er signert (løper {s.partnerHaleMnd} mnd videre).
+              </p>
+            )}
             <p className="mt-2 text-[11px] leading-snug text-[#a6a19a]">
-              S&M i perioden: <b className="text-[#57534e]">{kr(sa.sumSm)}</b>{sa.sm.andelPct != null ? ` · ${sa.sm.andelPct} % av inntekten` : ''}
+              S&M i perioden: <b className="text-[#57534e]">{kr(sa.sumSm)}</b>{sa.sm.andelPct != null ? ` · ${sa.sm.andelPct} % av inntekten` : ''}{sa.sm.grunnleggere ? ` · inkl. ${kr(sa.sm.grunnleggere)} grunnleggerlønn (salg & marked)` : ''}
             </p>
           </Seksjon>
 
@@ -349,12 +376,25 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
             <Felt label="Variabel per enhet" verdi={tech.kost.variabelPerEnhet} onEndre={(v) => set('kost', 'variabelPerEnhet', v)} enhet="kr/mnd" readOnly={readOnly} hint="API/LLM, SMS, e-signering per aktiv enhet" />
             <Felt label="Support-timer per 100 enheter" verdi={tech.kost.supportTimerPer100} onEndre={(v) => set('kost', 'supportTimerPer100', v)} enhet="t/mnd" readOnly={readOnly} />
             <Felt label="Timekost support" verdi={tech.kost.timekost} onEndre={(v) => set('kost', 'timekost', v)} enhet="kr/t" readOnly={readOnly} />
-            <Felt label="Hosting og infrastruktur" verdi={tech.kost.hostingFast} onEndre={(v) => set('kost', 'hostingFast', v)} enhet="kr/mnd" readOnly={readOnly} hint={`Bruttomargin ${sa.bruttoMarginPct ?? '—'} % i perioden`} />
+            <Felt label="Hosting og infrastruktur" verdi={tech.kost.hostingFast} onEndre={(v) => set('kost', 'hostingFast', v)} enhet="kr/mnd" readOnly={readOnly} testid="tech-kost-hosting" hint={`Bruttomargin ${sa.bruttoMarginPct ?? '—'} % i perioden`} />
+            <TrinnFelt verdi={tech.kostTrinn?.hostingFast || []} onEndre={(l) => setTrinn('hostingFast', l)} startYm={plan.startYm} antallMnd={antallMnd} readOnly={readOnly} testid="tech-trinn-hosting" tom="Ingen trinn — hosting følger kostnadsveksten" />
           </Seksjon>
 
-          <Seksjon tittel="R&D og G&A" ikon={Cpu} open={open.rd} onToggle={() => setOpen((o) => ({ ...o, rd: !o.rd }))} sammendrag={`${kr(sanert.kost.utviklingFast + sanert.kost.andreFaste)}/mnd`} testid="tech-sek-rd">
-            <Felt label="Utvikling og drift (R&D)" verdi={tech.kost.utviklingFast} onEndre={(v) => set('kost', 'utviklingFast', v)} enhet="kr/mnd" readOnly={readOnly} slider={{ min: 0, max: 500000, step: 10000 }} testid="tech-kost-utvikling" hint="Utviklere, design, drift av plattformen" />
-            <Felt label="Andre faste (G&A)" verdi={tech.kost.andreFaste} onEndre={(v) => set('kost', 'andreFaste', v)} enhet="kr/mnd" readOnly={readOnly} hint="Regnskap, forsikring, programvare, kontor" />
+          <Seksjon tittel="R&D og G&A" ikon={Cpu} open={open.rd} onToggle={() => setOpen((o) => ({ ...o, rd: !o.rd }))} sammendrag={`${kr((m.kost.utvikling[0] || 0) + (m.kost.andre[0] || 0))}/mnd nå`} testid="tech-sek-rd">
+            <Felt label="Utvikling (R&D)" verdi={tech.kost.utviklingFast} onEndre={(v) => set('kost', 'utviklingFast', v)} enhet="kr/mnd" readOnly={readOnly} slider={{ min: 0, max: 500000, step: 5000 }} testid="tech-kost-utvikling" hint="AI-native utvikling / utviklere, design — grunnverdi. Trinn under overstyrer fra gitt måned (nominelt)." />
+            <TrinnFelt verdi={tech.kostTrinn?.utviklingFast || []} onEndre={(l) => setTrinn('utviklingFast', l)} startYm={plan.startYm} antallMnd={antallMnd} readOnly={readOnly} testid="tech-trinn-utvikling" tom="Ingen trinn — utvikling følger kostnadsveksten fra år 2" />
+            <Felt label="Andre faste (G&A)" verdi={tech.kost.andreFaste} onEndre={(v) => set('kost', 'andreFaste', v)} enhet="kr/mnd" readOnly={readOnly} testid="tech-kost-andre" hint="Regnskap, juridisk, programvare, sikkerhet, AI-drift fast" />
+            <TrinnFelt verdi={tech.kostTrinn?.andreFaste || []} onEndre={(l) => setTrinn('andreFaste', l)} startYm={plan.startYm} antallMnd={antallMnd} readOnly={readOnly} testid="tech-trinn-andre" tom="Ingen trinn — andre faste følger kostnadsveksten" />
+          </Seksjon>
+
+          <Seksjon tittel="Grunnleggere" ikon={Users} open={open.grunnleggere} onToggle={() => setOpen((o) => ({ ...o, grunnleggere: !o.grunnleggere }))}
+            sammendrag={sanert.grunnleggere?.paa ? `${kr(grNaa)}/mnd nå · ${kr(s.sumGrunnleggere)} i perioden` : 'Ikke i planen'} testid="tech-sek-grunnleggere">
+            <GrunnleggerKort
+              verdi={tech.grunnleggere || sanert.grunnleggere} onEndre={setGrunnleggere} readOnly={readOnly} medRolle
+              startYm={plan.startYm} antallMnd={antallMnd} selskapNavn="Tech" testid="tech-grunnleggere"
+              naaPerMnd={sanert.grunnleggere?.paa ? grNaa : null} iPerioden={sanert.grunnleggere?.paa ? s.sumGrunnleggere : null}
+            />
+            <p className="mt-2 text-[11px] leading-snug text-[#a6a19a]">Rollen styrer hvor lønnen havner i SaaS-oppstillingen (R&D / S&M / G&A). Resten av lønnen ligger i Digihome AS-budsjettet.</p>
           </Seksjon>
 
           <Seksjon tittel="Pris og kost fra år 2" ikon={CalendarClock} open={open.justering} onToggle={() => setOpen((o) => ({ ...o, justering: !o.justering }))} sammendrag={`${tall(sanert.justering.prisIndeksPct, 1)} % pris · ${tall(sanert.justering.kostInflasjonPct, 1)} % kost`} testid="tech-sek-justering">
@@ -480,7 +520,7 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
                       ['MRR · huseiere', m.inntekt.huseier], ['MRR · lisens Digihome AS', m.inntekt.forvaltning], ['MRR · bedrift', m.inntekt.bedrift], ['Sum MRR', saas.mrr, true],
                       ['Ny MRR', saas.nyMrr], ['Churnet MRR', saas.churnMrr], ['Netto ny MRR', saas.netNyMrr, true],
                       ['Kunder · huseiere', kunder.huseier, false, true], ['Kunder · bedrifter', kunder.bedrift, false, true], ['Enheter på plattformen', m.enheter.total, false, true],
-                      ['COGS', saas.cogs], ['Bruttoresultat', saas.brutto, true], ['S&M', saas.sm, true], ['· annonsekjøp', m.kost.annonser], ...(sa.sm.partner ? [['· performance-partner', m.kost.partner]] : []), ...(sa.sm.markedsforing ? [['· fast markedsføring', m.kost.markedsforing]] : []), ...(sa.sm.salg ? [['· salg bedrift', m.kost.salg]] : []), ['R&D', saas.rd], ['G&A', saas.ga],
+                      ['COGS', saas.cogs], ['Bruttoresultat', saas.brutto, true], ['S&M', saas.sm, true], ['· annonsekjøp', m.kost.annonser], ...(sa.sm.partner ? [['· performance-partner', m.kost.partner]] : []), ...(sa.sm.markedsforing ? [['· fast markedsføring', m.kost.markedsforing]] : []), ...(sa.sm.salg ? [['· salg bedrift', m.kost.salg]] : []), ['R&D', saas.rd], ...(sa.grunnleggere?.rd ? [['· utvikling (AI-native / team)', m.kost.utvikling]] : []), ['G&A', saas.ga], ...(sa.grunnleggere?.sum ? [['Grunnleggere (lønn, fordelt på S&M/R&D/G&A)', m.kost.grunnleggere, false, false, false]] : []),
                       ['EBITDA', m.resultat, true], ['Akkumulert', m.akkumulert, true, false, true],
                     ].map(([l, serie, fet, erEnh, ingenSum]) => (
                       <tr key={l} className={`border-t border-black/[0.04] ${fet ? 'font-semibold text-[#1c1917]' : 'text-[#57534e]'}`}>

@@ -5,9 +5,10 @@
    · Én URL, tre roller: presenter (admin-sesjon via ?key=), investorrom-lenke (?t=) eller
      ren ekstern lenke (/deck/<token>, låst til én plan, valgfritt passord). Samme motorer
      som budsjettmodulen (lib/budsjett-modell.js) — alt regnes i nettleseren, ingenting lagres.
-   · 14 kapitler: Forside → Hvorfor → Konseptet (forsidens levende scene) → For hvem →
-     Strukturen → Organisasjon → Hvor vi står → Unit economics → Go-to-market →
-     Planen Digihome AS → Planen Tech → Konsern → Hva om → Det vi trenger.
+   · 17 kapitler: Forside (m/ «kort fortalt») → Hvorfor → Markedet → Konseptet → For hvem →
+     Strukturen → Organisasjon → Hvor vi står → Unit economics → Go-to-market → Planen Digihome AS
+     → Planen Tech → Konsern (m/ skatt) → Den ene variabelen (CAC × organisk) → Hva om → Risiko
+     → Det vi trenger (emisjon, milepæler, grunnleggere, forpliktelser utenfor perioden).
    · Bevegelse som på forsiden: opacity/transform, expo-ease, én ting i bevegelse
      om gangen. Hvert kapittel «kommer inn» når det er aktivt (.deck-inn m/ --i),
      tall teller opp, grafer bygger seg fra grunnlinjen, strømmer pulserer.
@@ -33,6 +34,8 @@ const mndLabel = (ym, i, kort = true) => { const [y, m] = ymPluss(ym, i); return
 const nb = (n, d = 0) => (Number(n) || 0).toLocaleString('nb-NO', { maximumFractionDigits: d, minimumFractionDigits: d }).replace(/\u00A0/g, ' ');
 const mnok = (n) => { const v = Number(n) || 0; return Math.abs(v) >= 1e6 ? `${nb(v / 1e6, 1)} MNOK` : `${nb(v / 1000)} k`; };
 const kr = (n) => `${nb(n)} kr`;
+const kr0 = (n) => nb(n);
+const kma = (n) => String(n ?? '').replace('.', ',');
 const pct = (n, d = 0) => `${nb(n, d)} %`;
 const klem = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const utExpo = (t) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
@@ -45,6 +48,7 @@ const skalerAnnonse = (h, f) => ({
   ...h,
   annonsePerMnd: Math.round((Number(h.annonsePerMnd) || 0) * f),
   vekstplan: (Array.isArray(h.vekstplan) ? h.vekstplan : []).map((x) => ({ ...x, annonsePerMnd: Math.round((Number(x.annonsePerMnd) || 0) * f) })),
+  kunderPlan: (Array.isArray(h.kunderPlan) ? h.kunderPlan : []).map((x) => ({ ...x, nyePerMnd: Math.round((Number(x.nyePerMnd) || 0) * f * 10) / 10 })),
 });
 const flettTech = (basis, over) => { const ut = { ...basis }; for (const g of Object.keys(over || {})) ut[g] = { ...(basis[g] || {}), ...(over[g] || {}) }; return ut; };
 
@@ -434,6 +438,7 @@ function OrgKart({ aarsverkStart, aarsverkSlutt, utviklingPerMnd, enheterPerAars
 const KAPITLER = [
   { id: 'forside', navn: 'DigiHome' },
   { id: 'hvorfor', navn: 'Hvorfor' },
+  { id: 'marked', navn: 'Markedet' },
   { id: 'konsept', navn: 'Konseptet' },
   { id: 'hvem', navn: 'For hvem' },
   { id: 'struktur', navn: 'Strukturen' },
@@ -444,7 +449,9 @@ const KAPITLER = [
   { id: 'plan-dh', navn: 'Planen · Digihome AS' },
   { id: 'plan-tech', navn: 'Planen · Tech' },
   { id: 'konsern', navn: 'Konsern' },
+  { id: 'variabel', navn: 'Den ene variabelen' },
   { id: 'hvaom', navn: 'Hva om' },
+  { id: 'risiko', navn: 'Risiko' },
   { id: 'trenger', navn: 'Det vi trenger' },
 ];
 const NOTATER = {
@@ -459,9 +466,12 @@ const NOTATER = {
   gtm: 'Betalt på resultat: byrået tjener når vi tjener. Forvaltningen er også en kanal.',
   'plan-dh': 'Skru på veksttempo og honorar – vis at break-even flytter seg, ikke forsvinner.',
   'plan-tech': 'MRR per kundegruppe. Ekstern andel av inntekten er det investoren ser etter.',
-  konsern: 'Lisensen elimineres. Konsernets break-even og kapitalbehov er de to tallene å huske.',
-  hvaom: 'La salen velge. Halv vekst og dobbel CAC er de ærlige testene.',
-  trenger: 'Kapitalbehov med 20 % buffer. Pengene går dit planen sier – og dere kan følge det i investorrommet.',
+  konsern: 'Lisensen elimineres. Konsernets break-even og kapitalbehov etter skatt er de to tallene å huske. Skatten betales året etter.',
+  marked: 'Markedet er ikke begrensningen – planen er en brøkdel av én prosent. SSB-tallene er avrundet; verifiser før ekstern bruk. Poenget: fragmentert, privat, lokalt – ingen har bygget både programvaren og driften.',
+  variabel: 'Hele planen hviler på én variabel: hva en ny forvaltningskunde koster i media. Vis tabellen – la dem velge celle.',
+  risiko: 'Ta risikoene før de spør. Hver risiko peker på en skrue i decket – vis at den er regnet på, ikke bortforklart.',
+  hvaom: 'La salen velge. Halv vekst og dobbel CAC er de ærlige testene. «Med plattformkunder» er oppsiden vi ikke budsjetterer med.',
+  trenger: 'Kapitalbehov etter skatt med 30 % buffer. Pengene går dit planen sier – og dere kan følge det i investorrommet.',
 };
 const PRESETS = [
   { id: 'plan', navn: 'Planen', tekst: 'Slik den er lagt.', fakt: { forv: 1, tech: 1 }, over: () => ({}) },
@@ -469,7 +479,7 @@ const PRESETS = [
   { id: 'dobbel', navn: 'Dobbel vekst', tekst: 'Vi trykker på gassen i begge selskaper.', fakt: { forv: 2, tech: 2 }, over: (bF, bT) => ({ tech: bT ? { bedrift: { nyeSelskaperPerMnd: bT.bedrift.nyeSelskaperPerMnd * 2 } } : {} }) },
   { id: 'cac', navn: 'Dobbel CAC', tekst: 'Kundene blir dyrere å hente – hver ny enhet koster det dobbelte.', fakt: { forv: 1, tech: 1 }, over: (bF, bT) => ({ forv: { provisjonPerNyEnhet: bF.provisjonPerNyEnhet * 2 }, tech: bT ? { huseier: { cacPerEnhet: bT.huseier.cacPerEnhet * 2 }, bedrift: { salgskostPerSelskap: bT.bedrift.salgskostPerSelskap * 2 } } : {} }) },
   { id: 'churn', navn: 'Lav churn', tekst: 'Vi holder på kundene bedre – maks 10 % årlig frafall.', fakt: { forv: 1, tech: 1 }, over: (bF, bT) => ({ forv: { aarligChurnPct: Math.min(bF.aarligChurnPct, 10) }, tech: bT ? { huseier: { aarligChurnPct: Math.min(bT.huseier.aarligChurnPct, 10) }, bedrift: { aarligChurnPct: Math.min(bT.bedrift.aarligChurnPct, 5) } } : {} }) },
-  { id: 'organisk', navn: 'Uten annonser', tekst: 'Plattformen vokser bare organisk – ingen betalt trafikk.', kreverTech: true, fakt: { forv: 1, tech: 0 }, over: () => ({}) },
+  { id: 'saas', navn: 'Med plattformkunder', tekst: 'Oppsiden vi ikke budsjetterer med: selvbetjente huseiere fra år 2 og eiendomsselskaper fra år 3.', kreverTech: true, fakt: { forv: 1, tech: 1 }, over: (bF, bT) => ({ tech: bT ? { huseier: { modus: 'kunder', organiskPerMnd: Math.max(bT.huseier.organiskPerMnd, 2), kunderPlan: [{ fraMnd: 7, nyePerMnd: 5 }, { fraMnd: 13, nyePerMnd: 10 }, { fraMnd: 25, nyePerMnd: 20 }] }, bedrift: bT.bedrift.nyeSelskaperPerMnd > 0 ? {} : { nyeSelskaperPerMnd: 0.5, fraMnd: 25 } } : {} }) },
 ];
 
 /* ══════════════════════════ Ekstern deling ══════════════════════════ */
@@ -659,8 +669,20 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   const skyv = useCallback((arr) => Array.from({ length: N }, (_, t) => { const tt = t - offset; return Array.isArray(arr) && tt >= 0 && tt < arr.length ? (Number(arr[tt]) || 0) : 0; }), [N, offset]);
   const tilKonsern = useCallback((m) => (m ? { inntekt: { total: skyv(m.inntekt.total), forvaltning: skyv(m.inntekt.forvaltning), huseier: skyv(m.inntekt.huseier), bedrift: skyv(m.inntekt.bedrift) }, kostSum: skyv(m.kostSum) } : null), [skyv]);
   const mTk = useMemo(() => tilKonsern(mT), [mT, tilKonsern]);
-  const k = useMemo(() => (mF ? beregnKonsernSammenstilling({ forvaltning: mF, tech: mTk, antallMnd: N }) : null), [mF, mTk, N]);
-  const kb = useMemo(() => (mFb ? beregnKonsernSammenstilling({ forvaltning: mFb, tech: tilKonsern(mTb), antallMnd: N }) : null), [mFb, mTb, tilKonsern, N]);
+  const k = useMemo(() => (mF ? beregnKonsernSammenstilling({ forvaltning: mF, tech: mTk, antallMnd: N, skatt: basisF?.skatt || null, startYm: plan?.startYm }) : null), [mF, mTk, N, basisF, plan?.startYm]);
+  const kb = useMemo(() => (mFb ? beregnKonsernSammenstilling({ forvaltning: mFb, tech: tilKonsern(mTb), antallMnd: N, skatt: basisF?.skatt || null, startYm: plan?.startYm }) : null), [mFb, mTb, tilKonsern, N, basisF, plan?.startYm]);
+  /* «Den ene variabelen»: media-CAC × organisk andel → kapitalbehov (etter skatt) og resultat. Regnes live på basisplanen. */
+  const CAC_AKSE = [4000, 5000, 6000, 8000, 10000]; const ORG_AKSE = [0, 15, 30];
+  const variabelMatrise = useMemo(() => {
+    if (!plan || !basisF) return null;
+    const tk = tilKonsern(mTb);
+    return ORG_AKSE.map((org) => CAC_AKSE.map((cac) => {
+      const m2 = beregnInvestorModell({ antallMnd: N, fakta: plan.fakta || {}, drivere: { ...basisF, provisjonPerNyEnhet: cac, organiskAndelPct: org }, startYm: plan.startYm });
+      const k2 = beregnKonsernSammenstilling({ forvaltning: m2, tech: tk, antallMnd: N, skatt: basisF.skatt || null, startYm: plan.startYm });
+      const sk = basisF.skatt?.paa;
+      return { cac, org, kapital: sk ? k2.sammendrag.kapitalbehovEtterSkatt : k2.sammendrag.kapitalbehov, resultat: sk ? k2.sammendrag.resultatEtterSkatt : k2.sammendrag.resultat, be: k2.sammendrag.breakEvenIdx };
+    }));
+  }, [plan, basisF, mTb, tilKonsern, N]);
 
   const velgPreset = (p) => {
     if (!basisF) return;
@@ -841,7 +863,11 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   const dMnok = (a, b) => { const d = delta(a, b); return d === null ? null : `${d > 0 ? '+' : '−'}${mnok(Math.abs(d))}`; };
   const dMnd = (a, b) => { const d = delta(a, b); return d === null ? null : `${d > 0 ? '+' : ''}${d} mnd`; };
   const investor = data.investor;
-  const kapBuffer = Math.round((sK.kapitalbehov || 0) * 1.2 / 100000) * 100000;
+  const skattPaa = Boolean(basisF?.skatt?.paa);
+  const kapReell = skattPaa ? (sK.kapitalbehovEtterSkatt ?? sK.kapitalbehov) : sK.kapitalbehov;
+  const kapReellIdx = skattPaa ? (sK.kapitalbehovEtterSkattIdx ?? sK.kapitalbehovIdx) : sK.kapitalbehovIdx;
+  const kapBuffer = Math.ceil((kapReell || 0) * 1.3 / 250000) * 250000;
+  const resReell = skattPaa ? sK.resultatEtterSkatt : sK.resultat;
   const uT = mT?.unit || null; const uF = mF.cac || {};
   const morkSide = ['unit', 'trenger'].includes(sider[side]);
   const nyeSerie = mF.nyePerMndSerie || [];
@@ -853,14 +879,16 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
     { l: 'Performance-partner', v: (sF.sumPartner || 0) + smT.partner, f: LILLA_M },
     { l: 'Annonsekjøp', v: smT.annonser, f: FARGE.huseier },
     { l: 'Salg til eiendomsselskaper', v: smT.salg, f: FARGE.bedrift },
-    { l: 'Forvaltning · provisjon og markedsføring', v: Math.max(0, (sF.sumSm || 0) - (sF.sumPartner || 0)), f: T.ink },
+    { l: 'Forvaltning · media-CAC og markedsføring', v: Math.max(0, (sF.sumSm || 0) - (sF.sumPartner || 0)), f: T.ink },
     { l: 'Fast markedsføring Tech', v: smT.markedsforing, f: '#a6a19a' },
   ].filter((d) => d.v > 0);
   const bruk = [
     { l: 'Markedsføring og salg', v: (sF.sumSm || 0) + (saT?.sumSm || 0), f: LILLA_M },
     { l: 'Utvikling og drift av plattformen', v: mT ? sum(mT.kost.utvikling) + sum(mT.kost.hosting) : 0, f: FARGE.huseier },
     { l: 'Forvaltere og team', v: sum(mF.kost.bemanning), f: T.offwhite },
+    { l: 'Grunnleggerne (lønn under marked)', v: (sF.sumGrunnleggere || 0) + (mT?.sammendrag?.sumGrunnleggere || 0), f: 'rgba(244,241,234,0.7)' },
     { l: 'Øvrige faste kostnader', v: sum(mF.kost.admin) + sum(mF.kost.andre) + (mT ? sum(mT.kost.andre) : 0), f: 'rgba(244,241,234,0.4)' },
+    ...(skattPaa && sK.skatt > 0 ? [{ l: 'Skatt Digihome AS', v: sK.skatt, f: 'rgba(244,241,234,0.25)' }] : []),
   ].filter((d) => d.v > 0);
   const aarsverk = (t) => ((mF.budsjettertPct?.[t] || 0) / 100);
   const konsernLag = [{ navn: 'Digihome AS', serie: k.digihome.inntekt, farge: FARGE.dh }, { navn: 'Tech · ekstern', serie: k.tech.inntekt.map((v, i) => Math.max(0, v - (k.lisens[i] || 0))), farge: FARGE.tech }];
@@ -962,10 +990,20 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         <div className="grid items-end gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]">
           <div>
             <Inn i={0}><Etikett>{investor ? `Utarbeidet for ${investor.label}` : data.presenter ? 'Presenter' : 'Konfidensielt'} · {new Date().toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</Etikett></Inn>
-            <h1 className="mt-8 max-w-[11ch] text-[60px] sm:text-[92px] lg:text-[124px]" style={{ ...display, color: T.ink }}>
+            <h1 className="mt-6 max-w-[11ch] text-[56px] sm:text-[84px] lg:text-[108px]" style={{ ...display, color: T.ink }}>
               {['Utleie', 'på', 'autopilot'].map((o, i) => <span key={o} className={`deck-ord ${i < 2 ? 'mr-[0.22em]' : ''}`} style={{ '--o': i }}>{o}{i === 2 ? <span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span> : null}</span>)}
             </h1>
-            <Inn i={3}><p className="mt-8 max-w-[52ch] text-[17px] leading-[1.5] sm:text-[20px]" style={{ color: DIM }}>DigiHome er programvaren som driver utleieboligen – for private huseiere og for eiendomsselskaper med hele porteføljer. Og forvaltningsselskapet som gjør jobben for dem som ikke vil. To selskaper, én plattform – og en plan for de neste {N} månedene som er levende: skru på den, og se hva som skjer.</p></Inn>
+            <Inn i={3}><p className="mt-6 max-w-[52ch] text-[16px] leading-[1.5] sm:text-[18px]" style={{ color: DIM }}>DigiHome er programvaren som driver utleieboligen – for private huseiere og for eiendomsselskaper med hele porteføljer. Og forvaltningsselskapet som gjør jobben for dem som ikke vil. To selskaper, én plattform – og en plan for de neste {N} månedene som er levende: skru på den, og se hva som skjer.</p></Inn>
+            <Inn i={4} className="mt-8 grid max-w-[760px] grid-cols-2 gap-x-6 gap-y-4 border-t pt-5 sm:grid-cols-4" style={{ borderColor: HAIR }} data-testid="deck-kort-fortalt">
+              {[
+                [`${nb(enheterIDag)} → ${nb(Math.round(mF.enheter[N - 1] || 0))}`, 'enheter under forvaltning, i dag → ' + mndLabel(plan.startYm, N - 1, false)],
+                [mnok(kapBuffer), 'henter vi – dekker kapitalbehovet' + (skattPaa ? ' etter skatt' : '') + ' med 30 % buffer'],
+                [be(sK.breakEvenIdx), 'konsernet går i pluss'],
+                [mnok(sK.arrExit), 'årlig omsetningstakt ved slutten av perioden'],
+              ].map(([v, u]) => (
+                <div key={u}><p className="text-[22px] sm:text-[26px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.ink }}>{v}</p><p className="mt-1.5 text-[12px] leading-[1.4]" style={{ color: SVAK }}>{u}</p></div>
+              ))}
+            </Inn>
           </div>
           <Inn i={4} className="deck-skjul-print hidden lg:block">
             <p className="text-[12px] font-medium" style={{ color: SVAK }}>Innhold</p>
@@ -1004,7 +1042,30 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         <Inn i={4}><p className="mt-8 max-w-[64ch] text-[17px] leading-[1.5]" style={{ color: T.ink }}>DigiHome tar jobben for begge: programvaren gjør den – for én bolig eller for tusen – eller en forvalter gjør den for deg, på den samme programvaren. Eieren har alltid siste ord.</p></Inn>
       </Side>
 
-      {/* 03 · Konseptet — forsidens levende scene */}
+      {/* 03 · Markedet — stort, fragmentert, privat */}
+      <Side id="marked" pos={pos('marked')} aktiv={er('marked')} bred>
+        <Kapittel nr={kap('marked')} navn="Markedet" under="stort nok til å ikke være spørsmålet" />
+        <Inn i={1}><H2 maks="22ch">Hver fjerde husholdning leier. Nesten ingen av utleierne har et system.</H2></Inn>
+        <div className="mt-10 grid gap-4 lg:grid-cols-3">
+          {[
+            { v: '≈ 570 000', u: 'husholdninger leier boligen sin i Norge – om lag 23 % av alle husholdninger', k: 'SSB, boforhold (avrundet)' },
+            { v: 'Private', u: 'De fleste utleieboliger eies av privatpersoner med én til noen få enheter – uten system, uten forvalter, med fullt juridisk ansvar', k: 'Målgruppe 1 · selvbetjening og forvaltning' },
+            { v: 'Fragmentert', u: 'Profesjonell forvaltning er lokal og manuell: mange små aktører, regneark og e-post. Ingen har bygget både programvaren og driften', k: 'Målgruppe 2 · eiendomsselskaper og forvaltere' },
+          ].map((x, i) => (
+            <Inn key={x.v} i={2 + i} className="rounded-[24px] p-6 sm:p-7" style={{ background: i === 0 ? T.charcoal : '#FBFAF8', color: i === 0 ? T.offwhite : T.ink, boxShadow: i === 0 ? 'none' : `inset 0 0 0 1px ${HAIR}` }}>
+              <p className="text-[40px] sm:text-[48px]" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 1, color: i === 0 ? T.offwhite : T.ink }}>{x.v}</p>
+              <p className="mt-4 text-[14.5px] leading-[1.55]" style={{ color: i === 0 ? LYS : DIM }}>{x.u}</p>
+              <p className="mt-4 text-[11.5px] font-medium uppercase tracking-[0.08em]" style={{ color: i === 0 ? T.lilla : LILLA_M }}>{x.k}</p>
+            </Inn>
+          ))}
+        </div>
+        <Inn i={5} className="mt-8 flex flex-wrap items-baseline gap-x-8 gap-y-3 rounded-[20px] px-6 py-5" style={{ background: '#F6F0FB', boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.22)' }}>
+          <p className="text-[15px] leading-[1.5]" style={{ color: T.ink }}><b>Planen er {nb((Math.round(mF.enheter[N - 1] || 0) / 570000) * 100, 2)} % av leiemarkedet.</b> Én prosent er {nb(5700)} enheter – {nb(Math.round(5700 / Math.max(1, Math.round(mF.enheter[N - 1] || 1))))}× det vi planlegger. Markedet begrenser ikke planen; tempoet på kundeanskaffelse gjør det.</p>
+          <p className="text-[13px] leading-[1.5]" style={{ color: DIM }}>Vi starter i Bergen og 60 km rundt – stort nok for planen, lite nok til å eie kvaliteten. Programvaren har ingen geografi.</p>
+        </Inn>
+      </Side>
+
+      {/* 04 · Konseptet — forsidens levende scene */}
       <Side id="konsept" pos={pos('konsept')} aktiv={er('konsept')} bred>
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-14">
           <div>
@@ -1137,9 +1198,13 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[
             { ikon: Megaphone, t: 'Performance-partner', u: paAktiv ? `${nb(paAktiv.honorarPct, 0)} % av kundens inntekt de første ${paAktiv.varighetMnd || '∞'} mnd + ${kr(paAktiv.fastPerMnd)} fast. Byrået tjener når vi tjener.` : 'Markedsføringsbyrå betalt på resultat – ikke aktivert i denne planen.', aktiv: Boolean(paAktiv) },
-            { ikon: Home, t: 'Egne annonser', u: basisT ? `${kr(basisT.huseier.annonsePerMnd)} per måned i fase 1 · ${kr(basisT.huseier.cacPerEnhet)} per aktivert enhet. Selvbetjening til huseiere i hele Norge.` : 'Betalt trafikk til selvbetjening.', aktiv: smT.annonser > 0 },
-            { ikon: Building2, t: 'Salg til eiendomsselskaper', u: basisT ? `${nb(basisT.bedrift.nyeSelskaperPerMnd, 1)} nye selskaper/mnd fra måned ${basisT.bedrift.fraMnd} · ${nb(basisT.bedrift.enheterPerSelskap)} enheter per selskap.` : 'Direkte salg til profesjonelle utleiere.', aktiv: smT.salg > 0 },
-            { ikon: Link2, t: 'Forvaltningen', u: `${fakserie()}. Hver forvaltet enhet er en plattformlisens – og en kunde som allerede kjenner produktet.`, aktiv: true },
+            { ikon: Link2, t: 'Forvaltningen', u: `${fakserie()} – ${kr(basisF.provisjonPerNyEnhet)} i media per signert enhet${basisF.organiskAndelPct > 0 ? `, ${nb(basisF.organiskAndelPct)} % kommer organisk` : ''}. Hver forvaltet enhet er en plattformlisens – og en kunde som allerede kjenner produktet.`, aktiv: true },
+            ...(smT.annonser > 0 || smT.salg > 0 ? [
+              { ikon: Home, t: 'Egne annonser', u: basisT ? `${kr(basisT.huseier.annonsePerMnd)} per måned i fase 1 · ${kr(basisT.huseier.cacPerEnhet)} per aktivert enhet. Selvbetjening til huseiere i hele Norge.` : 'Betalt trafikk til selvbetjening.', aktiv: smT.annonser > 0 },
+              { ikon: Building2, t: 'Salg til eiendomsselskaper', u: basisT ? `${nb(basisT.bedrift.nyeSelskaperPerMnd, 1)} nye selskaper/mnd fra måned ${basisT.bedrift.fraMnd} · ${nb(basisT.bedrift.enheterPerSelskap)} enheter per selskap.` : 'Direkte salg til profesjonelle utleiere.', aktiv: smT.salg > 0 },
+            ] : [
+              { ikon: Home, t: 'Plattformkunder – oppside, ikke budsjett', u: 'Selvbetjente huseiere og eiendomsselskaper er bevisst holdt utenfor planen. Produktet er det samme; salget starter når forvaltningen har bevist enhetsøkonomien. Se «Med plattformkunder» under Hva om.', aktiv: false },
+            ]),
           ].map((kn, i) => (
             <Inn key={kn.t} i={3 + i} className="rounded-[20px] p-5" style={{ background: kn.aktiv ? '#FBFAF8' : 'transparent', boxShadow: `inset 0 0 0 1px ${HAIR}`, opacity: kn.aktiv ? 1 : 0.55 }}>
               <p className="flex items-center gap-2 text-[13px] font-medium" style={{ color: T.ink }}><kn.ikon className="h-4 w-4" style={{ color: LILLA_M }} /> {kn.t}</p>
@@ -1229,7 +1294,11 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
               </div>
               <p className="mt-1 text-[12.5px]" style={{ color: SVAK }}>Endringene lagres ikke – de er dine å utforske.</p>
               <div className="mt-2 divide-y" style={{ borderColor: HAIR }}>
-                <Skru label="Annonsekjøp" verdi={fakt.tech} basis={1} min={0} max={3} steg={0.25} format={(v) => `${nb(v * 100)} %`} hint={`${kr(drivT.huseier.annonsePerMnd)} per måned i fase 1`} onChange={(v) => skruTempo('tech', v)} onFerdig={skruFerdig('annonsekjøp')} testid="deck-skru-annonse" />
+                {basisT.huseier.modus === 'kunder' || (basisT.huseier.annonsePerMnd === 0 && !(basisT.huseier.vekstplan || []).length) ? (
+                  <Skru label="Selvbetjente huseiere / mnd" verdi={(drivT.huseier.kunderPlan || []).length ? Math.max(...drivT.huseier.kunderPlan.map((x) => Number(x.nyePerMnd) || 0)) : 0} basis={(basisT.huseier.kunderPlan || []).length ? Math.max(...basisT.huseier.kunderPlan.map((x) => Number(x.nyePerMnd) || 0)) : 0} min={0} max={40} steg={1} format={(v) => nb(v)} hint={`betalt via annonser · ${kr(drivT.huseier.cacPerEnhet)} per aktivert enhet`} onChange={(v) => { setPreset('egen'); setOver((c) => ({ ...c, tech: { ...c.tech, huseier: { ...(c.tech.huseier || {}), modus: 'kunder', kunderPlan: v > 0 ? [{ fraMnd: 1, nyePerMnd: v }] : [] } } })); }} onFerdig={skruFerdig('selvbetjente huseiere')} testid="deck-skru-huseiere" />
+                ) : (
+                  <Skru label="Annonsekjøp" verdi={fakt.tech} basis={1} min={0} max={3} steg={0.25} format={(v) => `${nb(v * 100)} %`} hint={`${kr(drivT.huseier.annonsePerMnd)} per måned i fase 1`} onChange={(v) => skruTempo('tech', v)} onFerdig={skruFerdig('annonsekjøp')} testid="deck-skru-annonse" />
+                )}
                 <Skru label="CAC per aktivert enhet" verdi={drivT.huseier.cacPerEnhet} basis={basisT.huseier.cacPerEnhet} min={500} max={Math.max(10000, basisT.huseier.cacPerEnhet * 3)} steg={250} format={(v) => kr(v)} onChange={(v) => skruT('huseier', 'cacPerEnhet', v)} onFerdig={skruFerdig('cac huseiere')} />
                 <Skru label="Churn huseiere / år" verdi={drivT.huseier.aarligChurnPct} basis={basisT.huseier.aarligChurnPct} min={5} max={50} steg={1} format={(v) => `${nb(v)} %`} onChange={(v) => skruT('huseier', 'aarligChurnPct', v)} onFerdig={skruFerdig('churn huseiere')} />
                 <Skru label="Nye eiendomsselskaper / mnd" verdi={drivT.bedrift.nyeSelskaperPerMnd} basis={basisT.bedrift.nyeSelskaperPerMnd} min={0} max={5} steg={0.25} format={(v) => nb(v, 2)} onChange={(v) => skruT('bedrift', 'nyeSelskaperPerMnd', v)} onFerdig={skruFerdig('nye bedrifter')} />
@@ -1263,9 +1332,9 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             <LagGraf aktiv={er('konsern')} N={N} startYm={plan.startYm} lag={konsernLag} kost={k.kost} beIdx={sK.breakEvenIdx} hoyde={smal ? 300 : 330} bredde={smal ? 560 : 1000} testid="deck-graf-konsern" />
             <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-4" data-testid="deck-kpi-konsern">
               <Nokkel aktiv={er('konsern')} label="Break-even konsern" tekst={be(sK.breakEvenIdx)} delta={dMnd(sK.breakEvenIdx, sKb.breakEvenIdx)} />
-              <Nokkel aktiv={er('konsern')} label="Kapitalbehov konsern" tall={sK.kapitalbehov} delta={dMnok(sK.kapitalbehov, sKb.kapitalbehov)} />
+              <Nokkel aktiv={er('konsern')} label={skattPaa ? 'Kapitalbehov etter skatt' : 'Kapitalbehov konsern'} tall={kapReell} delta={dMnok(kapReell, skattPaa ? (sKb.kapitalbehovEtterSkatt ?? sKb.kapitalbehov) : sKb.kapitalbehov)} />
               <Nokkel aktiv={er('konsern')} label="Omsetningstakt ved slutt" tall={sK.arrExit} delta={dMnok(sK.arrExit, sKb.arrExit)} />
-              <Nokkel aktiv={er('konsern')} label="Resultat i perioden" tall={sK.resultat} negativRod delta={dMnok(sK.resultat, sKb.resultat)} />
+              <Nokkel aktiv={er('konsern')} label={skattPaa ? 'Resultat etter skatt' : 'Resultat i perioden'} tall={resReell} negativRod delta={dMnok(resReell, skattPaa ? sKb.resultatEtterSkatt : sKb.resultat)} />
             </div>
           </Inn>
           <Inn i={4} className="rounded-[20px] p-5" style={{ background: T.flate }} data-testid="deck-konsern-bro">
@@ -1289,16 +1358,77 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
                   {rad('Intern lisens (eliminert)', el, '#a6a19a', true)}
                   {rad('Konserninntekt', sK.sumInntekt, T.gronn, false, true)}
                   {rad('Kostnader etter eliminering', sK.sumKost, FARGE.kost, true)}
-                  {rad('Resultat', sK.resultat, sK.resultat >= 0 ? T.gronn : FARGE.kost, sK.resultat < 0, true)}
+                  {rad(skattPaa ? 'Resultat før skatt' : 'Resultat', sK.resultat, sK.resultat >= 0 ? T.gronn : FARGE.kost, sK.resultat < 0, !skattPaa)}
+                  {skattPaa && sK.skatt > 0 ? rad(`Skatt ${basisF.skatt.satsPct} % (Digihome AS${basisF.skatt.konsernbidrag ? ', konsernbidrag' : ''})`, sK.skatt, '#a6a19a', true) : null}
+                  {skattPaa ? rad('Resultat etter skatt', sK.resultatEtterSkatt, sK.resultatEtterSkatt >= 0 ? T.gronn : FARGE.kost, sK.resultatEtterSkatt < 0, true) : null}
                 </div>
               );
             })()}
-            <p className="mt-3 text-[12px] leading-[1.5]" style={{ color: SVAK }}>{sK.andelTechEksternPct != null ? `${sK.andelTechEksternPct} % av konserninntekten kommer fra eksterne plattformkunder ved slutten av perioden. ` : ''}Break-even per selskap: Digihome AS {be(k.digihome.breakEvenIdx)}, Tech {harTech ? be(k.tech.breakEvenIdx) : '—'}.</p>
+            <p className="mt-3 text-[12px] leading-[1.5]" style={{ color: SVAK }}>{sK.andelTechEksternPct != null && sK.andelTechEksternPct > 0 ? `${sK.andelTechEksternPct} % av konserninntekten kommer fra eksterne plattformkunder ved slutten av perioden. ` : 'Ingen eksterne plattformkunder i planen – all inntekt er forvaltning. '}Break-even per selskap: Digihome AS {be(k.digihome.breakEvenIdx)}, Tech {harTech ? be(k.tech.breakEvenIdx) : '—'}.{skattPaa && !basisF.skatt.konsernbidrag && k.skatt.fremforbart.tech > 0 ? ` Tech bygger ${mnok(k.skatt.fremforbart.tech)} i fremførbart underskudd – en skattefordel som realiseres med konsernbidrag eller når Tech tjener penger.` : ''}</p>
           </Inn>
         </div>
       </Side>
 
-      {/* 12 · Hva om */}
+      {/* 12 · Den ene variabelen */}
+      <Side id="variabel" pos={pos('variabel')} aktiv={er('variabel')} bred>
+        <Kapittel nr={kap('variabel')} navn="Den ene variabelen" under="hva en ny forvaltningskunde koster i media" />
+        <Inn i={1}><H2 maks="24ch">Alt hviler på ett tall: hva det koster å hente én ny kunde.</H2></Inn>
+        <Inn i={2}><p className="mt-5 max-w-[68ch] text-[15px] leading-[1.55] sm:text-[16px]" style={{ color: DIM }}>Planen regner {kr0(basisF.provisjonPerNyEnhet)} kr i media per signert enhet, pluss {basisF.partner?.paa ? `${kma(basisF.partner.honorarPct)} % av honoraret i ${basisF.partner.varighetMnd} måneder` : 'ingen partner'} – til sammen {kr0(mFb.cac.fullCac)} kr, som en enhet på {kr0(mFb.cac.bruttoHonorarNy)} kr/mnd betaler tilbake på <b style={{ color: T.ink }}>{mFb.cac.bruttoHonorarNy > 0 ? nb(mFb.cac.fullCac / mFb.cac.bruttoHonorarNy, 1) : '—'} måneder</b>. Tabellen viser hva som skjer med kapitalbehovet{skattPaa ? ' etter skatt' : ''} og resultatet over {N} måneder når prisen på en kunde endrer seg – og når en andel kommer gratis.</p></Inn>
+        {variabelMatrise ? (
+          <Inn i={3} className="mt-8 overflow-x-auto" data-testid="deck-variabel">
+            <table className="w-full min-w-[720px] text-[13.5px]" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+              <thead>
+                <tr>
+                  <th className="pb-3 pr-4 text-left text-[11.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: SVAK }}>Organisk andel ↓ · media-CAC →</th>
+                  {CAC_AKSE.map((c) => <th key={c} className="pb-3 text-right text-[13px] font-semibold" style={{ color: c === basisF.provisjonPerNyEnhet ? LILLA_M : T.ink }}>{kr0(c)} kr</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {variabelMatrise.map((radx, ri) => (
+                  <tr key={ORG_AKSE[ri]}>
+                    <td className="border-t py-3 pr-4 text-[13px] font-semibold" style={{ borderColor: HAIR, color: ORG_AKSE[ri] === basisF.organiskAndelPct ? LILLA_M : T.ink }}>{ORG_AKSE[ri]} % organisk{ORG_AKSE[ri] === 0 ? <span className="block text-[11px] font-normal" style={{ color: SVAK }}>alle nye koster media</span> : <span className="block text-[11px] font-normal" style={{ color: SVAK }}>referral, SEO, eksisterende</span>}</td>
+                    {radx.map((c) => {
+                      const erPlan = c.cac === basisF.provisjonPerNyEnhet && c.org === basisF.organiskAndelPct;
+                      return (
+                        <td key={c.cac} className="border-t py-3 text-right" style={{ borderColor: HAIR }}>
+                          <div className={`inline-block rounded-[12px] px-3 py-2 text-right ${erPlan ? '' : ''}`} style={{ background: erPlan ? T.ink : 'transparent', color: erPlan ? T.offwhite : T.ink, boxShadow: erPlan ? 'none' : `inset 0 0 0 1px ${HAIR}` }} data-testid={erPlan ? 'deck-variabel-plan' : undefined}>
+                            <p className="text-[15px] font-semibold" style={{ ...display, letterSpacing: '-0.02em' }}>{mnok(c.kapital)}</p>
+                            <p className="mt-0.5 text-[11.5px]" style={{ color: erPlan ? T.lilla : (c.resultat >= 0 ? T.gronn : FARGE.kost) }}>{c.resultat >= 0 ? '+' : '−'}{mnok(Math.abs(c.resultat))}</p>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-3 text-[12px]" style={{ color: SVAK }}>Øverst i hver celle: kapitalbehov{skattPaa ? ' etter skatt' : ''} (dypeste akkumulerte punkt). Under: resultat{skattPaa ? ' etter skatt' : ''} over {N} måneder. Mørk celle = planen. Alt annet holdes likt – også Tech-planen.</p>
+          </Inn>
+        ) : null}
+        {variabelMatrise ? (() => {
+          // Avledede fakta fra matrisen – aldri statiske påstander
+          const celle = (cac, org) => variabelMatrise[ORG_AKSE.indexOf(org)]?.[CAC_AKSE.indexOf(cac)];
+          const c5 = celle(5000, 0); const c6 = celle(6000, 0); const c10 = celle(10000, 0); const c5o = celle(5000, 30);
+          const payback = (cac) => (mFb.cac.bruttoHonorarNy > 0 ? nb((cac + mFb.cac.partnerPerEnhet) / mFb.cac.bruttoHonorarNy, 1) : '—');
+          const kort = [
+            c5 && c6 ? ['+1 000 kr per kunde', `koster ${mnok(c6.kapital - c5.kapital)} mer i kapital og ${mnok(c5.resultat - c6.resultat)} i resultat over perioden. Dette er den dyreste tusenlappen i budsjettet.`] : null,
+            c5 && c5o ? ['30 % organisk', `sparer ${mnok(c5.kapital - c5o.kapital)} i kapitalbehov og løfter resultatet ${mnok(c5o.resultat - c5.resultat)}. Referral fra fornøyde eiere og forvaltningens egen kanal er derfor budsjettets viktigste gratisarbeid.`] : null,
+            c10 ? ['Payback per kunde', `${payback(basisF.provisjonPerNyEnhet)} måneder i planen – ${payback(10000)} måneder selv ved 10 000 kr. En kunde betaler seg innen ett år uansett; risikoen er tempoet, ikke enhetsøkonomien.`] : null,
+          ].filter(Boolean);
+          return (
+            <Inn i={4} className="mt-8 grid gap-4 sm:grid-cols-3">
+              {kort.map(([t, u], i) => (
+                <div key={t} className="rounded-[18px] p-4" style={{ background: i === 2 ? '#F6F0FB' : '#FBFAF8', boxShadow: `inset 0 0 0 1px ${i === 2 ? 'rgba(122,63,168,0.22)' : HAIR}` }}>
+                  <p className="text-[15px] font-semibold" style={{ color: i === 2 ? LILLA_M : T.ink }}>{t}</p>
+                  <p className="mt-1.5 text-[13px] leading-[1.5]" style={{ color: DIM }}>{u}</p>
+                </div>
+              ))}
+            </Inn>
+          );
+        })() : null}
+      </Side>
+
+      {/* 13 · Hva om */}
       <Side id="hvaom" pos={pos('hvaom')} aktiv={er('hvaom')} bred>
         <Kapittel nr={kap('hvaom')} navn="Hva om" under="ett trykk, ett svar – gjelder begge selskaper" />
         <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Spørsmål fra salen.</H2></Inn>
@@ -1317,19 +1447,47 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           <Inn i={3}><LagGraf aktiv={er('hvaom')} N={N} startYm={plan.startYm} lag={konsernLag} kost={k.kost} beIdx={sK.breakEvenIdx} hoyde={smal ? 280 : 300} bredde={smal ? 560 : 1000} kompakt testid="deck-graf-hvaom" /></Inn>
           <Inn i={4} className="grid grid-cols-2 gap-5 lg:grid-cols-1">
             <div><Etikett>Break-even konsern</Etikett><p className="mt-1 whitespace-nowrap text-[26px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>{be(sK.breakEvenIdx)}</p><p className="mt-1 text-[12.5px]" style={{ color: SVAK }}>planen: {be(sKb.breakEvenIdx)}</p></div>
-            <div><Etikett>Kapitalbehov konsern</Etikett><Tall aktiv={er('hvaom')} verdi={sK.kapitalbehov} storrelse="text-[26px]" /><p className="mt-1 text-[12.5px]" style={{ color: SVAK }}>planen: {mnok(sKb.kapitalbehov)}</p></div>
+            <div><Etikett>{skattPaa ? 'Kapitalbehov etter skatt' : 'Kapitalbehov konsern'}</Etikett><Tall aktiv={er('hvaom')} verdi={kapReell} storrelse="text-[26px]" /><p className="mt-1 text-[12.5px]" style={{ color: SVAK }}>planen: {mnok(skattPaa ? (sKb.kapitalbehovEtterSkatt ?? sKb.kapitalbehov) : sKb.kapitalbehov)}</p></div>
             <div><Etikett>Omsetningstakt ved slutt</Etikett><Tall aktiv={er('hvaom')} verdi={sK.arrExit} storrelse="text-[26px]" /><p className="mt-1 text-[12.5px]" style={{ color: SVAK }}>planen: {mnok(sKb.arrExit)}</p></div>
             {saT ? <div><Etikett>ARR Tech ved slutt</Etikett><Tall aktiv={er('hvaom')} verdi={saT.arrExit} storrelse="text-[26px]" /><p className="mt-1 text-[12.5px]" style={{ color: SVAK }}>planen: {mnok(saTb.arrExit)}</p></div> : null}
           </Inn>
         </div>
       </Side>
 
-      {/* 13 · Det vi trenger (mørk) */}
+      {/* 15 · Risiko — før de spør */}
+      <Side id="risiko" pos={pos('risiko')} aktiv={er('risiko')} bred>
+        <Kapittel nr={kap('risiko')} navn="Risiko" under="det vi er mest redde for – og hva vi gjør med det" />
+        <Inn i={1}><H2 maks="22ch">Fire ting kan velte planen. Alle fire er regnet på.</H2></Inn>
+        <div className="mt-10 grid gap-4 md:grid-cols-2">
+          {(() => {
+            const celle = (cac, org) => variabelMatrise?.[ORG_AKSE.indexOf(org)]?.[CAC_AKSE.indexOf(cac)];
+            const c5 = celle(5000, 0); const c8 = celle(8000, 0);
+            const utv = mT ? mT.kost.utvikling[Math.min(N - 1, 12)] : null;
+            return [
+              { t: 'Kundekost', r: `Planen regner ${kr(basisF.provisjonPerNyEnhet)} i media per ny forvaltningskunde. ${c5 && c8 ? `Ved 8 000 kr øker kapitalbehovet med ${mnok(c8.kapital - c5.kapital)}.` : ''}`, m: `Performance-avtalen (${basisF.partner?.paa ? `${kma(basisF.partner.honorarPct)} % i ${basisF.partner.varighetMnd} mnd` : 'resultatbasert'}) flytter risiko til byrået. Forvaltningens egne kunder og referral er kanalen som koster null. Vi bremser veksten før vi finansierer dyre kunder.`, kap: 'variabel' },
+              { t: 'Én kodebase, få hoder', r: `Tech bygger AI-native uten utviklerteam${utv ? ` – ${kr(utv)}/mnd i utvikling` : ''}. Nøkkelperson- og leverandørrisiko er reell.`, m: 'Kode, data og infrastruktur eies av Digihome Tech AS – ikke av leverandøren. Arkitektur og prosesser er dokumentert. Kapasitet kan kjøpes måned for måned, ikke ansettes i panikk.', kap: 'org' },
+              { t: 'Jus og regulering', r: 'Husleieloven regulerer depositum, oppsigelse og regulering i detalj. Én systematisk feil i kontraktsmal eller frist treffer hele porteføljen samtidig.', m: 'Styreleder er advokat med selskaps- og kontraktsrett som fag. Kontrakter, depositum og signering er standardisert i programvaren – én rettelse gjelder alle enheter.', kap: 'org' },
+              { t: 'Churn og bemanning', r: `Planen antar ${kma(basisF.aarligChurnPct)} % årlig churn og en bemanningstrapp fra ${basisF.bemanningstrinn?.[0]?.prosent ?? 30} % til ${basisF.bemanningstrinn?.[basisF.bemanningstrinn.length - 1]?.prosent ?? '—'} % stilling ved ${nb(basisF.bemanningstrinn?.[basisF.bemanningstrinn.length - 1]?.fraEnheter ?? 0)} enheter.`, m: 'Forvaltningsavtaler er trege å si opp midt i et leieforhold. Modellen varsler når enheter per årsverk passerer grensen, og «Hva om» viser hva dobbel churn og halv vekst gjør med kapitalbehovet – før noen andre spør.', kap: 'hvaom' },
+            ].map((x, i) => (
+              <Inn key={x.t} i={2 + i} className="rounded-[24px] p-6" style={{ background: '#FBFAF8', boxShadow: `inset 0 0 0 1px ${HAIR}` }}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-[18px] font-semibold" style={{ color: T.ink }}>{x.t}</p>
+                  <button onClick={() => gaaTil(sider.indexOf(x.kap))} className="deck-skjul-print flex items-center gap-1 text-[12px] font-medium" style={{ color: LILLA_M }}>Se tallene <ArrowRight className="h-3 w-3" /></button>
+                </div>
+                <p className="mt-3 text-[14px] leading-[1.55]" style={{ color: DIM }}>{x.r}</p>
+                <p className="mt-3 border-t pt-3 text-[14px] leading-[1.55]" style={{ borderColor: HAIR, color: T.ink }}><span className="mr-1.5 text-[11.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: LILLA_M }}>Tiltak</span>{x.m}</p>
+              </Inn>
+            ));
+          })()}
+        </div>
+      </Side>
+
+      {/* 16 · Det vi trenger (mørk) */}
       <Side id="trenger" pos={pos('trenger')} morkt aktiv={er('trenger')} bred>
         <Kapittel morkt nr={kap('trenger')} navn="Det vi trenger" under={`avledet av planen${preset !== 'plan' ? ' – med dine valg' : ''}`} />
         <Inn i={1}><H2 morkt maks="18ch">Kapital til break‑even – med margin.</H2></Inn>
         <div className="mt-10 grid gap-8 sm:grid-cols-3">
-          <Inn i={2}><Tall aktiv={er('trenger')} verdi={kapBuffer} farge={T.offwhite} /><p className="mt-3 text-[14px] leading-[1.5]" style={{ color: LYS }}>kapitalbehov konsern inkl. 20 % buffer – dypeste akkumulerte punkt er {mnok(sK.kapitalbehov)}{sK.kapitalbehovIdx !== null ? ` i ${mndLabel(plan.startYm, sK.kapitalbehovIdx, false)}` : ''}</p></Inn>
+          <Inn i={2}><Tall aktiv={er('trenger')} verdi={kapBuffer} farge={T.offwhite} /><p className="mt-3 text-[14px] leading-[1.5]" style={{ color: LYS }}>å hente – kapitalbehov{skattPaa ? ' etter skatt' : ''} {mnok(kapReell)}{kapReellIdx !== null && kapReellIdx !== undefined ? ` (bunnen nås ${mndLabel(plan.startYm, kapReellIdx, false)})` : ''} pluss 30 % buffer for dyrere kunder, dårlige måneder og juridiske overraskelser</p></Inn>
           <Inn i={3}><p className="whitespace-nowrap text-[40px] lg:text-[54px]" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 1, color: T.offwhite }}>{be(sK.breakEvenIdx)}</p><p className="mt-3 text-[14px] leading-[1.5]" style={{ color: LYS }}>konsernet går i pluss – Digihome AS {be(k.digihome.breakEvenIdx)}, Tech {harTech ? be(k.tech.breakEvenIdx) : '—'}</p></Inn>
           <Inn i={4}><Tall aktiv={er('trenger')} verdi={sK.arrExit} farge={T.offwhite} /><p className="mt-3 text-[14px] leading-[1.5]" style={{ color: LYS }}>årlig omsetningstakt ved slutten av perioden{sK.andelTechEksternPct != null ? ` – ${sK.andelTechEksternPct} % fra eksterne plattformkunder` : ''}</p></Inn>
         </div>
@@ -1346,8 +1504,28 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           <p className="mb-3 text-[12.5px] font-medium" style={{ color: LYS_SVAK }}>Pengene går til · sum over perioden</p>
           <AndelBar morkt aktiv={er('trenger')} deler={bruk} />
         </Inn>
+        <Inn i={7} className="mt-8 grid gap-4 lg:grid-cols-3">
+          {(() => {
+            const g = basisF.grunnleggere; const brutto = g?.paa ? g.personer.flatMap((p) => p.trinn.map((t) => t.brutto)).filter(Boolean) : [];
+            const lonnTekst = brutto.length ? `${nb(Math.min(...brutto) / 1000)}–${nb(Math.max(...brutto) / 1000)} k brutto per måned` : null;
+            return [
+              { t: 'Hva pengene utløser', p: [`${nb(Math.round(mF.enheter[N - 1] || 0))} enheter under forvaltning ${mndLabel(plan.startYm, N - 1, false)}`, `Konsernet i pluss ${be(sK.breakEvenIdx)}${k.digihome.breakEvenIdx !== null ? ` – Digihome AS ${be(k.digihome.breakEvenIdx)}` : ''}`, `${mnok(sK.arrExit)} årlig omsetningstakt – bygget uten én ekstern plattformkunde`] },
+              { t: 'Grunnleggerne', p: lonnTekst ? [`Sarah og Martin tar ${lonnTekst} i perioden – under markedslønn, i trinn som følger porteføljen`, 'Lønnen er en beslutning i planen, ikke en kostnad vi skjuler', 'Styret er felles for begge selskaper: Erik Hoffmann-Dahl (leder), Jens-Petter Glittenberg, Sarah Sleeman, Martin Kviteberg'] : ['Styret er felles for begge selskaper: Erik Hoffmann-Dahl (leder), Jens-Petter Glittenberg, Sarah Sleeman, Martin Kviteberg'] },
+              { t: 'Utenfor perioden', p: [
+                ...(sF.partnerHale > 0 ? [`${kr(sF.partnerHale)} i partnerhonorar forfaller etter ${mndLabel(plan.startYm, N - 1, false)} for kunder som allerede er signert (${sF.partnerHaleMnd} mnd)`] : []),
+                ...(skattPaa && sK.skattEtterPeriode > 0 ? [`${kr(sK.skattEtterPeriode)} i skatt for siste år betales året etter`] : []),
+                'Eksterne plattformkunder (selvbetjente huseiere, eiendomsselskaper) er oppside – ikke forutsetning. De utløser neste kapittel, ikke denne emisjonen',
+              ] },
+            ].map((x) => (
+              <div key={x.t} className="rounded-[20px] p-5" style={{ background: 'rgba(244,241,234,0.06)', boxShadow: `inset 0 0 0 1px ${LYS_HAIR}` }}>
+                <p className="text-[12.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: T.lilla }}>{x.t}</p>
+                <ul className="mt-3 grid gap-2">{x.p.map((t) => <li key={t} className="flex gap-2 text-[13.5px] leading-[1.5]" style={{ color: LYS }}><span className="mt-[9px] h-1 w-1 shrink-0 rounded-full" style={{ background: T.lilla }} />{t}</li>)}</ul>
+              </div>
+            ));
+          })()}
+        </Inn>
         {investor?.kanSporre ? (
-          <Inn i={7}>
+          <Inn i={8}>
             <form onSubmit={spor} className="deck-skjul-print mt-10 max-w-[760px]" data-testid="deck-qa">
               <p className="text-[12.5px] font-medium" style={{ color: LYS_SVAK }}>Spør oss – svaret kommer i investorrommet</p>
               <div className="mt-3 flex gap-2">

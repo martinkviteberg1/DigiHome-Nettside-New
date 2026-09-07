@@ -24,7 +24,9 @@ import Omvisning from '@/components/admin/Omvisning';
 import KonsernModell from '@/components/admin/KonsernModell';
 import ModellTopplinje, { PILL, PILL_AKTIV, PILL_LILLA, KNAPP_PRIMAER } from '@/components/admin/ModellTopplinje';
 import PartnerKort from '@/components/admin/PartnerKort';
-import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE, skalerVekst } from '@/lib/budsjett-modell';
+import GrunnleggerKort from '@/components/admin/GrunnleggerKort';
+import TrinnFelt from '@/components/admin/TrinnFelt';
+import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE, skalerVekst, grunnleggerKost } from '@/lib/budsjett-modell';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
 
@@ -1236,7 +1238,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const [antallMnd, setAntallMnd] = useState(plan.antallMnd);
   const [lagretAntallMnd, setLagretAntallMnd] = useState(plan.antallMnd);
   const [lagretFakta, setLagretFakta] = useState(plan.fakta || { eksisterende: [], enheter: [], oppdatertAt: null });
-  const [aapne, setAapne] = useState({ portefolje: true, unit: false, salg: false, org: false, faste: false, aarlig: false });
+  const [aapne, setAapne] = useState({ portefolje: true, unit: false, salg: false, org: false, grunnleggere: false, faste: false, aarlig: false, skatt: false });
   const [railAapen, setRailAapen] = useState(true);
   // Under xl er panelet et bunn-ark som dekker innholdet — start derfor lukket
   // på mobil/nettbrett, så tallene er det første man ser.
@@ -1613,6 +1615,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
     if (!alleNull(m.kost.partner || [])) r.push({ label: 'Performance-partner', serie: m.kost.partner });
     if (!alleNull(m.kost.admin)) r.push({ label: 'Administrasjon', serie: m.kost.admin });
     if (!alleNull(m.kost.andre)) r.push({ label: 'Andre faste', serie: m.kost.andre });
+    if (!alleNull(m.kost.grunnleggere || [])) r.push({ label: 'Grunnleggere (lønn)', serie: m.kost.grunnleggere });
     r.push({ label: 'Sum kostnader', serie: m.kostSum, sum: true });
     r.push({ label: 'Resultat', serie: m.resultat, resultat: true });
     r.push({ label: 'Akkumulert resultat', serie: m.akkumulert, type: 'stock', akk: true });
@@ -1621,10 +1624,15 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
 
   const fullkost = Math.round(sanert.aarslonn * (1 + sanert.paslagPct / 100));
   const sisteIdx = m.N - 1;
-  const antallEndret = ['nyePerMnd', 'aarligChurnPct', 'snittleieNye', 'honorarPctNye', 'oppstartPerEnhet', 'systemPerEnhet', 'enheterPerAarsverk', 'aarslonn', 'paslagPct', 'mfFast', 'provisjonPerNyEnhet', 'adminFast', 'andreFaste', 'indeksPct', 'lonnsvekstPct', 'kostInflasjonPct']
+  const antallEndret = ['nyePerMnd', 'aarligChurnPct', 'snittleieNye', 'honorarPctNye', 'oppstartPerEnhet', 'systemPerEnhet', 'enheterPerAarsverk', 'aarslonn', 'paslagPct', 'mfFast', 'provisjonPerNyEnhet', 'adminFast', 'andreFaste', 'indeksPct', 'lonnsvekstPct', 'kostInflasjonPct', 'organiskAndelPct']
     .filter((k) => Math.abs((sanert[k] ?? 0) - (lagretDrivere[k] ?? 0)) > 1e-9).length
     + (JSON.stringify(sanert.vekstplan || []) !== JSON.stringify(lagretDrivere.vekstplan || []) ? 1 : 0)
-    + (JSON.stringify(sanert.partner || {}) !== JSON.stringify(lagretDrivere.partner || {}) ? 1 : 0);
+    + (JSON.stringify(sanert.partner || {}) !== JSON.stringify(lagretDrivere.partner || {}) ? 1 : 0)
+    + (JSON.stringify(sanert.grunnleggere || {}) !== JSON.stringify(lagretDrivere.grunnleggere || {}) ? 1 : 0)
+    + (JSON.stringify(sanert.kostTrinn || {}) !== JSON.stringify(lagretDrivere.kostTrinn || {}) ? 1 : 0)
+    + (JSON.stringify(sanert.skatt || {}) !== JSON.stringify(lagretDrivere.skatt || {}) ? 1 : 0);
+  const settTrinn = (felt, liste) => settDriver('kostTrinn', { ...(drivere.kostTrinn || {}), [felt]: liste });
+  const grNaa = grunnleggerKost(sanert.grunnleggere, 0).sum;
 
   // Bemanning: nå-situasjon (rail-sammendrag) + flaskehals-innsikt (hovedflaten)
   const pctNaa = m.budsjettertPct[0] || 0;
@@ -1880,8 +1888,11 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
 
             <Seksjon tittel="Markedsføring & salg" ikon={Megaphone} open={aapne.salg} onToggle={() => veksle('salg')}
               sammendrag={`CAC ${kr0(m.cac.fullCac)} · ${kr0(sanert.mfFast)}/mnd${sanert.partner.paa ? ' · partner' : ''}`}>
-              <Felt label="Salgsprovisjon per ny (CAC)" k="provisjonPerNyEnhet" {...feltProps} enhet="kr" testid="driver-cac" heltall hint="engangs anskaffelseskost per signert enhet" />
+              <Felt label="Salgsprovisjon per ny (CAC)" k="provisjonPerNyEnhet" {...feltProps} enhet="kr" testid="driver-cac" heltall hint="engangs anskaffelseskost per signert enhet (media)" />
+              <Felt label="Organisk andel av nye" k="organiskAndelPct" {...feltProps} enhet="%" testid="driver-organisk" slider={{ min: 0, max: 60, step: 5 }}
+                hint={`referral, SEO, eksisterende kunder — uten CAC. Blandet CAC ≈ ${kr0(m.cac.blandetCac)} kr per ny enhet`} />
               <Felt label="Fast markedsføring" k="mfFast" {...feltProps} enhet="kr/mnd" testid="driver-mf" heltall hint="merkevare, innhold, verktøy — uavhengig av volum" />
+              {(sanert.mfFast > 0 || (sanert.kostTrinn?.mfFast || []).length > 0) && <TrinnFelt verdi={drivere.kostTrinn?.mfFast || []} onEndre={(l) => settTrinn('mfFast', l)} startYm={plan.startYm} antallMnd={antallMnd} readOnly={readOnly} testid="trinn-mf" tom="Ingen trinn — fast markedsføring følger kostnadsinflasjonen" />}
               <PartnerKort
                 verdi={sanert.partner} readOnly={readOnly} enhetsnavn="enhet" testid="driver-partner"
                 onEndre={(p) => settDriver('partner', p)}
@@ -1889,6 +1900,11 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                 iPerioden={sanert.partner.paa ? s.sumPartner : null}
                 andelPct={sanert.partner.paa && s.sumInntekt > 0 ? Math.round((s.sumPartner / s.sumInntekt) * 100) : null}
               />
+              {sanert.partner.paa && s.partnerHale > 0 && (
+                <p className="mt-1.5 rounded-[8px] bg-[#fdf3e0] px-2.5 py-1.5 text-[10.5px] leading-snug text-[#9a6b1c]" data-testid="partner-hale">
+                  Forpliktelse etter perioden: <b>{kr0(s.partnerHale)} kr</b> i partnerhonorar for kohorter som allerede er signert (løper {s.partnerHaleMnd} mnd videre).
+                </p>
+              )}
               <p className="mt-2 text-[11px] leading-snug text-[#a6a19a]">
                 S&M i perioden: <b className="text-[#57534e]">{kr0(s.sumSm)} kr</b>{s.smAndelPct != null ? ` · ${s.smAndelPct} % av inntekten` : ''}
               </p>
@@ -1911,10 +1927,22 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
               </button>
             </Seksjon>
 
+            <Seksjon tittel="Grunnleggere" ikon={Users} open={aapne.grunnleggere} onToggle={() => veksle('grunnleggere')}
+              sammendrag={sanert.grunnleggere?.paa ? `${kr0(grNaa)} kr/mnd nå · ${kr0(s.sumGrunnleggere)} i perioden` : 'Ikke i planen'}>
+              <GrunnleggerKort
+                verdi={drivere.grunnleggere || sanert.grunnleggere} onEndre={(g) => settDriver('grunnleggere', g)} readOnly={readOnly}
+                startYm={plan.startYm} antallMnd={antallMnd} selskapNavn="Digihome AS" testid="driver-grunnleggere"
+                naaPerMnd={sanert.grunnleggere?.paa ? grNaa : null} iPerioden={sanert.grunnleggere?.paa ? s.sumGrunnleggere : null}
+              />
+              <p className="mt-2 text-[11px] leading-snug text-[#a6a19a]">Resten av lønnen ligger i Digihome Tech AS-budsjettet (samme personer, motsatt andel). Operativ forvaltning bemannes under Organisasjon.</p>
+            </Seksjon>
+
             <Seksjon tittel="Faste kostnader" ikon={Building2} open={aapne.faste} onToggle={() => veksle('faste')}
-              sammendrag={`${kr0(sanert.adminFast + sanert.andreFaste)} kr/mnd`}>
-              <Felt label="Administrasjon" k="adminFast" {...feltProps} enhet="kr/mnd" testid="driver-admin" heltall />
+              sammendrag={`${kr0((m.kost.admin[0] || 0) + (m.kost.andre[0] || 0))} kr/mnd nå`}>
+              <Felt label="Administrasjon" k="adminFast" {...feltProps} enhet="kr/mnd" testid="driver-admin" heltall hint="regnskap, revisjon, forsikring, programvare" />
+              <TrinnFelt verdi={drivere.kostTrinn?.adminFast || []} onEndre={(l) => settTrinn('adminFast', l)} startYm={plan.startYm} antallMnd={antallMnd} readOnly={readOnly} testid="trinn-admin" tom="Ingen trinn — administrasjon følger kostnadsinflasjonen" />
               <Felt label="Andre faste kostnader" k="andreFaste" {...feltProps} enhet="kr/mnd" testid="driver-andre" heltall />
+              <TrinnFelt verdi={drivere.kostTrinn?.andreFaste || []} onEndre={(l) => settTrinn('andreFaste', l)} startYm={plan.startYm} antallMnd={antallMnd} readOnly={readOnly} testid="trinn-andre" tom="Ingen trinn — andre faste følger kostnadsinflasjonen" />
             </Seksjon>
 
             <Seksjon tittel="Årlig justering" ikon={CalendarDays} open={aapne.aarlig} onToggle={() => veksle('aarlig')}
@@ -1932,6 +1960,47 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                 <p className="mt-1 rounded-[8px] bg-[#fdf3e0] px-2.5 py-1.5 text-[10.5px] leading-snug text-[#9a6b1c]">
                   Planen er {antallMnd} mnd — justeringen får først effekt i flerårsplaner (13+ måneder).
                 </p>
+              )}
+            </Seksjon>
+
+            <Seksjon tittel="Skatt & konsern" ikon={Scale} open={aapne.skatt} onToggle={() => veksle('skatt')}
+              sammendrag={sanert.skatt?.paa ? `${kma(sanert.skatt.satsPct)} % · ${sanert.skatt.konsernbidrag ? 'konsernbidrag' : 'per selskap'}` : 'Skatt ikke beregnet'}>
+              <p className="pb-1 pt-0.5 text-[11px] leading-snug text-[#a6a19a]">
+                Brukes i <b>konsernvisningen</b> og investordecket: selskapsskatt per kalenderår med fremførbart underskudd, betalt året etter (feb/apr). Denne planen er hovedplanen for konsernet.
+              </p>
+              <div className="flex items-center justify-between py-[6px]">
+                <span className="text-[13px] text-[#57534e]">Beregn skatt</span>
+                <button type="button" disabled={readOnly} aria-pressed={sanert.skatt?.paa} data-testid="driver-skatt-toggle"
+                  onClick={() => settDriver('skatt', { ...(sanert.skatt || {}), paa: !sanert.skatt?.paa })}
+                  className={`relative h-[22px] w-[38px] shrink-0 rounded-full transition-colors ${sanert.skatt?.paa ? 'bg-[#6d28d9]' : 'bg-[#d6d3cd]'}`}>
+                  <span className={`absolute top-[3px] h-4 w-4 rounded-full bg-white shadow transition-all ${sanert.skatt?.paa ? 'left-[18px]' : 'left-[3px]'}`} />
+                </button>
+              </div>
+              {sanert.skatt?.paa && (
+                <>
+                  <div className="flex items-center justify-between py-[6px]">
+                    <span className="text-[13px] text-[#57534e]">Skattesats</span>
+                    <span className="flex items-center gap-1.5">
+                      <input value={drivere.skatt?.satsPct ?? sanert.skatt.satsPct} inputMode="decimal" readOnly={readOnly} data-testid="driver-skatt-sats"
+                        onChange={(e) => settDriver('skatt', { ...(sanert.skatt || {}), satsPct: e.target.value })}
+                        className="h-8 w-[72px] rounded-[8px] bg-[#f5f4f1] px-2 text-right text-[13.5px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent focus:bg-white focus:ring-[#6d28d9]/40" />
+                      <span className="w-12 text-[11px] text-[#a6a19a]">%</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-[6px]">
+                    <span className="min-w-0 text-[13px] text-[#57534e]">Konsernbidrag</span>
+                    <button type="button" disabled={readOnly} aria-pressed={sanert.skatt.konsernbidrag} data-testid="driver-skatt-konsernbidrag"
+                      onClick={() => settDriver('skatt', { ...(sanert.skatt || {}), konsernbidrag: !sanert.skatt.konsernbidrag })}
+                      className={`relative h-[22px] w-[38px] shrink-0 rounded-full transition-colors ${sanert.skatt.konsernbidrag ? 'bg-[#6d28d9]' : 'bg-[#d6d3cd]'}`}>
+                      <span className={`absolute top-[3px] h-4 w-4 rounded-full bg-white shadow transition-all ${sanert.skatt.konsernbidrag ? 'left-[18px]' : 'left-[3px]'}`} />
+                    </button>
+                  </div>
+                  <p className="text-[10.5px] leading-snug text-[#a6a19a]">
+                    {sanert.skatt.konsernbidrag
+                      ? 'Overskudd i ett selskap dekker underskudd i det andre samme år. Krever mor/datter-struktur med > 90 % eierskap.'
+                      : 'Hvert selskap skattlegges for seg (to søsterselskaper). Digihome AS betaler skatt selv om Tech har underskudd — slå på konsernbidrag hvis strukturen tillater det.'}
+                  </p>
+                </>
               )}
             </Seksjon>
 

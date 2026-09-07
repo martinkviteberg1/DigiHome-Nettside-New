@@ -94,7 +94,7 @@ export default function KonsernSammenstilling({ planer, api, onAapne }) {
     const mT = beregnTech({ antallMnd: techPlan.antallMnd, drivere: techPlan.tech, fakta: techPlan.fakta || {} });
     const skyv = (arr) => (offset === 0 ? arr : Array.from({ length: arr.length }, (_, i) => { const j = i - offset; return j >= 0 && j < arr.length ? arr[j] : 0; }));
     const mT2 = offset === 0 ? mT : { ...mT, inntekt: { total: skyv(mT.inntekt.total), forvaltning: skyv(mT.inntekt.forvaltning) }, kostSum: skyv(mT.kostSum) };
-    return { k: beregnKonsernSammenstilling({ forvaltning: mF, tech: mT2, antallMnd: N }), N, offset, startYm: dhPlan.startYm, mF, mT };
+    return { k: beregnKonsernSammenstilling({ forvaltning: mF, tech: mT2, antallMnd: N, skatt: mF.drivere?.skatt || null, startYm: dhPlan.startYm }), N, offset, startYm: dhPlan.startYm, mF, mT };
   }, [dhPlan, techPlan]);
 
   const Velger = ({ label, verdi, onChange, liste, selskap, testid }) => (
@@ -128,7 +128,7 @@ export default function KonsernSammenstilling({ planer, api, onAapne }) {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <Kpi label="Konsernresultat" verdi={krS(k.k.sammendrag.resultat)} tone={k.k.sammendrag.resultat >= 0 ? 'pos' : 'neg'} under={`${k.N} mnd fra ${mndKort(k.startYm)}`} testid="konsern-kpi-resultat" />
             <Kpi label="Break-even konsern" verdi={k.k.sammendrag.breakEvenIdx != null ? stor(mndLang(ymPluss(k.startYm, k.k.sammendrag.breakEvenIdx))) : 'Utenfor perioden'} under={`Digihome AS ${k.k.digihome.breakEvenIdx != null ? mndKort(ymPluss(k.startYm, k.k.digihome.breakEvenIdx)) : '—'} · Tech ${k.k.tech.breakEvenIdx != null ? mndKort(ymPluss(k.startYm, k.k.tech.breakEvenIdx)) : '—'}`} testid="konsern-kpi-be" />
-            <Kpi label="Kapitalbehov konsern" verdi={kr(k.k.sammendrag.kapitalbehov)} under={`Digihome AS ${kr(k.k.digihome.kapitalbehov)} · Tech ${kr(k.k.tech.kapitalbehov)}`} testid="konsern-kpi-kapital" />
+            <Kpi label={k.k.skatt.paa ? 'Kapitalbehov etter skatt' : 'Kapitalbehov konsern'} verdi={kr(k.k.skatt.paa ? k.k.sammendrag.kapitalbehovEtterSkatt : k.k.sammendrag.kapitalbehov)} under={k.k.skatt.paa ? `før skatt ${kr(k.k.sammendrag.kapitalbehov)} · DH ${kr(k.k.digihome.kapitalbehov)} · Tech ${kr(k.k.tech.kapitalbehov)}` : `Digihome AS ${kr(k.k.digihome.kapitalbehov)} · Tech ${kr(k.k.tech.kapitalbehov)}`} testid="konsern-kpi-kapital" />
             <Kpi label="Eliminert lisens" verdi={kr(k.k.sammendrag.eliminert)} under={k.k.sammendrag.avvikSum ? `Avvik mot Digihome AS-budsjettets systemkost: ${krS(k.k.sammendrag.avvikSum)}` : 'Stemmer med Digihome AS-budsjettets systemkost'} testid="konsern-kpi-elim" />
             <Kpi label="ARR ved slutt" verdi={kr(k.k.sammendrag.arrExit)} tone="lilla" under={`${k.k.sammendrag.andelTechEksternPct ?? 0} % fra eksterne Tech-kunder`} testid="konsern-kpi-arr" />
           </div>
@@ -160,6 +160,31 @@ export default function KonsernSammenstilling({ planer, api, onAapne }) {
               </tbody>
             </table>
             <p className="mt-3 text-[11px] text-[#a6a19a]">Per selskap: inntekt · <span className="text-[#0a7d55]">resultat</span>. Lisensen er inntekt i Tech og kostnad i Digihome AS — i konsernet nuller den seg ut.</p>
+          </div>
+
+          {/* Skatt — per kalenderår og selskap, betalt året etter */}
+          <div className="overflow-x-auto rounded-[18px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="konsern-skatt">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#a6a19a]">Skatt <span className="font-medium normal-case tracking-normal">· {k.k.skatt.paa ? `${k.k.skatt.satsPct} % per kalenderår · ${k.k.skatt.konsernbidrag ? 'konsernbidrag (mor/datter)' : 'per selskap, fremførbart underskudd'} · betales året etter (feb/apr)` : 'ikke beregnet — slå på under Skatt & konsern i Digihome AS-budsjettet'}</span></p>
+              {k.k.skatt.paa && <p className="text-[12px] text-[#57534e]">Resultat etter skatt <b className={k.k.sammendrag.resultatEtterSkatt >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}>{krS(k.k.sammendrag.resultatEtterSkatt)}</b> · betalt i perioden <b className="text-[#1c1917]">{kr(k.k.skatt.sumBetalt)}</b>{k.k.skatt.etterPeriode ? <> · forfaller etter perioden <b className="text-[#1c1917]">{kr(k.k.skatt.etterPeriode)}</b></> : null}</p>}
+            </div>
+            {k.k.skatt.paa && (
+              <table className="w-full text-[13px]">
+                <thead><tr className="text-[10.5px] uppercase tracking-wide text-[#a6a19a]"><th className="pb-2 text-left font-bold">Kalenderår</th><th className="pb-2 text-right font-bold">Resultat DH</th><th className="pb-2 text-right font-bold">Resultat Tech</th><th className="pb-2 text-right font-bold">Skattegrunnlag</th><th className="pb-2 text-right font-bold">Skatt</th></tr></thead>
+                <tbody>
+                  {k.k.skatt.perAar.map((a) => (
+                    <tr key={a.aar} className="border-t border-black/[0.05]">
+                      <td className="py-2 font-semibold text-[#1c1917]">{a.aar}{a.mnd < 12 ? <span className="ml-1 text-[11px] font-medium text-[#a6a19a]">({a.mnd} mnd)</span> : null}</td>
+                      <td className={`py-2 text-right ${a.resultatF >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{krS(a.resultatF)}</td>
+                      <td className={`py-2 text-right ${a.resultatT >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{krS(a.resultatT)}</td>
+                      <td className="py-2 text-right text-[#57534e]">{kr(a.grunnlagF + a.grunnlagT)}</td>
+                      <td className="py-2 text-right font-semibold text-[#1c1917]">{kr(a.sum)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {k.k.skatt.paa && !k.k.skatt.konsernbidrag && k.k.skatt.fremforbart.tech > 0 && <p className="mt-3 text-[11px] text-[#a6a19a]">Tech har {kr(k.k.skatt.fremforbart.tech)} i fremførbart underskudd ved periodens slutt — en skattefordel som først får verdi når Tech tjener penger, eller med konsernbidrag.</p>}
           </div>
 
           <div className="flex flex-wrap gap-2 px-1">
