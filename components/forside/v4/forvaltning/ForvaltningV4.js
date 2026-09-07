@@ -3,57 +3,72 @@
 import React from 'react';
 import NavV4 from '../NavV4';
 import Footer from '@/components/dh/Footer';
-import { Knapp, Lenke, T, display } from '../motion';
-import ForvaltningScene from './ForvaltningScene';
+import { T } from '../motion';
+import TillitStripe from '../TillitStripe';
+import StegSeksjon from '../StegSeksjon';
+import FaqSeksjon from '../FaqSeksjon';
+import AvslutningSeksjon from '../AvslutningSeksjon';
+import { ForvaltningHero, LofteSeksjon, MaanedSeksjon, BrevSeksjon, PRIS_SVAR, SARAH } from './ForvaltningDeler';
 
 /* ---------------------------------------------------------------------------
-   ForvaltningV4 — undersiden for full forvaltning. Første akt: hero.
+   ForvaltningV4 — undersiden for full forvaltning.
 
    Privat og bedrift er programvare: systemet gjør jobben, du godkjenner.
    Forvaltning er en tjeneste: MENNESKER hos DigiHome gjør jobben, med samme
    system som ryggrad — og du ser alt som skjer. Løftet er derfor ikke
    «autopilot», men arbeidsdelingen: «Vi tar jobben. Du bestemmer.»
 
-   Kun Bergen og omegn. Ingen pris i heroen (avtales individuelt), ingen
-   løfter om avkastning. Handlingen er et uforpliktende tilbud — onboardingen
-   med tjenesten forhåndsvalgt — eller en samtale.
+   Rekkefølge: hero (Sarah) → arbeidsdelingen (vi / du) → én måned slik den
+   ser ut (scenen) → brev fra Sarah (ett navn, ett nummer) → slik kommer du i
+   gang → spørsmål og svar → avslutning.
+
+   Kun Bergen og omegn. Aldri pris (avtales individuelt), ingen løfter om
+   avkastning. Handlingen er et uforpliktende tilbud — eller en samtale.
 --------------------------------------------------------------------------- */
+
+const STEG = [
+  { nr: '1', t: 'Samtalen', d: 'Tjue minutter om boligen, leietakeren og hva du vil ha hjelp med.' },
+  { nr: '2', t: 'Tilbudet', d: 'Innen 24 timer: omfang og pris, svart på hvitt. Ingen bindingstid.' },
+  { nr: '3', t: 'Overtakelsen', d: 'Vi henter nøkler, dokumenterer boligen og setter den opp i systemet.' },
+  { nr: '4', t: 'Rolig', d: 'Husleie, saker og rapport går. Du hører fra Sarah når det betyr noe.' },
+];
+
+const PERSON = { bilde: SARAH.liten, navn: SARAH.navn, tekst: 'Din faste forvalter — én person som kjenner boligen din.' };
+
+const SPORSMAL = [
+  { q: 'Hva koster full forvaltning?', a: null },
+  { q: 'Hva bestemmer jeg selv?', a: 'Hvem som flytter inn, husleie og vilkår, og alle kostnader over grensen du selv setter. Vi anbefaler og forbereder — du godkjenner. Vil du bo der selv eller selge, sier du fra. Ingen bindingstid.' },
+  { q: 'Hvor tilbyr dere full forvaltning?', a: 'Bergen og omegn. Leier du ut andre steder, kan du bruke DigiHome som system og leie ut selv — med samme kontrakt, husleieoppfølging og saker.' },
+  { q: 'Hvem er kontaktpersonen min?', a: 'Sarah Sleeman. Ett navn og ett nummer — ikke et kundesenter. Hun kjenner boligen, leietakeren og det som er avtalt.' },
+  { q: 'Hva skjer når leietakeren melder fra om noe?', a: 'Meldingen går til oss. Vi vurderer saken, henter pris og følger opp håndverkeren til det er løst. Koster det mer enn grensen du har satt, spør vi deg først.' },
+  { q: 'Kan jeg begynne med selvforvaltning og bytte senere?', a: 'Ja. Det er samme system under. Bytter du, tar vi over der du er — boligen, kontrakten og historikken blir med.' },
+  { q: 'Er det bindingstid?', a: 'Nei. Du kan si opp når du vil. Boligen, kontrakten og historikken ligger i DigiHome og blir med deg videre.' },
+];
+
+const AVSLUTNING_STEG = [
+  ['1', 'Samtalen', 'Tjue minutter om boligen og hva du vil ha hjelp med.'],
+  ['2', 'Tilbudet', 'Omfang og pris innen 24 timer. Ingen bindingstid.'],
+  ['3', 'Overtakelsen', 'Vi henter nøkler og setter boligen opp. Så er den vår å drive — og din å bestemme over.'],
+];
 
 export default function ForvaltningV4() {
   return (
     <div className="min-h-screen overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="forvaltning-v4">
       <NavV4 />
       <main>
-        <section className="relative lg:flex lg:min-h-[calc(100svh-64px)] lg:flex-col lg:justify-center" data-testid="v4f-hero">
-          <div className="mx-auto grid w-full max-w-[1440px] gap-14 px-5 pb-16 pt-10 sm:px-8 sm:pt-12 lg:w-[calc(100%-128px)] lg:grid-cols-[minmax(0,6fr)_minmax(0,7fr)] lg:items-center lg:gap-14 lg:px-0 lg:py-10 2xl:gap-16">
-            <div className="min-w-0 max-w-[600px]">
-              <p className="dh-cover-inn text-[15px] font-medium" style={{ color: 'rgba(21,19,15,0.55)' }} data-testid="v4f-label">Full forvaltning · Bergen og omegn</p>
-              <h1
-                className="dh-cover-inn mt-4 max-w-[11ch] text-[52px] sm:text-[68px] lg:text-[clamp(64px,5vw,96px)]"
-                style={{ ...display, color: T.ink, animationDelay: '.04s' }}
-                data-testid="v4f-h1"
-              >
-                Vi tar jobben. Du bestemmer<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
-              </h1>
-              <p className="dh-cover-inn mt-7 max-w-[38ch] text-[18px] leading-[1.45] text-[#15130F]/70 sm:mt-8 sm:text-[20px]" style={{ animationDelay: '.08s' }} data-testid="v4f-ingress">
-                <span className="sm:hidden">Vi finner leietaker, tar drift og oppfølging. Du ser alt som skjer — og har siste ord.</span>
-                <span className="hidden sm:inline">Overlat utleien til oss. Vi finner leietaker, tar drift og oppfølging — du ser alt som skjer, og har siste ord om det som betyr noe.</span>
-              </p>
-
-              <div className="dh-cover-inn mt-9 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ animationDelay: '.16s' }}>
-                <Knapp href="/bli-utleier/start?tier=full_forvaltning" data-testid="v4f-cta">Få et uforpliktende tilbud</Knapp>
-                <Lenke href="/book-mote" data-testid="v4f-cta-samtale">Book en samtale</Lenke>
-              </div>
-              <p className="dh-cover-inn mt-4 text-[14px]" style={{ color: 'rgba(21,19,15,0.5)', animationDelay: '.22s' }} data-testid="v4f-under">
-                Personlig tilbud innen 24 timer · ingen oppstartskostnad · ingen bindingstid
-              </p>
-            </div>
-
-            <div className="dh-cover-inn min-w-0" style={{ animationDelay: '.12s' }}>
-              <ForvaltningScene />
-            </div>
-          </div>
-        </section>
+        <ForvaltningHero />
+        <TillitStripe />
+        <LofteSeksjon />
+        <MaanedSeksjon />
+        <BrevSeksjon />
+        <StegSeksjon tittel={['Slik kommer', 'du i gang.']} under="Én samtale. Ett tilbud. Så tar vi over." steg={STEG} person={PERSON} testid="v4f" />
+        <FaqSeksjon sporsmal={SPORSMAL} prisSvar={PRIS_SVAR} />
+        <AvslutningSeksjon
+          tittel="Overlat utleien. Behold kontrollen"
+          under="Én samtale. Tilbud innen 24 timer. Ingen bindingstid."
+          handling={{ knapp: { href: '/bli-utleier/start?tier=full_forvaltning', tekst: 'Få et uforpliktende tilbud' }, lenke: { href: '/book-mote', tekst: 'Book en samtale' } }}
+          steg={AVSLUTNING_STEG}
+        />
       </main>
       <Footer />
     </div>

@@ -1251,3 +1251,19 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   `children`; `usePeker` tar valgfri `inn(navn)` → hvor pekeren kommer inn fra (Annonse: 'felt' → 420/290 så den kommer utenfra rammen).
   Kontrakt/Drift bruker samme API uendret (verifisert: pekeren vises i Kontrakt).
 - **Ikke brukergodkjent** — venter på visuell bekreftelse. Kun screenshot-testet (desktop 1440/1920, mobil 390).
+
+## /forvaltning — hel side bygget (Sarah som ansikt) — [denne runden]
+- `components/forside/v4/forvaltning/ForvaltningV4.js` komponerer: `ForvaltningHero` (tekst + Sarahs portrett 4:5, bildetekst m/ fotokreditt
+  «Foto: Pia Bråthen») → `LofteSeksjon` («Alt som tar tid, tar vi. Alt som betyr noe, bestemmer du.» — to kolonner «Vi tar.» 6 rader /
+  «Du bestemmer.» 4 rader på hårlinjer) → `MaanedSeksjon` («Slik ser en måned ut.» + eksisterende `ForvaltningScene`, nå med Sarah i stedet
+  for «Nora», avatar `/brand/sarah-sleeman-360.webp`) → `BrevSeksjon` («Ett navn. Ett nummer.» — brev i jeg-form fra Sarah, tett utsnitt av
+  portrettet, telefon + e-post fra `lib/site.js`) → `StegSeksjon` (Samtalen / Tilbudet / Overtakelsen / Rolig, person = Sarah) →
+  `FaqSeksjon` (7 forvaltnings-spørsmål; pris-svar uten tall) → `AvslutningSeksjon` («Overlat utleien. Behold kontrollen.», CTA tilbud + samtale).
+- Nye seksjoner ligger i `forvaltning/ForvaltningDeler.js`. Portrett: `/brand/sarah-sleeman-{640,1000,1600}.webp` (fra vedlagt 2000×2000).
+- Regler holdt: ingen pris for full forvaltning, kun Bergen og omegn, ingen avkastningsløfter, kun opacity/transform.
+- Kun screenshot-testet (1440 + 390). Ikke brukergodkjent.
+- **Løft av /forvaltning (runde 2):** `MaanedSeksjon` er nå en mørk scene (charcoal, statisk lilla spotlys) med «Rollene» (Sarah / Vaktmester /
+  DigiHome-merket / Du) til venstre og `ForvaltningScene` til høyre. Scenen selv: ny **månedslinje** (1. mai → 1. juni, markør som glir fra
+  dag til dag — travel uke, så stille til husleien), ekte ansikter (Sarah, vaktmester = /v4/jonas.webp, DigiHome-ikonet som avsender),
+  teamrad uten boks, «Venter på deg»-kortet med Emmas portrett + BankID/inntekt/referanse-piller og sprett-inn. `TillitStripe` (logoer) lagt
+  mellom hero og arbeidsdelingen. Hero-portrettet setter seg (1.06 → 1) og får svak scroll-parallakse (transform, rAF) etter 2 s.
