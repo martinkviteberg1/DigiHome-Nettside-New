@@ -63,7 +63,7 @@ import { computeRevenueModel, buildLeadFeeIndex, attachFeeTruth } from '@/lib/re
 import { reconcileRevenue } from '@/lib/revenue-reconcile';
 import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImageUsage, AVAILABLE_MODELS, PLATFORM_MODELS, DEFAULT_MODEL, USD_TO_NOK } from '@/lib/llm-usage';
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
-import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
+import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers, computeSelskap, flyttKostnader, bekreftKostnader, listInntektsposter, upsertInntektspost, deleteInntektspost } from '@/lib/finance';
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
 import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, filtrerLevendeBilder, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER, opprettStylingJobber, kjorStylingJobber, listStylingJobber, reviewStylingJobb, fjernStyletBilde, listSelgere as radarListSelgere, settProvisjonssats as radarSettProvisjonssats, tildelLead as radarTildelLead, settSalgsstatus as radarSettSalgsstatus, settOppfolging as radarSettOppfolging, selgerRapport as radarSelgerRapport, RADAR_ARSAKER, berikAnnonsorer as radarBerikAnnonsorer } from '@/lib/salgsradar';
 import { settArkiv, listArkiv, nyVersjon, listVersjoner, hentVersjon, gjenopprettVersjon, opprettDeling, trekkDeling, hentDelt, filDetaljer, filLogg, VERSJON_COLL, konverterDocxTilPdf } from '@/lib/dokumenter';
@@ -12628,7 +12628,32 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         if (sub === '/settings' && method === 'GET') return cors(NextResponse.json({ ok: true, settings: await getFinanceSettings(db) }));
         if (sub === '/settings' && method === 'POST') return cors(NextResponse.json({ ok: true, settings: await setFinanceSettings(db, fbody) }));
 
-        if (sub === '/costs' && method === 'GET') { await migrerFellesKostnader(db).catch(() => {}); return cors(NextResponse.json({ ok: true, costs: await listCosts(db) })); }
+        // ── Selskapsdimensjon: Digihome AS · Digihome Tech AS · Konsern ──
+        // Ett kall gir alle tre visningene («nå» + 13 mnd tidslinje), prisliste,
+        // regler for automatiske kostnader og sorterings-forslag.
+        if (sub === '/selskap' && method === 'GET') return cors(NextResponse.json(await computeSelskap(db)));
+        // Flytt kostnader mellom selskapene i ett grep / bekreft plassering.
+        if (sub === '/costs/flytt' && method === 'POST') {
+          const r = await flyttKostnader(db, fbody.ids, fbody.selskap);
+          return cors(NextResponse.json(r, { status: r.ok ? 200 : 400 }));
+        }
+        if (sub === '/costs/bekreft' && method === 'POST') {
+          const r = await bekreftKostnader(db, fbody.ids);
+          return cors(NextResponse.json(r, { status: r.ok ? 200 : 400 }));
+        }
+        // Techs inntektsposter (abonnement/lisens som ikke hentes automatisk ennå).
+        if (sub === '/inntektsposter' && method === 'GET') return cors(NextResponse.json({ ok: true, poster: await listInntektsposter(db, { selskap: new URL(request.url).searchParams.get('selskap') || 'tech' }) }));
+        if (sub === '/inntektsposter' && method === 'POST') {
+          const r = await upsertInntektspost(db, fbody);
+          return cors(NextResponse.json(r, { status: r.ok ? 200 : 400 }));
+        }
+        if (sub === '/inntektsposter' && method === 'DELETE') { await deleteInntektspost(db, fbody.id); return cors(NextResponse.json({ ok: true })); }
+
+        if (sub === '/costs' && method === 'GET') {
+          await migrerFellesKostnader(db).catch(() => {});
+          const selskapQ = new URL(request.url).searchParams.get('selskap') || '';
+          return cors(NextResponse.json({ ok: true, costs: await listCosts(db, selskapQ && selskapQ !== 'konsern' ? { selskap: selskapQ } : {}) }));
+        }
         if (sub === '/costs' && method === 'POST') return cors(NextResponse.json({ ok: true, cost: await upsertCost(db, fbody) }));
         if (sub === '/costs' && method === 'DELETE') { await deleteCost(db, fbody.id); return cors(NextResponse.json({ ok: true })); }
 

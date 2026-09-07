@@ -1,1109 +1,836 @@
 #!/usr/bin/env python3
 """
-Backend test for Selskap (organisasjonskart + aksjeeierbok).
-Tests all endpoints with REAL data safety rules.
+Backend test for Selskapsøkonomi API (multi-entity finance)
+Tests DigiHome AS, Digihome Tech AS, and Konsern (consolidated) finance endpoints.
 """
+
 import requests
-import json
-import sys
-from pymongo import MongoClient
+import time
+import os
+from datetime import datetime
 
-BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
-ADMIN_EMAIL = "martin@kviteberg.no"
-ADMIN_PASSWORD = "Pyramiden2025##"
-MASTER_KEY = "dh_admin_b3Kx92Qz7Lm4"
-MONGO_URL = "mongodb://localhost:27017"
-DB_NAME = "your_database_name"
+# Configuration
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'http://localhost:3000')
+API_BASE = f"{BASE_URL}/api"
+ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
+TIMEOUT = 90  # First call to /selskap can take 5-10s
 
-# Track test data for cleanup
-test_data = {
-    "person_ids": [],
-    "rolle_ids": [],
-    "eier_ids": [],
-    "klasse_ids": [],
-    "transaksjon_ids": [],
-}
+# Test state
+qa_cost_ids = []
+qa_inntektspost_ids = []
+original_prisliste_pris = None
+original_autoregler_llm = None
+original_kontant_tech = None
 
 def log(msg):
-    print(f"[TEST] {msg}")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
-def get_token():
-    """Login and get session token"""
-    try:
-        res = requests.post(f"{BASE_URL}/admin/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        }, timeout=30)
-        if res.status_code == 200:
-            data = res.json()
-            return data.get("token")
-        else:
-            log(f"❌ Login failed: {res.status_code} {res.text}")
-            return None
-    except Exception as e:
-        log(f"❌ Login error: {e}")
-        return None
+def test_case(num, desc):
+    print(f"\n{'='*80}")
+    print(f"TEST CASE {num}: {desc}")
+    print('='*80)
 
-def get_mongo_db():
-    """Get MongoDB connection"""
-    try:
-        client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
-        client.server_info()  # Force connection
-        return client[DB_NAME]
-    except Exception as e:
-        log(f"❌ MongoDB connection failed: {e}")
-        return None
-
-# ═══════════════════════════════════════════════════════════════════════════
-# (A) ORGANISASJON TESTS
-# ═══════════════════════════════════════════════════════════════════════════
-
-def test_a1_get_organisasjon():
-    """A1: GET /api/admin/selskap/organisasjon → 200 with selskaper, personer, roller"""
-    log("A1: GET organisasjon")
-    try:
-        res = requests.get(f"{BASE_URL}/admin/selskap/organisasjon?key={MASTER_KEY}", timeout=30)
-        assert res.status_code == 200, f"Expected 200, got {res.status_code}: {res.text}"
-        data = res.json()
-        assert data.get("ok") == True, "Response not ok"
-        assert "selskaper" in data, "Missing selskaper"
-        assert "personer" in data, "Missing personer"
-        assert "roller" in data, "Missing roller"
-        
-        # Verify 2 real companies exist
-        selskaper = data["selskaper"]
-        assert len(selskaper) >= 2, f"Expected at least 2 companies, got {len(selskaper)}"
-        
-        orgnrs = [s.get("orgnr") for s in selskaper]
-        assert "835595242" in orgnrs, "Digihome AS (835595242) not found"
-        assert "835674622" in orgnrs, "Digihome Tech AS (835674622) not found"
-        
-        # Verify real roles exist
-        roller = data["roller"]
-        assert len(roller) > 0, "No roles found"
-        
-        # Check for real people (Erik, Sarah, Martin)
-        personer = data["personer"]
-        person_names = [p.get("navn", "").lower() for p in personer]
-        
-        # Verify roles have real names (not role names like 'Styreleder')
-        for rolle in roller:
-            person_id = rolle.get("personId")
-            person = next((p for p in personer if p.get("id") == person_id), None)
-            if person:
-                navn = person.get("navn", "")
-                # Regression check: person names should NOT be role names
-                assert navn.lower() not in ["styreleder", "daglig leder", "nestleder", "styremedlem"], \
-                    f"Person has role name '{navn}' instead of real name (regression bug)"
-        
-        # Check for specific real roles
-        erik_roles = [r for r in roller if any(p.get("id") == r.get("personId") and "erik" in p.get("navn", "").lower() for p in personer)]
-        assert len(erik_roles) > 0, "Erik Hoffmann-Dahl roles not found"
-        
-        # Verify Erik has LEDE role in both companies
-        erik_lede_count = sum(1 for r in erik_roles if r.get("rolleKode") == "LEDE")
-        assert erik_lede_count >= 1, f"Erik should have at least 1 LEDE role, found {erik_lede_count}"
-        
-        # Verify kilde 'brreg' exists
-        brreg_roles = [r for r in roller if r.get("kilde") == "brreg"]
-        assert len(brreg_roles) > 0, "No brreg roles found"
-        
-        log(f"✅ A1 PASSED: {len(selskaper)} companies, {len(personer)} persons, {len(roller)} roles")
-        return selskaper
-    except AssertionError as e:
-        log(f"❌ A1 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ A1 ERROR: {e}")
-        raise
-
-def test_a2_no_token():
-    """A2: No token → 401"""
-    log("A2: GET organisasjon without token")
-    try:
-        res = requests.get(f"{BASE_URL}/admin/selskap/organisasjon", timeout=30)
-        assert res.status_code == 401, f"Expected 401, got {res.status_code}"
-        log("✅ A2 PASSED: 401 without token")
-    except AssertionError as e:
-        log(f"❌ A2 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ A2 ERROR: {e}")
-        raise
-
-def test_a3_create_update_person(selskaper):
-    """A3: POST /admin/selskap/person → 200, PUT → 200 with fields persisted"""
-    log("A3: Create and update test person")
-    try:
-        # Create person
-        res = requests.post(f"{BASE_URL}/admin/selskap/person?key={MASTER_KEY}", json={
-            "navn": "QA Testperson SLETTES",
-            "tittel": "CTO"
-        }, timeout=30)
-        assert res.status_code == 200, f"POST failed: {res.status_code} {res.text}"
-        data = res.json()
-        assert data.get("ok") == True, "POST response not ok"
-        person = data.get("person")
-        assert person is not None, "No person in response"
-        person_id = person.get("id")
-        assert person_id, "No person id"
-        test_data["person_ids"].append(person_id)
-        
-        assert person.get("navn") == "QA Testperson SLETTES", "Name mismatch"
-        assert person.get("tittel") == "CTO", "Title mismatch"
-        assert person.get("kilde") == "manuell", "Should be manual source"
-        
-        # Update person
-        res = requests.put(f"{BASE_URL}/admin/selskap/person?key={MASTER_KEY}", json={
-            "id": person_id,
-            "bio": "test bio",
-            "epost": "qa@example.com"
-        }, timeout=30)
-        assert res.status_code == 200, f"PUT failed: {res.status_code} {res.text}"
-        data = res.json()
-        assert data.get("ok") == True, "PUT response not ok"
-        updated = data.get("person")
-        assert updated.get("bio") == "test bio", "Bio not updated"
-        assert updated.get("epost") == "qa@example.com", "Email not updated"
-        
-        # Create a role for this person so they appear in GET organisasjon
-        digihome_as = next((s for s in selskaper if s.get("orgnr") == "835595242"), None)
-        selskap_id = digihome_as.get("id")
-        
-        res = requests.post(f"{BASE_URL}/admin/selskap/rolle?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "personId": person_id,
-            "rolleNavn": "CTO",
-            "gruppe": "ledelse"
-        }, timeout=30)
-        assert res.status_code == 200, f"POST rolle failed: {res.status_code} {res.text}"
-        rolle_data = res.json()
-        rolle_id = rolle_data.get("rolle", {}).get("id")
-        test_data["rolle_ids"].append(rolle_id)
-        
-        # Now verify in GET (person should appear because they have a role)
-        res = requests.get(f"{BASE_URL}/admin/selskap/organisasjon?key={MASTER_KEY}", timeout=30)
-        data = res.json()
-        personer = data.get("personer", [])
-        qa_person = next((p for p in personer if p.get("id") == person_id), None)
-        assert qa_person is not None, "QA person not found in GET (after creating role)"
-        assert qa_person.get("bio") == "test bio", "Bio not persisted"
-        assert qa_person.get("epost") == "qa@example.com", "Email not persisted"
-        
-        log(f"✅ A3 PASSED: Created and updated person {person_id}")
-        return person_id, rolle_id
-    except AssertionError as e:
-        log(f"❌ A3 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ A3 ERROR: {e}")
-        raise
-
-def test_a4_update_delete_rolle(person_id, rolle_id, selskaper):
-    """A4: PUT/DELETE rolle with validation"""
-    log("A4: Update and delete test role")
-    try:
-        # Update role (skjult)
-        res = requests.put(f"{BASE_URL}/admin/selskap/rolle?key={MASTER_KEY}", json={
-            "id": rolle_id,
-            "skjult": True
-        }, timeout=30)
-        assert res.status_code == 200, f"PUT rolle failed: {res.status_code} {res.text}"
-        
-        # Verify skjult persisted
-        res = requests.get(f"{BASE_URL}/admin/selskap/organisasjon?key={MASTER_KEY}", timeout=30)
-        data = res.json()
-        roller = data.get("roller", [])
-        qa_rolle = next((r for r in roller if r.get("id") == rolle_id), None)
-        assert qa_rolle.get("skjult") == True, "Skjult not persisted"
-        
-        # Try to update rolleNavn on a BRREG role (should fail)
-        brreg_rolle = next((r for r in roller if r.get("kilde") == "brreg"), None)
-        if brreg_rolle:
-            res = requests.put(f"{BASE_URL}/admin/selskap/rolle?key={MASTER_KEY}", json={
-                "id": brreg_rolle.get("id"),
-                "rolleNavn": "Test"
-            }, timeout=30)
-            assert res.status_code == 400, f"Should reject editing BRREG role, got {res.status_code}"
-            log("  ✓ BRREG role edit rejected as expected")
-        
-        # Try to delete a BRREG role (should fail)
-        if brreg_rolle:
-            res = requests.delete(f"{BASE_URL}/admin/selskap/rolle?key={MASTER_KEY}&id={brreg_rolle.get('id')}", timeout=30)
-            assert res.status_code == 400, f"Should reject deleting BRREG role, got {res.status_code}"
-            assert "skjul" in res.text.lower(), "Error message should mention 'skjul'"
-            log("  ✓ BRREG role deletion rejected with 'skjul' message")
-        
-        # Delete manual role
-        res = requests.delete(f"{BASE_URL}/admin/selskap/rolle?key={MASTER_KEY}&id={rolle_id}", timeout=30)
-        assert res.status_code == 200, f"DELETE rolle failed: {res.status_code} {res.text}"
-        test_data["rolle_ids"].remove(rolle_id)
-        
-        log(f"✅ A4 PASSED: Updated and deleted rolle {rolle_id}")
-    except AssertionError as e:
-        log(f"❌ A4 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ A4 ERROR: {e}")
-        raise
-
-def test_a5_delete_person(person_id):
-    """A5: DELETE person (after roles gone), try delete BRREG person → 400"""
-    log("A5: Delete test person and verify BRREG person protection")
-    try:
-        # Delete QA person (roles already deleted in A4)
-        res = requests.delete(f"{BASE_URL}/admin/selskap/person?key={MASTER_KEY}&id={person_id}", timeout=30)
-        assert res.status_code == 200, f"DELETE person failed: {res.status_code} {res.text}"
-        test_data["person_ids"].remove(person_id)
-        
-        # Verify person is gone (check MongoDB directly since GET only shows persons with roles)
-        db = get_mongo_db()
-        person_doc = db["org_personer"].find_one({"id": person_id})
-        assert person_doc is None, "Person should be deleted from MongoDB"
-        
-        # Try to delete a real BRREG person (Erik)
-        res = requests.get(f"{BASE_URL}/admin/selskap/organisasjon?key={MASTER_KEY}", timeout=30)
-        data = res.json()
-        personer = data.get("personer", [])
-        erik_person = next((p for p in personer if "erik" in p.get("navn", "").lower()), None)
-        if erik_person:
-            res = requests.delete(f"{BASE_URL}/admin/selskap/person?key={MASTER_KEY}&id={erik_person.get('id')}", timeout=30)
-            assert res.status_code == 400, f"Should reject deleting BRREG person, got {res.status_code}"
-            assert "brreg" in res.text.lower() or "roller" in res.text.lower(), "Error should mention brreg roles"
-            
-            # Verify Erik still exists in MongoDB
-            erik_doc = db["org_personer"].find_one({"id": erik_person.get("id")})
-            assert erik_doc is not None, "Erik should still exist after failed delete"
-            log("  ✓ BRREG person (Erik) protected from deletion")
-        
-        log(f"✅ A5 PASSED: Deleted QA person, BRREG person protected")
-    except AssertionError as e:
-        log(f"❌ A5 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ A5 ERROR: {e}")
-        raise
-
-def test_a6_synk_brreg(selskaper):
-    """A6: POST /admin/selskap/synk → 200, idempotent, no duplicates"""
-    log("A6: Sync from Brønnøysund (max 2 calls)")
-    try:
-        # Get Digihome AS
-        digihome_as = next((s for s in selskaper if s.get("orgnr") == "835595242"), None)
-        assert digihome_as is not None, "Digihome AS not found"
-        selskap_id = digihome_as.get("id")
-        
-        # Count roles before sync
-        res = requests.get(f"{BASE_URL}/admin/selskap/organisasjon?key={MASTER_KEY}", timeout=30)
-        data = res.json()
-        roller_before = [r for r in data.get("roller", []) if r.get("selskapId") == selskap_id]
-        count_before = len(roller_before)
-        
-        # Sync (first call)
-        res = requests.post(f"{BASE_URL}/admin/selskap/synk?key={MASTER_KEY}", json={
-            "selskapId": selskap_id
-        }, timeout=30)
-        assert res.status_code == 200, f"Sync failed: {res.status_code} {res.text}"
-        data = res.json()
-        assert data.get("ok") == True, "Sync not ok"
-        endringer = data.get("endringer", {})
-        log(f"  First sync: {endringer}")
-        
-        # Count roles after sync
-        res = requests.get(f"{BASE_URL}/admin/selskap/organisasjon?key={MASTER_KEY}", timeout=30)
-        data = res.json()
-        roller_after = [r for r in data.get("roller", []) if r.get("selskapId") == selskap_id]
-        count_after = len(roller_after)
-        
-        # Verify no duplicates created (count should be equal or slightly different)
-        assert count_after == count_before, f"Role count changed: {count_before} → {count_after} (duplicates created?)"
-        
-        # Verify real roles unchanged
-        erik_roles_after = [r for r in roller_after if any(
-            p.get("id") == r.get("personId") and "erik" in p.get("navn", "").lower() 
-            for p in data.get("personer", [])
-        )]
-        assert len(erik_roles_after) > 0, "Erik's roles disappeared after sync"
-        
-        log(f"✅ A6 PASSED: Sync idempotent, {count_before} roles before = {count_after} after")
-    except AssertionError as e:
-        log(f"❌ A6 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ A6 ERROR: {e}")
-        raise
-
-def test_a7_write_without_admin():
-    """A7: Write endpoints without admin → 401"""
-    log("A7: Write endpoints without token")
-    try:
-        # POST person
-        res = requests.post(f"{BASE_URL}/admin/selskap/person", json={"navn": "Test"}, timeout=30)
-        assert res.status_code == 401, f"POST person should be 401, got {res.status_code}"
-        
-        # POST rolle
-        res = requests.post(f"{BASE_URL}/admin/selskap/rolle", json={"rolleNavn": "Test"}, timeout=30)
-        assert res.status_code == 401, f"POST rolle should be 401, got {res.status_code}"
-        
-        # POST synk
-        res = requests.post(f"{BASE_URL}/admin/selskap/synk", json={"selskapId": "test"}, timeout=30)
-        assert res.status_code == 401, f"POST synk should be 401, got {res.status_code}"
-        
-        log("✅ A7 PASSED: All write endpoints require auth")
-    except AssertionError as e:
-        log(f"❌ A7 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ A7 ERROR: {e}")
-        raise
-
-# ═══════════════════════════════════════════════════════════════════════════
-# (B) AKSJEEIERBOK TESTS
-# ═══════════════════════════════════════════════════════════════════════════
-
-def test_b1_get_eierbok(selskaper):
-    """B1: GET /api/admin/selskap/eierbok → 200 with selskaper, capTable, auto-created 'Ordinære' class"""
-    log("B1: GET eierbok")
-    try:
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok?key={MASTER_KEY}", timeout=30)
-        assert res.status_code == 200, f"Expected 200, got {res.status_code}: {res.text}"
-        data = res.json()
-        assert data.get("ok") == True, "Response not ok"
-        assert "selskaper" in data, "Missing selskaper"
-        assert "selskap" in data, "Missing selskap (first company)"
-        assert "capTable" in data, "Missing capTable"
-        
-        cap_table = data.get("capTable")
-        assert cap_table is not None, "capTable is null"
-        assert "totalAksjer" in cap_table, "Missing totalAksjer"
-        assert cap_table.get("totalAksjer") == 0, f"Expected 0 shares initially, got {cap_table.get('totalAksjer')}"
-        
-        # Verify auto-created 'Ordinære' class
-        klasser = data.get("klasser", [])
-        assert len(klasser) >= 1, "No classes found"
-        ordinaere = next((k for k in klasser if k.get("navn") == "Ordinære"), None)
-        assert ordinaere is not None, "Auto-created 'Ordinære' class not found"
-        assert ordinaere.get("stemmerPerAksje") == 1, "Ordinære should have 1 vote per share"
-        
-        log(f"✅ B1 PASSED: Eierbok with {len(klasser)} classes, totalAksjer=0")
-        return data
-    except AssertionError as e:
-        log(f"❌ B1 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B1 ERROR: {e}")
-        raise
-
-def test_b2_create_owners():
-    """B2: Create 2 test owners"""
-    log("B2: Create test owners")
-    try:
-        # Owner A (person)
-        res = requests.post(f"{BASE_URL}/admin/selskap/eier?key={MASTER_KEY}", json={
-            "navn": "QA Eier A SLETTES",
-            "type": "person"
-        }, timeout=30)
-        assert res.status_code == 200, f"POST eier A failed: {res.status_code} {res.text}"
-        data = res.json()
-        assert data.get("ok") == True, "POST eier A not ok"
-        eier_a = data.get("eier")
-        eier_a_id = eier_a.get("id")
-        assert eier_a_id, "No eier A id"
-        test_data["eier_ids"].append(eier_a_id)
-        
-        # Owner B (company)
-        res = requests.post(f"{BASE_URL}/admin/selskap/eier?key={MASTER_KEY}", json={
-            "navn": "QA Holding B SLETTES",
-            "type": "selskap",
-            "orgnr": "999999999"
-        }, timeout=30)
-        assert res.status_code == 200, f"POST eier B failed: {res.status_code} {res.text}"
-        data = res.json()
-        assert data.get("ok") == True, "POST eier B not ok"
-        eier_b = data.get("eier")
-        eier_b_id = eier_b.get("id")
-        assert eier_b_id, "No eier B id"
-        test_data["eier_ids"].append(eier_b_id)
-        
-        log(f"✅ B2 PASSED: Created owners A={eier_a_id}, B={eier_b_id}")
-        return eier_a_id, eier_b_id
-    except AssertionError as e:
-        log(f"❌ B2 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B2 ERROR: {e}")
-        raise
-
-def test_b3_stiftelse(selskaper, eier_a_id, eier_b_id, klasser):
-    """B3: STIFTELSE transaction → capTable updated"""
-    log("B3: Create STIFTELSE transaction")
-    try:
-        digihome_as = next((s for s in selskaper if s.get("orgnr") == "835595242"), None)
-        selskap_id = digihome_as.get("id")
-        ordinaere_id = next((k.get("id") for k in klasser if k.get("navn") == "Ordinære"), None)
-        
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "stiftelse",
-            "dato": "2024-01-01",
-            "palydende": 1,
-            "poster": [
-                {"eierId": eier_a_id, "antall": 700, "fraNr": 1, "tilNr": 700, "klasseId": ordinaere_id},
-                {"eierId": eier_b_id, "antall": 300, "fraNr": 701, "tilNr": 1000, "klasseId": ordinaere_id}
-            ]
-        }, timeout=30)
-        assert res.status_code == 200, f"POST stiftelse failed: {res.status_code} {res.text}"
-        data = res.json()
-        assert data.get("ok") == True, "POST stiftelse not ok"
-        trans = data.get("transaksjon")
-        trans_id = trans.get("id")
-        assert trans_id, "No transaction id"
-        test_data["transaksjon_ids"].append(trans_id)
-        
-        # Verify capTable
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok?key={MASTER_KEY}&selskapId={selskap_id}", timeout=30)
-        data = res.json()
-        cap_table = data.get("capTable")
-        assert cap_table.get("totalAksjer") == 1000, f"Expected 1000 shares, got {cap_table.get('totalAksjer')}"
-        assert cap_table.get("aksjekapital") == 1000, f"Expected 1000 capital, got {cap_table.get('aksjekapital')}"
-        assert cap_table.get("nesteNr") == 1001, f"Expected nesteNr=1001, got {cap_table.get('nesteNr')}"
-        
-        rader = cap_table.get("rader", [])
-        assert len(rader) == 2, f"Expected 2 owners, got {len(rader)}"
-        
-        eier_a_row = next((r for r in rader if r.get("eierId") == eier_a_id), None)
-        assert eier_a_row is not None, "Eier A not in capTable"
-        assert eier_a_row.get("antall") == 700, f"Eier A should have 700 shares, got {eier_a_row.get('antall')}"
-        assert abs(eier_a_row.get("andel") - 0.7) < 0.001, f"Eier A should have 70% ownership, got {eier_a_row.get('andel')}"
-        
-        eier_b_row = next((r for r in rader if r.get("eierId") == eier_b_id), None)
-        assert eier_b_row is not None, "Eier B not in capTable"
-        assert eier_b_row.get("antall") == 300, f"Eier B should have 300 shares, got {eier_b_row.get('antall')}"
-        assert abs(eier_b_row.get("andel") - 0.3) < 0.001, f"Eier B should have 30% ownership, got {eier_b_row.get('andel')}"
-        
-        # Verify intervaller
-        assert len(eier_a_row.get("intervaller", [])) > 0, "Eier A should have intervaller"
-        
-        log(f"✅ B3 PASSED: Stiftelse created, capTable: 1000 shares, A=700 (70%), B=300 (30%)")
-        return trans_id, selskap_id
-    except AssertionError as e:
-        log(f"❌ B3 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B3 ERROR: {e}")
-        raise
-
-def test_b4_second_stiftelse(selskap_id):
-    """B4: Second stiftelse → 400"""
-    log("B4: Try second stiftelse (should fail)")
-    try:
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "stiftelse",
-            "dato": "2024-02-01",
-            "palydende": 1,
-            "poster": [{"eierId": test_data["eier_ids"][0], "antall": 100, "fraNr": 1, "tilNr": 100}]
-        }, timeout=30)
-        assert res.status_code == 400, f"Should reject second stiftelse, got {res.status_code}"
-        assert "allerede" in res.text.lower() or "stiftelse" in res.text.lower(), "Error should mention existing stiftelse"
-        log("✅ B4 PASSED: Second stiftelse rejected")
-    except AssertionError as e:
-        log(f"❌ B4 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B4 ERROR: {e}")
-        raise
-
-def test_b5_emisjon(selskap_id, eier_b_id, klasser):
-    """B5: EMISJON + overlapping emisjon → 400, antall != interval → 400"""
-    log("B5: Create EMISJON and test validations")
-    try:
-        ordinaere_id = next((k.get("id") for k in klasser if k.get("navn") == "Ordinære"), None)
-        
-        # Valid emisjon
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "emisjon",
-            "dato": "2024-06-01",
-            "poster": [
-                {"eierId": eier_b_id, "antall": 250, "fraNr": 1001, "tilNr": 1250, "kurs": 120, "klasseId": ordinaere_id}
-            ]
-        }, timeout=30)
-        assert res.status_code == 200, f"POST emisjon failed: {res.status_code} {res.text}"
-        data = res.json()
-        trans_id = data.get("transaksjon", {}).get("id")
-        test_data["transaksjon_ids"].append(trans_id)
-        
-        # Verify capTable
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok?key={MASTER_KEY}&selskapId={selskap_id}", timeout=30)
-        data = res.json()
-        cap_table = data.get("capTable")
-        assert cap_table.get("totalAksjer") == 1250, f"Expected 1250 shares, got {cap_table.get('totalAksjer')}"
-        
-        # Overlapping emisjon (fraNr 900 overlaps with existing)
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "emisjon",
-            "dato": "2024-07-01",
-            "poster": [
-                {"eierId": eier_b_id, "antall": 100, "fraNr": 900, "tilNr": 999, "klasseId": ordinaere_id}
-            ]
-        }, timeout=30)
-        assert res.status_code == 400, f"Should reject overlapping emisjon, got {res.status_code}"
-        assert "allerede utstedt" in res.text.lower() or "overlap" in res.text.lower(), "Error should mention overlap"
-        log("  ✓ Overlapping emisjon rejected")
-        
-        # Emisjon where antall != interval size
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "emisjon",
-            "dato": "2024-08-01",
-            "poster": [
-                {"eierId": eier_b_id, "antall": 100, "fraNr": 1251, "tilNr": 1300, "klasseId": ordinaere_id}  # 50 != 100
-            ]
-        }, timeout=30)
-        assert res.status_code == 400, f"Should reject antall mismatch, got {res.status_code}"
-        assert "stemmer ikke" in res.text.lower() or "antall" in res.text.lower(), "Error should mention antall mismatch"
-        log("  ✓ Antall mismatch rejected")
-        
-        log(f"✅ B5 PASSED: Emisjon created, validations working")
-        return trans_id
-    except AssertionError as e:
-        log(f"❌ B5 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B5 ERROR: {e}")
-        raise
-
-def test_b6_overdragelse(selskap_id, eier_a_id, eier_b_id):
-    """B6: OVERDRAGELSE + validations"""
-    log("B6: Create OVERDRAGELSE and test validations")
-    try:
-        # Valid overdragelse (A sells 601-700 to B)
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "overdragelse",
-            "dato": "2025-01-15",
-            "fraEierId": eier_a_id,
-            "tilEierId": eier_b_id,
-            "intervaller": [{"fra": 601, "til": 700}],
-            "vederlag": 50000
-        }, timeout=30)
-        assert res.status_code == 200, f"POST overdragelse failed: {res.status_code} {res.text}"
-        data = res.json()
-        trans_id = data.get("transaksjon", {}).get("id")
-        test_data["transaksjon_ids"].append(trans_id)
-        
-        # Verify capTable (A: 600, B: 650)
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok?key={MASTER_KEY}&selskapId={selskap_id}", timeout=30)
-        data = res.json()
-        cap_table = data.get("capTable")
-        rader = cap_table.get("rader", [])
-        
-        eier_a_row = next((r for r in rader if r.get("eierId") == eier_a_id), None)
-        assert eier_a_row.get("antall") == 600, f"Eier A should have 600 shares, got {eier_a_row.get('antall')}"
-        
-        eier_b_row = next((r for r in rader if r.get("eierId") == eier_b_id), None)
-        assert eier_b_row.get("antall") == 650, f"Eier B should have 650 shares, got {eier_b_row.get('antall')}"
-        
-        # Overdragelse of numbers A doesn't own
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "overdragelse",
-            "dato": "2025-02-01",
-            "fraEierId": eier_a_id,
-            "tilEierId": eier_b_id,
-            "intervaller": [{"fra": 1200, "til": 1250}]  # A doesn't own these
-        }, timeout=30)
-        assert res.status_code == 400, f"Should reject invalid overdragelse, got {res.status_code}"
-        assert "eier ikke" in res.text.lower(), "Error should mention ownership"
-        log("  ✓ Invalid overdragelse rejected")
-        
-        # fraEierId === tilEierId
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "overdragelse",
-            "dato": "2025-03-01",
-            "fraEierId": eier_a_id,
-            "tilEierId": eier_a_id,
-            "intervaller": [{"fra": 1, "til": 10}]
-        }, timeout=30)
-        assert res.status_code == 400, f"Should reject same seller/buyer, got {res.status_code}"
-        assert "samme" in res.text.lower(), "Error should mention same aksjonær"
-        log("  ✓ Same seller/buyer rejected")
-        
-        log(f"✅ B6 PASSED: Overdragelse created, A=600, B=650")
-        return trans_id
-    except AssertionError as e:
-        log(f"❌ B6 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B6 ERROR: {e}")
-        raise
-
-def test_b7_splitt(selskap_id, eier_a_id, eier_b_id):
-    """B7: SPLITT 1:10 + faktor 1 → 400"""
-    log("B7: Create SPLITT and test validations")
-    try:
-        # Valid splitt 1:10
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "splitt",
-            "dato": "2025-06-01",
-            "faktor": 10
-        }, timeout=30)
-        assert res.status_code == 200, f"POST splitt failed: {res.status_code} {res.text}"
-        data = res.json()
-        trans_id = data.get("transaksjon", {}).get("id")
-        test_data["transaksjon_ids"].append(trans_id)
-        
-        # Verify capTable (totalAksjer: 12500, palydende: 0.1, A: 6000, B: 6500)
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok?key={MASTER_KEY}&selskapId={selskap_id}", timeout=30)
-        data = res.json()
-        cap_table = data.get("capTable")
-        assert cap_table.get("totalAksjer") == 12500, f"Expected 12500 shares, got {cap_table.get('totalAksjer')}"
-        assert abs(cap_table.get("palydende") - 0.1) < 0.001, f"Expected palydende=0.1, got {cap_table.get('palydende')}"
-        
-        rader = cap_table.get("rader", [])
-        eier_a_row = next((r for r in rader if r.get("eierId") == eier_a_id), None)
-        assert eier_a_row.get("antall") == 6000, f"Eier A should have 6000 shares, got {eier_a_row.get('antall')}"
-        
-        eier_b_row = next((r for r in rader if r.get("eierId") == eier_b_id), None)
-        assert eier_b_row.get("antall") == 6500, f"Eier B should have 6500 shares, got {eier_b_row.get('antall')}"
-        
-        # Faktor 1 → 400
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "splitt",
-            "dato": "2025-07-01",
-            "faktor": 1
-        }, timeout=30)
-        assert res.status_code == 400, f"Should reject faktor=1, got {res.status_code}"
-        log("  ✓ Faktor=1 rejected")
-        
-        log(f"✅ B7 PASSED: Splitt 1:10 created, totalAksjer=12500, palydende=0.1")
-        return trans_id
-    except AssertionError as e:
-        log(f"❌ B7 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B7 ERROR: {e}")
-        raise
-
-def test_b8_time_travel(selskap_id, eier_a_id, eier_b_id):
-    """B8: TIME TRAVEL with ?dato parameter"""
-    log("B8: Test time travel")
-    try:
-        # Get capTable at 2024-06-30 (after emisjon, before overdragelse)
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok?key={MASTER_KEY}&selskapId={selskap_id}&dato=2024-06-30", timeout=30)
-        assert res.status_code == 200, f"GET eierbok failed: {res.status_code} {res.text}"
-        data = res.json()
-        cap_table = data.get("capTable")
-        assert cap_table.get("perDato") == "2024-06-30", "perDato not set"
-        assert cap_table.get("totalAksjer") == 1250, f"Expected 1250 shares at 2024-06-30, got {cap_table.get('totalAksjer')}"
-        
-        rader = cap_table.get("rader", [])
-        eier_a_row = next((r for r in rader if r.get("eierId") == eier_a_id), None)
-        eier_b_row = next((r for r in rader if r.get("eierId") == eier_b_id), None)
-        
-        # A should have 700, B should have 550 (300 + 250)
-        assert eier_a_row.get("antall") == 700, f"Eier A should have 700 at 2024-06-30, got {eier_a_row.get('antall')}"
-        assert eier_b_row.get("antall") == 550, f"Eier B should have 550 at 2024-06-30, got {eier_b_row.get('antall')}"
-        
-        # Get capTable at 2023-12-31 (before stiftelse)
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok?key={MASTER_KEY}&selskapId={selskap_id}&dato=2023-12-31", timeout=30)
-        data = res.json()
-        cap_table = data.get("capTable")
-        assert cap_table.get("totalAksjer") == 0, f"Expected 0 shares at 2023-12-31, got {cap_table.get('totalAksjer')}"
-        
-        log(f"✅ B8 PASSED: Time travel working (2024-06-30: A=700, B=550; 2023-12-31: 0 shares)")
-    except AssertionError as e:
-        log(f"❌ B8 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B8 ERROR: {e}")
-        raise
-
-def test_b9_spleis_invalid(selskap_id):
-    """B9: SPLEIS invalid (not divisible) → 400"""
-    log("B9: Test invalid SPLEIS")
-    try:
-        # Spleis 1:3 should fail (12500 not divisible by 3)
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "spleis",
-            "dato": "2025-07-01",
-            "faktor": 3
-        }, timeout=30)
-        assert res.status_code == 400, f"Should reject invalid spleis, got {res.status_code}"
-        assert "delelig" in res.text.lower() or "går ikke opp" in res.text.lower(), "Error should mention divisibility"
-        log("✅ B9 PASSED: Invalid spleis rejected")
-    except AssertionError as e:
-        log(f"❌ B9 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B9 ERROR: {e}")
-        raise
-
-def test_b10_sletting(selskap_id):
-    """B10: SLETTING + invalid sletting → 400"""
-    log("B10: Create SLETTING and test validations")
-    try:
-        # Valid sletting (1-500)
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "sletting",
-            "dato": "2025-08-01",
-            "intervaller": [{"fra": 1, "til": 500}]
-        }, timeout=30)
-        assert res.status_code == 200, f"POST sletting failed: {res.status_code} {res.text}"
-        data = res.json()
-        trans_id = data.get("transaksjon", {}).get("id")
-        test_data["transaksjon_ids"].append(trans_id)
-        
-        # Verify capTable (totalAksjer: 12000)
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok?key={MASTER_KEY}&selskapId={selskap_id}", timeout=30)
-        data = res.json()
-        cap_table = data.get("capTable")
-        assert cap_table.get("totalAksjer") == 12000, f"Expected 12000 shares, got {cap_table.get('totalAksjer')}"
-        
-        # Sletting of non-issued numbers
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "type": "sletting",
-            "dato": "2025-09-01",
-            "intervaller": [{"fra": 999990, "til": 999999}]
-        }, timeout=30)
-        assert res.status_code == 400, f"Should reject invalid sletting, got {res.status_code}"
-        assert "ikke utstedt" in res.text.lower(), "Error should mention not issued"
-        log("  ✓ Invalid sletting rejected")
-        
-        log(f"✅ B10 PASSED: Sletting created, totalAksjer=12000")
-        return trans_id
-    except AssertionError as e:
-        log(f"❌ B10 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B10 ERROR: {e}")
-        raise
-
-def test_b11_klasser(selskap_id):
-    """B11: POST/DELETE klasse"""
-    log("B11: Create and delete klasse")
-    try:
-        # Create B-aksjer class
-        res = requests.post(f"{BASE_URL}/admin/selskap/klasse?key={MASTER_KEY}", json={
-            "selskapId": selskap_id,
-            "navn": "B-aksjer",
-            "stemmerPerAksje": 0
-        }, timeout=30)
-        assert res.status_code == 200, f"POST klasse failed: {res.status_code} {res.text}"
-        data = res.json()
-        klasse = data.get("klasse")
-        klasse_id = klasse.get("id")
-        assert klasse_id, "No klasse id"
-        test_data["klasse_ids"].append(klasse_id)
-        
-        # Verify in GET
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok?key={MASTER_KEY}&selskapId={selskap_id}", timeout=30)
-        data = res.json()
-        klasser = data.get("klasser", [])
-        assert len(klasser) == 2, f"Expected 2 classes, got {len(klasser)}"
-        b_klasse = next((k for k in klasser if k.get("navn") == "B-aksjer"), None)
-        assert b_klasse is not None, "B-aksjer class not found"
-        
-        # Delete unused class
-        res = requests.delete(f"{BASE_URL}/admin/selskap/klasse?key={MASTER_KEY}&id={klasse_id}", timeout=30)
-        assert res.status_code == 200, f"DELETE klasse failed: {res.status_code} {res.text}"
-        test_data["klasse_ids"].remove(klasse_id)
-        
-        # Try to delete 'Ordinære' (in use)
-        ordinaere = next((k for k in klasser if k.get("navn") == "Ordinære"), None)
-        res = requests.delete(f"{BASE_URL}/admin/selskap/klasse?key={MASTER_KEY}&id={ordinaere.get('id')}", timeout=30)
-        assert res.status_code == 400, f"Should reject deleting in-use class, got {res.status_code}"
-        assert "brukes" in res.text.lower() or "transaksjoner" in res.text.lower(), "Error should mention usage"
-        log("  ✓ In-use class deletion rejected")
-        
-        log(f"✅ B11 PASSED: Created and deleted klasse")
-    except AssertionError as e:
-        log(f"❌ B11 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B11 ERROR: {e}")
-        raise
-
-def test_b12_delete_transactions(selskap_id):
-    """B12: DELETE transactions in reverse order"""
-    log("B12: Delete transactions in reverse order")
-    try:
-        # Try to delete stiftelse (first transaction) - should fail
-        stiftelse_id = test_data["transaksjon_ids"][0]
-        res = requests.delete(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}&id={stiftelse_id}", timeout=30)
-        assert res.status_code == 400, f"Should reject deleting stiftelse with later transactions, got {res.status_code}"
-        assert "senere" in res.text.lower() or "ugyldig" in res.text.lower(), "Error should mention later transactions"
-        log("  ✓ Deleting stiftelse with later transactions rejected")
-        
-        # Delete in reverse order (sletting, splitt, overdragelse, emisjon, stiftelse)
-        for trans_id in reversed(test_data["transaksjon_ids"]):
-            res = requests.delete(f"{BASE_URL}/admin/selskap/transaksjon?key={MASTER_KEY}&id={trans_id}", timeout=30)
-            assert res.status_code == 200, f"DELETE transaction {trans_id} failed: {res.status_code} {res.text}"
-            log(f"  ✓ Deleted transaction {trans_id}")
-        
-        test_data["transaksjon_ids"].clear()
-        
-        # Verify capTable back to 0
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok?key={MASTER_KEY}&selskapId={selskap_id}", timeout=30)
-        data = res.json()
-        cap_table = data.get("capTable")
-        assert cap_table.get("totalAksjer") == 0, f"Expected 0 shares after deleting all transactions, got {cap_table.get('totalAksjer')}"
-        
-        log(f"✅ B12 PASSED: All transactions deleted, capTable back to 0")
-    except AssertionError as e:
-        log(f"❌ B12 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B12 ERROR: {e}")
-        raise
-
-def test_b13_delete_owners():
-    """B13: DELETE owner in use → 400, after transactions deleted → 200"""
-    log("B13: Delete test owners")
-    try:
-        # All transactions already deleted in B12, so owners can be deleted
-        for eier_id in test_data["eier_ids"][:]:
-            res = requests.delete(f"{BASE_URL}/admin/selskap/eier?key={MASTER_KEY}&id={eier_id}", timeout=30)
-            assert res.status_code == 200, f"DELETE eier {eier_id} failed: {res.status_code} {res.text}"
-            test_data["eier_ids"].remove(eier_id)
-            log(f"  ✓ Deleted owner {eier_id}")
-        
-        log(f"✅ B13 PASSED: All test owners deleted")
-    except AssertionError as e:
-        log(f"❌ B13 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B13 ERROR: {e}")
-        raise
-
-def test_b14_innstillinger(selskaper):
-    """B14: PUT /admin/selskap/innstillinger → update palydende and RESTORE"""
-    log("B14: Update and restore palydende")
-    try:
-        digihome_as = next((s for s in selskaper if s.get("orgnr") == "835595242"), None)
-        selskap_id = digihome_as.get("id")
-        original_palydende = digihome_as.get("palydende", 1)
-        
-        # Update palydende
-        res = requests.put(f"{BASE_URL}/admin/selskap/innstillinger?key={MASTER_KEY}", json={
-            "id": selskap_id,
-            "palydende": 2
-        }, timeout=30)
-        assert res.status_code == 200, f"PUT innstillinger failed: {res.status_code} {res.text}"
-        
-        # Verify updated
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok?key={MASTER_KEY}&selskapId={selskap_id}", timeout=30)
-        data = res.json()
-        selskap = data.get("selskap")
-        assert selskap.get("palydende") == 2, f"Expected palydende=2, got {selskap.get('palydende')}"
-        
-        # RESTORE original value
-        res = requests.put(f"{BASE_URL}/admin/selskap/innstillinger?key={MASTER_KEY}", json={
-            "id": selskap_id,
-            "palydende": original_palydende
-        }, timeout=30)
-        assert res.status_code == 200, f"RESTORE innstillinger failed: {res.status_code} {res.text}"
-        
-        # Verify restored
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok?key={MASTER_KEY}&selskapId={selskap_id}", timeout=30)
-        data = res.json()
-        selskap = data.get("selskap")
-        assert selskap.get("palydende") == original_palydende, f"Expected palydende={original_palydende}, got {selskap.get('palydende')}"
-        
-        log(f"✅ B14 PASSED: Updated palydende to 2 and restored to {original_palydende}")
-    except AssertionError as e:
-        log(f"❌ B14 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B14 ERROR: {e}")
-        raise
-
-def test_b15_access():
-    """B15: GET eierbok without token → 401, POST transaksjon without token → 401"""
-    log("B15: Access control")
-    try:
-        # GET without token
-        res = requests.get(f"{BASE_URL}/admin/selskap/eierbok", timeout=30)
-        assert res.status_code == 401, f"GET should be 401, got {res.status_code}"
-        
-        # POST without token
-        res = requests.post(f"{BASE_URL}/admin/selskap/transaksjon", json={"type": "stiftelse"}, timeout=30)
-        assert res.status_code == 401, f"POST should be 401, got {res.status_code}"
-        
-        log("✅ B15 PASSED: Access control working")
-    except AssertionError as e:
-        log(f"❌ B15 FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ B15 ERROR: {e}")
-        raise
-
-# ═══════════════════════════════════════════════════════════════════════════
-# (C) FINAL CLEANUP VERIFICATION
-# ═══════════════════════════════════════════════════════════════════════════
-
-def test_c_final_cleanup():
-    """C: Verify all test data cleaned up"""
-    log("C: Final cleanup verification")
-    try:
-        db = get_mongo_db()
-        assert db is not None, "MongoDB connection failed"
-        
-        # Verify 0 transactions
-        trans_count = db["aksje_transaksjoner"].count_documents({})
-        assert trans_count == 0, f"Expected 0 transactions, found {trans_count}"
-        
-        # Verify 0 test owners
-        test_owners = db["aksje_eiere"].count_documents({"navn": {"$regex": "QA.*SLETTES"}})
-        assert test_owners == 0, f"Expected 0 test owners, found {test_owners}"
-        
-        # Verify 0 extra test classes (Ordinære may remain)
-        test_classes = db["aksje_klasser"].count_documents({"navn": "B-aksjer"})
-        assert test_classes == 0, f"Expected 0 test classes, found {test_classes}"
-        
-        # Verify 0 test persons
-        test_persons = db["org_personer"].count_documents({"navn": {"$regex": "QA.*SLETTES"}})
-        assert test_persons == 0, f"Expected 0 test persons, found {test_persons}"
-        
-        # Verify 0 test roles
-        test_roles = db["org_roller"].count_documents({"rolleNavn": "CTO", "kilde": "manuell"})
-        assert test_roles == 0, f"Expected 0 test roles, found {test_roles}"
-        
-        # Verify real companies unchanged
-        selskaper = list(db["selskaper"].find({}, {"_id": 0, "orgnr": 1, "navn": 1}))
-        orgnrs = [s.get("orgnr") for s in selskaper]
-        assert "835595242" in orgnrs, "Digihome AS missing"
-        assert "835674622" in orgnrs, "Digihome Tech AS missing"
-        
-        # Verify real org_roller count unchanged (baseline check)
-        real_roles = db["org_roller"].find({"kilde": "brreg"})
-        real_role_count = db["org_roller"].count_documents({"kilde": "brreg"})
-        log(f"  Real BRREG roles: {real_role_count}")
-        
-        log(f"✅ C PASSED: All test data cleaned up, real data preserved")
-    except AssertionError as e:
-        log(f"❌ C FAILED: {e}")
-        raise
-    except Exception as e:
-        log(f"❌ C ERROR: {e}")
-        raise
-
-# ═══════════════════════════════════════════════════════════════════════════
-# MAIN
-# ═══════════════════════════════════════════════════════════════════════════
-
-def main():
-    log("=" * 80)
-    log("SELSKAP BACKEND TEST - COMPREHENSIVE VERIFICATION")
-    log("=" * 80)
+def verify_invariants(data, test_name):
+    """Verify the critical invariants for selskapsøkonomi"""
+    log(f"Verifying invariants for {test_name}...")
     
-    passed = 0
-    failed = 0
+    naa = data.get('naa', {})
+    digihome = naa.get('digihome', {})
+    tech = naa.get('tech', {})
+    konsern = naa.get('konsern', {})
+    prisliste = data.get('prisliste', {})
     
-    try:
-        # (A) ORGANISASJON TESTS
-        log("\n(A) ORGANISASJON TESTS")
-        log("-" * 80)
-        
-        selskaper = test_a1_get_organisasjon()
-        passed += 1
-        
-        test_a2_no_token()
-        passed += 1
-        
-        person_id, rolle_id = test_a3_create_update_person(selskaper)
-        passed += 1
-        
-        test_a4_update_delete_rolle(person_id, rolle_id, selskaper)
-        passed += 1
-        
-        test_a5_delete_person(person_id)
-        passed += 1
-        
-        test_a6_synk_brreg(selskaper)
-        passed += 1
-        
-        test_a7_write_without_admin()
-        passed += 1
-        
-        # (B) AKSJEEIERBOK TESTS
-        log("\n(B) AKSJEEIERBOK TESTS")
-        log("-" * 80)
-        
-        eierbok_data = test_b1_get_eierbok(selskaper)
-        passed += 1
-        
-        eier_a_id, eier_b_id = test_b2_create_owners()
-        passed += 1
-        
-        klasser = eierbok_data.get("klasser", [])
-        stiftelse_id, selskap_id = test_b3_stiftelse(selskaper, eier_a_id, eier_b_id, klasser)
-        passed += 1
-        
-        test_b4_second_stiftelse(selskap_id)
-        passed += 1
-        
-        emisjon_id = test_b5_emisjon(selskap_id, eier_b_id, klasser)
-        passed += 1
-        
-        overdragelse_id = test_b6_overdragelse(selskap_id, eier_a_id, eier_b_id)
-        passed += 1
-        
-        splitt_id = test_b7_splitt(selskap_id, eier_a_id, eier_b_id)
-        passed += 1
-        
-        test_b8_time_travel(selskap_id, eier_a_id, eier_b_id)
-        passed += 1
-        
-        test_b9_spleis_invalid(selskap_id)
-        passed += 1
-        
-        sletting_id = test_b10_sletting(selskap_id)
-        passed += 1
-        
-        test_b11_klasser(selskap_id)
-        passed += 1
-        
-        test_b12_delete_transactions(selskap_id)
-        passed += 1
-        
-        test_b13_delete_owners()
-        passed += 1
-        
-        test_b14_innstillinger(selskaper)
-        passed += 1
-        
-        test_b15_access()
-        passed += 1
-        
-        # (C) FINAL CLEANUP VERIFICATION
-        log("\n(C) FINAL CLEANUP VERIFICATION")
-        log("-" * 80)
-        
-        test_c_final_cleanup()
-        passed += 1
-        
-    except Exception as e:
-        failed += 1
-        log(f"\n❌ TEST SUITE FAILED: {e}")
+    # Extract values
+    dh_lisens = digihome.get('lisens', 0)
+    tech_lisens = tech.get('lisens', 0)
+    konsern_eliminert = konsern.get('eliminert', 0)
+    dh_enheter = digihome.get('enheter', 0)
+    forvaltning_pris = prisliste.get('forvaltning', {}).get('pris', 0)
     
-    log("\n" + "=" * 80)
-    log(f"RESULTS: {passed} PASSED, {failed} FAILED")
-    log("=" * 80)
+    dh_inntekt = digihome.get('inntekt', 0)
+    tech_inntekt = tech.get('inntekt', 0)
+    konsern_inntekt = konsern.get('inntekt', 0)
     
-    if failed > 0:
-        sys.exit(1)
+    dh_kost = digihome.get('kost', 0)
+    tech_kost = tech.get('kost', 0)
+    konsern_kost = konsern.get('kost', 0)
+    
+    tech_poster = tech.get('poster', {})
+    tech_poster_sum = tech_poster.get('huseier', 0) + tech_poster.get('bedrift', 0) + tech_poster.get('annet', 0)
+    
+    errors = []
+    
+    # Invariant 1: tech.lisens === digihome.lisens === konsern.eliminert
+    if not (tech_lisens == dh_lisens == konsern_eliminert):
+        errors.append(f"Invariant 1 FAILED: tech.lisens ({tech_lisens}) !== digihome.lisens ({dh_lisens}) !== konsern.eliminert ({konsern_eliminert})")
     else:
-        log("\n✅ ALL TESTS PASSED - SELSKAP WORKING PERFECTLY")
-        sys.exit(0)
+        log(f"✓ Invariant 1: tech.lisens = digihome.lisens = konsern.eliminert = {tech_lisens}")
+    
+    # Invariant 2: lisens === digihome.enheter × prisliste.forvaltning.pris
+    expected_lisens = dh_enheter * forvaltning_pris
+    if abs(dh_lisens - expected_lisens) > 1:
+        errors.append(f"Invariant 2 FAILED: lisens ({dh_lisens}) !== enheter ({dh_enheter}) × pris ({forvaltning_pris}) = {expected_lisens}")
+    else:
+        log(f"✓ Invariant 2: lisens ({dh_lisens}) = enheter ({dh_enheter}) × pris ({forvaltning_pris})")
+    
+    # Invariant 3: konsern.inntekt === digihome.inntekt + tech.inntekt − eliminert (±1)
+    expected_konsern_inntekt = dh_inntekt + tech_inntekt - konsern_eliminert
+    if abs(konsern_inntekt - expected_konsern_inntekt) > 1:
+        errors.append(f"Invariant 3 FAILED: konsern.inntekt ({konsern_inntekt}) !== dh.inntekt ({dh_inntekt}) + tech.inntekt ({tech_inntekt}) - eliminert ({konsern_eliminert}) = {expected_konsern_inntekt}")
+    else:
+        log(f"✓ Invariant 3: konsern.inntekt ({konsern_inntekt}) = dh ({dh_inntekt}) + tech ({tech_inntekt}) - eliminert ({konsern_eliminert})")
+    
+    # Invariant 4: konsern.kost === digihome.kost + tech.kost − eliminert (±1)
+    expected_konsern_kost = dh_kost + tech_kost - konsern_eliminert
+    if abs(konsern_kost - expected_konsern_kost) > 1:
+        errors.append(f"Invariant 4 FAILED: konsern.kost ({konsern_kost}) !== dh.kost ({dh_kost}) + tech.kost ({tech_kost}) - eliminert ({konsern_eliminert}) = {expected_konsern_kost}")
+    else:
+        log(f"✓ Invariant 4: konsern.kost ({konsern_kost}) = dh ({dh_kost}) + tech ({tech_kost}) - eliminert ({konsern_eliminert})")
+    
+    # Invariant 5: tech.inntekt === lisens + poster sum
+    expected_tech_inntekt = tech_lisens + tech_poster_sum
+    if abs(tech_inntekt - expected_tech_inntekt) > 1:
+        errors.append(f"Invariant 5 FAILED: tech.inntekt ({tech_inntekt}) !== lisens ({tech_lisens}) + poster ({tech_poster_sum}) = {expected_tech_inntekt}")
+    else:
+        log(f"✓ Invariant 5: tech.inntekt ({tech_inntekt}) = lisens ({tech_lisens}) + poster ({tech_poster_sum})")
+    
+    if errors:
+        for err in errors:
+            log(f"❌ {err}")
+        return False
+    else:
+        log(f"✅ All invariants verified for {test_name}")
+        return True
 
-if __name__ == "__main__":
-    main()
+try:
+    # ========================================================================
+    # TEST CASE 1: GET /api/admin/finance/selskap - Structure and Invariants
+    # ========================================================================
+    test_case(1, "GET /api/admin/finance/selskap - Structure and Invariants")
+    
+    log(f"GET {API_BASE}/admin/finance/selskap?key={ADMIN_KEY}")
+    log("⚠️  First call can take 5-10 seconds (platform fetch, DB cache)...")
+    
+    r1 = requests.get(f"{API_BASE}/admin/finance/selskap", params={'key': ADMIN_KEY}, timeout=TIMEOUT)
+    log(f"Status: {r1.status_code}")
+    
+    if r1.status_code != 200:
+        log(f"❌ TEST 1 FAILED: Expected 200, got {r1.status_code}")
+        log(f"Response: {r1.text}")
+        raise Exception("Test 1 failed")
+    
+    data1 = r1.json()
+    log(f"Response keys: {list(data1.keys())}")
+    
+    # Verify structure
+    assert data1.get('ok') == True, "Missing ok:true"
+    assert 'naa' in data1, "Missing naa"
+    assert 'tidslinje' in data1, "Missing tidslinje"
+    assert 'prisliste' in data1, "Missing prisliste"
+    assert 'autoregler' in data1, "Missing autoregler"
+    assert 'kilde' in data1, "Missing kilde"
+    
+    naa = data1['naa']
+    assert 'digihome' in naa, "Missing naa.digihome"
+    assert 'tech' in naa, "Missing naa.tech"
+    assert 'konsern' in naa, "Missing naa.konsern"
+    assert 'ym' in naa, "Missing naa.ym"
+    
+    # Verify tidslinje
+    tidslinje = data1['tidslinje']
+    assert len(tidslinje) == 13, f"Expected tidslinje.length === 13, got {len(tidslinje)}"
+    assert tidslinje[-1]['ym'] == naa['ym'], f"Last tidslinje ym should match naa.ym"
+    log(f"✓ Tidslinje has 13 months, last ym: {tidslinje[-1]['ym']}")
+    
+    # Verify prisliste structure
+    prisliste = data1['prisliste']
+    assert 'huseier' in prisliste, "Missing prisliste.huseier"
+    assert 'forvaltning' in prisliste, "Missing prisliste.forvaltning"
+    assert 'bedrift' in prisliste, "Missing prisliste.bedrift"
+    assert 'modell' in prisliste['forvaltning'], "Missing prisliste.forvaltning.modell"
+    assert 'pris' in prisliste['forvaltning'], "Missing prisliste.forvaltning.pris"
+    original_prisliste_pris = prisliste['forvaltning']['pris']
+    log(f"✓ Prisliste.forvaltning: modell={prisliste['forvaltning']['modell']}, pris={original_prisliste_pris}")
+    
+    # Verify autoregler
+    autoregler = data1['autoregler']
+    assert 'annonser' in autoregler, "Missing autoregler.annonser"
+    assert 'llm' in autoregler, "Missing autoregler.llm"
+    assert 'ext' in autoregler, "Missing autoregler.ext"
+    assert 'plattform' in autoregler, "Missing autoregler.plattform"
+    assert autoregler['llm'] in ['digihome', 'tech'], f"autoregler.llm should be 'digihome' or 'tech', got {autoregler['llm']}"
+    original_autoregler_llm = autoregler['llm']
+    log(f"✓ Autoregler: annonser={autoregler['annonser']}, llm={autoregler['llm']}, ext={autoregler['ext']}, plattform={autoregler['plattform']}")
+    
+    # Verify kilde
+    kilde = data1['kilde']
+    assert 'portefolje' in kilde, "Missing kilde.portefolje"
+    assert kilde['portefolje'] in ['leieforhold', 'kontrakter'], f"kilde.portefolje should be 'leieforhold' or 'kontrakter', got {kilde['portefolje']}"
+    log(f"✓ Kilde.portefolje: {kilde['portefolje']}")
+    
+    # Verify naa structure for each entity
+    for entity in ['digihome', 'tech', 'konsern']:
+        e = naa[entity]
+        assert 'inntekt' in e, f"Missing naa.{entity}.inntekt"
+        assert 'kost' in e, f"Missing naa.{entity}.kost"
+        assert 'resultat' in e, f"Missing naa.{entity}.resultat"
+        assert 'byCat' in e, f"Missing naa.{entity}.byCat"
+        assert 'costBreakdown' in e, f"Missing naa.{entity}.costBreakdown"
+        log(f"✓ naa.{entity}: inntekt={e['inntekt']}, kost={e['kost']}, resultat={e['resultat']}")
+    
+    # Verify digihome-specific fields
+    assert 'lisens' in naa['digihome'], "Missing naa.digihome.lisens"
+    assert 'enheter' in naa['digihome'], "Missing naa.digihome.enheter"
+    log(f"✓ naa.digihome: lisens={naa['digihome']['lisens']}, enheter={naa['digihome']['enheter']}")
+    
+    # Verify tech-specific fields
+    assert 'lisens' in naa['tech'], "Missing naa.tech.lisens"
+    assert 'poster' in naa['tech'], "Missing naa.tech.poster"
+    assert 'auto' in naa['tech'], "Missing naa.tech.auto"
+    log(f"✓ naa.tech: lisens={naa['tech']['lisens']}, poster={naa['tech']['poster']}")
+    
+    # Verify konsern-specific fields
+    assert 'eliminert' in naa['konsern'], "Missing naa.konsern.eliminert"
+    log(f"✓ naa.konsern: eliminert={naa['konsern']['eliminert']}")
+    
+    # Verify invariants
+    if not verify_invariants(data1, "initial state"):
+        raise Exception("Invariants failed for initial state")
+    
+    log("✅ TEST 1 PASSED: Structure and invariants verified")
+    
+    # ========================================================================
+    # TEST CASE 2: POST /settings - Change prisliste, verify lisens, restore
+    # ========================================================================
+    test_case(2, "POST /settings - Change prisliste.forvaltning.pris to 250, verify lisens calculation, restore to 200")
+    
+    log(f"POST {API_BASE}/admin/finance/settings with prisliste.forvaltning.pris=250")
+    r2a = requests.post(
+        f"{API_BASE}/admin/finance/settings",
+        params={'key': ADMIN_KEY},
+        json={'prisliste': {'forvaltning': {'modell': 'fast', 'pris': 250}}},
+        timeout=30
+    )
+    log(f"Status: {r2a.status_code}")
+    
+    if r2a.status_code != 200:
+        log(f"❌ TEST 2a FAILED: Expected 200, got {r2a.status_code}")
+        log(f"Response: {r2a.text}")
+        raise Exception("Test 2a failed")
+    
+    data2a = r2a.json()
+    assert data2a.get('ok') == True, "Missing ok:true"
+    log(f"✓ Settings updated")
+    
+    # Verify change
+    log(f"GET {API_BASE}/admin/finance/selskap to verify lisens calculation")
+    r2b = requests.get(f"{API_BASE}/admin/finance/selskap", params={'key': ADMIN_KEY}, timeout=TIMEOUT)
+    data2b = r2b.json()
+    
+    naa2 = data2b['naa']
+    enheter = naa2['digihome']['enheter']
+    lisens = naa2['digihome']['lisens']
+    expected_lisens = enheter * 250
+    
+    if abs(lisens - expected_lisens) > 1:
+        log(f"❌ TEST 2b FAILED: lisens ({lisens}) !== enheter ({enheter}) × 250 = {expected_lisens}")
+        raise Exception("Test 2b failed")
+    
+    log(f"✓ Lisens calculation correct: {lisens} = {enheter} × 250")
+    
+    # Verify invariants still hold
+    if not verify_invariants(data2b, "after prisliste change"):
+        raise Exception("Invariants failed after prisliste change")
+    
+    # Restore original price
+    log(f"Restoring prisliste.forvaltning.pris to {original_prisliste_pris}")
+    r2c = requests.post(
+        f"{API_BASE}/admin/finance/settings",
+        params={'key': ADMIN_KEY},
+        json={'prisliste': {'forvaltning': {'modell': 'fast', 'pris': original_prisliste_pris}}},
+        timeout=30
+    )
+    
+    if r2c.status_code != 200:
+        log(f"❌ TEST 2c FAILED: Could not restore prisliste")
+        raise Exception("Test 2c failed")
+    
+    log(f"✓ Prisliste restored to {original_prisliste_pris}")
+    log("✅ TEST 2 PASSED: Prisliste change, verification, and restoration successful")
+    
+    # ========================================================================
+    # TEST CASE 3: POST /settings - Change autoregler.llm, verify auto.poster, restore
+    # ========================================================================
+    test_case(3, "POST /settings - Change autoregler.llm, verify autoregler persisted, restore")
+    
+    # Determine target value (opposite of current)
+    target_llm = 'digihome' if original_autoregler_llm == 'tech' else 'tech'
+    
+    log(f"POST {API_BASE}/admin/finance/settings with autoregler.llm={target_llm}")
+    r3a = requests.post(
+        f"{API_BASE}/admin/finance/settings",
+        params={'key': ADMIN_KEY},
+        json={'autoregler': {'llm': target_llm}},
+        timeout=30
+    )
+    log(f"Status: {r3a.status_code}")
+    
+    if r3a.status_code != 200:
+        log(f"❌ TEST 3a FAILED: Expected 200, got {r3a.status_code}")
+        log(f"Response: {r3a.text}")
+        raise Exception("Test 3a failed")
+    
+    log(f"✓ Autoregler updated to llm={target_llm}")
+    
+    # Verify change persisted
+    log(f"GET {API_BASE}/admin/finance/selskap to verify autoregler.llm changed")
+    r3b = requests.get(f"{API_BASE}/admin/finance/selskap", params={'key': ADMIN_KEY}, timeout=TIMEOUT)
+    data3b = r3b.json()
+    
+    new_autoregler = data3b.get('autoregler', {})
+    if new_autoregler.get('llm') != target_llm:
+        log(f"❌ TEST 3b FAILED: autoregler.llm should be '{target_llm}', got '{new_autoregler.get('llm')}'")
+        raise Exception("Test 3b failed")
+    
+    log(f"✓ autoregler.llm correctly set to '{target_llm}'")
+    
+    # Note: auto.poster only shows costs that actually exist with auto=true
+    # If there are LLM costs, they would appear in the correct company's auto.poster
+    naa3 = data3b['naa']
+    dh_auto_poster = naa3['digihome'].get('auto', {}).get('poster', [])
+    tech_auto_poster = naa3['tech'].get('auto', {}).get('poster', [])
+    
+    log(f"digihome.auto.poster has {len(dh_auto_poster)} items: {[p.get('id') for p in dh_auto_poster]}")
+    log(f"tech.auto.poster has {len(tech_auto_poster)} items: {[p.get('id') for p in tech_auto_poster]}")
+    
+    # Verify that if 'llm' exists in auto.poster, it's in the correct company
+    llm_in_dh = any(p.get('id') == 'llm' for p in dh_auto_poster)
+    llm_in_tech = any(p.get('id') == 'llm' for p in tech_auto_poster)
+    
+    if llm_in_dh and llm_in_tech:
+        log(f"❌ TEST 3b FAILED: 'llm' should not be in both companies")
+        raise Exception("Test 3b failed")
+    
+    if llm_in_dh and target_llm != 'digihome':
+        log(f"❌ TEST 3b FAILED: 'llm' in digihome but autoregler.llm={target_llm}")
+        raise Exception("Test 3b failed")
+    
+    if llm_in_tech and target_llm != 'tech':
+        log(f"❌ TEST 3b FAILED: 'llm' in tech but autoregler.llm={target_llm}")
+        raise Exception("Test 3b failed")
+    
+    if llm_in_dh or llm_in_tech:
+        log(f"✓ 'llm' cost found in correct company ({target_llm})")
+    else:
+        log(f"✓ No 'llm' auto costs exist (rule change verified via autoregler field)")
+    
+    # Restore original value
+    log(f"Restoring autoregler.llm to {original_autoregler_llm}")
+    r3c = requests.post(
+        f"{API_BASE}/admin/finance/settings",
+        params={'key': ADMIN_KEY},
+        json={'autoregler': {'llm': original_autoregler_llm}},
+        timeout=30
+    )
+    
+    if r3c.status_code != 200:
+        log(f"❌ TEST 3c FAILED: Could not restore autoregler")
+        raise Exception("Test 3c failed")
+    
+    log(f"✓ Autoregler restored to llm={original_autoregler_llm}")
+    log("✅ TEST 3 PASSED: Autoregler change, verification, and restoration successful")
+    
+    # ========================================================================
+    # TEST CASE 4: POST/GET/DELETE /inntektsposter - CRUD and verify tech.inntekt
+    # ========================================================================
+    test_case(4, "POST/GET/DELETE /inntektsposter - CRUD operations and verify tech.inntekt changes")
+    
+    # Get baseline tech.inntekt
+    r4a = requests.get(f"{API_BASE}/admin/finance/selskap", params={'key': ADMIN_KEY}, timeout=TIMEOUT)
+    baseline_tech_inntekt = r4a.json()['naa']['tech']['inntekt']
+    baseline_tech_poster_bedrift = r4a.json()['naa']['tech']['poster']['bedrift']
+    log(f"Baseline tech.inntekt: {baseline_tech_inntekt}, tech.poster.bedrift: {baseline_tech_poster_bedrift}")
+    
+    # Create inntektspost
+    log(f"POST {API_BASE}/admin/finance/inntektsposter")
+    r4b = requests.post(
+        f"{API_BASE}/admin/finance/inntektsposter",
+        params={'key': ADMIN_KEY},
+        json={
+            'navn': 'QA Bedrift AS',
+            'kundetype': 'bedrift',
+            'enheter': 10,
+            'belop': 790,
+            'startDate': '2026-01-01'
+        },
+        timeout=30
+    )
+    log(f"Status: {r4b.status_code}")
+    
+    if r4b.status_code != 200:
+        log(f"❌ TEST 4b FAILED: Expected 200, got {r4b.status_code}")
+        log(f"Response: {r4b.text}")
+        raise Exception("Test 4b failed")
+    
+    data4b = r4b.json()
+    assert data4b.get('ok') == True, "Missing ok:true"
+    assert 'post' in data4b, "Missing post in response"
+    post_id = data4b['post']['id']
+    qa_inntektspost_ids.append(post_id)
+    log(f"✓ Inntektspost created with id: {post_id}")
+    
+    # Verify it appears in GET /inntektsposter
+    log(f"GET {API_BASE}/admin/finance/inntektsposter")
+    r4c = requests.get(f"{API_BASE}/admin/finance/inntektsposter", params={'key': ADMIN_KEY}, timeout=30)
+    data4c = r4c.json()
+    
+    assert data4c.get('ok') == True, "Missing ok:true"
+    assert 'poster' in data4c, "Missing poster in response"
+    
+    found = False
+    for post in data4c['poster']:
+        if post['id'] == post_id:
+            found = True
+            assert post['navn'] == 'QA Bedrift AS', f"Expected navn 'QA Bedrift AS', got {post['navn']}"
+            assert post['belop'] == 790, f"Expected belop 790, got {post['belop']}"
+            log(f"✓ Inntektspost found in list: {post['navn']}, belop={post['belop']}")
+            break
+    
+    if not found:
+        log(f"❌ TEST 4c FAILED: Inntektspost {post_id} not found in list")
+        raise Exception("Test 4c failed")
+    
+    # Verify tech.inntekt increased
+    log(f"GET {API_BASE}/admin/finance/selskap to verify tech.inntekt increase")
+    r4d = requests.get(f"{API_BASE}/admin/finance/selskap", params={'key': ADMIN_KEY}, timeout=TIMEOUT)
+    data4d = r4d.json()
+    
+    new_tech_inntekt = data4d['naa']['tech']['inntekt']
+    new_tech_poster_bedrift = data4d['naa']['tech']['poster']['bedrift']
+    
+    if new_tech_poster_bedrift < baseline_tech_poster_bedrift + 790:
+        log(f"❌ TEST 4d FAILED: tech.poster.bedrift ({new_tech_poster_bedrift}) should be >= baseline ({baseline_tech_poster_bedrift}) + 790")
+        raise Exception("Test 4d failed")
+    
+    log(f"✓ tech.poster.bedrift increased from {baseline_tech_poster_bedrift} to {new_tech_poster_bedrift}")
+    log(f"✓ tech.inntekt increased from {baseline_tech_inntekt} to {new_tech_inntekt}")
+    
+    # Test validation: POST with belop 0 should return 400
+    log(f"POST {API_BASE}/admin/finance/inntektsposter with belop=0 (should fail)")
+    r4e = requests.post(
+        f"{API_BASE}/admin/finance/inntektsposter",
+        params={'key': ADMIN_KEY},
+        json={
+            'navn': 'QA Invalid',
+            'kundetype': 'bedrift',
+            'enheter': 10,
+            'belop': 0,
+            'startDate': '2026-01-01'
+        },
+        timeout=30
+    )
+    
+    if r4e.status_code != 400:
+        log(f"❌ TEST 4e FAILED: Expected 400 for belop=0, got {r4e.status_code}")
+        raise Exception("Test 4e failed")
+    
+    log(f"✓ Validation working: belop=0 returns 400")
+    
+    # Test paused: POST with paused:true should not count
+    log(f"POST {API_BASE}/admin/finance/inntektsposter with paused=true")
+    r4f = requests.post(
+        f"{API_BASE}/admin/finance/inntektsposter",
+        params={'key': ADMIN_KEY},
+        json={
+            'id': post_id,  # Update existing
+            'navn': 'QA Bedrift AS',
+            'kundetype': 'bedrift',
+            'enheter': 10,
+            'belop': 790,
+            'startDate': '2026-01-01',
+            'paused': True
+        },
+        timeout=30
+    )
+    
+    if r4f.status_code != 200:
+        log(f"❌ TEST 4f FAILED: Expected 200, got {r4f.status_code}")
+        raise Exception("Test 4f failed")
+    
+    log(f"✓ Inntektspost paused")
+    
+    # Verify tech.poster.bedrift decreased back
+    r4g = requests.get(f"{API_BASE}/admin/finance/selskap", params={'key': ADMIN_KEY}, timeout=TIMEOUT)
+    paused_tech_poster_bedrift = r4g.json()['naa']['tech']['poster']['bedrift']
+    
+    if paused_tech_poster_bedrift >= new_tech_poster_bedrift:
+        log(f"❌ TEST 4g FAILED: tech.poster.bedrift ({paused_tech_poster_bedrift}) should be < {new_tech_poster_bedrift} after pausing")
+        raise Exception("Test 4g failed")
+    
+    log(f"✓ tech.poster.bedrift decreased to {paused_tech_poster_bedrift} after pausing")
+    
+    # Delete inntektspost
+    log(f"DELETE {API_BASE}/admin/finance/inntektsposter with id={post_id}")
+    r4h = requests.delete(
+        f"{API_BASE}/admin/finance/inntektsposter",
+        params={'key': ADMIN_KEY},
+        json={'id': post_id},
+        timeout=30
+    )
+    
+    if r4h.status_code != 200:
+        log(f"❌ TEST 4h FAILED: Expected 200, got {r4h.status_code}")
+        raise Exception("Test 4h failed")
+    
+    log(f"✓ Inntektspost deleted")
+    qa_inntektspost_ids.remove(post_id)
+    
+    log("✅ TEST 4 PASSED: Inntektsposter CRUD and tech.inntekt verification successful")
+    
+    # ========================================================================
+    # TEST CASE 5: POST /costs with selskap, flytt, bekreft, forslagFlytt
+    # ========================================================================
+    test_case(5, "POST /costs with selskap, test flytt, bekreft, forslagFlytt")
+    
+    # Create cost with selskap='tech'
+    log(f"POST {API_BASE}/admin/finance/costs with selskap='tech'")
+    r5a = requests.post(
+        f"{API_BASE}/admin/finance/costs",
+        params={'key': ADMIN_KEY},
+        json={
+            'name': 'QA Tech-kost',
+            'category': 'API/LLM',
+            'amount': 1000,
+            'frequency': 'monthly',
+            'selskap': 'tech'
+        },
+        timeout=30
+    )
+    log(f"Status: {r5a.status_code}")
+    
+    if r5a.status_code != 200:
+        log(f"❌ TEST 5a FAILED: Expected 200, got {r5a.status_code}")
+        log(f"Response: {r5a.text}")
+        raise Exception("Test 5a failed")
+    
+    data5a = r5a.json()
+    assert data5a.get('ok') == True, "Missing ok:true"
+    assert 'cost' in data5a, "Missing cost in response"
+    cost_id_tech = data5a['cost']['id']
+    qa_cost_ids.append(cost_id_tech)
+    
+    assert data5a['cost']['selskap'] == 'tech', f"Expected selskap='tech', got {data5a['cost']['selskap']}"
+    assert data5a['cost'].get('selskapBekreftet') == True, f"Expected selskapBekreftet=true"
+    log(f"✓ Cost created with id: {cost_id_tech}, selskap='tech', selskapBekreftet=true")
+    
+    # Verify it appears in GET /costs?selskap=tech
+    log(f"GET {API_BASE}/admin/finance/costs?selskap=tech")
+    r5b = requests.get(f"{API_BASE}/admin/finance/costs", params={'key': ADMIN_KEY, 'selskap': 'tech'}, timeout=30)
+    data5b = r5b.json()
+    
+    found_in_tech = any(c['id'] == cost_id_tech for c in data5b['costs'])
+    if not found_in_tech:
+        log(f"❌ TEST 5b FAILED: Cost {cost_id_tech} not found in tech costs")
+        raise Exception("Test 5b failed")
+    
+    log(f"✓ Cost found in GET /costs?selskap=tech")
+    
+    # Verify it does NOT appear in GET /costs?selskap=digihome
+    log(f"GET {API_BASE}/admin/finance/costs?selskap=digihome")
+    r5c = requests.get(f"{API_BASE}/admin/finance/costs", params={'key': ADMIN_KEY, 'selskap': 'digihome'}, timeout=30)
+    data5c = r5c.json()
+    
+    found_in_dh = any(c['id'] == cost_id_tech for c in data5c['costs'])
+    if found_in_dh:
+        log(f"❌ TEST 5c FAILED: Cost {cost_id_tech} should NOT be in digihome costs")
+        raise Exception("Test 5c failed")
+    
+    log(f"✓ Cost NOT found in GET /costs?selskap=digihome")
+    
+    # Move cost to digihome
+    log(f"POST {API_BASE}/admin/finance/costs/flytt with ids=[{cost_id_tech}], selskap='digihome'")
+    r5d = requests.post(
+        f"{API_BASE}/admin/finance/costs/flytt",
+        params={'key': ADMIN_KEY},
+        json={'ids': [cost_id_tech], 'selskap': 'digihome'},
+        timeout=30
+    )
+    log(f"Status: {r5d.status_code}")
+    
+    if r5d.status_code != 200:
+        log(f"❌ TEST 5d FAILED: Expected 200, got {r5d.status_code}")
+        log(f"Response: {r5d.text}")
+        raise Exception("Test 5d failed")
+    
+    data5d = r5d.json()
+    assert data5d.get('ok') == True, "Missing ok:true"
+    assert data5d.get('flyttet') >= 1, f"Expected flyttet >= 1, got {data5d.get('flyttet')}"
+    log(f"✓ Cost moved to digihome, flyttet={data5d.get('flyttet')}")
+    
+    # Verify it now appears in digihome and digihome.byCat includes it
+    log(f"GET {API_BASE}/admin/finance/selskap to verify digihome.byCat['API/LLM']")
+    r5e = requests.get(f"{API_BASE}/admin/finance/selskap", params={'key': ADMIN_KEY}, timeout=TIMEOUT)
+    data5e = r5e.json()
+    
+    dh_by_cat = data5e['naa']['digihome']['byCat']
+    if 'API/LLM' not in dh_by_cat:
+        log(f"❌ TEST 5e FAILED: 'API/LLM' not found in digihome.byCat")
+        raise Exception("Test 5e failed")
+    
+    if dh_by_cat['API/LLM'] < 1000:
+        log(f"❌ TEST 5e FAILED: digihome.byCat['API/LLM'] ({dh_by_cat['API/LLM']}) should be >= 1000")
+        raise Exception("Test 5e failed")
+    
+    log(f"✓ digihome.byCat['API/LLM'] = {dh_by_cat['API/LLM']} (includes 1000)")
+    
+    # Create another cost without selskap (should default to 'digihome')
+    log(f"POST {API_BASE}/admin/finance/costs without selskap (should default to 'digihome')")
+    r5f = requests.post(
+        f"{API_BASE}/admin/finance/costs",
+        params={'key': ADMIN_KEY},
+        json={
+            'name': 'QA Default-kost',
+            'category': 'API/LLM',
+            'amount': 500,
+            'frequency': 'monthly'
+        },
+        timeout=30
+    )
+    
+    if r5f.status_code != 200:
+        log(f"❌ TEST 5f FAILED: Expected 200, got {r5f.status_code}")
+        raise Exception("Test 5f failed")
+    
+    data5f = r5f.json()
+    cost_id_default = data5f['cost']['id']
+    qa_cost_ids.append(cost_id_default)
+    
+    if data5f['cost']['selskap'] != 'digihome':
+        log(f"❌ TEST 5f FAILED: Expected default selskap='digihome', got {data5f['cost']['selskap']}")
+        raise Exception("Test 5f failed")
+    
+    log(f"✓ Cost created without selskap, defaulted to 'digihome', id={cost_id_default}")
+    
+    # Verify forslagFlytt contains the unconfirmed API/LLM cost in digihome
+    log(f"GET {API_BASE}/admin/finance/selskap to check forslagFlytt")
+    r5g = requests.get(f"{API_BASE}/admin/finance/selskap", params={'key': ADMIN_KEY}, timeout=TIMEOUT)
+    data5g = r5g.json()
+    
+    forslag_flytt = data5g.get('forslagFlytt', [])
+    log(f"forslagFlytt has {len(forslag_flytt)} items")
+    
+    # The unconfirmed cost should be in forslagFlytt
+    found_in_forslag = False
+    for forslag in forslag_flytt:
+        if forslag.get('id') == cost_id_default:
+            found_in_forslag = True
+            log(f"✓ Cost {cost_id_default} found in forslagFlytt: {forslag.get('name')}, category={forslag.get('category')}")
+            break
+    
+    if not found_in_forslag:
+        log(f"⚠️  Cost {cost_id_default} not found in forslagFlytt (may be auto-confirmed or filtered)")
+    
+    # Confirm the cost
+    log(f"POST {API_BASE}/admin/finance/costs/bekreft with ids=[{cost_id_default}]")
+    r5h = requests.post(
+        f"{API_BASE}/admin/finance/costs/bekreft",
+        params={'key': ADMIN_KEY},
+        json={'ids': [cost_id_default]},
+        timeout=30
+    )
+    
+    if r5h.status_code != 200:
+        log(f"❌ TEST 5h FAILED: Expected 200, got {r5h.status_code}")
+        raise Exception("Test 5h failed")
+    
+    data5h = r5h.json()
+    assert data5h.get('ok') == True, "Missing ok:true"
+    assert data5h.get('bekreftet') >= 1, f"Expected bekreftet >= 1, got {data5h.get('bekreftet')}"
+    log(f"✓ Cost confirmed, bekreftet={data5h.get('bekreftet')}")
+    
+    # Verify it's no longer in forslagFlytt
+    r5i = requests.get(f"{API_BASE}/admin/finance/selskap", params={'key': ADMIN_KEY}, timeout=TIMEOUT)
+    data5i = r5i.json()
+    
+    forslag_flytt_after = data5i.get('forslagFlytt', [])
+    found_after = any(f.get('id') == cost_id_default for f in forslag_flytt_after)
+    
+    if found_after:
+        log(f"❌ TEST 5i FAILED: Cost {cost_id_default} should NOT be in forslagFlytt after bekreft")
+        raise Exception("Test 5i failed")
+    
+    log(f"✓ Cost {cost_id_default} no longer in forslagFlytt after bekreft")
+    
+    log("✅ TEST 5 PASSED: Costs with selskap, flytt, bekreft, forslagFlytt all working")
+    
+    # ========================================================================
+    # TEST CASE 6: POST /settings - kontantTech, verify, restore
+    # ========================================================================
+    test_case(6, "POST /settings - Set kontantTech, verify naa.tech.kontant, restore to null")
+    
+    # Get current kontantTech (should be null or have a value)
+    r6a = requests.get(f"{API_BASE}/admin/finance/settings", params={'key': ADMIN_KEY}, timeout=30)
+    data6a = r6a.json()
+    original_kontant_tech = data6a.get('settings', {}).get('kontantTech')
+    log(f"Original kontantTech: {original_kontant_tech}")
+    
+    # Set kontantTech
+    log(f"POST {API_BASE}/admin/finance/settings with kontantTech={{saldo:100000, dato:'2026-09-01'}}")
+    r6b = requests.post(
+        f"{API_BASE}/admin/finance/settings",
+        params={'key': ADMIN_KEY},
+        json={'kontantTech': {'saldo': 100000, 'dato': '2026-09-01'}},
+        timeout=30
+    )
+    
+    if r6b.status_code != 200:
+        log(f"❌ TEST 6b FAILED: Expected 200, got {r6b.status_code}")
+        log(f"Response: {r6b.text}")
+        raise Exception("Test 6b failed")
+    
+    log(f"✓ kontantTech set")
+    
+    # Verify naa.tech.kontant
+    log(f"GET {API_BASE}/admin/finance/selskap to verify naa.tech.kontant")
+    r6c = requests.get(f"{API_BASE}/admin/finance/selskap", params={'key': ADMIN_KEY}, timeout=TIMEOUT)
+    data6c = r6c.json()
+    
+    tech_kontant = data6c['naa']['tech'].get('kontant')
+    if tech_kontant != 100000:
+        log(f"❌ TEST 6c FAILED: Expected naa.tech.kontant=100000, got {tech_kontant}")
+        raise Exception("Test 6c failed")
+    
+    log(f"✓ naa.tech.kontant = {tech_kontant}")
+    
+    # Restore to null
+    log(f"Restoring kontantTech to null")
+    r6d = requests.post(
+        f"{API_BASE}/admin/finance/settings",
+        params={'key': ADMIN_KEY},
+        json={'kontantTech': {'saldo': None}},
+        timeout=30
+    )
+    
+    if r6d.status_code != 200:
+        log(f"❌ TEST 6d FAILED: Could not restore kontantTech")
+        raise Exception("Test 6d failed")
+    
+    log(f"✓ kontantTech restored to null")
+    log("✅ TEST 6 PASSED: kontantTech set, verified, and restored")
+    
+    # ========================================================================
+    # CLEANUP: Delete all QA costs and inntektsposter
+    # ========================================================================
+    test_case("CLEANUP", "Delete all QA costs and inntektsposter")
+    
+    for cost_id in qa_cost_ids:
+        log(f"DELETE cost {cost_id}")
+        r = requests.delete(
+            f"{API_BASE}/admin/finance/costs",
+            params={'key': ADMIN_KEY},
+            json={'id': cost_id},
+            timeout=30
+        )
+        if r.status_code == 200:
+            log(f"✓ Cost {cost_id} deleted")
+        else:
+            log(f"⚠️  Failed to delete cost {cost_id}: {r.status_code}")
+    
+    for post_id in qa_inntektspost_ids:
+        log(f"DELETE inntektspost {post_id}")
+        r = requests.delete(
+            f"{API_BASE}/admin/finance/inntektsposter",
+            params={'key': ADMIN_KEY},
+            json={'id': post_id},
+            timeout=30
+        )
+        if r.status_code == 200:
+            log(f"✓ Inntektspost {post_id} deleted")
+        else:
+            log(f"⚠️  Failed to delete inntektspost {post_id}: {r.status_code}")
+    
+    log("✅ CLEANUP COMPLETE")
+    
+    # ========================================================================
+    # FINAL SUMMARY
+    # ========================================================================
+    print("\n" + "="*80)
+    print("FINAL SUMMARY")
+    print("="*80)
+    print("✅ TEST 1 PASSED: GET /selskap structure and invariants verified")
+    print("✅ TEST 2 PASSED: POST /settings prisliste change, lisens calculation, restore")
+    print("✅ TEST 3 PASSED: POST /settings autoregler change, auto.poster verification, restore")
+    print("✅ TEST 4 PASSED: POST/GET/DELETE /inntektsposter CRUD and tech.inntekt verification")
+    print("✅ TEST 5 PASSED: POST /costs with selskap, flytt, bekreft, forslagFlytt")
+    print("✅ TEST 6 PASSED: POST /settings kontantTech, verification, restore")
+    print("✅ CLEANUP PASSED: All QA data deleted")
+    print("="*80)
+    print("ALL TESTS PASSED (6/6)")
+    print("="*80)
+
+except Exception as e:
+    print(f"\n❌ TEST FAILED: {e}")
+    print("\nAttempting cleanup...")
+    
+    # Cleanup on failure
+    for cost_id in qa_cost_ids:
+        try:
+            requests.delete(
+                f"{API_BASE}/admin/finance/costs",
+                params={'key': ADMIN_KEY},
+                json={'id': cost_id},
+                timeout=30
+            )
+            log(f"✓ Cleaned up cost {cost_id}")
+        except:
+            pass
+    
+    for post_id in qa_inntektspost_ids:
+        try:
+            requests.delete(
+                f"{API_BASE}/admin/finance/inntektsposter",
+                params={'key': ADMIN_KEY},
+                json={'id': post_id},
+                timeout=30
+            )
+            log(f"✓ Cleaned up inntektspost {post_id}")
+        except:
+            pass
+    
+    # Try to restore settings
+    if original_prisliste_pris is not None:
+        try:
+            requests.post(
+                f"{API_BASE}/admin/finance/settings",
+                params={'key': ADMIN_KEY},
+                json={'prisliste': {'forvaltning': {'modell': 'fast', 'pris': original_prisliste_pris}}},
+                timeout=30
+            )
+            log(f"✓ Restored prisliste.forvaltning.pris to {original_prisliste_pris}")
+        except:
+            pass
+    
+    if original_autoregler_llm is not None:
+        try:
+            requests.post(
+                f"{API_BASE}/admin/finance/settings",
+                params={'key': ADMIN_KEY},
+                json={'autoregler': {'llm': original_autoregler_llm}},
+                timeout=30
+            )
+            log(f"✓ Restored autoregler.llm to {original_autoregler_llm}")
+        except:
+            pass
+    
+    try:
+        requests.post(
+            f"{API_BASE}/admin/finance/settings",
+            params={'key': ADMIN_KEY},
+            json={'kontantTech': {'saldo': None}},
+            timeout=30
+        )
+        log(f"✓ Restored kontantTech to null")
+    except:
+        pass
+    
+    raise

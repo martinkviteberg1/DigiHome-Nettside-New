@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 
 import ApiUsageTab from '@/components/admin/ApiUsageTab';
+import { useSelskap, SelskapsVelger, SelskapResultat, SelskapChip, SorterAssistent, PrislisteTab, SelskapInnstillinger } from '@/components/admin/SelskapOkonomi';
+import { selskapInfo } from '@/lib/selskap-okonomi';
 
 // ── Formattering (NOK, nb-NO) ───────────────────────────────────────────────
 const nf0 = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 });
@@ -15,15 +17,18 @@ const kr = (n) => `${nf0.format(Math.round(Number(n) || 0))} kr`;
 const krSigned = (n) => `${(Number(n) || 0) >= 0 ? '' : '−'}${nf0.format(Math.abs(Math.round(Number(n) || 0)))} kr`;
 const pctFmt = (n) => (n == null ? '—' : `${new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1 }).format(n)} %`);
 
+// Faner per selskap: Digihome AS har kontrakter/likviditet/investor (forvaltningen);
+// Tech har prisliste & inntekter; Konsern er konsolidert lesevisning.
 const TABS = [
-  { k: 'resultat', l: 'Resultat', icon: TrendingUp },
-  { k: 'likviditet', l: 'Likviditet', icon: Activity },
-  { k: 'trender', l: 'Trender', icon: BarChart3 },
-  { k: 'investor', l: 'Investor', icon: Landmark },
-  { k: 'kontrakter', l: 'Kontrakter', icon: Building2 },
-  { k: 'kostnader', l: 'Kostnader', icon: Receipt },
-  { k: 'api', l: 'API-forbruk', icon: Zap },
-  { k: 'innstillinger', l: 'Innstillinger', icon: Settings2 },
+  { k: 'resultat', l: 'Resultat', icon: TrendingUp, for: ['digihome', 'tech', 'konsern'] },
+  { k: 'prisliste', l: 'Prisliste & inntekter', icon: Percent, for: ['tech'] },
+  { k: 'likviditet', l: 'Likviditet', icon: Activity, for: ['digihome'] },
+  { k: 'trender', l: 'Trender', icon: BarChart3, for: ['digihome'] },
+  { k: 'investor', l: 'Investor', icon: Landmark, for: ['digihome'] },
+  { k: 'kontrakter', l: 'Kontrakter', icon: Building2, for: ['digihome'] },
+  { k: 'kostnader', l: 'Kostnader', icon: Receipt, for: ['digihome', 'tech', 'konsern'] },
+  { k: 'api', l: 'API-forbruk', icon: Zap, for: ['digihome', 'tech'] },
+  { k: 'innstillinger', l: 'Innstillinger', icon: Settings2, for: ['digihome', 'tech', 'konsern'] },
 ];
 
 const COST_CATEGORIES = ['Lønn', 'Husleie', 'Programvare/SaaS', 'Regnskap', 'API/LLM', 'Markedsføring', 'Annet'];
@@ -37,6 +42,8 @@ const btnGhost = 'inline-flex items-center gap-2 h-9 px-3 rounded-lg border bord
 
 export default function FinanceDashboard({ apiKey }) {
   const [tab, setTab] = useState('resultat');
+  const [selskap, setSelskap] = useSelskap();
+  const [selskapData, setSelskapData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [resultat, setResultat] = useState(null);
   const [likviditet, setLikviditet] = useState(null);
@@ -65,21 +72,33 @@ export default function FinanceDashboard({ apiKey }) {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [r, l, c, ct, ev, s] = await Promise.all([
-        api('/resultat'), api('/likviditet?months=12'), api('/costs'), api('/contracts'), api('/events'), api('/settings'),
+      const [r, l, c, ct, ev, s, sd] = await Promise.all([
+        api('/resultat'), api('/likviditet?months=12'), api('/costs'), api('/contracts'), api('/events'), api('/settings'), api('/selskap'),
       ]);
       setResultat(r); setLikviditet(l);
       setCosts(c.costs || []); setContracts(ct.contracts || []); setEvents(ev.events || []);
-      setSettings(s.settings || null);
+      setSettings(s.settings || null); setSelskapData(sd);
     } finally { setLoading(false); }
   }, [api]);
 
   useEffect(() => { if (apiKey) loadAll(); }, [apiKey, loadAll]);
 
   const refresh = useCallback(async () => {
-    const [r, l] = await Promise.all([api('/resultat'), api('/likviditet?months=12')]);
-    setResultat(r); setLikviditet(l);
+    const [r, l, sd] = await Promise.all([api('/resultat'), api('/likviditet?months=12'), api('/selskap')]);
+    setResultat(r); setLikviditet(l); setSelskapData(sd);
   }, [api]);
+
+  // Bytter man selskap mens man står på en fane selskapet ikke har → Resultat.
+  useEffect(() => { const t = TABS.find((x) => x.k === tab); if (t && !t.for.includes(selskap)) setTab('resultat'); }, [selskap, tab]);
+
+  const flyttKostnader = async (ids, til) => {
+    setSaving(true);
+    try { await api('/costs/flytt', { method: 'POST', body: JSON.stringify({ ids, selskap: til }) }); const res = await api('/costs'); setCosts(res.costs || []); await refresh(); } finally { setSaving(false); }
+  };
+  const bekreftKostnader = async (ids) => {
+    setSaving(true);
+    try { await api('/costs/bekreft', { method: 'POST', body: JSON.stringify({ ids }) }); const res = await api('/costs'); setCosts(res.costs || []); await refresh(); } finally { setSaving(false); }
+  };
 
   const loadTrends = useCallback(async () => {
     setTrendsLoading(true);
@@ -157,11 +176,15 @@ export default function FinanceDashboard({ apiKey }) {
     );
   }
 
+  const synligeTabs = TABS.filter((t) => t.for.includes(selskap));
+  const kostnaderVist = selskap === 'konsern' ? costs : costs.filter((c) => (c.selskap || 'digihome') === selskap);
+
   return (
     <div className="max-w-[1200px]" data-testid="finance-dashboard">
+      <SelskapsVelger verdi={selskap} onChange={setSelskap} naa={selskapData} />
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-[#eee] mb-8 overflow-x-auto">
-        {TABS.map((t) => {
+        {synligeTabs.map((t) => {
           const Icon = t.icon; const active = tab === t.k;
           return (
             <button key={t.k} onClick={() => setTab(t.k)} data-testid={`fin-tab-${t.k}`}
@@ -172,7 +195,8 @@ export default function FinanceDashboard({ apiKey }) {
         })}
       </div>
 
-      {tab === 'resultat' && <ResultatTab data={resultat} />}
+      {tab === 'resultat' && <SelskapResultat data={selskapData} selskap={selskap} onGaaTil={setTab} />}
+      {tab === 'prisliste' && <PrislisteTab data={selskapData} api={api} onEndret={async () => { const s2 = await api('/settings'); setSettings(s2.settings || null); await refresh(); }} />}
       {tab === 'likviditet' && (
         <LikviditetTab data={likviditet} scenario={scenario} setScenario={setScenario}
           events={events} onSaveEvent={(e) => saveEntity('events', e)} onDeleteEvent={(id) => deleteEntity('events', id)}
@@ -187,10 +211,17 @@ export default function FinanceDashboard({ apiKey }) {
         <KontrakterTab items={contracts} onSave={(c) => saveEntity('contracts', c)} onDelete={(id) => deleteEntity('contracts', id)} onSync={syncContracts} syncing={syncing} saving={saving} />
       )}
       {tab === 'kostnader' && (
-        <KostnaderTab items={costs} auto={resultat?.configured} onSave={(c) => saveEntity('costs', c)} onDelete={(id) => deleteEntity('costs', id)} saving={saving} />
+        <KostnaderTab items={kostnaderVist} selskap={selskap} auto={selskapData?.naa?.[selskap]?.auto} forslag={selskap === 'konsern' ? [] : (selskapData?.forslagFlytt || [])}
+          onFlytt={flyttKostnader} onBekreft={bekreftKostnader}
+          onSave={(c) => saveEntity('costs', c)} onDelete={(id) => deleteEntity('costs', id)} saving={saving} />
       )}
       {tab === 'api' && <ApiUsageTab apiKey={apiKey} />}
-      {tab === 'innstillinger' && <InnstillingerTab settings={settings} onSave={saveSettings} saving={saving} />}
+      {tab === 'innstillinger' && (
+        <div className="grid gap-6 xl:grid-cols-2">
+          {selskap !== 'tech' ? <InnstillingerTab settings={settings} onSave={saveSettings} saving={saving} /> : null}
+          <SelskapInnstillinger settings={settings} onSave={saveSettings} saving={saving} />
+        </div>
+      )}
     </div>
   );
 }
@@ -459,21 +490,23 @@ function KontrakterTab({ items, onSave, onDelete, onSync, syncing, saving }) {
 }
 
 // ═══════════════════════════ KOSTNADER ═══════════════════════════
-function KostnaderTab({ items, auto, onSave, onDelete, saving }) {
+function KostnaderTab({ items, selskap = 'digihome', auto, forslag = [], onFlytt, onBekreft, onSave, onDelete, saving }) {
   const [show, setShow] = useState(false);
   const [edit, setEdit] = useState(null);
+  const info = selskapInfo(selskap);
+  const annet = (id) => (id === 'tech' ? 'digihome' : 'tech');
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-[13px] text-[#888]">{items.length} faste kostnader</p>
-        <button className={btnDark} onClick={() => { setEdit(null); setShow(true); }} data-testid="fin-add-cost"><Plus className="w-4 h-4" /> Ny kostnad</button>
+        <p className="text-[13px] text-[#888]">{items.length} faste kostnader{selskap === 'konsern' ? ' i begge selskaper' : ` i ${info.navn}`}</p>
+        {selskap !== 'konsern' && <button className={btnDark} onClick={() => { setEdit(null); setShow(true); }} data-testid="fin-add-cost"><Plus className="w-4 h-4" /> Ny kostnad</button>}
       </div>
+      {selskap !== 'konsern' && <SorterAssistent forslag={forslag} busy={saving} onFlytt={() => onFlytt(forslag.map((f) => f.id), 'tech')} onBehold={() => onBekreft(forslag.map((f) => f.id))} />}
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-[12px] text-[#888] rounded-xl bg-[#f7f7f8] px-4 py-3">
-        <span className="inline-flex items-center gap-1.5 basis-full text-[#555]"><Check className="w-3.5 h-3.5 text-emerald-600" /> <strong>Ett register:</strong> kostnadene her er samme kilde som Datarom-skuffen — de teller i resultat, enhetsmarginer (Leieforhold) og budsjettforslag.</span>
-        <span className="inline-flex items-center gap-1.5"><Megaphone className="w-3.5 h-3.5" /> Annonseforbruk hentes automatisk: <strong className="text-[#555]">{kr(auto?.adSpendMonthly || 0)}/mnd</strong></span>
-        <span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> LLM-kostnad hentes automatisk: <strong className="text-[#555]">{kr(auto?.llmMonthly || 0)}/mnd</strong></span>
-        <span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> API-tjenester (SendGrid/SerpAPI/Maps): <strong className="text-[#555]">{kr(auto?.extMonthly || 0)}/mnd</strong></span>
-        <span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> Plattform-CRM (Twilio, e-sign, AI): <strong className="text-[#555]">{kr(auto?.platformMonthly || 0)}/mnd</strong>{auto?.platform === false && <em className="text-[#bbb] not-italic">(venter på tilkobling)</em>}</span>
+        <span className="inline-flex items-center gap-1.5 basis-full text-[#555]"><Check className="w-3.5 h-3.5 text-emerald-600" /> <strong>Ett register:</strong> hver kostnad tilhører ett selskap. Samme kilde som Datarom-skuffen — teller i resultat, enhetsmarginer og budsjett.</span>
+        {auto?.poster?.length ? auto.poster.map((p) => (
+          <span key={p.id} className="inline-flex items-center gap-1.5">{p.id === 'annonser' ? <Megaphone className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />} {p.navn.split(' (')[0]} — automatisk: <strong className="text-[#555]">{kr(p.belop)}/mnd</strong></span>
+        )) : selskap !== 'konsern' ? <span className="text-[#aaa]">Ingen automatisk målte kostnader er tilordnet {info.navn} (regler under Innstillinger).</span> : null}
       </div>
       {items.length === 0 ? (
         <Empty msg="Ingen faste kostnader ennå. Legg inn lønn, husleie, programvare, regnskap m.m." />
@@ -483,6 +516,7 @@ function KostnaderTab({ items, auto, onSave, onDelete, saving }) {
             <thead className="bg-[#fafafa] text-[#888] text-[11px] uppercase tracking-wide">
               <tr>
                 <th className="text-left font-semibold px-4 py-3">Navn</th>
+                <th className="text-left font-semibold px-4 py-3">Selskap</th>
                 <th className="text-left font-semibold px-4 py-3">Kategori</th>
                 <th className="text-left font-semibold px-4 py-3">Frekvens</th>
                 <th className="text-left font-semibold px-4 py-3">Fordeling</th>
@@ -494,6 +528,7 @@ function KostnaderTab({ items, auto, onSave, onDelete, saving }) {
               {items.map((c) => (
                 <tr key={c.id} className={`border-t border-[#f2f2f2] ${c.paused ? 'opacity-50' : ''}`}>
                   <td className="px-4 py-3 font-medium text-[#222]">{c.name || '—'}{c.vendor ? <span className="text-[11px] text-[#aaa] ml-2">{c.vendor}</span> : null}{c.paused ? <span className="ml-2 rounded bg-[#f1ece4] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#8a8278]">Pauset</span> : null}</td>
+                  <td className="px-4 py-3"><SelskapChip id={c.selskap || 'digihome'} title={`Flytt til ${selskapInfo(annet(c.selskap || 'digihome')).navn}`} onClick={() => onFlytt([c.id], annet(c.selskap || 'digihome'))} /></td>
                   <td className="px-4 py-3 text-[#666]">{c.category}</td>
                   <td className="px-4 py-3 text-[#999]">{FREQ_LABEL[c.frequency] || c.frequency}</td>
                   <td className="px-4 py-3 text-[#999]">{FORDELING_LABEL[c.fordeling] || 'Likt per enhet'}</td>
@@ -508,7 +543,7 @@ function KostnaderTab({ items, auto, onSave, onDelete, saving }) {
           </table>
         </div>
       )}
-      {show && <CostModal item={edit} saving={saving} onClose={() => setShow(false)} onSave={async (c) => { await onSave(c); setShow(false); }} />}
+      {show && <CostModal item={edit} selskap={selskap} saving={saving} onClose={() => setShow(false)} onSave={async (c) => { await onSave(c); setShow(false); }} />}
     </div>
   );
 }
@@ -617,16 +652,24 @@ function ContractModal({ item, onClose, onSave, saving }) {
   );
 }
 
-function CostModal({ item, onClose, onSave, saving }) {
+function CostModal({ item, selskap = 'digihome', onClose, onSave, saving }) {
   const [f, setF] = useState({
     id: item?.id || null, name: item?.name || '', category: item?.category || 'Lønn', amount: item?.amount ?? '',
     frequency: item?.frequency || 'monthly', vendor: item?.vendor || '', startDate: item?.startDate || '', endDate: item?.endDate || '', note: item?.note || '',
     fordeling: item?.fordeling || 'alle', paused: item?.paused === true,
+    selskap: item?.selskap || (selskap === 'tech' ? 'tech' : 'digihome'),
   });
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   return (
     <Modal title={item ? 'Rediger kostnad' : 'Ny kostnad'} onClose={onClose}>
       <div className="space-y-4">
+        <div><label className={labelCls}>Selskap</label>
+          <div className="inline-flex h-10 items-center rounded-[10px] bg-[#f0efec] p-0.5" data-testid="fin-cost-selskap">
+            {[['digihome', 'Digihome AS'], ['tech', 'Digihome Tech AS']].map(([id, l]) => (
+              <button key={id} type="button" onClick={() => set('selskap', id)} data-testid={`fin-cost-selskap-${id}`} className={`h-9 rounded-[8px] px-3.5 text-[13px] font-semibold transition-all ${f.selskap === id ? 'bg-white text-[#111] shadow-[0_1px_2px_rgba(0,0,0,0.08)]' : 'text-[#8f8a82] hover:text-[#111]'}`}>{l}</button>
+            ))}
+          </div>
+        </div>
         <div><label className={labelCls}>Navn</label><input value={f.name} onChange={(e) => set('name', e.target.value)} className={inputCls} placeholder="f.eks. Lønn Sarah" data-testid="fin-cost-name" /></div>
         <div className="grid grid-cols-2 gap-4">
           <div><label className={labelCls}>Kategori</label>

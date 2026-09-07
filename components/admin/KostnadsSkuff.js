@@ -93,7 +93,7 @@ export default function KostnadsSkuff({ apiKey, felles = [], onOppdatert, onLukk
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {!skjema && (
             <button
-              onClick={() => setSkjema({ navn: '', belop: '', fordeling: 'alle', kategori: 'lonn', startDato: '', sluttDato: '', aktiv: true })}
+              onClick={() => setSkjema({ navn: '', belop: '', fordeling: 'alle', kategori: 'lonn', startDato: '', sluttDato: '', aktiv: true, selskap: 'digihome' })}
               data-testid="kostnadsskuff-ny"
               className="flex h-8 w-full items-center justify-center gap-1.5 rounded-[8px] border border-dashed border-[#d8d4cd] text-[12px] font-medium text-[#8a8278] transition-colors hover:border-[#8b5cf6]/40 hover:bg-[#faf8ff] hover:text-[#6d28d9]"
             >
@@ -125,6 +125,14 @@ export default function KostnadsSkuff({ apiKey, felles = [], onOppdatert, onLukk
                     <option value="annet">Annet</option>
                   </select>
                 </label>
+              </div>
+              <div className="mt-2.5">
+                <span className={`mb-1 block ${ETIKETT}`}>Selskap</span>
+                <div className="inline-flex h-8 items-center rounded-[8px] bg-[#f0efec] p-0.5" data-testid="kostnadsskuff-selskap">
+                  {[['digihome', 'Digihome AS'], ['tech', 'Digihome Tech AS']].map(([id, l]) => (
+                    <button key={id} type="button" onClick={() => setSkjema((f) => ({ ...f, selskap: id }))} className={`h-7 rounded-[6px] px-2.5 text-[11.5px] font-semibold transition-all ${(skjema.selskap || 'digihome') === id ? 'bg-white text-[#1c1917] shadow-[0_1px_2px_rgba(0,0,0,0.08)]' : 'text-[#8a8278] hover:text-[#1c1917]'}`}>{l}</button>
+                  ))}
+                </div>
               </div>
               <label className="mt-2.5 block">
                 <span className={`mb-1 block ${ETIKETT}`}>Fordeling</span>
@@ -170,6 +178,7 @@ export default function KostnadsSkuff({ apiKey, felles = [], onOppdatert, onLukk
                   <div key={p.id} className={`rounded-[10px] border border-black/[0.05] bg-[#fbfaf8] px-3 py-2.5 transition-opacity ${teller ? '' : 'opacity-55'}`} data-testid={`kostnadsskuff-post-${p.id}`}>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-[4px] bg-[#f4f0fb] px-1.5 py-[2px] text-[9px] font-bold uppercase tracking-wide text-[#8b5cf6]">{KATEGORI_LABEL[p.kategori] || 'Annet'}</span>
+                      {p.selskap === 'tech' ? <span className="rounded-[4px] bg-[#ece6f7] px-1.5 py-[2px] text-[9px] font-bold uppercase tracking-wide text-[#6d28d9]">Tech</span> : null}
                       <span className="text-[12.5px] font-medium text-[#1c1917]">{p.navn}</span>
                       <span className="rounded-full px-1.5 py-[2px] text-[9.5px] font-semibold" style={{ background: st.bg, color: st.c }}>{st.t}</span>
                       <span className="ml-auto text-[12.5px] font-semibold tabular-nums text-[#1c1917]">{kr(p.belop)}<span className="text-[10px] font-medium text-[#b8b2a9]">/mnd</span></span>
