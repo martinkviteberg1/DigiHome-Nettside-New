@@ -1456,3 +1456,9 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
     React SSR auto-preloadet 24 bilder (alle <img> uten loading=lazy) → nå 2 (logo + LCP-poster): lazy på film-, boliger-, leietaker-, system-,
     footer- og produktbakgrunnsbilder; LeietakerSeksjon-poster som <picture> (960 på mobil); `heroFilm.js` (uten 'use client') deler FILM med
     app/page.js så preload peker på riktig LCP-bilde (sofa-loopens poster, alle flater).
+- Spor-seksjonen («Autopilot, tilpasset måten du leier ut på») løftet i to trinn (bruker: «gjør denne seksjonen VERDENSKLASSE» → «løft til neste nivå»):
+  · Tre levende scener (samme motor, tre utsnitt): 01 én bolig – du godkjenner det ene som koster (Godkjenn → Godkjent, to saker veksler);
+    02 42 enheter i tre bygg – rutenettet fylles når husleien kommer, sak godkjent av rolle; 03 DigiHome gjør jobben – hendelser strømmer
+    gjennom to rader, din rad («Du leste oppsummeringen») ligger fast. Felles slag `useTakt` (3,6 s), bare mens seksjonen sees.
+  · Stage-form ≥ 1100 px rad-bredde: ett åpent panel (flex-basis-animasjon i px, innhold på faste bredder → ingen reflow), to rygger; auto-
+    skift 8 s m/ lilla `Fremdrift`-linje, hover åpner, pause mens pekeren hviler på stagen. < 1100 px: stablede kolonner (md: 2 kol).
