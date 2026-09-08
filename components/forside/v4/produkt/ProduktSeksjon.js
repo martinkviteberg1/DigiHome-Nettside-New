@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Layers } from 'lucide-react';
-import { settKapittelbar } from '../kapittelbar';
+import { Kapittelpille, settKapittelbar } from '../kapittelbar';
 import { EASE, T, display, useSynlig } from '../motion';
 import AnnonseFilm from './AnnonseFilm';
 
@@ -160,6 +160,8 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
   const [bakgrunn, setBakgrunn] = useState('oslo');   // nøkkel i BAKGRUNNER — bygården er standard; 'stue' (interiør) ligger i velgeren
   const [velgerOpen, setVelgerOpen] = useState(false);
   const [festet, setFestet] = useState(false);   // tabs-raden ligger klistret under navigasjonen
+  const [bytter, setBytter] = useState(false);   // kapittelbytte: det gamle tones ut før det nye monteres
+  const [holdH, setHoldH] = useState(null);      // produktflatens høyde holdes under byttet (ingen hopp)
   const [markor, setMarkor] = useState(null);    // {x, w} for den glidende markøren bak aktiv tab
   const ref = useRef(null);
   const vaktRef = useRef(null);
@@ -226,15 +228,34 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
     return () => { ro?.disconnect(); window.removeEventListener('resize', maal); };
   }, [aktiv, full]);
 
-  /* Tabbytte fra festet rad (kapitlene står i navbaren): hold blikket der — scroll produktflaten inn rett under
-     navbaren, så det nye kapittelet vises og baren blir stående festet (vakten forblir over nav-linja). */
+  /* Kapittelbytte (fra kapittelbaren eller navbaren): aldri et hardt klipp. Det gamle tones ut (260 ms), så monteres det
+     nye og kommer inn. Mens byttet skjer holdes produktflatens høyde (mobil: filmene er ulikt høye — ellers hopper alt
+     under). Skrolles bare hvis flaten ikke allerede står i bildet — og da samtidig med toningen, så øyet følger én
+     bevegelse. Trykk på det aktive kapittelet: ingen bytte, bare ro. */
+  const byttRef = useRef(0);
+  /* Slipp høyden: glir fra den gamle til den nye filmens høyde (400 ms), så slippes den helt */
+  const slippH = (tok) => {
+    const el = sceneRef.current; const barn = el?.firstElementChild;
+    if (!el || !barn) { setHoldH(null); return; }
+    setHoldH(barn.offsetHeight);
+    window.setTimeout(() => { if (byttRef.current === tok) setHoldH(null); }, 450);
+  };
   const bytt = (id) => {
-    setAktiv(id);
-    if (festet && (sceneRef.current || ref.current)) {
+    if (id === aktiv) return;
+    const el = sceneRef.current;
+    if (el) setHoldH(el.offsetHeight);
+    setBytter(true);
+    const tok = byttRef.current + 1; byttRef.current = tok;
+    window.setTimeout(() => {
+      if (byttRef.current !== tok) return;
+      setAktiv(id); setBytter(false);
+      window.setTimeout(() => { if (byttRef.current === tok) slippH(tok); }, 700);
+    }, 260);
+    if (festet && el) {
       const navH = window.innerWidth >= 1024 ? 64 : 72;
-      const el = sceneRef.current || ref.current;
-      const topp = el.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({ top: Math.round(topp - navH - 16), behavior: 'smooth' });
+      const r = el.getBoundingClientRect();
+      const paaPlass = r.top >= navH - 4 && r.top <= navH + 140;   // flaten står allerede rett under navbaren
+      if (!paaPlass) window.scrollTo({ top: Math.round(r.top + window.scrollY - navH - 16), behavior: 'smooth' });
     }
   };
 
@@ -246,10 +267,13 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
   const nesteNavn = nesteId ? TABS.find((t) => t.id === nesteId).navn : null;
   /* Forhåndslast neste kapittel (egen chunk) så snart produktflaten er i bildet — byttet skal ikke vente på nettet */
   useEffect(() => {
-    if (!synlig || !nesteId) return;
+    if (!synlig) return;
+    /* Neste først, så resten — et manuelt kapittelvalg skal heller aldri vente på nettet */
     FORHAANDSLAST[nesteId]?.().catch(() => {});
+    const t = window.setTimeout(() => { KAPITLER.forEach((id) => FORHAANDSLAST[id]?.().catch(() => {})); }, 1200);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [synlig, nesteId]);
-  const [bytter, setBytter] = useState(false);       // kapittelbytte: det gamle tones ut før det nye monteres
   /* Kapittel-fremdrift i den aktive tab-pillen (tynn linje som fylles i takt med filmen) */
   const [frem, setFrem] = useState({ andel: 0, ms: 0 });
 
@@ -266,8 +290,15 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
 
   const videre = () => {
     if (!nesteId || !filmSynlig) return false;        // bare når produktflaten faktisk er i bildet — ellers looper filmen
+    const el = sceneRef.current;
+    if (el) setHoldH(el.offsetHeight);
     setBytter(true);
-    window.setTimeout(() => { setAktiv(nesteId); setBytter(false); }, 360);
+    const tok = byttRef.current + 1; byttRef.current = tok;
+    window.setTimeout(() => {
+      if (byttRef.current !== tok) return;
+      setAktiv(nesteId); setBytter(false);
+      window.setTimeout(() => { if (byttRef.current === tok) slippH(tok); }, 700);
+    }, 300);
     return true;
   };
 
@@ -351,65 +382,35 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
       <div className="relative mx-auto max-w-[1760px] px-5 pb-12 pt-12 sm:px-8 lg:px-10 lg:pb-16 lg:pt-12">
         {/* Vakt for sticky-raden */}
         <div ref={vaktRef} aria-hidden="true" className="h-px w-full" />
-        {/* Kapittelbar — fire kapitler som en fortelling: nummer, navn og et tynt spor under hvert. Det aktive sporet
-            fylles lilla i takt med filmen; kapitlene før står fylt (dempet), de etter står tomme. Ingen pille, ingen
-            glidende markør — bare typografi og linjer. Klistres under navigasjonen når man skroller i seksjonen og får
-            da en rolig plate bak seg. På mobil: fire like kolonner over hele bredden, 44 px trykkflate. */}
+        {/* Kapittelbaren — en segmentert kontroll (Kapittelpille): det aktive kapittelet er en hvit pille som fylles
+            svakt lilla i takt med filmen. Klistres under navigasjonen når man skroller i seksjonen — da flytter kapitlene
+            inn i selve navbaren (kapittelbar.js), og denne tones ut (plassen beholdes, så ingenting hopper). */}
         <div className={`sticky top-[72px] z-30 flex lg:top-[64px] ${venstre ? 'justify-start' : 'justify-center'}`} data-testid="v4-tabs-sticky" data-festet={festet ? '1' : '0'}>
-          {/* Festet: baren tones ut her og lever i navbaren i stedet (plassen beholdes, så ingenting hopper) */}
           <div
-            className="w-full max-w-[640px] sm:w-auto sm:min-w-[560px]"
+            className="max-w-full"
             style={{ opacity: festet ? 0 : 1, transform: festet ? 'translateY(-6px)' : 'none', transition: `opacity 220ms ${EASE}, transform 300ms ${EASE}`, pointerEvents: festet ? 'none' : 'auto' }}
             aria-hidden={festet}
           >
-            <div ref={listeRef} role="tablist" aria-label="Kapitler" className="grid gap-1.5 sm:flex sm:gap-2" style={{ gridTemplateColumns: `repeat(${TABS.length}, minmax(0, 1fr))` }} data-testid="v4-tabs" data-variant="kapittelbar">
-              {TABS.map((t, i) => {
-                const er = t.id === aktiv;
-                const idx = KAPITLER.indexOf(t.id);
-                const ferdig = t.klar && idx > -1 && idx < KAPITLER.indexOf(aktiv);
-                const andel = er ? Math.round(frem.andel * 1000) / 10 : ferdig ? 100 : 0;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={er}
-                    aria-disabled={!t.klar}
-                    onClick={() => { if (t.klar) bytt(t.id); }}
-                    className={`group relative flex min-h-[44px] min-w-0 flex-col justify-end gap-[9px] rounded-[10px] px-1 pb-2 pt-2 text-left text-[var(--tab)] transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 sm:min-w-[122px] sm:px-2 ${tema.ring} ${t.klar ? 'hover:text-[var(--tab-hover)]' : 'cursor-default'}`}
-                    style={{ '--tab': er ? tema.tekst : t.klar ? tema.tabTekst : tema.tabDempet, '--tab-hover': t.klar ? tema.tekst : tema.tabDempet }}
-                    data-testid={`v4-tab-${t.id}`}
-                  >
-                    <span className={`flex items-baseline gap-1.5 whitespace-nowrap text-[13px] leading-none tracking-[-0.005em] sm:text-[14px] ${er ? 'font-medium' : ''}`}>
-                      <span className="hidden text-[10.5px] font-medium tabular-nums sm:inline" style={{ color: er ? T.lilla : tema.indeks, transition: `color 300ms ${EASE}` }}>0{i + 1}</span>
-                      <span className="truncate">{t.navn}</span>
-                    </span>
-                    {/* Sporet */}
-                    <span aria-hidden="true" className="relative block h-[2px] w-full overflow-hidden rounded-full transition-opacity duration-300 group-hover:opacity-100" style={{ background: tema.spor, opacity: er || ferdig ? 1 : 0.75 }}>
-                      <span
-                        className="absolute inset-y-0 left-0 rounded-full"
-                        style={{
-                          background: er ? T.lilla : tema.sporFerdig,
-                          width: `${andel}%`,
-                          transition: er && frem.ms ? `width ${frem.ms}ms linear, background-color 300ms ${EASE}` : `width 320ms ${EASE}, background-color 300ms ${EASE}`,
-                        }}
-                        data-testid={er ? 'v4-tabs-fremdrift' : undefined}
-                      />
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <Kapittelpille
+              tabs={TABS.map((t) => ({ id: t.id, navn: t.navn, klar: t.klar }))}
+              aktiv={aktiv}
+              frem={frem}
+              kapitler={KAPITLER}
+              velg={(id) => { if (TABS.find((t) => t.id === id)?.klar) bytt(id); }}
+              tema={bg.tema === 'lys' ? 'lys' : 'mork'}
+              testid="v4-tabs"
+            />
           </div>
         </div>
 
         {/* Statement — bytter med scenen (key → sekvensiell inngang) */}
         <div className={`mt-8 max-w-[820px] sm:mt-10 ${venstre ? 'text-left' : 'mx-auto text-center'}`} style={{ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(16px)', transition: `opacity 700ms ${EASE}, transform 700ms ${EASE}` }}>
-          <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-1 duration-500" style={{ opacity: bytter ? 0 : 1, transition: `opacity 340ms ${EASE}` }}>
+          <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-1 duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]" style={{ opacity: bytter ? 0 : 1, transition: `opacity 260ms ${EASE}` }}>
             <h2 className="text-[clamp(40px,4.8vw,78px)]" style={{ ...display, color: tema.tekst }} data-testid="v4-produkt-tittel">
               {scene.tittel[0]}<br />{scene.tittel[1]}
             </h2>
-            <p className={`mt-5 max-w-[46ch] text-[16.5px] leading-[1.5] sm:mt-6 sm:text-[19px] ${venstre ? '' : 'mx-auto'}`} style={{ color: tema.ingress }}>
+            {/* Fast minstehøyde (4 linjer) — ingressene er ulikt lange; produktflaten skal ikke flytte seg ved bytte */}
+            <p className={`mt-5 min-h-[6em] max-w-[46ch] text-[16.5px] leading-[1.5] sm:mt-6 sm:text-[19px] ${venstre ? '' : 'mx-auto'}`} style={{ color: tema.ingress }}>
               <span className="sm:hidden">{scene.kort || scene.ingress}</span>
               <span className="hidden sm:inline">{scene.ingress}</span>
             </p>
@@ -417,9 +418,10 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
         </div>
 
         {/* Produktet — alltid sentrert */}
-        <div ref={sceneRef} className="mt-9 sm:mt-12 lg:mt-20">
-          {/* Scenebytte: den nye flaten kommer inn sekvensielt (key → ny montering), ingen overlappende crossfade */}
-          <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500" style={{ opacity: bytter ? 0 : 1, transform: bytter ? 'translateY(-8px)' : 'none', transition: `opacity 340ms ${EASE}, transform 340ms ${EASE}` }}>
+        <div ref={sceneRef} className="mt-9 sm:mt-12 lg:mt-20" style={{ minHeight: holdH || undefined, transition: `min-height 400ms ${EASE}` }}>
+          {/* Scenebytte: det gamle tones ut og glir svakt opp, så kommer det nye inn nedenfra (key → ny montering) — én
+              bevegelse, aldri to filmer samtidig */}
+          <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-3 duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]" style={{ opacity: bytter ? 0 : 1, transform: bytter ? 'translateY(-10px)' : 'none', transition: `opacity 260ms ${EASE}, transform 260ms ${EASE}` }}>
             {aktiv === 'drift' && <DriftFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}
             {aktiv === 'annonse' && <AnnonseFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}
             {aktiv === 'kontrakt' && <KontraktFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}

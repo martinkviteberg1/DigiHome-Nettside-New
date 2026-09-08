@@ -4,8 +4,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { site } from '@/lib/site';
 import { Knapp } from './motion';
-import { useKapittelbar } from './kapittelbar';
-import { EASE, T } from './tokens';
+import { Kapittelpille, useKapittelbar } from './kapittelbar';
+import { EASE } from './tokens';
 import KomIGangVelger from './start/KomIGangVelger';
 
 /* ---------------------------------------------------------------------------
@@ -25,47 +25,20 @@ const LENKER = [
   ['Priser', '/priser'],
 ];
 
-/* Kapitlene i linja: navn + 2 px spor som fylles i takt med filmen (som i seksjonens egen bar). Desktop: sentrert,
-   absolutt, så merke og knapper står stille. Mobil: i midtfeltet mellom merke og hamburger, uten numre. */
+/* Kapitlene i linja — samme segmenterte pille som i seksjonen (Kapittelpille, tema 'nav'). Desktop: sentrert,
+   absolutt, så merke og knapper står stille. Mobil: i midtfeltet mellom merke og hamburger, kompakt. */
 function NavKapitler({ kap }) {
-  const { tabs, aktiv, frem, kapitler, velg } = kap;
   const [vis, setVis] = useState(false);
   useEffect(() => { const t = window.requestAnimationFrame(() => setVis(true)); return () => window.cancelAnimationFrame(t); }, []);
+  const felles = { tabs: kap.tabs, aktiv: kap.aktiv, frem: kap.frem, kapitler: kap.kapitler, velg: kap.velg, tema: 'nav', testid: 'v4-nav-kap' };
   return (
     <div
-      role="tablist"
-      aria-label="Kapitler"
-      className="flex min-w-0 flex-1 items-stretch justify-center gap-0.5 sm:gap-1 lg:absolute lg:left-1/2 lg:top-0 lg:h-full lg:w-auto lg:flex-none lg:-translate-x-1/2 lg:gap-2"
-      style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', transition: `opacity 260ms ${EASE} 60ms, transform 320ms ${EASE} 60ms` }}
+      className="flex min-w-0 flex-1 items-center justify-center lg:absolute lg:left-1/2 lg:top-1/2 lg:w-auto lg:flex-none lg:-translate-x-1/2 lg:-translate-y-1/2"
+      style={{ opacity: vis ? 1 : 0, transform: undefined, transition: `opacity 260ms ${EASE} 60ms` }}
       data-testid="v4-nav-kapitler"
     >
-      {tabs.map((t, i) => {
-        const er = t.id === aktiv;
-        const idx = kapitler.indexOf(t.id);
-        const ferdig = t.klar && idx > -1 && idx < kapitler.indexOf(aktiv);
-        const andel = er ? Math.round((frem?.andel || 0) * 1000) / 10 : ferdig ? 100 : 0;
-        return (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={er}
-            aria-disabled={!t.klar}
-            onClick={() => velg(t.id)}
-            className={`group flex min-w-0 flex-col justify-center gap-[7px] rounded-[9px] px-1.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30 sm:px-2 lg:min-w-[112px] lg:px-2.5 ${t.klar ? '' : 'cursor-default'}`}
-            style={{ color: er ? T.ink : t.klar ? 'rgba(21,19,15,0.62)' : 'rgba(21,19,15,0.32)' }}
-            data-testid={`v4-nav-kap-${t.id}`}
-          >
-            <span className={`flex items-baseline gap-1.5 whitespace-nowrap text-[12.5px] leading-none tracking-[-0.005em] transition-colors duration-300 sm:text-[13.5px] lg:text-[14px] ${er ? 'font-medium' : t.klar ? 'group-hover:text-[#15130F]' : ''}`}>
-              <span className="hidden text-[10.5px] font-medium tabular-nums lg:inline" style={{ color: er ? T.lilla : 'rgba(21,19,15,0.42)', transition: `color 300ms ${EASE}` }}>0{i + 1}</span>
-              <span className="truncate">{t.navn}</span>
-            </span>
-            <span aria-hidden="true" className="relative block h-[2px] w-full overflow-hidden rounded-full" style={{ background: 'rgba(21,19,15,0.12)' }}>
-              <span className="absolute inset-y-0 left-0 rounded-full" style={{ background: er ? T.lilla : 'rgba(21,19,15,0.38)', width: `${andel}%`, transition: er && frem?.ms ? `width ${frem.ms}ms linear, background-color 300ms ${EASE}` : `width 320ms ${EASE}, background-color 300ms ${EASE}` }} data-testid={er ? 'v4-nav-kap-fremdrift' : undefined} />
-            </span>
-          </button>
-        );
-      })}
+      <span className="lg:hidden"><Kapittelpille {...felles} kompakt /></span>
+      <span className="hidden lg:inline-flex"><Kapittelpille {...felles} /></span>
     </div>
   );
 }

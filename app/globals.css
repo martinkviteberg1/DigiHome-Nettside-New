@@ -1099,3 +1099,5 @@ html.dh-nav-klar [data-testid="v4-nav"] { background-color: transparent; border-
 @keyframes v4-ord-loft-ut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-70%); } }
 /* Beatets puls langs hårlinjen */
 @keyframes v4-vegg-frem { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+/* Kartnålen i annonsefilmen: en ring som pulserer ut fra adressen */
+@keyframes v4-kart-puls { 0% { transform: scale(0.35); opacity: 0.9; } 70% { opacity: 0; } 100% { transform: scale(1.35); opacity: 0; } }

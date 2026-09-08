@@ -134,7 +134,7 @@ function Maanedslinje({ vis, dag, aktiv, godkjent }) {
   const x = (d) => ((d - 1) / 31) * w;
   const naa = RADER.find((r) => r.dag === dag);
   return (
-    <div ref={ref} className="relative mt-7 shrink-0 sm:mt-8" style={{ height: 44, opacity: vis ? 1 : 0, transition: `opacity 600ms ${EASE}` }} aria-hidden="true" data-testid="v4f-tidslinje">
+    <div ref={ref} className="relative mt-6 shrink-0 sm:mt-7" style={{ height: 44, opacity: vis ? 1 : 0, transition: `opacity 600ms ${EASE}` }} aria-hidden="true" data-testid="v4f-tidslinje">
       {/* linjen tegnes fra venstre */}
       <span className="absolute left-0 right-0 top-[9px] h-px" style={{ background: 'rgba(21,19,15,0.16)', transformOrigin: 'left', transform: vis ? 'scaleX(1)' : 'scaleX(0)', transition: `transform 900ms ${EASE} 100ms` }} />
       {/* dagsmerker */}
@@ -232,7 +232,7 @@ export default function ForvaltningScene() {
       const kortH = kortRef.current.offsetHeight;
       // Desktop: kortet bryter ut ved saksraden. Mobil: rett under saksraden (radene etter er ennå usynlige).
       const midt = smal ? rad.bottom - fig.top + 10 : rad.top - fig.top - 10;
-      const maks = ref.current.offsetHeight - kortH - 8;
+      const maks = ref.current.offsetHeight - kortH - 16;
       setKortTop(Math.round(Math.max(0, Math.min(midt, maks))));
     };
     mal();
@@ -246,6 +246,9 @@ export default function ForvaltningScene() {
 
   return (
     <figure ref={figRef} className="relative m-0" data-testid="v4f-scene-wrap">
+      {/* Produktflaten — samme språk som filmene på forsiden: en rolig, avrundet flate med hårlinje og myk skygge.
+          Alt (boligen, måneden, valget ditt) skjer INNE i flaten — ingenting flyter løst på canvasen. */}
+      <div className="relative overflow-hidden rounded-[22px]" style={{ background: '#FBFAF8', boxShadow: '0 0 0 1px rgba(21,19,15,0.07), 0 48px 100px -56px rgba(21,19,15,0.4)' }} data-testid="v4f-ramme">
       <div
         ref={ref}
         className="relative"
@@ -254,7 +257,7 @@ export default function ForvaltningScene() {
         data-testid="v4f-scene"
       >
         {/* ── Boligen — ekte Bergen-hjem, adressen står på bildet ── */}
-        <div className="relative aspect-[16/10] overflow-hidden rounded-[20px] sm:aspect-[16/7] lg:aspect-[16/6.4]" style={{ background: T.flate, boxShadow: '0 0 0 1px rgba(21,19,15,0.06)', opacity: inne ? 1 : 0, transform: inne ? 'none' : 'translateY(10px) scale(0.995)', transition: `opacity 700ms ${EASE}, transform 900ms ${EASE}` }} data-testid="v4f-bolig">
+        <div className="relative aspect-[16/10] overflow-hidden sm:aspect-[16/7] lg:aspect-[16/5.6]" style={{ background: T.flate, opacity: inne ? 1 : 0, transform: inne ? 'none' : 'scale(1.015)', transition: `opacity 900ms ${EASE}, transform 1400ms ${EASE}` }} data-testid="v4f-bolig">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={FOTO.src} srcSet={FOTO.srcSet} sizes="(min-width: 1024px) 60vw, 100vw" alt="" className="absolute inset-0 h-full w-full select-none object-cover" style={{ objectPosition: '50% 58%' }} draggable={false} />
           <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[62%]" style={{ background: 'linear-gradient(180deg, rgba(21,19,15,0) 0%, rgba(21,19,15,0.3) 45%, rgba(21,19,15,0.66) 100%)' }} />
@@ -273,6 +276,7 @@ export default function ForvaltningScene() {
           </div>
         </div>
 
+        <div className="px-5 pb-5 sm:px-7 sm:pb-6">
         {/* ── Måneden som linje ── */}
         <Maanedslinje vis={tid} dag={dag} aktiv={aktiv} godkjent={godkjent} />
 
@@ -287,7 +291,7 @@ export default function ForvaltningScene() {
             return (
               <li key={r.fase} ref={r.sak ? radRef : undefined} className={`relative ${r.skjulMobil ? 'hidden sm:block' : ''}`} style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(12px)', transition: `opacity 560ms ${EASE}, transform 640ms ${SPRETT}` }}>
                 <span aria-hidden="true" className="absolute -inset-x-3 inset-y-0.5 rounded-[12px]" style={{ background: 'rgba(212,150,255,0.11)', opacity: erAktiv ? 1 : 0, transition: `opacity 500ms ${EASE}` }} />
-                <div className="relative grid grid-cols-[16px_minmax(0,1fr)_auto] items-start gap-x-3 sm:grid-cols-[60px_16px_minmax(0,1fr)_auto]" style={{ paddingTop: 12, paddingBottom: 12 }}>
+                <div className="relative grid grid-cols-[16px_minmax(0,1fr)_auto] items-start gap-x-3 sm:grid-cols-[60px_16px_minmax(0,1fr)_auto]" style={{ paddingTop: 11, paddingBottom: 11 }}>
                   <span className="hidden whitespace-nowrap pt-[3px] text-[13px] tabular-nums sm:block" style={{ color: SVAK }}>{r.dato}</span>
                   <span className="flex justify-center pt-[7px]"><Prikk tilstand={tilstand} /></span>
                   <span className="min-w-0">
@@ -347,6 +351,7 @@ export default function ForvaltningScene() {
           <span data-testid="v4f-scene-tekst">Én måned. Ett valg var ditt. Resten gjorde DigiHome.</span>
           <button type="button" onClick={replay} className="shrink-0 underline underline-offset-4 transition-colors hover:text-[#15130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" style={{ textDecorationColor: 'rgba(21,19,15,0.3)', pointerEvents: ferdig ? 'auto' : 'none' }} tabIndex={ferdig ? 0 : -1} data-testid="v4f-replay">Spill igjen</button>
         </div>
+        </div>
       </div>
 
       {/* ── Kortet — det eneste mørke objektet: ikke en regning, men et menneske. Hvem som bor hos deg, bestemmer du. ── */}
@@ -358,7 +363,7 @@ export default function ForvaltningScene() {
           background: T.charcoal,
           color: OFF,
           boxShadow: '0 40px 80px -30px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px rgba(21,19,15,0.18)',
-          ...(smal ? { left: 0, right: 0, top: kortTop == null ? '58%' : kortTop } : { right: -28, width: 324, top: kortTop == null ? '40%' : kortTop }),
+          ...(smal ? { left: 12, right: 12, top: kortTop == null ? '58%' : kortTop } : { right: 20, width: 324, top: kortTop == null ? '40%' : kortTop }),
           opacity: visKort ? 1 : 0,
           pointerEvents: visKort ? 'auto' : 'none',
           transform: visKort ? 'none' : godkjent ? 'translate(-16px, -8px) scale(0.96)' : 'translateX(40px) scale(0.98)',
@@ -411,6 +416,7 @@ export default function ForvaltningScene() {
             </ol>
           </div>
         )}
+      </div>
       </div>
     </figure>
   );

@@ -10,6 +10,7 @@ import FaqSeksjon from '../FaqSeksjon';
 import AvslutningSeksjon from '../AvslutningSeksjon';
 import { ForvaltningHero, LofteSeksjon, TeamSeksjon, PRIS_SVAR } from './ForvaltningDeler';
 import EierSitater from './EierSitater';
+import InnsynSeksjon from './InnsynSeksjon';
 
 /* ---------------------------------------------------------------------------
    ForvaltningV4 — undersiden for full forvaltning.
@@ -19,10 +20,11 @@ import EierSitater from './EierSitater';
    system som ryggrad — og du ser alt som skjer. Løftet er derfor ikke
    «autopilot», men arbeidsdelingen: «Vi tar jobben. Du bestemmer.»
 
-   Rekkefølge: hero (én mørk flate: løftet + måneden som spiller + rollene) →
-   logoene → arbeidsdelingen (vi / du) → teamet (én fast forvalter, et helt
-   team bak — roller, ikke én navngitt person) → fra eierne (ett sitat om
-   gangen) → slik kommer du i gang → spørsmål og svar → avslutning.
+   Rekkefølge: hero (løftet + produktflaten: måneden som spiller) → logoene →
+   arbeidsdelingen (31 ting vi gjorde / 1 beslutning du tok, så vi / du) →
+   innsyn (eierens egen oversikt) → teamet (én fast forvalter, et helt team
+   bak — roller, ikke én navngitt person) → fra eierne (ett sitat om gangen)
+   → slik kommer du i gang → spørsmål og svar → avslutning.
 
    Kun Bergen og omegn. Aldri pris (avtales individuelt), ingen løfter om
    avkastning. Handlingen er et uforpliktende tilbud — eller en samtale.
@@ -59,6 +61,7 @@ export default function ForvaltningV4() {
         <ForvaltningHero />
         <TillitStripe />
         <LofteSeksjon />
+        <InnsynSeksjon />
         <TeamSeksjon />
         <EierSitater />
         <StegSeksjon tittel={['Slik kommer', 'du i gang.']} under="Én samtale. Ett tilbud. Så tar vi over." steg={STEG} person={null} testid="v4f" />

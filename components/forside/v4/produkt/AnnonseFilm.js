@@ -73,7 +73,7 @@ const AUTO = {
   /* Åpningen: tom flate → feltet kommer opp (START) → skrives, listen faller ned, første rad markeres (SKRIV) → Enter:
      listen lukker, adressen står (VELG) → feltet glir opp, fasaden og faktaene kommer, knappen (FUNNET) → pekeren glir
      inn (~1,3 s), hviler (HOVER), trykker (TRYKK_START) */
-  [F.START]: 800, [F.SKRIV]: SKRIV_FORSPRANG + TAST_SUM + 560, [F.VELG]: 660, [F.FUNNET]: 2350, [F.PEKER]: 1150, [F.HOVER]: 420, [F.TRYKK_START]: 340,
+  [F.START]: 800, [F.SKRIV]: SKRIV_FORSPRANG + TAST_SUM + 560, [F.VELG]: 920, [F.FUNNET]: 2350, [F.PEKER]: 1150, [F.HOVER]: 420, [F.TRYKK_START]: 340,
   /* Feltet vokser ut av knappen, fasaden glir ned i det, pekeren går ut (FELT). Pekeren kommer tilbake med bunken og glir
      til feltet (DRA). Slipp: bunken spretter ut (SLIPP), hviler (BUNKE), sorterer seg med romnavn (BILDER). */
   [F.FELT]: 1500, [F.DRA]: 1450, [F.SLIPP]: 1100, [F.BUNKE]: 500, [F.BILDER]: 2600,
@@ -323,74 +323,80 @@ function Opplastingsikon({ size = 22, color = 'rgba(21,19,15,0.6)' }) {
   );
 }
 
-/* ── Storskriften: adressen er overskriften. ──
-   Ikke et skjemafelt, men adressen skrevet stort i display-type midt i flaten, med markør og en hårlinje under som
-   vokser med teksten (dette ER et felt — på vår måte). Dempet «Adressen din» står der til første tegn. Forslagene
-   faller ned under i rolig 17 px etter tre tegn; første rad får ↵ når treffet er eksakt. VELG: raden trykkes, listen
-   lukker, «5015 Bergen» kommer under. FUNNET: hele blokken glir opp og krymper (kun transform) til boligarkets hode,
-   der Arkhode tar over i ekte 22 px — samme ord, samme sted. Venstrejustert ved fast x, så teksten vokser til høyre
-   uten å flytte seg. `fs` = skriftstørrelsen; `til` = hvor blokken skal (arkets hode); `kompakt` = mobil. */
-function Storskrift({ fase, ov, n, fs, x, y, til, kompakt = false, listeW = 560 }) {
+/* ── Adressefeltet: ett felt, som i produktet. ──
+   Åpningen er et ekte adressefelt midt i flaten — hvitt, avrundet, en nål til venstre, en pil til høyre, markør som
+   blinker. Ingen plassholdertekst: feltet i seg selv sier «skriv adressen». Bokstavene kommer én og én; kanten går
+   lilla mens det skrives; forslagene faller ned som et kort under feltet etter tre tegn, første rad får ↵ når treffet
+   er eksakt. VELG: raden trykkes, listen lukker, «5015 Bergen» kommer inn i feltet og pilen blir lilla med hake.
+   FUNNET: feltet glir opp og tones bort idet boligarket kommer inn med adressen som hode.
+   `x`/`y` = feltets øvre venstre hjørne, `w` = bredden, `kompakt` = mobil. */
+function Storskrift({ fase, ov, n, x, y, w = 600, til, inne = true, kompakt = false }) {
   const skriver = fase === F.SKRIV;
   const valgt = fase >= F.VELG;
   const funnet = fase >= F.FUNNET;
-  const vis = fase >= F.START && fase < F.FUNNET;
+  /* Kommer rolig opp idet filmen faktisk starter (`inne`) — sammen med kartet bak. */
+  const vis = (inne || fase > F.START) && fase >= F.START && fase < F.FUNNET;
   const skrevet = ADRESSE_SKREVET.slice(0, n);
   const rader = skriver ? forslagFor(n) : fase === F.VELG ? forslagFor(TAST.length) : [];
   const apen = skriver && rader.length > 0;
   const markert = (skriver && n >= TAST.length) || fase === F.VELG;
-  const blink = skriver && (n === 0 || n >= TAST.length);
+  const blink = (fase === F.START || skriver) && (n === 0 || n >= TAST.length);
   const lav = skrevet.toLowerCase();
-  const radH = kompakt ? 44 : 50;
-  /* Morfen til arkets hode: skaler ned fra fs til 22 px (16 på mobil) om øvre venstre hjørne, flytt dit hodet står */
-  const maal = kompakt ? 16 : 22;
-  const sc = maal / fs;
-  const morf = til ? `translate(${til.x - x}px, ${til.y - y}px) scale(${sc})` : `translateY(-24px) scale(0.9)`;
-  const kw = Math.max(2, Math.round(fs / 30)); const kh = Math.round(fs * 0.92);
-  const karetVis = fase >= F.START && fase <= F.SKRIV;
-  const karet = (venstre = false) => (
-    <span aria-hidden="true" className="inline-block shrink-0 self-center rounded-[1px] align-middle" style={{ width: kw, height: kh, marginRight: venstre ? Math.round(fs * 0.1) : 0, marginLeft: venstre ? 0 : Math.round(fs * 0.06), background: T.ink, opacity: karetVis ? 1 : 0, animation: blink && !ov ? 'v4-caret 1.05s steps(1) infinite' : 'none', transition: `opacity 200ms ${EASE}`, verticalAlign: 'baseline', transform: `translateY(${Math.round(fs * 0.08)}px)` }} />
-  );
-  const tom = n === 0 && !valgt;
+  const radH = kompakt ? 46 : 52;
+  /* Mål */
+  const hF = kompakt ? 54 : 64;                 // feltets høyde
+  const fsF = kompakt ? 16 : 20;                // teksten i feltet
+  const padL = kompakt ? 42 : 58;               // tekst starter etter nålen
+  const knapp = kompakt ? 38 : 44;              // pil-knappen
+  const tekstW = Math.max(60, w - padL - knapp - (hF - knapp) / 2 - (kompakt ? 6 : 12));   // teksten stopper før knappen
+  const tekstTop = Math.round((hF - fsF * 1.25) / 2);
+  /* FUNNET: feltet glir opp og tones bort i ett; boligarket (med adressen som hode) kommer inn under. Etter toningen
+     skjules laget helt (visibility) — teksten i feltet kan aldri ligge igjen over arkets hode. */
+  const kantFarge = valgt ? 'rgba(21,19,15,0.10)' : skriver ? T.lilla : 'rgba(21,19,15,0.14)';
   return (
     <div
       className="absolute z-[8]"
-      style={{ left: x, top: y, transformOrigin: '0 0', transform: funnet ? morf : 'none', opacity: vis ? 1 : 0, transition: ov ? 'none' : funnet ? `transform 900ms ${MORF}, opacity 420ms ${EASE} 300ms` : fase === F.START ? `opacity 700ms ${EASE} 150ms` : `opacity 200ms ${EASE}`, pointerEvents: 'none', willChange: 'transform, opacity' }}
+      style={{ left: x, top: y, width: w, height: hF, transform: funnet ? 'translateY(-28px)' : vis ? 'none' : 'translateY(14px)', opacity: vis ? 1 : 0, visibility: vis ? 'visible' : 'hidden', transition: ov ? 'none' : funnet ? `transform 520ms ${EASE}, opacity 300ms ${EASE}, visibility 0s linear 320ms` : fase === F.START ? `opacity 600ms ${EASE} 120ms, transform 700ms ${UT} 120ms` : `opacity 200ms ${EASE}, visibility 0s linear 200ms`, pointerEvents: 'none', willChange: 'transform, opacity' }}
       aria-hidden={!vis}
       data-testid="v4-storskrift"
       data-tekst={skrevet}
       data-apen={apen ? '1' : '0'}
     >
-      {/* Linjen: én hårlinje under teksten. Plassholder, skrevet tekst og en usynlig breddeholder ligger i SAMME
-          grid-celle — bredden er alltid den bredeste av dem, så linjen aldri kollapser eller hopper når første tegn
-          kommer, og plassholderen kan aldri brytes over to linjer. Markøren står inne i cellen: før plassholderen når
-          feltet er tomt, rett etter siste tegn når det skrives. */}
-      <div className="relative inline-grid" style={{ paddingBottom: kompakt ? 8 : 12, boxShadow: `inset 0 -1px 0 ${valgt ? 'rgba(21,19,15,0.16)' : skriver ? T.lilla : 'rgba(21,19,15,0.22)'}`, transition: `box-shadow 300ms ${EASE}`, ...display, fontSize: fs, lineHeight: 1, letterSpacing: '-0.035em', color: T.ink }}>
-        {/* Plassholderen — står til første tegn, går så rolig opp og ut */}
-        <span className="whitespace-nowrap" style={{ gridArea: '1 / 1', color: 'rgba(21,19,15,0.26)', opacity: tom ? 1 : 0, transform: tom ? 'none' : 'translateY(-10px)', transition: ov ? 'none' : tom ? `opacity 400ms ${EASE}, transform 0ms linear` : `opacity 160ms ${EASE}, transform 380ms ${EASE}`, pointerEvents: 'none' }} aria-hidden="true">
-          {karet(true)}Adressen din
-        </span>
-        {/* Det skrevne — kommer inn der plassholderen sto, med markøren etter siste tegn */}
-        <span className="whitespace-nowrap" style={{ gridArea: '1 / 1', opacity: tom ? 0 : 1, transition: `opacity 120ms ${EASE}` }}>
-          {valgt ? ADRESSE_SKREVET : skrevet}
-          {!valgt && karet()}
-        </span>
-        {/* Breddeholder: linjen er aldri smalere enn plassholderen før adressen er valgt */}
-        {!valgt && <span className="invisible whitespace-nowrap" style={{ gridArea: '1 / 1' }} aria-hidden="true">Adressen din</span>}
+      {/* Rammen — tones bort når teksten glir til hodet */}
+      <div className="absolute inset-0 rounded-[18px]" style={{ background: '#FFFFFF', boxShadow: `inset 0 0 0 ${skriver ? 1.5 : 1}px ${kantFarge}, 0 18px 50px -26px rgba(21,19,15,${skriver || valgt ? 0.32 : 0.22})`, opacity: funnet ? 0 : 1, transition: ov ? 'none' : funnet ? `opacity 220ms ${EASE}` : `box-shadow 320ms ${EASE}` }} />
+      {/* Nålen */}
+      <span aria-hidden="true" className="absolute flex items-center justify-center" style={{ left: kompakt ? 14 : 20, top: 0, height: hF, color: skriver || valgt ? T.ink : 'rgba(21,19,15,0.42)', opacity: funnet ? 0 : 1, transition: ov ? 'none' : `color 300ms ${EASE}, opacity 200ms ${EASE}` }}>
+        <svg width={kompakt ? 18 : 20} height={kompakt ? 18 : 20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+      </span>
+      {/* Teksten — det som skrives, med markøren etter siste tegn; stedet kommer inn når raden er valgt */}
+      <div className="absolute flex items-center whitespace-nowrap" style={{ left: padL, top: tekstTop, width: tekstW, height: Math.round(fsF * 1.25), fontSize: fsF, lineHeight: 1.25, letterSpacing: '-0.012em', color: T.ink, overflow: 'hidden' }}>
+        <span className="shrink-0 font-medium">{valgt ? ADRESSE_SKREVET : skrevet}</span>
+        <span style={{ color: 'rgba(21,19,15,0.48)', fontSize: kompakt ? 13 : fsF, opacity: valgt ? 1 : 0, maxWidth: valgt ? 260 : 0, minWidth: 0, flex: '0 1 auto', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', whiteSpace: 'nowrap', transition: ov ? 'none' : valgt ? `opacity 380ms ${EASE} 160ms, max-width 520ms ${UT} 120ms` : 'none' }} data-testid="v4-storskrift-sted">, {ADRESSE_FULL.slice(ADRESSE_SKREVET.length + 2)}</span>
+        {!valgt && (
+          <span aria-hidden="true" className="inline-block shrink-0 rounded-[1px]" style={{ width: 2, height: Math.round(fsF * 1.15), marginLeft: n === 0 ? 1 : 2, background: T.ink, opacity: fase >= F.START && fase <= F.SKRIV ? 1 : 0, animation: blink && !ov ? 'v4-caret 1.05s steps(1) infinite' : 'none', transition: `opacity 200ms ${EASE}` }} />
+        )}
       </div>
-      {/* Stedet — kommer under når forslaget er valgt */}
-      <p className={`${kompakt ? 'mt-3 text-[15px]' : 'mt-4 text-[22px]'} font-medium tracking-[-0.01em]`} style={{ color: 'rgba(21,19,15,0.5)', opacity: valgt ? 1 : 0, transform: valgt ? 'none' : 'translateY(6px)', transition: ov ? 'none' : valgt ? `opacity 420ms ${EASE} 200ms, transform 520ms ${UT} 200ms` : 'none' }} aria-hidden={!valgt} data-testid="v4-storskrift-sted">{ADRESSE_FULL.slice(ADRESSE_SKREVET.length + 2)}</p>
-      {/* Forslagene — hårlinjerader, ↵ på første når treffet er eksakt */}
-      <ul className={`absolute left-0 overflow-hidden ${kompakt ? 'top-[calc(100%-4px)]' : 'top-[calc(100%-14px)]'}`} style={{ width: listeW, height: rader.length ? rader.length * radH : 0, opacity: apen ? 1 : 0, transform: apen ? 'none' : 'translateY(-4px)', transition: ov ? 'none' : apen ? `opacity 220ms ${EASE}, transform 260ms ${UT}, height 240ms ${UT}` : `opacity 200ms ${EASE} 170ms, transform 240ms ${EASE} 170ms`, pointerEvents: 'none', willChange: 'height, opacity' }} aria-hidden={!apen} data-testid="v4-film-forslag" data-n={rader.length}>
+      {/* Pilen — grå til det er noe å sende, ink mens det skrives, lilla med hake når boligen er valgt */}
+      <span aria-hidden="true" className="absolute flex items-center justify-center rounded-full" style={{ right: (hF - knapp) / 2, top: (hF - knapp) / 2, width: knapp, height: knapp, background: valgt ? T.lilla : n > 0 ? T.ink : 'rgba(21,19,15,0.08)', color: valgt || n > 0 ? '#FFFFFF' : 'rgba(21,19,15,0.35)', opacity: funnet ? 0 : 1, transform: valgt ? 'scale(1)' : 'scale(1)', transition: ov ? 'none' : `background-color 320ms ${EASE}, color 320ms ${EASE}, opacity 200ms ${EASE}` }} data-valgt={valgt ? '1' : '0'}>
+        <span className="absolute inset-0 flex items-center justify-center" style={{ opacity: valgt ? 0 : 1, transform: valgt ? 'translateX(6px)' : 'none', transition: `opacity 200ms ${EASE}, transform 260ms ${EASE}` }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+        </span>
+        <span className="absolute inset-0 flex items-center justify-center" style={{ opacity: valgt ? 1 : 0, transform: valgt ? 'scale(1)' : 'scale(0.6)', transition: valgt ? `opacity 260ms ${EASE} 120ms, transform 480ms cubic-bezier(0.22, 1.08, 0.36, 1) 120ms` : 'none' }}><Hake size={13} /></span>
+      </span>
+      {/* Forslagene — et kort under feltet, samme bredde; ↵ på første når treffet er eksakt */}
+      <ul className="absolute left-0 overflow-hidden rounded-[16px]" style={{ top: hF + 8, width: w, height: rader.length ? rader.length * radH + 8 : 0, padding: rader.length ? 4 : 0, background: '#FFFFFF', boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.08), 0 24px 60px -28px rgba(21,19,15,0.35)', opacity: apen ? 1 : 0, transform: apen ? 'none' : 'translateY(-6px)', transition: ov ? 'none' : apen ? `opacity 220ms ${EASE}, transform 300ms ${UT}, height 260ms ${UT}` : `opacity 180ms ${EASE} 120ms, transform 240ms ${EASE} 120ms, height 240ms ${EASE} 120ms`, pointerEvents: 'none', willChange: 'height, opacity' }} aria-hidden={!apen} data-testid="v4-film-forslag" data-n={rader.length}>
         {rader.map((r, i) => {
           const treff = r.t.toLowerCase().startsWith(lav) ? r.t.slice(0, lav.length) : '';
           const aktiv = i === 0 && markert;
           return (
-            <li key={`${r.t}-${r.s}`} className="flex items-center justify-between gap-4 pr-3" style={{ height: radH, boxShadow: 'inset 0 -1px 0 rgba(21,19,15,0.08)', background: aktiv ? (fase === F.VELG ? 'rgba(21,19,15,0.06)' : 'rgba(21,19,15,0.035)') : 'transparent', paddingLeft: aktiv ? 10 : 0, transition: `background 160ms ${EASE}, padding 200ms ${EASE}` }} data-aktiv={aktiv ? '1' : '0'}>
-              <span className={`truncate ${kompakt ? 'text-[15px]' : 'text-[17px]'}`} style={{ color: T.ink }}><span className="font-medium">{treff}</span>{r.t.slice(treff.length)}</span>
+            <li key={`${r.t}-${r.s}`} className="flex items-center justify-between gap-4 rounded-[12px]" style={{ height: radH, paddingLeft: kompakt ? 12 : 16, paddingRight: kompakt ? 10 : 12, background: aktiv ? (fase === F.VELG ? 'rgba(21,19,15,0.08)' : 'rgba(21,19,15,0.045)') : 'transparent', transition: `background 180ms ${EASE}` }} data-aktiv={aktiv ? '1' : '0'}>
+              <span className={`flex min-w-0 items-center gap-3 ${kompakt ? 'text-[15px]' : 'text-[16.5px]'}`} style={{ color: T.ink }}>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'rgba(21,19,15,0.38)', flexShrink: 0 }}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+                <span className="truncate"><span className="font-medium">{treff}</span>{r.t.slice(treff.length)}</span>
+              </span>
               <span className="flex shrink-0 items-center gap-3">
-                <span className={kompakt ? 'text-[13px]' : 'text-[14px]'} style={{ color: 'rgba(21,19,15,0.5)' }}>{r.s}</span>
-                <span aria-hidden="true" className="inline-flex h-[20px] w-[22px] items-center justify-center rounded-[5px] text-[11px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.16)', color: 'rgba(21,19,15,0.55)', opacity: aktiv ? 1 : 0, transition: `opacity 160ms ${EASE}` }}>↵</span>
+                <span className={kompakt ? 'text-[12px]' : 'text-[14px]'} style={{ color: 'rgba(21,19,15,0.5)' }}>{r.s}</span>
+                {!kompakt && <span aria-hidden="true" className="inline-flex h-[20px] w-[22px] items-center justify-center rounded-[5px] text-[11px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.16)', color: 'rgba(21,19,15,0.55)', opacity: aktiv ? 1 : 0, transition: `opacity 160ms ${EASE}` }}>↵</span>}
               </span>
             </li>
           );
@@ -400,12 +406,62 @@ function Storskrift({ fase, ov, n, fs, x, y, til, kompakt = false, listeW = 560 
   );
 }
 
+/* ── Kartet bak adressefeltet ──
+   Bergen sentrum som hårlinjer (OSM → scripts/lag-kart.py), adressen i kartets midtpunkt. Kameraet står aldri helt
+   stille: START — kartet toner inn og «setter seg» (litt mindre → hvilestørrelse). SKRIV — et knapt merkbart driv
+   innover mens det skrives (kartet lever). VELG — zoomer inn mot adressen (expo-out, det meste av farten i første halve
+   sekund) og nålen faller på plass idet farten går ut av zoomen; skyggen lander, ringen puster to ganger. FUNNET —
+   kartet fortsetter det siste stykket innover mens det tones bort, så bevegelsen fortsetter inn i boligarket uten brå
+   stopp. `inne` = filmen har faktisk startet (ellers ligger kartet klart, usynlig). Punktet (adressen) ligger under
+   feltet — `pkt` = {x, y} i rammen. Bildet rendres 1,5× rammen og skaleres ned i starten, så det er skarpt zoomet inn.
+   Kun transform/opacity. */
+function Kart({ fase, ov, W, H, pkt, inne = true, kompakt = false }) {
+  const startet = inne || fase > F.START;
+  const vis = startet && fase >= F.START && fase < F.FUNNET;
+  const zoom = fase >= F.VELG;
+  const bort = fase >= F.FUNNET;
+  const iw = Math.round(Math.max(W, H * 1.6) * 1.5); const ih = Math.round(iw / 1.6);
+  const s0 = 1 / 1.5; const s1 = kompakt ? 0.98 : 0.92;
+  let sk; let tr;
+  if (!startet) { sk = s0 * 0.955; tr = 'none'; }
+  else if (fase === F.START) { sk = s0; tr = `transform 1600ms ${EASE}`; }
+  else if (fase === F.SKRIV) { sk = s0 * 1.035; tr = `transform ${AUTO[F.SKRIV] + 500}ms cubic-bezier(0.3, 0.05, 0.7, 0.95)`; }
+  else if (fase === F.VELG) { sk = s1; tr = `transform 1300ms ${EASE}`; }
+  else { sk = s1 * 1.06; tr = `transform 900ms cubic-bezier(0.25, 0.1, 0.25, 1)`; }
+  if (ov) tr = 'none';
+  const opTr = ov ? 'none' : bort ? 'opacity 520ms cubic-bezier(0.4, 0, 0.6, 1), visibility 0s linear 520ms' : `opacity 1300ms ${EASE}`;
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[2] overflow-hidden" style={{ opacity: vis ? 1 : 0, visibility: bort ? 'hidden' : 'visible', transition: opTr }} data-testid="v4-kart" data-zoom={zoom ? '1' : '0'}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={kompakt ? '/v4/annonse/bergen-kart-m.svg' : '/v4/annonse/bergen-kart.svg'}
+        alt=""
+        width={iw}
+        height={ih}
+        draggable={false}
+        className="absolute select-none"
+        style={{ left: pkt.x - iw / 2, top: pkt.y - ih / 2, width: iw, height: ih, maxWidth: 'none', transform: `scale(${sk})`, transformOrigin: '50% 50%', transition: tr, willChange: 'transform' }}
+      />
+      {/* Myk vignett mot kantene, så kartet leser som bakgrunn og feltet står klart */}
+      <div className="absolute inset-0" style={{ background: kompakt
+        ? `radial-gradient(ellipse at ${Math.round((pkt.x / W) * 100)}% ${Math.round((pkt.y / H) * 100)}%, rgba(251,250,248,0) 44%, rgba(251,250,248,0.5) 74%, ${PAPIR} 100%)`
+        : `radial-gradient(ellipse at ${Math.round((pkt.x / W) * 100)}% ${Math.round((pkt.y / H) * 100)}%, rgba(251,250,248,0) 30%, rgba(251,250,248,0.55) 62%, ${PAPIR} 100%)` }} />
+      {/* Nålen: faller på plass på adressen idet zoomen bremser (VELG). Skyggen lander like etter, ringen puster to ganger. */}
+      <div className="absolute" style={{ left: pkt.x, top: pkt.y }} data-testid="v4-kart-naal" data-vis={zoom ? '1' : '0'}>
+        <span className="absolute" style={{ left: -9, top: -3, width: 18, height: 6, borderRadius: '50%', background: 'rgba(21,19,15,0.16)', opacity: zoom ? 1 : 0, transform: zoom ? 'scale(1)' : 'scale(0.4)', transition: ov ? 'none' : zoom ? `opacity 320ms ${EASE} 560ms, transform 520ms ${EASE} 560ms` : 'none' }} />
+        <span className="absolute rounded-full" style={{ left: -22, top: -22, width: 44, height: 44, boxShadow: `inset 0 0 0 1.5px ${T.lilla}`, opacity: 0, animation: zoom && !ov ? `v4-kart-puls 1400ms ${EASE} 600ms 2` : 'none' }} />
+        <span className="absolute rounded-full" style={{ left: -7, top: -7, width: 14, height: 14, background: T.lilla, boxShadow: '0 0 0 3px #FFFFFF, 0 6px 14px -6px rgba(21,19,15,0.5)', opacity: zoom ? 1 : 0, transform: zoom ? 'translateY(0) scale(1)' : 'translateY(-26px) scale(0.6)', transition: ov ? 'none' : zoom ? `opacity 220ms ${EASE} 240ms, transform 640ms ${LANDING} 240ms` : 'none' }} />
+      </div>
+    </div>
+  );
+}
+
 /* Boligarkets hode — adressen i ekte 22 px der storskriften lander. Tar over idet morfen er ferdig. */
 function Arkhode({ fase, r, ov, kompakt = false }) {
   const vis = fase >= F.FUNNET && fase <= F.TRYKK_START;
   const ut = fase > F.TRYKK_START;
   return (
-    <div className="absolute z-[8] flex items-baseline gap-3 whitespace-nowrap" style={{ left: r.x, top: r.y, height: r.h, opacity: vis ? 1 : 0, transform: vis ? 'none' : ut ? 'translateY(-8px)' : 'none', transition: ov ? 'none' : vis ? `opacity 400ms ${EASE} ${fase === F.FUNNET ? 620 : 0}ms` : `opacity 240ms ${EASE}, transform 320ms ${EASE}`, pointerEvents: 'none' }} aria-hidden={!vis} data-testid="v4-arkhode">
+    <div className="absolute z-[8] flex items-baseline gap-3 whitespace-nowrap" style={{ left: r.x, top: r.y, height: r.h, opacity: vis ? 1 : 0, transform: vis ? 'none' : ut ? 'translateY(-8px)' : 'translateY(10px)', transition: ov ? 'none' : vis ? `opacity 460ms ${EASE} ${fase === F.FUNNET ? 560 : 0}ms, transform 760ms ${UT} ${fase === F.FUNNET ? 560 : 0}ms` : `opacity 240ms ${EASE}, transform 320ms ${EASE}`, pointerEvents: 'none' }} aria-hidden={!vis} data-testid="v4-arkhode">
       <span className={`${kompakt ? 'text-[16px]' : 'text-[22px]'} font-medium tracking-[-0.015em]`} style={{ color: T.ink }}>{ADRESSE_SKREVET}</span>
       <span className={kompakt ? 'text-[13px]' : 'text-[15px]'} style={{ color: 'rgba(21,19,15,0.5)' }}>{ADRESSE_FULL.slice(ADRESSE_SKREVET.length + 2)}</span>
       <span className="inline-flex h-5 w-5 items-center justify-center self-center rounded-full" style={{ background: 'rgba(31,157,85,0.12)', color: '#166B3C', opacity: vis ? 1 : 0, transform: vis ? 'none' : 'scale(0.6)', transition: ov ? 'none' : vis ? `opacity 300ms ${EASE} 1000ms, transform 500ms ${LANDING} 1000ms` : 'none' }}><Hake size={10} /></span>
@@ -417,7 +473,12 @@ function Arkhode({ fase, r, ov, kompakt = false }) {
    glir til arkets hode når boligen er funnet. */
 function AdresseScene({ fase, L, ov, inne }) {
   const n = useSkriving(fase);
-  return <Storskrift fase={fase} ov={ov} n={inne || fase > F.START ? n : 0} fs={L.apn.storFs} x={L.apn.stor.x} y={L.apn.stor.y} til={L.apn.hode} />;
+  return (
+    <>
+      <Kart fase={fase} ov={ov} W={L.hel.w} H={L.hel.h} pkt={{ x: L.apn.stor.x + L.apn.stor.w / 2, y: L.apn.stor.y + 64 + Math.round(L.hel.h * 0.16) }} inne={inne} />
+      <Storskrift fase={fase} ov={ov} n={inne || fase > F.START ? n : 0} x={L.apn.stor.x} y={L.apn.stor.y} w={L.apn.stor.w} til={L.apn.hode} inne={inne} />
+    </>
+  );
 }
 
 /* Faktaene — det systemet vet om adressen, rad for rad med kilden under. Glir inn i takt etter at feltet har gjort plass. */
@@ -1003,8 +1064,10 @@ function layout(W) {
   const fakta = { x: sx + bildeW + 28, y: funnet.y, w: SW - bildeW - 28 };
   /* Storskriften: adressen skrives stort midt i HELE rammen (tekstspalten er ikke kommet), venstrejustert ved fast x
      så teksten vokser til høyre. Størrelsen følger rammen (84 px ved 1400). */
-  const storFs = Math.round(Math.max(56, Math.min(84, W * 0.06)));
-  const skrift = { x: Math.round(W / 2 - storFs * 4.15), y: Math.round(H / 2 - storFs * 0.62) };
+  /* Adressefeltet: sentrert, litt over midten så forslagskortet får plass under. Bredde 600 (mindre i smale rammer). */
+  const feltW = Math.round(Math.min(600, W - 80));
+  const skrift = { x: Math.round((W - feltW) / 2), y: Math.round(H / 2 - 32 - Math.min(90, H * 0.08)), w: feltW };
+  const storFs = 20;
   const apn = { hode: arkHode, stor: skrift, storFs, funnet, fakta, radH: 58 };
   /* Opplastingsfeltet rundt bunken i scenen — litt mer luft nederst til linjen om bildene fra mobilen */
   const felt = { x: stabel.x - 30, y: stabel.y - 30, w: stabel.w + 60, h: stabel.h + 30 + 64 };
@@ -1341,8 +1404,7 @@ function AapningKompakt({ fase, ov, startet }) {
   const fakta = { x: m, y: bilde.y + bilde.h + 10, w: fw };
   const h = Math.max(Math.round(w * 1.1), fakta.y + radH * rader.length + 4);
   /* Storskriften på mobil: adressen stort (11 % av bredden ≈ 40 px) midt i flaten, glir til arkets hode */
-  const storFs = Math.round(Math.max(30, Math.min(44, w * 0.11)));
-  const stor = { x: m, y: Math.round(h / 2 - storFs * 0.9) };
+  const stor = { x: m, y: Math.round(h / 2 - 27 - Math.min(70, h * 0.1)), w: fw };
   const hodeR = { x: m, y: 0, w: fw, h: FH };
   /* Opplastingsfeltet og bunken (etter trykket) */
   const felt = fase >= F.FELT && fase <= F.BUNKE;
@@ -1361,7 +1423,8 @@ function AapningKompakt({ fase, ov, startet }) {
       {w > 0 && (
         <>
           {/* Storskriften: adressen skrives stort midt i flaten, glir til arkets hode når boligen er funnet */}
-          <Storskrift fase={fase} ov={ov} n={inne || fase > F.START ? n : 0} fs={storFs} x={stor.x} y={stor.y} til={hodeR} kompakt listeW={Math.min(fw, 340)} />
+          <Kart fase={fase} ov={ov} W={w} H={h} pkt={{ x: w / 2, y: stor.y + 54 + Math.round(h * 0.17) }} inne={inne} kompakt />
+          <Storskrift fase={fase} ov={ov} n={inne || fase > F.START ? n : 0} x={stor.x} y={stor.y} w={stor.w} til={hodeR} inne={inne} kompakt />
           <Arkhode fase={fase} r={hodeR} ov={ov} kompakt />
           {/* Faktaene under fasaden */}
           <Boligfakta fase={fase} L={null} ov={ov} rader={rader} r={fakta} radH={radH} kompakt forsinkelse={700} />
