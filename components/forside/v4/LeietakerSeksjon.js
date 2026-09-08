@@ -57,8 +57,13 @@ function SceneVideo({ aktiv }) {
   const poster = smal ? SCENE.bildeMobil : SCENE.bilde;
   return (
     <div ref={holder} className="absolute inset-0">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={poster} alt="" aria-hidden="true" draggable={false} className="absolute inset-0 h-full w-full select-none object-cover" style={{ objectPosition: SCENE.pos }} />
+      {/* Posteren: nettleseren velger 960² på smal skjerm allerede i første forespørsel (ikke via JS etter hydrering),
+          og laster den først når seksjonen nærmer seg. */}
+      <picture>
+        <source media="(max-width: 639px)" srcSet={SCENE.bildeMobil} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={SCENE.bilde} alt="" aria-hidden="true" draggable={false} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full select-none object-cover" style={{ objectPosition: SCENE.pos }} />
+      </picture>
       {!redusert && naer && (
         <video
           ref={ref}
@@ -160,7 +165,7 @@ function Merke() {
   return (
     <span aria-hidden="true" className="mb-[2px] inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full" style={{ background: '#FBFAF8', boxShadow: `0 0 0 1px ${HAIR}, 0 6px 14px -8px rgba(0,0,0,0.4)` }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/digihome-icon-purple.svg" alt="" width={11} height={11} className="h-[11px] w-[11px]" />
+      <img loading="lazy" decoding="async" src="/brand/digihome-icon-purple.svg" alt="" width={11} height={11} className="h-[11px] w-[11px]" />
     </span>
   );
 }
@@ -194,7 +199,7 @@ function Trad({ er }) {
                   <div className={`flex flex-col items-end ${gap}`}>
                     {m.type === 'bilde' ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={m.src} alt={m.alt} width={600} height={800} draggable={false} className="block w-[124px] rounded-[16px] rounded-br-[6px] object-cover sm:w-[136px]" style={{ aspectRatio: '3 / 4', boxShadow: '0 12px 30px -16px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.10)' }} data-testid="v4-trad-bilde" />
+                      <img loading="lazy" decoding="async" src={m.src} alt={m.alt} width={600} height={800} draggable={false} className="block w-[124px] rounded-[16px] rounded-br-[6px] object-cover sm:w-[136px]" style={{ aspectRatio: '3 / 4', boxShadow: '0 12px 30px -16px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.10)' }} data-testid="v4-trad-bilde" />
                     ) : (
                       <p className="max-w-[80%] rounded-[18px] rounded-br-[6px] px-4 py-2.5 text-[14.5px] leading-[1.42]" style={GLASS}>{m.t}</p>
                     )}

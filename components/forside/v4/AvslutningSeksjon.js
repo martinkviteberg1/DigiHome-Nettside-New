@@ -37,6 +37,9 @@ export default function AvslutningSeksjon({ tittel = 'Utleie på autopilot', und
           sizes="100vw"
           alt=""
           draggable={false}
+          loading="lazy"
+          decoding="async"
+          fetchPriority="low"
           className="h-full w-full select-none object-cover"
           style={{ objectPosition: '50% 35%' }}
         />

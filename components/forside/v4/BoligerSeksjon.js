@@ -67,7 +67,8 @@ function Kort({ k, form, H, prioritet }) {
           src={k.bilde}
           alt={`${k.sted} — ${[k.meta, k.modell].filter(Boolean).join(' · ')}`}
           draggable={false}
-          loading={prioritet ? 'eager' : 'lazy'}
+          loading="lazy"
+          fetchPriority={prioritet ? 'auto' : 'low'}
           decoding="async"
           className="absolute inset-0 h-full w-full object-cover group-hover:scale-[1.035]"
           style={{ transition: `transform 1400ms ${EASE}`, filter: 'saturate(0.94)' }}

@@ -7979,3 +7979,14 @@ frontend:
         -working: "NA"
         -agent: "main"
         -comment: "Skjermbilder ok på 1920 (faser 0→11) og 390 (ingen ny overflow), ingen konsollfeil. Ikke brukergodkjent; frontend-agent ikke kjørt (spør bruker først)."
+  - task: "Forside runde 2: hero-video fokus på mobil (object-position 30 %), nettbrett-kollisjon telefonstrøm/veggtekst løst, filmtempo + smoothness, Akter responsiv, ytelse (dynamic import av filmer/kino, lazy-bilder → SSR-preloads 24→2, riktig LCP-preload, <picture> for leietaker-poster)"
+    implemented: true
+    working: "NA"
+    file: "/app/components/forside/v4/HeroStage.js, /app/components/forside/v4/heroFilm.js, /app/app/page.js, /app/components/forside/v4/produkt/ProduktSeksjon.js, /app/components/forside/v4/produkt/AnnonseFilm.js, /app/components/forside/v4/produkt/filmdeler.js, /app/components/forside/v4/LeietakerSeksjon.js, /app/components/forside/v4/BoligerSeksjon.js, /app/components/forside/v4/AvslutningSeksjon.js, /app/components/forside/v4/SystemSeksjon.js, /app/components/forside/v4/FooterV4.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Skjermbilder 390/768/1024/1920 uten konsollfeil; tab-bytte laster chunks OK; preload-tellinger verifisert i rå HTML. Ikke brukergodkjent; frontend-agent ikke kjørt."

@@ -73,7 +73,7 @@ const AUTO = {
   /* Åpningen: tom flate → feltet kommer opp (START) → skrives, listen faller ned, første rad markeres (SKRIV) → Enter:
      listen lukker, adressen står (VELG) → feltet glir opp, fasaden og faktaene kommer, knappen (FUNNET) → pekeren glir
      inn (~1,3 s), hviler (HOVER), trykker (TRYKK_START) */
-  [F.START]: 900, [F.SKRIV]: SKRIV_FORSPRANG + TAST_SUM + 620, [F.VELG]: 720, [F.FUNNET]: 2500, [F.PEKER]: 1150, [F.HOVER]: 420, [F.TRYKK_START]: 340,
+  [F.START]: 800, [F.SKRIV]: SKRIV_FORSPRANG + TAST_SUM + 560, [F.VELG]: 660, [F.FUNNET]: 2350, [F.PEKER]: 1150, [F.HOVER]: 420, [F.TRYKK_START]: 340,
   /* Feltet vokser ut av knappen, fasaden glir ned i det, pekeren går ut (FELT). Pekeren kommer tilbake med bunken og glir
      til feltet (DRA). Slipp: bunken spretter ut (SLIPP), hviler (BUNKE), sorterer seg med romnavn (BILDER). */
   [F.FELT]: 1500, [F.DRA]: 1450, [F.SLIPP]: 1100, [F.BUNKE]: 500, [F.BILDER]: 2600,
@@ -331,7 +331,8 @@ function useSkriving(fase) {
 function AdresseBoks({ fase, ov, n, h = FELT_H, kompakt = false }) {
   const skriver = fase === F.SKRIV;
   const valgt = fase >= F.VELG;
-  const tekst = valgt ? ADRESSE_FULL : ADRESSE_SKREVET.slice(0, n);
+  const skrevetNaa = valgt ? ADRESSE_SKREVET : ADRESSE_SKREVET.slice(0, n);
+  const tekst = valgt ? ADRESSE_FULL : skrevetNaa;
   const rader = skriver ? forslagFor(n) : fase === F.VELG ? forslagFor(TAST.length) : [];
   const apen = skriver && rader.length > 0;
   const markert = (skriver && n >= TAST.length) || fase === F.VELG;
@@ -340,11 +341,15 @@ function AdresseBoks({ fase, ov, n, h = FELT_H, kompakt = false }) {
   return (
     <div className="relative" data-testid="v4-adresseboks" data-tekst={tekst} data-apen={apen ? '1' : '0'}>
       <div className={`flex items-center rounded-[14px] ${kompakt ? 'pl-4 pr-3' : 'pl-5 pr-4'}`} style={{ height: h, background: HVIT, boxShadow: skriver ? RING_FOKUS : RING_RO, transition: ov ? 'none' : `box-shadow 240ms ${EASE} ${skriver ? 0 : 180}ms` }}>
-        <span className={`min-w-0 truncate ${kompakt ? 'text-[15px]' : 'text-[16px]'}`} style={{ color: tekst ? T.ink : 'rgba(21,19,15,0.42)' }}>{tekst || 'Skriv inn adressen din'}</span>
+        <span className={`min-w-0 truncate ${kompakt ? 'text-[15px]' : 'text-[16px]'}`} style={{ color: tekst ? T.ink : 'rgba(21,19,15,0.42)' }}>
+          {skrevetNaa || 'Skriv inn adressen din'}
+          {/* Resten av adressen (postnummer og sted) toner inn idet forslaget velges — teksten hopper ikke */}
+          <span style={{ opacity: valgt ? 1 : 0, transition: ov ? 'none' : `opacity 380ms ${EASE} 120ms` }}>{valgt ? ADRESSE_FULL.slice(ADRESSE_SKREVET.length) : ''}</span>
+        </span>
         <span aria-hidden="true" className="ml-[1px] inline-block w-[1.5px] shrink-0 rounded-[1px]" style={{ height: kompakt ? 18 : 20, background: T.ink, opacity: skriver ? 1 : 0, animation: blink && !ov ? 'v4-caret 1.05s steps(1) infinite' : 'none' }} />
         <span className="ml-auto inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(31,157,85,0.12)', color: '#166B3C', opacity: valgt ? 1 : 0, transform: valgt ? 'none' : 'scale(0.6)', transition: ov ? 'none' : valgt ? `opacity 300ms ${EASE} 260ms, transform 520ms ${LANDING} 260ms` : 'none' }} data-testid="v4-adresse-hake" data-vis={valgt ? '1' : '0'}><Hake size={12} /></span>
       </div>
-      <ul className="absolute inset-x-0 top-[calc(100%+8px)] z-[9] overflow-hidden rounded-[14px] py-1" style={{ background: HVIT, boxShadow: '0 24px 48px -24px rgba(21,19,15,0.35), inset 0 0 0 1px rgba(21,19,15,0.08)', opacity: apen ? 1 : 0, transform: apen ? 'none' : 'translateY(-4px)', transition: ov ? 'none' : apen ? `opacity 220ms ${EASE}, transform 260ms ${UT}` : `opacity 200ms ${EASE} 170ms, transform 240ms ${EASE} 170ms`, pointerEvents: 'none' }} aria-hidden={!apen} data-testid="v4-film-forslag" data-n={rader.length}>
+      <ul className="absolute inset-x-0 top-[calc(100%+8px)] z-[9] overflow-hidden rounded-[14px] py-1" style={{ height: rader.length ? rader.length * (kompakt ? 44 : 46) + 8 : 0, background: HVIT, boxShadow: '0 24px 48px -24px rgba(21,19,15,0.35), inset 0 0 0 1px rgba(21,19,15,0.08)', opacity: apen ? 1 : 0, transform: apen ? 'none' : 'translateY(-4px)', transition: ov ? 'none' : apen ? `opacity 220ms ${EASE}, transform 260ms ${UT}, height 240ms ${UT}` : `opacity 200ms ${EASE} 170ms, transform 240ms ${EASE} 170ms`, pointerEvents: 'none', willChange: 'height, opacity' }} aria-hidden={!apen} data-testid="v4-film-forslag" data-n={rader.length}>
         {rader.map((s, i) => {
           const treff = s.t.toLowerCase().startsWith(skrevet) ? s.t.slice(0, skrevet.length) : '';
           const aktiv = i === 0 && markert;
@@ -446,7 +451,7 @@ function HoldtBunke({ vis }) {
         return (
           <div key={id} className="absolute overflow-hidden" style={{ left: p.x, top: p.y, width: MINI_W, height: MINI_H, borderRadius: MINI_R, transform: `rotate(${FAN[k]}deg)`, transformOrigin: '50% 50%', boxShadow: '0 10px 24px -12px rgba(21,19,15,0.55), 0 0 0 1px rgba(255,255,255,0.7)', zIndex: k, background: 'rgba(21,19,15,0.05)' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={KILDE[id].liten || KILDE[id].src} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: KILDE[id].posLiten || KILDE[id].pos || '50% 50%' }} draggable={false} />
+            <img loading="lazy" decoding="async" src={KILDE[id].liten || KILDE[id].src} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: KILDE[id].posLiten || KILDE[id].pos || '50% 50%' }} draggable={false} />
           </div>
         );
       })}
@@ -678,10 +683,10 @@ function Bildeflate({ fase, ov, onHold, liten = false, pos: objPos = '50% 50%', 
           <div key={b.id} className="absolute inset-0" style={{ opacity: aktiv ? 1 : 0, transition: ov ? 'none' : `opacity 600ms ${EASE}`, pointerEvents: aktiv ? 'auto' : 'none' }} aria-hidden={!aktiv} data-testid={`v4-lag-${b.id}`}>
             <div className="absolute inset-0" style={{ transform: k.transform, transformOrigin: '50% 50%', transition: k.transition, willChange: 'transform' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.src} alt={b.alt} className="absolute inset-0 h-full w-full object-cover" style={bildeStil} draggable={false} data-testid={`v4-bilde-${b.id}`} />
+              <img loading="lazy" decoding="async" src={b.src} alt={b.alt} className="absolute inset-0 h-full w-full object-cover" style={bildeStil} draggable={false} data-testid={`v4-bilde-${b.id}`} />
               {b.id === 'soverom' && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={liten ? KILDE.soverom.styletLiten : KILDE.soverom.stylet} alt="Soverommet, stylet med KI" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: objPos, clipPath: `inset(0 0 0 ${pos}%)`, transition: ov ? 'none' : `${dur ? `clip-path ${dur}ms ${MORF}, ` : ''}object-position 1100ms ${MORF}` }} draggable={false} data-testid="v4-bilde-stylet" />
+                <img loading="lazy" decoding="async" src={liten ? KILDE.soverom.styletLiten : KILDE.soverom.stylet} alt="Soverommet, stylet med KI" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: objPos, clipPath: `inset(0 0 0 ${pos}%)`, transition: ov ? 'none' : `${dur ? `clip-path ${dur}ms ${MORF}, ` : ''}object-position 1100ms ${MORF}` }} draggable={false} data-testid="v4-bilde-stylet" />
               )}
               {/* Lesingen: linjen går én gang over bildet; fokusrammer og nåler kommer der den passerer.
                   På den lille flaten (mobil) står nålene uten etikett — ordene kommer som brikker rett over bildet. */}
@@ -1080,7 +1085,7 @@ function Flis({ id, fase, L, ov }) {
   return (
     <div className="absolute overflow-hidden" style={st} aria-hidden={!inne} data-testid={`v4-mosaikk-${id}`} data-landet={inne ? '1' : '0'}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={b.src} alt={b.navn} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: b.pos || '50% 50%' }} draggable={false} />
+      <img loading="lazy" decoding="async" src={b.src} alt={b.navn} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: b.pos || '50% 50%' }} draggable={false} />
     </div>
   );
 }
@@ -1176,7 +1181,7 @@ function Handling({ fase, ov, knapper, neste }) {
     <div className="grid">
       {/* «Lag annonse» — kommer når boligen er kjent (etter faktaene), løftes av pekeren, trykkes, og slipper idet
           opplastingsfeltet vokser ut av den i scenen */}
-      <Inn vis={start} ov={ov} delay={fase === F.FUNNET ? 1600 : 0} className="col-start-1 row-start-1">
+      <Inn vis={start} ov={ov} delay={fase === F.FUNNET ? 1500 : 0} className="col-start-1 row-start-1">
         <AutoKnapp presser={fase === F.TRYKK_START} hover={hoverS && !!knapper} stor testid="v4-lag-annonse" knappRef={ref('start')}>Lag annonse</AutoKnapp>
       </Inn>
       <Inn vis={fase >= F.LES1 && fase <= F.LES3} ov={ov} className="col-start-1 row-start-1"><Fakta fase={fase} ov={ov} /></Inn>
@@ -1351,7 +1356,7 @@ function AapningKompakt({ fase, ov, startet }) {
             return (
               <div key={id} className="absolute overflow-hidden" style={{ left: base.x, top: base.y, width: base.w, height: base.h, borderRadius: radius, zIndex: zi, transform: t, transformOrigin: '50% 50%', opacity: visF ? 1 : 0, boxShadow: id === 'fasade' && fase <= F.TRYKK_START ? SKYGGE_FLAT : SKYGGE_LOFT, background: 'rgba(21,19,15,0.05)', transition: overgang, willChange: 'transform, opacity' }} aria-hidden={!visF} data-testid={`v4-bunke-kompakt-${id}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={b.liten || b.src} alt={b.navn} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: b.posLiten || b.pos || '50% 50%' }} draggable={false} />
+                <img loading="lazy" decoding="async" src={b.liten || b.src} alt={b.navn} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: b.posLiten || b.pos || '50% 50%' }} draggable={false} />
               </div>
             );
           })}
@@ -1378,7 +1383,7 @@ function UtkastKort({ fase, ov }) {
     <div className="overflow-hidden rounded-[14px]" style={{ background: HVIT, boxShadow: `0 0 0 1px ${HAIR}` }} data-testid="v4-utkast-kort">
       <div className="relative" style={{ aspectRatio: '16 / 9' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={KILDE.soverom.styletLiten} alt="Soverommet, stylet med KI" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: '50% 55%' }} draggable={false} />
+        <img loading="lazy" decoding="async" src={KILDE.soverom.styletLiten} alt="Soverommet, stylet med KI" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: '50% 55%' }} draggable={false} />
         <Lapp vis className="bottom-2.5 right-2.5" ov={ov}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Redigert · stylet med KI</Lapp>
       </div>
       <div className="px-4 pb-4 pt-3"><UtkastTekst fase={fase} ov={ov} /></div>
@@ -1392,7 +1397,7 @@ function FinnKortKompakt({ ov }) {
       <FinnTopp h={44} kompakt />
       <div className="relative" style={{ aspectRatio: '3 / 2' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={KILDE.soverom.styletLiten} alt="Soverommet, stylet med KI" className="absolute inset-0 h-full w-full object-cover" draggable={false} />
+        <img loading="lazy" decoding="async" src={KILDE.soverom.styletLiten} alt="Soverommet, stylet med KI" className="absolute inset-0 h-full w-full object-cover" draggable={false} />
         <Lapp vis className="bottom-2.5 right-2.5" ov={ov}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Redigert · stylet med KI</Lapp>
       </div>
       <div className="px-4 pb-4 pt-3"><FinnTekst kompakt /><div className="mt-4"><FinnBeskrivelse kompakt /></div></div>
@@ -1419,7 +1424,7 @@ function Kompakt({ fase, ov, onAkt, onHold, neste, startet }) {
             );
           }}
         </Tekstbytte>
-        <Vokse vis={fase >= F.FUNNET && fase <= F.TRYKK_START} ov={ov} delay={fase === F.FUNNET ? 1500 : 150}>
+        <Vokse vis={fase >= F.FUNNET && fase <= F.TRYKK_START} ov={ov} delay={fase === F.FUNNET ? 1400 : 150}>
           <div className="pt-5"><AutoKnapp presser={fase === F.TRYKK_START} stor testid="v4-lag-annonse">Lag annonse</AutoKnapp></div>
         </Vokse>
         <Vokse vis={fase >= F.LES1 && fase <= F.LES3} ov={ov}><div className="pt-5"><Fakta fase={fase} ov={ov} /></div></Vokse>

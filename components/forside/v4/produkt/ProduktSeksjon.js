@@ -1,16 +1,26 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Layers } from 'lucide-react';
 import { EASE, T, display, useSynlig } from '../motion';
-import DriftFilm from './DriftFilm';
-import OkonomiFilm from './OkonomiFilm';
 import AnnonseFilm from './AnnonseFilm';
-import KontraktFilm from './KontraktFilm';
-import AnnonseKino from './kino/AnnonseKino';
-import KontraktKino from './kino/KontraktKino';
-import DriftKino from './kino/DriftKino';
-import OkonomiKino from './kino/OkonomiKino';
+
+/* Ytelse: bare det første kapittelet (Annonse) ligger i forsidens bundle. Kontrakt, Drift og Økonomi — og kino-
+   variantene (bare i variant="full") — hentes som egne chunks først når de skal vises. Kapitlet som kommer
+   etter det aktive forhåndslastes mens det aktive spiller (se `forhaandslast`), så byttet skjer uten ventetid. */
+const KontraktFilm = dynamic(() => import('./KontraktFilm'));
+const DriftFilm = dynamic(() => import('./DriftFilm'));
+const OkonomiFilm = dynamic(() => import('./OkonomiFilm'));
+const AnnonseKino = dynamic(() => import('./kino/AnnonseKino'));
+const KontraktKino = dynamic(() => import('./kino/KontraktKino'));
+const DriftKino = dynamic(() => import('./kino/DriftKino'));
+const OkonomiKino = dynamic(() => import('./kino/OkonomiKino'));
+const FORHAANDSLAST = {
+  kontrakt: () => import('./KontraktFilm'),
+  drift: () => import('./DriftFilm'),
+  okonomi: () => import('./OkonomiFilm'),
+};
 
 /* ---------------------------------------------------------------------------
    ProduktSeksjon — «Se hele DigiHome i arbeid.» En scene, ikke et skjermbilde.
@@ -215,6 +225,11 @@ export default function ProduktSeksjon({ variant = 'ramme' }) {
   /* Siste kapittel (Økonomi) går tilbake til første — livssyklusen er en sirkel */
   const nesteId = KAPITLER[(KAPITLER.indexOf(aktiv) + 1) % KAPITLER.length] || null;
   const nesteNavn = nesteId ? TABS.find((t) => t.id === nesteId).navn : null;
+  /* Forhåndslast neste kapittel (egen chunk) så snart produktflaten er i bildet — byttet skal ikke vente på nettet */
+  useEffect(() => {
+    if (!synlig || !nesteId) return;
+    FORHAANDSLAST[nesteId]?.().catch(() => {});
+  }, [synlig, nesteId]);
   const [bytter, setBytter] = useState(false);       // kapittelbytte: det gamle tones ut før det nye monteres
   /* Kapittel-fremdrift i den aktive tab-pillen (tynn linje som fylles i takt med filmen) */
   const [frem, setFrem] = useState({ andel: 0, ms: 0 });
@@ -295,6 +310,8 @@ export default function ProduktSeksjon({ variant = 'ramme' }) {
           src={bg.bilde}
           srcSet={srcSet}
           sizes={srcSet ? '100vw' : undefined}
+          loading="lazy"
+          decoding="async"
           draggable={false}
           className={`pointer-events-none absolute left-0 w-full select-none object-cover ${bg.forankring === 'topp' ? 'top-0' : 'bottom-0'} ${bg.posKlasse}`}
           style={{ height: bg.hoyde }}

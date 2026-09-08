@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import ForsideV4 from '@/components/forside/v4/ForsideV4';
+import { FILM } from '@/components/forside/v4/heroFilm';
 import { ogUrl } from '@/lib/og-url';
 
 const TITTEL = 'DigiHome — Utleie på autopilot';
@@ -48,12 +49,14 @@ export default function ForsidePage({ searchParams }) {
   const hero = valg === 'side' ? 'side' : valg === 'zoom' ? 'zoom' : valg === 'zoomfull' ? 'zoomfull' : 'stage';
   const produkt = cookies().get('dh_produkt')?.value === 'full' ? 'full' : 'ramme';
   const bilde = searchParams?.bilde === 'bygg' ? 'bygg' : searchParams?.bilde === 'stue' ? 'stue' : null;
-  const stageBilde = bilde === 'bygg' ? '/v4/bolig-hero.webp' : bilde === 'stue' ? '/v4/stue-2000.webp' : '/v4/video/eier-poster.webp';
+  /* LCP er scenens første bilde. Med FILM.direkte åpner heroen rett i sofa-loopen — da er loopens poster det som
+     faktisk tegnes (på alle flater), ikke gåturens poster. Feil preload = 120 KB som konkurrerer med LCP-bildet. */
+  const stageBilde = bilde === 'bygg' ? '/v4/bolig-hero.webp' : bilde === 'stue' ? '/v4/stue-2000.webp' : FILM.direkte ? FILM.hjemPoster : FILM.poster;
   return (
     <>
       {/* Scenebildet er LCP. Preload riktig utsnitt per flate; fontene preloades av next/font. */}
       {hero !== 'side' ? (
-        <link rel="preload" as="image" href={stageBilde} media="(min-width: 640px)" fetchPriority="high" />
+        <link rel="preload" as="image" href={stageBilde} media={FILM.direkte && !bilde ? undefined : '(min-width: 640px)'} fetchPriority="high" />
       ) : (
         <>
           <link rel="preload" as="image" href="/v4/bolig-hero.webp" media="(min-width: 640px)" fetchPriority="high" />

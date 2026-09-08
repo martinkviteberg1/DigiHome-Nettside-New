@@ -133,7 +133,7 @@ export default function FooterV4({ org } = {}) {
         <div className="flex flex-col gap-8 py-10 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-10">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/digihome-lockup-white.svg" alt="DigiHome" className="h-[22px] w-auto self-start opacity-90" />
+            <img loading="lazy" decoding="async" src="/brand/digihome-lockup-white.svg" alt="DigiHome" className="h-[22px] w-auto self-start opacity-90" />
             <div className="text-[13px] leading-[1.6]" style={{ color: SVAK }}>
               <p style={{ color: DIM }}>{navn} · Org.nr {orgNr}</p>
               <p>{adresse}</p>

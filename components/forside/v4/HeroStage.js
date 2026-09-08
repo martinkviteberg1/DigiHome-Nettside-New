@@ -1,5 +1,6 @@
 'use client';
 
+import { FILM } from './heroFilm';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EASE, T, display, tall, useRedusert, useSekvens, useSmal, useSynlig } from './motion';
 import AdresseFelt from './AdresseFelt';
@@ -30,33 +31,7 @@ import AdresseFelt from './AdresseFelt';
      så det han gjør på skjermen og det som skjer i filmen er én bevegelse.
    · `hjem`: stillbildet filmen glir over i når historien er ferdig — han hjemme i sofaen,
      kvelden er hans igjen. Høyre side av bildet er tom vegg: der står sluttteksten. */
-export const FILM = {
-  loop: '/v4/video/eier-1920.mp4',
-  loopSmal: '/v4/video/eier-1280.mp4',
-  /* VP9-kopi for nettlesere uten H.264 (enkelte Linux-Firefox/Chromium-bygg). */
-  loopWebm: '/v4/video/eier-1280.webm',
-  poster: '/v4/video/eier-poster.webp',
-  posterSmal: '/v4/video/eier-poster-mobil.webp',
-  hjem: '/v4/video/eier-hjemme-1920.webp',
-  hjemSmal: '/v4/video/eier-hjemme-mobil.webp',
-  /* Sluttbildet lever: han i sofaen, kvelden er hans. Sømløs 14 s loop (scripts/lag-hjemme-loop.py) — H.264 1920/1280,
-     VP9 som reserve, første bilde som poster. Stillbildene over brukes ved redusert bevegelse. */
-  hjemVideo: '/v4/video/eier-hjemme-loop-1920.mp4?v=2',
-  hjemVideoSmal: '/v4/video/eier-hjemme-loop-1280.mp4?v=2',
-  hjemVideoWebm: '/v4/video/eier-hjemme-loop-1280.webm?v=2',
-  hjemPoster: '/v4/video/eier-hjemme-loop-poster.webp?v=2',
-  /* direkte: heroen åpner rett i sofaen — ingen gåtur, ingen panelhistorie. Loopen er scenen fra første bilde;
-     tekst og feeden fra mobilen kommer inn i rolig rekkefølge. (Din adresse → Street View-flyten er som før.) */
-  direkte: true,
-  /* Sekundet der han fortsatt leser — rett før telefonen går i lommen. Har du ikke trykket, trykker historien her. */
-  trykkVed: 7.4,
-  /* Filmen er 12,04 s og slutter med ham på trappen foran døren. Dissolven til stua starter `hjemVed` — så sent at
-     hele gangen inn til døren spilles ferdig, og de siste bildene (han står ved døren) ligger under overgangen.
-     Timeren settes presist fra filmens klokke (ikke bare timeupdate, som tikker hvert ~250 ms). Filmen selv rører
-     vi aldri (ingen transform/zoom på video-elementet). `ended` er reserve. */
-  hjemVed: 11.9,
-  once: true,
-};
+export { FILM };
 
 /* ---------------------------------------------------------------------------
    Telefonstrøm — det som skjer i DigiHome-appen mens han sitter i sofaen.
@@ -73,6 +48,11 @@ export const FILM = {
 --------------------------------------------------------------------------- */
 const TELEFON = { x: 0.33, y: 0.503 };      // toppen av skjermen, i filmens koordinater
 const FILM_ASPEKT = 30 / 17;
+/* Smal skjerm: scenen er stående (4:5.6) og viser bare ~40 % av filmens bredde. Mannen sitter til venstre i bildet
+   (hodet ~29 %, telefonen 33 %) — med object-position 50 % kuttes han i venstre kant. 30 % legger utsnittet på
+   ~18–58 % av filmen: han står i venstre halvdel av scenen, med veggen til høyre der telefonstrømmen projiseres. */
+const HJEM_FOKUS_SMAL_X = 0.30;
+const hjemPos = (smal) => (smal ? `${Math.round(HJEM_FOKUS_SMAL_X * 100)}% 50%` : '50% 50%');
 /* Rekkefølgen følger veggen: Annonse → Kontrakt → Økonomi → Drift. Ingen beløp, ingen «forfaller». */
 const STROM = [
   { id: 'visning', t: 'Visning booket', u: 'Lørdag 12:00 · 2 påmeldte', ikon: 'prikk' },
@@ -120,12 +100,17 @@ function Telefonstrom({ hjemme, redusert, smal, puls }) {
 
   /* Filmpunkt → scenepunkt (object-cover, sentrert) */
   const A = maal.w && maal.h ? maal.w / maal.h : FILM_ASPEKT;
-  const px = A >= FILM_ASPEKT ? TELEFON.x : 0.5 + (TELEFON.x - 0.5) * (FILM_ASPEKT / A);
+  /* object-position x (ox) på smal skjerm flytter utsnittet: filmpunkt t → beholder t·R − (R − 1)·ox, R = FILM_ASPEKT/A */
+  const ox = smal ? HJEM_FOKUS_SMAL_X : 0.5;
+  const px = A >= FILM_ASPEKT ? TELEFON.x : TELEFON.x * (FILM_ASPEKT / A) - (FILM_ASPEKT / A - 1) * ox;
   const py = A >= FILM_ASPEKT ? 0.5 + (TELEFON.y - 0.5) * (A / FILM_ASPEKT) : TELEFON.y;
   const X = px * maal.w; const Y = py * maal.h;
-  const B = smal ? 212 : 252;
+  /* Flatens bredde følger scenen: på mellomstore skjermer (nettbrett, 640–1000 px scene) smalner den (196–252 px) så
+     den aldri går inn i veggteksten, som starter ved max(61 %, 38 % + 208 px) — se Veggfortelling. */
+  const trang = !smal && maal.w < 1010;
+  const B = smal ? 212 : Math.max(196, Math.min(252, Math.round(maal.w * 0.246 - 12)));
   /* Flaten står opp og til høyre for skjermen — over skulderen, aldri over ansiktet. Bunnen bindes til skjermen. */
-  const fx = X + (smal ? 16 : Math.round(maal.w * 0.034)); const fy = Y - (smal ? 26 : Math.round(maal.h * 0.042));
+  const fx = X + (smal || trang ? 16 : Math.round(maal.w * 0.034)); const fy = Y - (smal || trang ? 26 : Math.round(maal.h * 0.042));
   const inne = n >= 0;
   const rader = inne ? [n, n - 1, n - 2, n - 3].filter((k) => k >= 0) : [];
 
@@ -281,7 +266,7 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
     const hjem = smal && film.hjemSmal ? film.hjemSmal : film.hjem;
     if (redusert) {
       // eslint-disable-next-line @next/next/no-img-element
-      return <img src={hjem || film.poster} alt="" {...felles} style={{ ...felles.style, objectPosition: '50% 50%' }} />;
+      return <img src={hjem || film.poster} alt="" {...felles} style={{ ...felles.style, objectPosition: hjemPos(smal) }} />;
     }
     const visHjem = direkte || hjemme;
     return (
@@ -325,7 +310,7 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
               <video
                 ref={hjemRef}
                 className="absolute inset-0 h-full w-full object-cover"
-                style={{ objectPosition: '50% 50%' }}
+                style={{ objectPosition: hjemPos(smal) }}
                 poster={film.hjemPoster || hjem}
                 muted
                 loop
@@ -345,7 +330,7 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
                 src={hjem}
                 alt=""
                 className="absolute inset-0 h-full w-full object-cover will-change-transform"
-                style={{ objectPosition: '50% 50%', transform: hjemme ? 'scale(1.045)' : 'scale(1)', transition: hjemme ? 'transform 16000ms cubic-bezier(0.22, 0.61, 0.36, 1) 2200ms' : 'transform 0ms linear' }}
+                style={{ objectPosition: hjemPos(smal), transform: hjemme ? 'scale(1.045)' : 'scale(1)', transition: hjemme ? 'transform 16000ms cubic-bezier(0.22, 0.61, 0.36, 1) 2200ms' : 'transform 0ms linear' }}
                 data-testid="v4-film-hjem"
               />
             )}
@@ -451,7 +436,7 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
   const slutt = !!beat.slutt;
   /* Så lite som mulig: setningen, én linje, en hårlinje, én stille meta-linje. Ingen indeks, ingen prikker, ingen
      blend-modus (over video koster det per frame). Blekk med et hint av luft — aldri helt svart. */
-  const fs = smal ? (direkte ? 38 : 42) : direkte ? 'clamp(40px, 3.9vw, 76px)' : 'clamp(48px, 7.4svh, 86px)';
+  const fs = smal ? (direkte ? 38 : 42) : direkte ? 'clamp(34px, 3.9vw, 76px)' : 'clamp(48px, 7.4svh, 86px)';
   const blekk = 'rgba(21,19,15,0.94)';
   const dempet = 'rgba(21,19,15,0.60)';
   const meta = 'rgba(21,19,15,0.50)';
@@ -462,7 +447,8 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
     <div
       className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-24' : `absolute flex flex-col justify-center ${zoom ? 'dh-zoom-vegg' : ''}`}
       style={{
-        ...(smal ? {} : { left: '61%', right: '5%', top: '8%', bottom: '8%' }),
+        /* Venstrekanten viker for telefonstrømmens flate på mellomstore scener (flaten ender ved ~36 % + 196–252 px) */
+        ...(smal ? {} : { left: 'max(61%, calc(38% + 208px))', right: '5%', top: '8%', bottom: '8%' }),
         color: blekk,
         background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 30%, rgba(243,241,236,0.98) 100%)' : 'none',
         opacity: hjemme ? 1 : 0,
@@ -486,12 +472,12 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
       {/* Hårlinjen tegnes én gang. Under: meta (adresse · klokke · status) — i siste beat dagens tall. */}
       <div aria-hidden="true" className="mt-9 h-px sm:mt-12" style={{ background: 'rgba(21,19,15,0.12)', transform: hjemme ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: '0 50%', transition: `transform 1200ms ${EASE} ${hjemme ? FORTELLING_T0 + 800 : 0}ms` }} />
       <div className="mt-5 grid" style={fast(7.5)}>
-        <p className="col-start-1 row-start-1 flex items-center gap-x-3 text-[13px] sm:text-[13.5px]" style={{ color: meta, opacity: slutt ? 0 : 1, transition: `opacity 500ms ${EASE} ${slutt ? 0 : 200}ms` }} aria-hidden={slutt} data-testid="v4-slutt-status">
-          <span>{adresse}</span>
+        <p className="col-start-1 row-start-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] sm:text-[13.5px]" style={{ color: meta, opacity: slutt ? 0 : 1, transition: `opacity 500ms ${EASE} ${slutt ? 0 : 200}ms` }} aria-hidden={slutt} data-testid="v4-slutt-status">
+          <span className="whitespace-nowrap">{adresse}</span>
           <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.2)' }}>·</span>
-          <span className="tabular-nums">torsdag <span key={beat.kl || 'x'} className="inline-block animate-in fade-in-0 duration-500">{direkte ? beat.kl : '22:42'}</span></span>
+          <span className="whitespace-nowrap tabular-nums">torsdag <span key={beat.kl || 'x'} className="inline-block animate-in fade-in-0 duration-500">{direkte ? beat.kl : '22:42'}</span></span>
           <span aria-hidden="true" className="hidden sm:inline" style={{ color: 'rgba(21,19,15,0.2)' }}>·</span>
-          <span className="hidden items-center gap-2 sm:inline-flex">
+          <span className="hidden items-center gap-2 whitespace-nowrap sm:inline-flex">
             <span aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55', animation: hjemme ? 'v4-puls-dot 3200ms ease-in-out 1400ms infinite' : 'none' }} />
             Alt i orden
           </span>

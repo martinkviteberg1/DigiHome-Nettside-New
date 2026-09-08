@@ -1447,3 +1447,12 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   som første bilde; pekeren kommer med fire (`HAAND`), caption «Slipp fire bilder fra mobilen her». Mobil: samme, stablet; knappen i tekstblokken.
 - Tenant-fasen het VELG → nå `VELG_LEIETAKER`. `v4-caret` keyframes i `FilmStil`. ProduktSeksjon: «Fra adressen til valgt leietaker.»
 - Skjermbilder ok desktop 1920 + mobil 390 (ingen ny overflow, ingen konsollfeil). Ikke brukergodkjent; frontend-agent ikke kjørt.
+- Runde 2 (samme dag): «fortsett å forbedre – timing/smoothness; hele forsiden SUPER responsiv og rask; personen i hero-videoen må være i fokus på mobil».
+  · Hero mobil: `HJEM_FOKUS_SMAL_X = 0.30` (object-position 30 % 50 %) i `HeroStage.js` + Telefonstrom-matten tar hensyn til ox. Nettbrett: telefonstrøm-
+    flaten smalner (196–252 px) og veggteksten starter ved max(61 %, 38 % + 208 px) – ingen kollisjon 640–1010 px. Meta-raden wrapper pent.
+  · Film: tempo strammet (START 800, SKRIV-hale 560, VELG 660, FUNNET 2350), forslagslisten animerer høyden, «, 5015 Bergen» toner inn i stedet for
+    teksthopp, `Akter`-strekene deler bredden på mobil (11 akter gikk utenfor kanten).
+  · Ytelse: `next/dynamic` for Kontrakt/Drift/Økonomi-filmene + alle kino-varianter (ProduktSeksjon) m/ forhåndslasting av neste kapittel;
+    React SSR auto-preloadet 24 bilder (alle <img> uten loading=lazy) → nå 2 (logo + LCP-poster): lazy på film-, boliger-, leietaker-, system-,
+    footer- og produktbakgrunnsbilder; LeietakerSeksjon-poster som <picture> (960 på mobil); `heroFilm.js` (uten 'use client') deler FILM med
+    app/page.js så preload peker på riktig LCP-bilde (sofa-loopens poster, alle flater).

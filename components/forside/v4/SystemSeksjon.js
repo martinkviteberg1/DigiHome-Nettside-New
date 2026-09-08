@@ -62,7 +62,7 @@ const STOLPER = [31, 31, 33, 33, 33, 34, 34, 34, 36, 36, 36, 37.6];   // leieinn
 function Avatar({ p, size = 24 }) {
   if (p.bilde) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={p.bilde} alt="" width={size} height={size} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size, boxShadow: `0 0 0 1px ${HAIR}` }} draggable={false} />;
+    return <img src={p.bilde} alt="" width={size} height={size} loading="lazy" decoding="async" className="shrink-0 rounded-full object-cover" style={{ width: size, height: size, boxShadow: `0 0 0 1px ${HAIR}` }} draggable={false} />;
   }
   return <span className="inline-flex shrink-0 items-center justify-center rounded-full font-medium" style={{ width: size, height: size, fontSize: Math.round(size * 0.4), background: 'rgba(21,19,15,0.06)', color: 'rgba(21,19,15,0.66)' }}>{p.init}</span>;
 }
@@ -150,7 +150,7 @@ function Eiendommer() {
       <Overskrift sub="1 eiendom · 3 enheter · alle utleid">Eiendommer</Overskrift>
       <div className="mt-7 flex items-center gap-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/v4/bygg/nygardsgaten.webp" alt="" className="h-16 w-16 shrink-0 rounded-[12px] object-cover" draggable={false} />
+        <img src="/v4/bygg/nygardsgaten.webp" alt="" loading="lazy" decoding="async" className="h-16 w-16 shrink-0 rounded-[12px] object-cover" draggable={false} />
         <div className="min-w-0 flex-1">
           <p className="text-[17px] font-medium tracking-[-0.01em]">Nygårdsgaten 5</p>
           <p className="mt-0.5 text-[12.5px]" style={{ color: DIM }}>Bergen · bygård fra 1898 · 3 leiligheter · felles bereder og strømmåler</p>
@@ -301,7 +301,7 @@ function Portal({ aktiv, onVelg }) {
       <aside className="relative flex flex-col border-r px-3 pb-4 pt-5" style={{ borderColor: HAIR }}>
         <div className="px-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/digihome-hero-logo.svg" alt="DigiHome" className="h-[15px] w-auto" draggable={false} />
+          <img loading="lazy" decoding="async" src="/digihome-hero-logo.svg" alt="DigiHome" className="h-[15px] w-auto" draggable={false} />
         </div>
         <button type="button" tabIndex={-1} className="mt-6 flex items-center justify-between rounded-[10px] px-2.5 py-2 text-[13px]" style={{ background: 'rgba(21,19,15,0.04)' }}>
           <span className="font-medium">Nygårdsgaten 5</span><ChevronDown size={14} style={{ color: DIM }} />
@@ -377,7 +377,7 @@ function App({ synlig }) {
               <div className="flex items-center gap-2.5 py-2.5" style={{ opacity: ny ? 1 : 0, transform: ny ? 'none' : 'translateY(6px)', transition: `opacity 500ms ${EASE} 200ms, transform 650ms ${EASE} 200ms` }}>
                 <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(212,150,255,0.24)' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/brand/digihome-icon-purple.svg" alt="" width={11} height={11} className="h-[11px] w-[11px]" draggable={false} />
+                  <img loading="lazy" decoding="async" src="/brand/digihome-icon-purple.svg" alt="" width={11} height={11} className="h-[11px] w-[11px]" draggable={false} />
                 </span>
                 <span className="min-w-0 flex-1"><span className="block truncate text-[12.5px] font-medium">Berederen er byttet</span><span className="block truncate text-[11.5px]" style={{ color: DIM }}>Si fra om noe ikke stemmer</span></span>
                 <span className="shrink-0 text-[11px]" style={{ color: DIM }}>nå</span>

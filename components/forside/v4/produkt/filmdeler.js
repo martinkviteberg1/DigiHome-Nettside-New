@@ -70,14 +70,14 @@ export function Finn({ h = 16, className = '' }) {
 export function BankIdMerke({ h = 14, className = '' }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src="/v4/logo/bankid.svg" alt="BankID" className={`inline-block shrink-0 align-middle ${className}`} style={{ height: h, width: 'auto' }} draggable={false} />
+    <img loading="lazy" decoding="async" src="/v4/logo/bankid.svg" alt="BankID" className={`inline-block shrink-0 align-middle ${className}`} style={{ height: h, width: 'auto' }} draggable={false} />
   );
 }
 
 export function Portrett({ src, alt, size = 40, className = '' }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} width={size} height={size} className={`shrink-0 rounded-full object-cover ${className}`} style={{ width: size, height: size, boxShadow: '0 0 0 1px rgba(21,19,15,0.10), inset 0 0 0 1px rgba(255,255,255,0.4)' }} draggable={false} />
+    <img loading="lazy" decoding="async" src={src} alt={alt} width={size} height={size} className={`shrink-0 rounded-full object-cover ${className}`} style={{ width: size, height: size, boxShadow: '0 0 0 1px rgba(21,19,15,0.10), inset 0 0 0 1px rgba(255,255,255,0.4)' }} draggable={false} />
   );
 }
 
@@ -232,11 +232,12 @@ export function Fyll({ aktiv, gjort, dur, morkt = false }) {
 /* Én strek per akt. `varighet(i)` = aktens lengde i ms, `navn(i)` = aria-label. `morkt` = på mørk flate. */
 export function Akter({ antall, aktiv, varighet, onVelg, navn, morkt = false }) {
   return (
-    <ol className="flex items-center gap-2" aria-label="Akter" data-testid="v4-akter">
+    <ol className="flex w-full items-center gap-1.5 sm:w-auto sm:gap-2" aria-label="Akter" data-testid="v4-akter">
+      {/* Smalt: strekene deler bredden, så raden aldri går utenfor kanten uansett antall akter. Fra sm: 28 px hver. */}
       {Array.from({ length: antall }, (_, i) => (
-        <li key={i}>
-          <button type="button" onClick={() => onVelg(i)} aria-label={navn(i)} aria-current={i === aktiv ? 'step' : undefined} className="block py-3 focus-visible:outline-none" data-testid={`v4-akt-${i}`}>
-            <span className="relative block h-[2px] w-7 overflow-hidden rounded-full" style={{ background: morkt ? 'rgba(244,241,234,0.22)' : 'rgba(21,19,15,0.12)', transition: `background-color 900ms ${EASE}` }}>
+        <li key={i} className="min-w-0 flex-1 sm:w-7 sm:flex-none">
+          <button type="button" onClick={() => onVelg(i)} aria-label={navn(i)} aria-current={i === aktiv ? 'step' : undefined} className="block w-full py-3 focus-visible:outline-none" data-testid={`v4-akt-${i}`}>
+            <span className="relative block h-[2px] w-full overflow-hidden rounded-full" style={{ background: morkt ? 'rgba(244,241,234,0.22)' : 'rgba(21,19,15,0.12)', transition: `background-color 900ms ${EASE}` }}>
               <Fyll aktiv={i === aktiv} gjort={i < aktiv} dur={varighet(i)} morkt={morkt} />
             </span>
           </button>
@@ -304,7 +305,7 @@ export function Bilde({ src, alt, pos, vis, delay = 0, ov, className = '', ratio
   return (
     <div className={`relative overflow-hidden ${className}`} style={{ aspectRatio: ratio, background: 'rgba(21,19,15,0.05)', boxShadow: `0 0 0 1px ${HAIR}, ${LYSKANT}`, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-14px)', transition: ov ? 'none' : `opacity 500ms ${EASE} ${vis ? delay : 0}ms, transform 700ms ${EASE} ${vis ? delay : 0}ms` }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: pos || '50% 50%' }} draggable={false} />
+      <img loading="lazy" decoding="async" src={src} alt={alt} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: pos || '50% 50%' }} draggable={false} />
     </div>
   );
 }
