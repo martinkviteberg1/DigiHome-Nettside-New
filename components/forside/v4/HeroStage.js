@@ -539,7 +539,7 @@ function Veggkort({ hjemme, smal, k, adresse }) {
           ? { background: 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 28%, rgba(243,241,236,0.98) 100%)' }
           /* Perspektiv: veggen i filmen viker bakover mot høyre (listen stiger, linjene samles). Kortet dreies rundt sin
              venstre kant så det ligger PÅ veggen — høyre side litt lenger unna, litt mindre. Én transform, ingen filtre. */
-          : { left: 'max(61%, calc(38% + 208px))', right: '3%', top: '14%', transform: 'perspective(1500px) rotateY(11deg) rotateX(1.2deg)', transformOrigin: '0% 50%', transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }),
+          : { left: 'max(60%, calc(38% + 208px))', right: '0%', top: '13%', transform: 'perspective(1100px) rotateY(21deg) rotateX(2deg)', transformOrigin: '0% 50%', transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }),
         color: blekk,
         opacity: hjemme ? 1 : 0,
         transition: `opacity 600ms ${EASE} ${hjemme ? T0 - 200 : 0}ms`,
@@ -560,14 +560,14 @@ function Veggkort({ hjemme, smal, k, adresse }) {
 
       {/* Adressen */}
       <div className={smal ? 'mt-1' : 'mt-3'} style={inn(1)}>
-        <p style={{ ...display, fontSize: smal ? 30 : 'clamp(34px, 3.1vw, 58px)', lineHeight: 1, letterSpacing: '-0.04em', color: blekk }} data-testid="v4-vegg-adresse">{adresse}</p>
+        <p style={{ ...display, fontSize: smal ? 30 : 'clamp(36px, 3.4vw, 64px)', lineHeight: 1, letterSpacing: '-0.04em', color: blekk }} data-testid="v4-vegg-adresse">{adresse}</p>
         <p className={`${smal ? 'mt-1.5 text-[12px]' : 'mt-2 text-[13.5px]'}`} style={{ color: dim }}>5015 Bergen · Leilighet 2</p>
       </div>
 
       {/* Fakta — hårlinjerader: etikett til venstre, verdi til høyre */}
       <div className={smal ? 'mt-3' : 'mt-5'} style={{ borderTop: `1px solid ${hair}` }}>
         {rader.map((r, j) => (
-          <div key={r.k} className={`flex items-center justify-between gap-4 ${smal ? 'h-[30px] text-[12.5px]' : 'h-[38px] text-[14px]'}`} style={{ borderBottom: `1px solid ${hair}`, ...inn(2 + j) }} data-testid={`v4-vegg-rad-${j}`}>
+          <div key={r.k} className={`flex items-center justify-between gap-4 ${smal ? 'h-[30px] text-[12.5px]' : 'h-[40px] text-[15.5px]'}`} style={{ borderBottom: `1px solid ${hair}`, ...inn(2 + j) }} data-testid={`v4-vegg-rad-${j}`}>
             <span style={{ color: dim }}>{r.k}</span>
             <span key={r.v} className="inline-flex items-center gap-2 whitespace-nowrap font-medium tabular-nums animate-in fade-in-0 duration-700" style={{ color: blekk }}>
               {r.emma && (
