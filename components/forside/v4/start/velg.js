@@ -26,7 +26,8 @@ export const VALG = [
     kort: 'Én bolig eller noen få. Lei ut selv — eller la oss ta alt.',
     under: 'Én bolig eller noen få. Lei ut selv med systemet i ryggen — eller la en fast forvalter hos oss ta alt.',
     href: '/bli-utleier/start',
-    bilde: { src: '/v4/stue-2000.webp', srcSet: '/v4/stue-1200.webp 1200w, /v4/stue-2000.webp 2000w', pos: '28% 55%' },
+    /* Eieren hjemme — samme mann som i heroen, så døren kjennes igjen */
+    bilde: { src: '/v4/video/eier-hjemme-1920.webp', srcSet: '/v4/video/eier-hjemme-1280.webp 1280w, /v4/video/eier-hjemme-1920.webp 1920w', pos: '34% 42%' },
     stikkord: ['Selvforvaltning 5 %', 'Full forvaltning i Bergen', 'Ingen bindingstid'],
   },
   {

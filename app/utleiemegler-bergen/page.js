@@ -24,13 +24,13 @@ export const metadata = {
     title: 'Utleiemegler i Bergen: pris fra 5 %, ingen binding | DigiHome',
     description: 'Alt en utleiemegler gjør — annonsering, visninger, kontrakter og husleie — med AI-prising, 0 kr oppstart og uten bindingstid.',
     url: `${site.url}/utleiemegler-bergen`, type: 'website', locale: 'nb_NO',
-    images: [{ url: site.url + site.ogImage }],
+    images: [{ url: site.url + '/og/utleiemegler-bergen.jpg', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Utleiemegler i Bergen: pris fra 5 %, ingen binding | DigiHome',
     description: 'Annonsering, visninger, kontrakt og husleie — 0 kr oppstart, ingen bindingstid.',
-    images: [site.url + site.ogImage],
+    images: [site.url + '/og/utleiemegler-bergen.jpg'],
   },
 };
 

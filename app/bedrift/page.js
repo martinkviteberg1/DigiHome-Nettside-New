@@ -7,8 +7,8 @@ export const metadata = {
   title: TITTEL,
   description: BESKRIVELSE,
   alternates: { canonical: '/bedrift' },
-  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/bedrift' },
-  twitter: { card: 'summary_large_image', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE },
+  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/bedrift', images: [{ url: '/og/bedrift.jpg', width: 1200, height: 630 }] },
+  twitter: { images: ['/og/bedrift.jpg'], card: 'summary_large_image', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE },
 };
 
 // Bedrift — eiendomsselskap med portefølje. Første akt: hero (kun hero inntil videre).

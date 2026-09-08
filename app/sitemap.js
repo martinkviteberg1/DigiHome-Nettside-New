@@ -16,6 +16,7 @@ export default async function sitemap() {
     { url: `${base}/`, lastModified: staticDate, changeFrequency: 'weekly', priority: 1.0 },
     { url: `${base}/boligeiere`, lastModified: new Date('2026-09-07T00:00:00.000Z'), changeFrequency: 'weekly', priority: 1.0 },
     { url: `${base}/bedrift`, lastModified: new Date('2026-09-01T00:00:00.000Z'), changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/utleiemeglere`, lastModified: new Date('2026-09-08T00:00:00.000Z'), changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/priser`, lastModified: new Date('2026-09-01T00:00:00.000Z'), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/bli-utleier`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/bli-leietaker`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.8 },

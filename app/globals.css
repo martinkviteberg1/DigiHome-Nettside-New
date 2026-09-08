@@ -1094,7 +1094,29 @@ html.dh-nav-klar [data-testid="v4-nav"] { background-color: transparent; border-
 .dh-hero-hjem-ramme { transform-origin: 30% 100%; }
 @media (max-width: 639px) { .dh-hero-hjem-ramme { transform: scale(1.26); } }
 
-/* Heroens veggfortelling (direkte): ordene løftes opp gjennom en maske — krisp, ingen blur. Ut: opp og bort. */
+/* Heroens veggfortelling (direkte): filmatisk toning. Inn: fra svak uskarphet og et lite løft; ut: rolig bort oppover.
+   Under 640 px (over video på mobil) samme bevegelse uten blur. */
+@keyframes v4-ord-fade { from { opacity: 0; transform: translateY(0.3em); filter: blur(10px); } 60% { filter: blur(0); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes v4-ord-fade-ut { from { opacity: 1; transform: none; filter: blur(0); } to { opacity: 0; transform: translateY(-0.16em); filter: blur(8px); } }
+@keyframes v4-linje-fade { from { opacity: 0; transform: translateY(8px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes v4-linje-fade-ut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-6px); } }
+@media (max-width: 639px) {
+  @keyframes v4-ord-fade { from { opacity: 0; transform: translateY(0.3em); } to { opacity: 1; transform: none; } }
+  @keyframes v4-ord-fade-ut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-0.16em); } }
+  @keyframes v4-linje-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+/* Telefonstrømmen: boblen løftes ut av skjermen (fra telefonens punkt, --dx/--dy) og setter seg; den forrige tones bort */
+@keyframes v4-boble-inn { from { opacity: 0; transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(0.55); } 40% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes v4-boble-ut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-22px) scale(0.96); } }
+@keyframes v4-glod { 0% { opacity: 0; transform: scale(0.4); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(1.5); } }
+/* Salgsbrettet (/utleiemeglere): leadet lander i «Ny» — faller inn ovenfra og setter seg */
+@keyframes v4-salg-inn { from { opacity: 0; translate: 0 -18px; } to { opacity: 1; translate: 0 0; } }
+/* Skriveindikator (···) før et svar: inn, står, ut — så kommer boblen */
+@keyframes v4-skriver { 0% { opacity: 0; transform: translateY(4px); } 12% { opacity: 1; transform: none; } 88% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes v4-prikk { 0%, 100% { transform: translateY(0); opacity: 0.55; } 50% { transform: translateY(-2px); opacity: 1; } }
+/* Boble i samtalen: kommer opp fra sitt hjørne, liten og svak → på plass */
+@keyframes v4-chat-inn { from { opacity: 0; transform: translateY(6px) scale(0.85); } to { opacity: 1; transform: none; } }
+/* Beholdt for eldre referanser */
 @keyframes v4-ord-loft { from { opacity: 0; transform: translateY(104%); } 60% { opacity: 1; } to { opacity: 1; transform: translateY(0); } }
 @keyframes v4-ord-loft-ut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-70%); } }
 /* Beatets puls langs hårlinjen */

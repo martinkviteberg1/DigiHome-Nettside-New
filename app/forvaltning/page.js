@@ -9,8 +9,8 @@ export const metadata = {
   title: TITTEL,
   description: BESKRIVELSE,
   alternates: { canonical: '/forvaltning' },
-  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/forvaltning' },
-  twitter: { card: 'summary_large_image', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE },
+  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/forvaltning', images: [{ url: '/og/forvaltning.jpg', width: 1200, height: 630 }] },
+  twitter: { images: ['/og/forvaltning.jpg'], card: 'summary_large_image', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE },
 };
 
 // Forvaltning — tjenesten. Første akt: hero (kun hero inntil videre).

@@ -19,8 +19,9 @@ import KomIGangVelger from './start/KomIGangVelger';
 
 const LENKER = [
   ['Produkt', '/#produkt'],
-  ['For boligeiere', '/boligeiere'],
-  ['For eiendomsselskaper', '/bedrift'],
+  ['Boligeiere', '/boligeiere'],
+  ['Eiendomsselskaper', '/bedrift'],
+  ['Utleiemeglere', '/utleiemeglere'],
   ['Forvaltning', '/forvaltning'],
   ['Priser', '/priser'],
 ];

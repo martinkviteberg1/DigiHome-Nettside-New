@@ -10,7 +10,8 @@ export const metadata = {
   description: BESKRIVELSE,
   alternates: { canonical: '/kom-i-gang' },
   robots: { index: false, follow: true },
-  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/kom-i-gang' },
+  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/kom-i-gang', images: [{ url: '/og/kom-i-gang.jpg', width: 1200, height: 630 }] },
+  twitter: { card: 'summary_large_image', images: ['/og/kom-i-gang.jpg'] },
 };
 
 export default function KomIGangPage() {

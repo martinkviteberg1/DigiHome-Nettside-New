@@ -8012,3 +8012,7 @@ frontend:
         -working: "NA"
         -agent: "main"
         -comment: "Skjermbilder 1920/390: tabs drift/okonomi/kontrakt, ingen konsollfeil, ingen sideoverflow. Forsiden bruker fortsatt standard fire kapitler."
+
+agent_communication:
+  - agent: "main"
+    message: "2026-09-08 sen: Annonse-kart/adresse-overgang, kapittelbytte, /forvaltning-redesign, ny /utleiemeglere (MeglerV4, SalgSeksjon m/ pipeline+tilbudsark, OppgjorSeksjon), hero chat-bobler + video-start, AdresseFelt uten Start-knapp, OG-bilder for 19 sider (scripts/lag-og.py). Kun frontend/statisk; ingen backend-endringer. Ikke testet av testing-agent (visuelt arbeid, skjermbilder tatt desktop 1920 + mobil 390, ingen konsollfeil)."

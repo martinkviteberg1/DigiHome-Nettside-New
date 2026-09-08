@@ -9,7 +9,8 @@ export const metadata = {
   description: BESKRIVELSE,
   alternates: { canonical: '/book-mote' },
   robots: { index: false, follow: true },
-  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/book-mote' },
+  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/book-mote', images: [{ url: '/og/book-mote.jpg', width: 1200, height: 630 }] },
+  twitter: { card: 'summary_large_image', images: ['/og/book-mote.jpg'] },
 };
 
 const EMNER = new Set(['forvaltning', 'selv', 'bedrift']);

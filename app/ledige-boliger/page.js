@@ -25,10 +25,11 @@ export const metadata = {
   description: 'Ledige utleieboliger i Bergen forvaltet av DigiHome — kvalitetssikret utleie, digital kontrakt og depositumskonto. Se ledige leiligheter, meld interesse og bli varslet om nye boliger.',
   alternates: { canonical: '/ledige-boliger' },
   openGraph: {
+  twitter: { card: 'summary_large_image', images: ['/og/ledige-boliger.jpg'] },
     title: 'Ledige boliger til leie i Bergen | DigiHome',
     description: 'Se ledige utleieboliger i Bergen. Meld interesse direkte, eller bli varslet når noe nytt blir ledig.',
     url: `${site.url}/ledige-boliger`, type: 'website', locale: 'nb_NO',
-    images: [{ url: site.url + site.ogImage }],
+    images: [{ url: site.url + '/og/ledige-boliger.jpg', width: 1200, height: 630 }],
   },
 };
 

@@ -19,13 +19,13 @@ export const metadata = {
     title: 'Nyheter og innsikt om utleie i Bergen | DigiHome',
     description: 'Artikler og analyser om utleie og eiendomsforvaltning fra DigiHome.',
     url: `${site.url}/nyheter`, type: 'website', locale: 'nb_NO',
-    images: [{ url: site.url + site.ogImage }],
+    images: [{ url: site.url + '/og/nyheter.jpg', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Nyheter og innsikt om utleie i Bergen | DigiHome',
     description: 'Artikler og analyser om utleie og eiendomsforvaltning fra DigiHome.',
-    images: [site.url + site.ogImage],
+    images: [site.url + '/og/nyheter.jpg'],
   },
 };
 

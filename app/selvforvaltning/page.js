@@ -39,13 +39,13 @@ export const metadata = {
     title: 'Selvforvaltning — leie ut boligen selv | DigiHome',
     description: 'Du velger leietaker. Annonse, kontrakt, depositumskonto og husleieinnkreving ligger i det samme systemet vi drifter forvaltningsboligene våre i.',
     url: `${site.url}/selvforvaltning`, type: 'website', locale: 'nb_NO',
-    images: [{ url: site.url + site.ogImage }],
+    images: [{ url: site.url + '/og/selvforvaltning.jpg', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Selvforvaltning — leie ut boligen selv | DigiHome',
     description: 'Du velger leietaker. Annonse, kontrakt, depositumskonto og innkreving ligger i systemet.',
-    images: [site.url + site.ogImage],
+    images: [site.url + '/og/selvforvaltning.jpg'],
   },
 };
 

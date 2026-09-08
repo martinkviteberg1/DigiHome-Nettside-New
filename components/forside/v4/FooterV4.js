@@ -25,7 +25,7 @@ const HAIR = 'rgba(244,241,234,0.12)';
 
 const KOLONNER = [
   { t: 'Produkt', l: [['Annonse og leietaker', '/#produkt'], ['Kontrakt med BankID', '/#produkt'], ['Drift og saker', '/#produkt'], ['Økonomi og rapport', '/#produkt'], ['Priser', '/priser']] },
-  { t: 'For deg', l: [['For boligeiere', '/boligeiere'], ['For eiendomsselskaper', '/bedrift'], ['Full forvaltning', '/forvaltning'], ['Priskalkulator', '/priskalkulator'], ['Kom i gang', '/kom-i-gang']] },
+  { t: 'For deg', l: [['For boligeiere', '/boligeiere'], ['For eiendomsselskaper', '/bedrift'], ['For utleiemeglere', '/utleiemeglere'], ['Full forvaltning', '/forvaltning'], ['Priskalkulator', '/priskalkulator'], ['Kom i gang', '/kom-i-gang']] },
   { t: 'Leietakere', l: [['Ledige boliger', '/ledige-boliger'], ['Bli leietaker', '/bli-leietaker'], ['Support', '/support']] },
   { t: 'Ressurser', l: [['Guider for utleiere', '/guider'], ['Leiemarkedet', '/leiemarkedet'], ['Utleie i Bergen', '/utleie'], ['Nyheter', '/nyheter'], ['Om oss', '/om-oss'], ['Kontakt', '/kontakt']] },
 ];

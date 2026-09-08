@@ -9,7 +9,8 @@ export const metadata = {
   title: TITTEL,
   description: BESKRIVELSE,
   alternates: { canonical: '/kontakt' },
-  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/kontakt' },
+  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/kontakt', images: [{ url: '/og/kontakt.jpg', width: 1200, height: 630 }] },
+  twitter: { card: 'summary_large_image', images: ['/og/kontakt.jpg'] },
 };
 
 export default function KontaktPage() {

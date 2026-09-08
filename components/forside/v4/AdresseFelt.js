@@ -82,16 +82,13 @@ export default function AdresseFelt({ className = '', onValgt, variant = 'lilla'
     router.push(qs ? `${START}?${qs}` : START);
   };
 
-  /* Ferdig valgt adresse: personaliser heroen (onValgt) eller gå rett videre. */
+  /* Ferdig valgt adresse: rett videre til onboardingen — ingen ekstra knapp å trykke. `onValgt` varsles først (heroen
+     kan rekke å personalisere seg mens siden bytter). */
   const fullfor = (v) => {
-    if (onValgt) {
-      setValgt(v);
-      setSender(false);
-      setForslag([]);
-      if (inputRef.current) inputRef.current.blur();   // lukk tastaturet, la heroen få oppmerksomheten
-      onValgt(v);
-      return;
-    }
+    setValgt(v);
+    setForslag([]);
+    if (inputRef.current) inputRef.current.blur();
+    if (onValgt) onValgt(v);
     gaTil({ address: v.address, postal: v.postal, city: v.city });
   };
 
@@ -144,7 +141,7 @@ export default function AdresseFelt({ className = '', onValgt, variant = 'lilla'
     <div ref={boksRef} className={`relative ${className}`} data-testid="v4-adressefelt">
       <form onSubmit={send} role="search" aria-label="Start med din adresse" className="relative">
         <div
-          className="flex h-14 items-center rounded-[14px] pl-5 pr-1.5"
+          className="flex h-14 items-center rounded-[14px] pl-5 pr-2"
           style={{ ...flate, boxShadow: ring, transition: `box-shadow 200ms ${EASE}, background-color 200ms ${EASE}` }}
         >
           <input
@@ -169,15 +166,16 @@ export default function AdresseFelt({ className = '', onValgt, variant = 'lilla'
             style={{ outline: 'none', boxShadow: 'none', WebkitAppearance: 'none' }}
             data-testid="v4-adresse-input"
           />
+          {/* Ingen Start-knapp: du velger adressen i listen og er videre. Pilen er et stille hint (Enter går også),
+              og blir en rolig puls mens siden bytter. */}
           <button
             type="submit"
             disabled={sender}
-            aria-label="Start"
-            className="ml-2 inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[10px] px-3.5 text-[15px] font-medium transition-[background-color,transform,opacity] duration-200 active:scale-[0.98] sm:px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
-            style={ink ? { background: sender ? '#2A2620' : T.ink, color: '#F4F1EA', opacity: sender ? 0.85 : 1 } : { background: sender ? T.lillaHover : T.lilla, color: T.ink, opacity: sender ? 0.8 : 1 }}
+            aria-label="Gå videre"
+            className="ml-2 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-[background-color,color,opacity] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
+            style={{ background: verdi.trim() ? (ink ? T.ink : T.lilla) : 'transparent', color: verdi.trim() ? (ink ? '#F4F1EA' : T.ink) : 'rgba(21,19,15,0.35)', opacity: sender ? 0.55 : 1, animation: sender ? 'v4-puls-dot 900ms ease-in-out infinite' : 'none' }}
             data-testid="v4-adresse-start"
           >
-            <span className={valgt ? 'inline' : 'hidden sm:inline'}>{valgt ? 'Fortsett' : 'Start'}</span>
             <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
           </button>
         </div>

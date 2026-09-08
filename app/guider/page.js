@@ -20,13 +20,13 @@ export const metadata = {
     title: 'Guider for utleiere | DigiHome',
     description: 'Pris, depositum, skatt og korttidsutleie — kunnskapen du trenger for trygg og lønnsom utleie.',
     url: `${site.url}/guider`, type: 'website', locale: 'nb_NO',
-    images: [{ url: site.url + site.ogImage }],
+    images: [{ url: site.url + '/og/guider.jpg', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Guider for utleiere | DigiHome',
     description: 'Pris, depositum, skatt og korttidsutleie — kunnskapen du trenger for trygg og lønnsom utleie.',
-    images: [site.url + site.ogImage],
+    images: [site.url + '/og/guider.jpg'],
   },
 };
 

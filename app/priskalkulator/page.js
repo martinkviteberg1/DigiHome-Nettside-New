@@ -11,9 +11,10 @@ export const metadata = {
   description: 'Beregn veiledende kostnad for selvforvaltning eller full forvaltning. Velg bolig, utleiemodell og tillegg — gratis og uforpliktende.',
   alternates: { canonical: '/priskalkulator' },
   openGraph: {
+  twitter: { card: 'summary_large_image', images: ['/og/priskalkulator.jpg'] },
     title: 'Priskalkulator — se hva utleie koster | DigiHome',
     description: 'Bygg din egen forvaltningspakke og se prisen med en gang. Gratis og uforpliktende.',
-    images: [{ url: site.url + site.ogImage }],
+    images: [{ url: site.url + '/og/priskalkulator.jpg', width: 1200, height: 630 }],
   },
 };
 

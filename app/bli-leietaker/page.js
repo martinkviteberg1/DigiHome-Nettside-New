@@ -8,6 +8,8 @@ import { breadcrumbLd, serviceLd } from '@/lib/seo';
 export const metadata = {
   title: 'Leie bolig i Bergen — kvalitetssikrede utleieboliger',
   description: 'Finn din neste leiebolig i Bergen: kvalitetssikrede boliger, digitale kontrakter med BankID og profesjonell oppfølging — gratis for leietakere.',
+  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', url: '/bli-leietaker', images: [{ url: '/og/bli-leietaker.jpg', width: 1200, height: 630 }] },
+  twitter: { card: 'summary_large_image', images: ['/og/bli-leietaker.jpg'] },
   alternates: { canonical: '/bli-leietaker' },
 };
 

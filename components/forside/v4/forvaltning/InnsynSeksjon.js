@@ -34,24 +34,37 @@ function Hake({ color = T.gronn }) {
   );
 }
 
-export default function InnsynSeksjon() {
+const STANDARD = {
+  id: 'innsyn',
+  label: 'Innsyn',
+  tittel: 'Du ser det samme som vi ser',
+  ingress: 'Logg inn når du vil. Husleie, oppgjør, saker og dokumenter ligger der — oppdatert, ikke oppsummert. Og når noe krever deg, får du én melding med ett valg.',
+  punkter: ['Månedsrapport og årsoppgave — klar til regnskapsføreren', 'Hver kostnad over grensen din, godkjent av deg først', 'Alt som er gjort, med hvem og når'],
+  flateLabel: 'Din oversikt · mai',
+  bunn: 'Ingenting venter på deg',
+  testid: 'v4f-innsyn',
+};
+
+/* Gjenbrukes på /utleiemeglere («Eierne dine ser det de skal se») — samme flate, annen tekst. */
+export default function InnsynSeksjon(props) {
+  const { id, label, tittel, ingress, punkter, flateLabel, bunn, testid } = { ...STANDARD, ...props };
   const ref = useRef(null);
   const synlig = useSynlig(ref, 0.2);
   const inn = (i, y = 16) => ({ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : `translateY(${y}px)`, transition: `opacity 700ms ${EASE} ${i * 90}ms, transform 800ms ${EASE} ${i * 90}ms` });
   return (
-    <section id="innsyn" ref={ref} className="relative" style={{ background: T.canvas, color: T.ink }} data-testid="v4f-innsyn">
+    <section id={id} ref={ref} className="relative" style={{ background: T.canvas, color: T.ink }} data-testid={testid}>
       <div className="mx-auto w-full max-w-[1360px] px-5 pb-20 pt-16 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-28 lg:pt-24">
         <div className="grid gap-10 lg:grid-cols-12 lg:items-center lg:gap-12">
           <div className="lg:col-span-5">
-            <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>Innsyn</p>
-            <h2 className="mt-4 text-[clamp(38px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }} data-testid="v4f-innsyn-tittel">
-              Du ser det samme som vi ser<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+            <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>{label}</p>
+            <h2 className="mt-4 text-[clamp(38px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }} data-testid={`${testid}-tittel`}>
+              {tittel}<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
             </h2>
-            <p className="mt-6 max-w-[44ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }} data-testid="v4f-innsyn-ingress">
-              Logg inn når du vil. Husleie, oppgjør, saker og dokumenter ligger der — oppdatert, ikke oppsummert. Og når noe krever deg, får du én melding med ett valg.
+            <p className="mt-6 max-w-[44ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }} data-testid={`${testid}-ingress`}>
+              {ingress}
             </p>
             <ul className="mt-8 grid gap-3 text-[15px]" style={{ color: DIM, ...inn(3) }}>
-              {['Månedsrapport og årsoppgave — klar til regnskapsføreren', 'Hver kostnad over grensen din, godkjent av deg først', 'Alt som er gjort, med hvem og når'].map((t) => (
+              {punkter.map((t) => (
                 <li key={t} className="flex items-start gap-3"><span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.lilla }} />{t}</li>
               ))}
             </ul>
@@ -62,7 +75,7 @@ export default function InnsynSeksjon() {
             <div className="overflow-hidden rounded-[22px]" style={{ background: '#FBFAF8', boxShadow: '0 0 0 1px rgba(21,19,15,0.07), 0 48px 100px -56px rgba(21,19,15,0.4)' }} data-testid="v4f-innsyn-flate">
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-7 sm:py-5" style={{ boxShadow: `inset 0 -1px 0 ${HAIR}` }}>
                 <div className="min-w-0">
-                  <p className="text-[12.5px] font-medium" style={{ color: SVAK }}>Din oversikt · mai</p>
+                  <p className="text-[12.5px] font-medium" style={{ color: SVAK }}>{flateLabel}</p>
                   <p className="mt-0.5 truncate text-[20px] sm:text-[22px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.ink }}>Nygårdsgaten 5A</p>
                 </div>
                 <p className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12.5px] font-medium" style={{ background: 'rgba(31,157,85,0.12)', color: '#166B3C' }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.gronn }} />Alt i orden</p>
@@ -81,7 +94,7 @@ export default function InnsynSeksjon() {
               </ul>
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-[13px] sm:px-7" style={{ background: 'rgba(21,19,15,0.03)', color: SVAK }}>
                 <span>Neste utbetaling · 3. juni</span>
-                <span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Ingenting venter på deg</span>
+                <span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />{bunn}</span>
               </div>
             </div>
           </div>

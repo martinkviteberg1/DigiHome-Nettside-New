@@ -14,10 +14,11 @@ export const metadata = {
   description: 'Datadrevne leiemarkedsrapporter basert på SSB og DigiHomes etterspørselsindeks. Se snittleie, prisutvikling og hvor etterspørselen er størst.',
   alternates: { canonical: '/leiemarkedet' },
   openGraph: {
+  twitter: { card: 'summary_large_image', images: ['/og/leiemarkedet.jpg'] },
     title: 'Leiemarkedet i Norge — leiepriser og etterspørsel | DigiHome',
     description: 'Datadrevne leiemarkedsrapporter basert på SSB og DigiHomes etterspørselsindeks.',
     url: `${site.url}/leiemarkedet`, type: 'website', locale: 'nb_NO',
-    images: [{ url: site.url + site.ogImage }],
+    images: [{ url: site.url + '/og/leiemarkedet.jpg', width: 1200, height: 630 }],
   },
 };
 

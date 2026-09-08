@@ -9,7 +9,8 @@ export const metadata = {
   title: TITTEL,
   description: BESKRIVELSE,
   alternates: { canonical: '/om-oss' },
-  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/om-oss' },
+  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/om-oss', images: [{ url: '/og/om-oss.jpg', width: 1200, height: 630 }] },
+  twitter: { card: 'summary_large_image', images: ['/og/om-oss.jpg'] },
 };
 
 export default function OmOssPage() {

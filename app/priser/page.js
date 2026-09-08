@@ -9,7 +9,8 @@ export const metadata = {
   title: TITTEL,
   description: BESKRIVELSE,
   alternates: { canonical: '/priser' },
-  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/priser' },
+  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: `${TITTEL} | DigiHome`, description: BESKRIVELSE, url: '/priser', images: [{ url: '/og/priser.jpg', width: 1200, height: 630 }] },
+  twitter: { card: 'summary_large_image', images: ['/og/priser.jpg'] },
 };
 
 export default function PriserPage() {

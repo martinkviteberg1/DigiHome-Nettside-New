@@ -16,10 +16,11 @@ export const metadata = {
   description: 'Profesjonell Airbnb-forvaltning i Bergen: annonser på Airbnb og Booking.com, dynamisk prising, gjestehåndtering, renhold og rapportering. Uten bindingstid.',
   alternates: { canonical: '/airbnb-forvaltning-bergen' },
   openGraph: {
+  twitter: { card: 'summary_large_image', images: ['/og/airbnb-forvaltning-bergen.jpg'] },
     title: 'Airbnb-forvaltning i Bergen — full service | DigiHome',
     description: 'Vi tar hele Airbnb-driften: annonser, dynamisk prising, gjester, renhold og oppgjør — kombinert med langtidsutleie for maksimal årsinntekt.',
     url: `${site.url}/airbnb-forvaltning-bergen`, type: 'website', locale: 'nb_NO',
-    images: [{ url: site.url + site.ogImage }],
+    images: [{ url: site.url + '/og/airbnb-forvaltning-bergen.jpg', width: 1200, height: 630 }],
   },
 };
 

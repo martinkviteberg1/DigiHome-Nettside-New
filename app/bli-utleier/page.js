@@ -8,7 +8,8 @@ export const metadata = {
   title: 'Utleiemegler i Bergen — full utleieforvaltning',
   description: 'Vi tar alt ved utleie av boligen din: annonsering, visninger, leietakersjekk, kontrakt og husleie. 0 kr oppstart, ingen bindingstid. Tilbud innen 24 t.',
   alternates: { canonical: '/bli-utleier' },
-  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: 'Utleiemegler i Bergen — full utleieforvaltning | DigiHome', description: 'Annonse, visning, leietakersjekk, kontrakt med BankID og husleie — selv med systemet, eller med en fast forvalter i Bergen. 0 kr oppstart, ingen bindingstid.', url: '/bli-utleier' },
+  openGraph: { type: 'website', locale: 'nb_NO', siteName: 'DigiHome', title: 'Utleiemegler i Bergen — full utleieforvaltning | DigiHome', description: 'Annonse, visning, leietakersjekk, kontrakt med BankID og husleie — selv med systemet, eller med en fast forvalter i Bergen. 0 kr oppstart, ingen bindingstid.', url: '/bli-utleier', images: [{ url: '/og/bli-utleier.jpg', width: 1200, height: 630 }] },
+  twitter: { card: 'summary_large_image', images: ['/og/bli-utleier.jpg'] },
 };
 
 /* ---------------------------------------------------------------------------
