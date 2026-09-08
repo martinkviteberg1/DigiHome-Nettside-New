@@ -1470,3 +1470,7 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   dempet «Adressen din», hårlinje som vokser med teksten, forslag i 17 px under. VELG → «5015 Bergen» under. FUNNET → blokken morfer (transform
   scale/translate) til boligarkets hode (`Arkhode`, 22 px) mens tekstspalten (skjult til nå) toner inn med akt 0 «Én adresse. Resten finner
   systemet.»; fasade + fakta som før. Mobil: samme, 40 px, tekstblokk i Vokse fra FUNNET.
+- /bedrift (For eiendomsselskaper) løftet: «Én motor. To måter» (Veiskille m/ forvaltning) FJERNET – DigiHome tar ikke driften for porteføljer
+  p.t. Erstattet med produktfilmene i rammen (`ProduktSeksjon kapitler={['drift','okonomi','kontrakt']}` – ny prop). FAQ: forvaltnings-
+  spørsmål ut, «Hva med regnskapet?» inn; prissvar uten forvaltningsandel. Hero-label «For eiendomsselskaper», ny ingress. Rekkefølge:
+  Hero → Tillit → Film → Én dag/Tre roller → Moduler → Steg → FAQ → Avslutning.

@@ -8001,3 +8001,14 @@ frontend:
         -working: "NA"
         -agent: "main"
         -comment: "Skjermbilder 1920 + 390 (film-faser 0→7, spor-slag), ingen overflow/konsollfeil. Ikke brukergodkjent."
+  - task: "/bedrift: Veiskille (to motorer/forvaltning) fjernet, produktfilm (drift→okonomi→kontrakt) lagt inn via ny ProduktSeksjon-prop `kapitler`, FAQ/pris uten forvaltning, hero-tekst"
+    implemented: true
+    working: "NA"
+    file: "/app/components/forside/v4/bedrift/BedriftV4.js, /app/components/forside/v4/produkt/ProduktSeksjon.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Skjermbilder 1920/390: tabs drift/okonomi/kontrakt, ingen konsollfeil, ingen sideoverflow. Forsiden bruker fortsatt standard fire kapitler."

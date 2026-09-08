@@ -38,7 +38,7 @@ const FORHAANDSLAST = {
 
 /* Fire kapitler i den rekkefølgen et leieforhold lever: fra ledig til valgt (Annonse), fra valgt til innflyttet
    (Kontrakt), hverdagen med leietaker og leverandør (Drift), og pengene (Økonomi). */
-const TABS = [
+const ALLE_TABS = [
   { id: 'annonse', navn: 'Annonse', klar: true },
   { id: 'kontrakt', navn: 'Kontrakt', klar: true },
   { id: 'drift', navn: 'Drift', klar: true },
@@ -143,9 +143,12 @@ const TEMA = {
 
 /* variant: 'ramme' (standard — produktflaten som kort på bakgrunn) eller 'full' (full bleed: bildet ER scenen, ingen kort,
    ingen bakgrunnsfoto, teksttabs med lilla underline over stagen, seksjonsoverskriften står inne i filmens åpning). */
-export default function ProduktSeksjon({ variant = 'ramme' }) {
+/* kapitler: hvilke filmer som vises (rekkefølgen er kjeden). Forsiden viser alle fire fra Annonse; undersiden for
+   eiendomsselskap viser Drift → Økonomi → Kontrakt — det teamet gjør hver dag, ikke annonsen. */
+export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse', 'kontrakt', 'drift', 'okonomi'] }) {
   const full = variant === 'full';
-  const [aktiv, setAktiv] = useState('annonse');   // starter på Annonse — livssyklusen leses fra venstre
+  const TABS = kapitler.map((id) => ALLE_TABS.find((t) => t.id === id)).filter(Boolean);
+  const [aktiv, setAktiv] = useState(TABS[0]?.id || 'annonse');   // starter på første kapittel — kjeden leses fra venstre
   /* Kapitlene spiller alltid videre av seg selv (Annonse → Kontrakt → Drift). Velger brukeren en tab, fortsetter kjeden derfra. */
   const [bakgrunn, setBakgrunn] = useState('oslo');   // nøkkel i BAKGRUNNER — bygården er standard; 'stue' (interiør) ligger i velgeren
   const [velgerOpen, setVelgerOpen] = useState(false);

@@ -6,56 +6,18 @@ import NavV4 from '../NavV4';
 import Footer from '@/components/dh/Footer';
 import { EASE, Knapp, T, display } from '../motion';
 import PortefoljeScene, { STORRELSER } from './PortefoljeScene';
-import VeiskilleSeksjon from '../VeiskilleSeksjon';
 import SammenligningSeksjon from '../SammenligningSeksjon';
+import ProduktSeksjon from '../produkt/ProduktSeksjon';
 import TillitStripe from '../TillitStripe';
 import ModulSeksjon from './ModulSeksjon';
 import StegSeksjon from '../StegSeksjon';
 import FaqSeksjon from '../FaqSeksjon';
 import AvslutningSeksjon from '../AvslutningSeksjon';
 
-/* ── Innholdet for eiendomsselskap. Samme seksjoner som boligeier-siden, én størrelse større:
-      porteføljen, teamet og rollene. Påstandene holder seg til det siden allerede lover
-      (roller/godkjenning, husleie per bygg, saker med leverandør og pris, BankID-kontrakter,
-      rapport per bygg og selskap) — og prisen slik prissiden sier den: etter enheter og moduler. ── */
-
-const MAATER = [
-  {
-    id: 'plattform',
-    merke: 'Plattform',
-    type: 'Programvare',
-    meta: 'Hele Norge',
-    tittel: ['Deres team.', 'Vår motor.'],
-    tekst: 'Bygg, enheter og leieforhold på ett sted. Teamet driver porteføljen; systemet tar rutinen — husleie, kontrakter og saker går automatisk, og teamet godkjenner det som betyr noe, med roller og full historikk.',
-    punkter: [
-      'Roller: hvem ser hva, hvem godkjenner',
-      'Husleie per bygg — registrert, fulgt opp, purret',
-      'Saker med leverandør og pris, adressert til riktig rolle',
-      'Kontrakter signert med BankID, arkivert på enheten',
-    ],
-    pris: { stor: 'Per enhet', etter: 'etter antall enheter og moduler', under: 'Konkret forslag samme uke — med deres portefølje som eksempel.' },
-    handling: { tekst: 'Book en demo', href: '/book-mote' },
-    sekundaer: { tekst: 'Registrer selskapet', href: '/bli-utleier/start?kind=business' },
-  },
-  {
-    id: 'forvaltning',
-    merke: 'Forvaltning',
-    type: 'Tjeneste',
-    meta: 'Bergen og omegn',
-    tittel: ['Vi drifter.', 'Dere eier.'],
-    tekst: 'Utleie, leietakere og drift — vi tar det hele, på samme system. Dere får rapporten per bygg og selskap, og siste ord når noe koster.',
-    punkter: [
-      'Annonse, visning og leietakervalg',
-      'Kontrakt, depositum og innflytting',
-      'Drift, leverandører og oppfølging av leietakere',
-      'Fast forvalter og månedsrapport per bygg',
-    ],
-    pris: { stor: 'Etter omfang', etter: 'en andel av husleien', under: 'Tilpasset porteføljen og hva vi skal gjøre. Konkret tilbud etter en samtale.' },
-    handling: { tekst: 'Book en samtale', href: '/book-mote' },
-    sekundaer: { tekst: 'Se forvaltning', href: '/forvaltning' },
-    mork: true,
-  },
-];
+/* ── Innholdet for eiendomsselskaper. Plattformen — ikke forvaltning: selskapet drifter selv, med eget team,
+      på DigiHome. Påstandene holder seg til det systemet gjør (roller/godkjenning, husleie per bygg, saker med
+      leverandør og pris, BankID-kontrakter, rapport per bygg og selskap) — og prisen slik prissiden sier den:
+      etter enheter og moduler. Ingen «vi drifter for dere» her — det tilbys ikke for porteføljer p.t. ── */
 
 const ROLLER = [['drift', 'Driftssjef'], ['okonomi', 'Økonomi'], ['vaktmester', 'Vaktmester']];
 
@@ -96,13 +58,13 @@ const SPORSMAL = [
   { q: 'Hvordan fungerer roller?', a: 'Dere bestemmer hvem som ser hva og hvem som godkjenner. Saker og godkjenninger adresseres til riktig rolle, og hver handling logges med hvem og når.' },
   { q: 'Hvordan signeres kontrakter?', a: 'Med BankID gjennom Posten signering. Kontrakten arkiveres på enheten, med full historikk.' },
   { q: 'Fungerer det for flere selskaper og bygg?', a: 'Ja. Porteføljen organiseres per selskap og per bygg, med oversikt og rapport på hvert nivå.' },
-  { q: 'Kan DigiHome også drifte porteføljen for oss?', a: 'Ja — forvaltning tilbys i Bergen og omegn, på samme system. Dere får rapporten, og siste ord når noe koster.' },
+  { q: 'Hva med regnskapet?', a: 'Husleie, kostnader og oppgjør ligger per bygg og selskap, og eksporteres til regnskapssystemet dere bruker — PowerOffice, Tripletex og Fiken.' },
 ];
 
 const PRIS_SVAR = (
   <p className="max-w-[60ch]" style={{ color: 'rgba(21,19,15,0.66)' }}>
     Plattformen prises etter <strong style={{ color: '#15130F', fontWeight: 500 }}>antall enheter og moduler</strong>.{' '}
-    <Link href="/book-mote" className={LINK} style={{ color: '#15130F' }} data-testid="v4e-faq-demo">Book en demo</Link>, så får dere et konkret forslag samme uke — med deres portefølje som eksempel. Forvaltning prises etter omfang, som en andel av husleien.
+    <Link href="/book-mote" className={LINK} style={{ color: '#15130F' }} data-testid="v4e-faq-demo">Book en demo</Link>, så får dere et konkret forslag samme uke — med deres portefølje som eksempel.
   </p>
 );
 
@@ -132,7 +94,7 @@ export default function BedriftV4() {
           <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 50% 60% at 72% 50%, rgba(212,150,255,0.12) 0%, rgba(212,150,255,0.04) 45%, rgba(212,150,255,0) 72%)' }} />
           <div className="relative mx-auto grid w-full max-w-[1440px] gap-14 px-5 pb-16 pt-10 sm:px-8 sm:pt-12 lg:w-[calc(100%-128px)] lg:grid-cols-[minmax(0,5fr)_minmax(0,8fr)] lg:items-center lg:gap-12 lg:px-0 lg:py-10 2xl:gap-16">
             <div className="max-w-[560px]">
-              <p className="dh-cover-inn text-[15px] font-medium" style={{ color: 'rgba(21,19,15,0.55)' }} data-testid="v4b-label">For eiendomsselskap</p>
+              <p className="dh-cover-inn text-[15px] font-medium" style={{ color: 'rgba(21,19,15,0.55)' }} data-testid="v4b-label">For eiendomsselskaper</p>
               <h1
                 className="dh-cover-inn mt-4 max-w-[10ch] text-[52px] sm:text-[68px] lg:text-[clamp(64px,5vw,96px)]"
                 style={{ ...display, color: T.ink, animationDelay: '.04s' }}
@@ -141,7 +103,7 @@ export default function BedriftV4() {
                 Porteføljen på autopilot<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
               </h1>
               <p className="dh-cover-inn mt-7 max-w-[38ch] text-[18px] leading-[1.45] text-[#15130F]/70 sm:mt-8 sm:text-[20px]" style={{ animationDelay: '.08s' }} data-testid="v4b-ingress">
-                Saker, husleie og leietakere på tvers av alle bygg. Teamet driver — systemet tar rutinen, med roller, godkjenning og full historikk.
+                Alle bygg, enheter og leieforhold i én oversikt. Teamet deres driver — systemet tar rutinen: husleie, kontrakter og saker går automatisk, med roller, godkjenning og full historikk.
               </p>
 
               {/* Adressefeltets tvilling: størrelsen. Skalerer scenen og spiller dagen på nytt. */}
@@ -182,14 +144,8 @@ export default function BedriftV4() {
         </section>
         <TillitStripe />
 
-        {/* ── 2. Én motor, to måter å bruke den ── */}
-        <VeiskilleSeksjon
-          spor={MAATER}
-          tittel={['Én motor.', 'To måter å bruke den.']}
-          under="Kjør porteføljen med eget team på DigiHome — eller la oss drifte den. Samme system, samme oversikt."
-          usikker="Se hvem som gjør hva i en vanlig dag"
-          testid="v4e"
-        />
+        {/* ── 2. Produktet i drift — filmene teamet kjenner seg igjen i: saken, økonomien, kontrakten ── */}
+        <ProduktSeksjon kapitler={['drift', 'okonomi', 'kontrakt']} />
         {/* ── 3. Én dag, tre roller ── */}
         <SammenligningSeksjon
           tittel={['Én dag.', 'Tre roller.']}
