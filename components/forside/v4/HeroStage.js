@@ -537,9 +537,10 @@ function Veggkort({ hjemme, smal, k, adresse }) {
       style={{
         ...(smal
           ? { background: 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 28%, rgba(243,241,236,0.98) 100%)' }
-          /* Perspektiv: veggen i filmen viker bakover mot høyre (listen stiger, linjene samles). Kortet dreies rundt sin
-             venstre kant så det ligger PÅ veggen — høyre side litt lenger unna, litt mindre. Én transform, ingen filtre. */
-          : { left: 'max(60%, calc(38% + 208px))', right: '0%', top: '13%', transform: 'perspective(1100px) rotateY(21deg) rotateX(2deg)', transformOrigin: '0% 50%', transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }),
+          /* Perspektiv: kameraet står til høyre og ser skrått mot venstre — veggen kommer MOT oss på høyre side (gulvlisten
+             faller mot høyre, ca. 8°). Kortet dreies rundt sin venstre kant med høyre side nærmest, så bunnlinjene faller
+             parallelt med listen og toppen stiger. Én transform, ingen filtre. */
+          : { left: 'max(60%, calc(38% + 208px))', right: '8%', top: '12%', transform: 'perspective(1000px) rotateY(-14deg)', transformOrigin: '0% 50%', transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }),
         color: blekk,
         opacity: hjemme ? 1 : 0,
         transition: `opacity 600ms ${EASE} ${hjemme ? T0 - 200 : 0}ms`,
