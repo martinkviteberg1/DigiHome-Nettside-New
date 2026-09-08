@@ -4,6 +4,7 @@ import { FILM } from './heroFilm';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EASE, T, display, tall, useRedusert, useSekvens, useSmal, useSynlig } from './motion';
 import AdresseFelt from './AdresseFelt';
+import EierApp, { APP_DW, APP_DH } from './EierApp';
 
 /* ---------------------------------------------------------------------------
    HeroStage — én scene i full bredde. Sana-strukturen, DigiHomes innhold.
@@ -509,51 +510,46 @@ function useFortelling(aktiv, redusert) {
 }
 
 
-/* Veggen: ÉN typografisk blokk i lyset fra vinduet — en liten meta-linje (sted · tid · kapittelstreker) og ett statement
-   som hører til bildet, ikke til nettsiden: «Kvelden er din.» Venstrejustert der veggen begynner, aldri sentrert. Toner
-   inn én gang når rommet står, og står stille — det eneste som lever er klokken og strekene, som følger samtalen.
-   Smal skjerm: samme blokk nederst i rammen over en myk gradient (veggen er beskåret bort der). */
-function Veggstatement({ hjemme, smal, k, adresse }) {
+/* Veggen: eierportalen på mobil — det han ser på telefonen, stort og rolig, i lyset fra vinduet. Én ekte enhet rett
+   forfra (EierApp), skalert etter scenens høyde (≈ 80 % av høyden), sentrert på ~78 % av bredden. Kommer opp én gang
+   når rommet står, svever nesten umerkelig. Ingen tekst på veggen ellers — klokken bor i telefonens statuslinje.
+   Smal skjerm: ingen mockup (veggen er beskåret bort; boblene ved telefonen bærer historien alene). */
+function Veggmockup({ hjemme, smal, k, adresse }) {
+  const ref = useRef(null);
+  const [maal, setMaal] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = ref.current; if (!el) return undefined;
+    const f = () => setMaal({ w: el.offsetWidth, h: el.offsetHeight });
+    f();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(f) : null;
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, []);
+  if (smal) return null;
+  const W = APP_DW + 14; const H = APP_DH + 14;
+  const sk = maal.h ? Math.min(1.7, (maal.h * 0.8) / H) : 1;
+  const left = Math.round(maal.w * 0.78 - (W * sk) / 2);
+  const top = Math.round(maal.h * 0.5 - (H * sk) / 2);
   const i = k === null || k === undefined ? -1 : Math.min(k, STROM.length - 1);
   const kl = STROM[Math.max(0, i)].kl;
-  const ord = ['Kvelden', 'er', 'din'];
-  const meta = 'rgba(21,19,15,0.56)';
-  const T0 = 700;
   return (
-    <div
-      className={smal ? 'absolute inset-x-0 bottom-0 px-5 pb-5 pt-20' : 'absolute'}
-      style={{
-        ...(smal ? { background: 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.86) 34%, rgba(243,241,236,0.97) 100%)' } : { left: 'max(61%, calc(38% + 208px))', right: '5%', top: '27%' }),
-        opacity: hjemme ? 1 : 0,
-        transition: `opacity 700ms ${EASE} ${hjemme ? T0 : 0}ms`,
-      }}
-      aria-hidden={!hjemme}
-      data-testid="v4-vegg"
-    >
-      <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 whitespace-nowrap tabular-nums" style={{ fontSize: smal ? 11 : 11.5, letterSpacing: '0.01em', color: meta, opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(6px)', transition: `opacity 900ms ${EASE} ${hjemme ? T0 + 100 : 0}ms, transform 900ms ${EASE} ${hjemme ? T0 + 100 : 0}ms` }} data-testid="v4-vegg-meta">
-        <span>{adresse}, Bergen</span>
-        <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.22)' }}>·</span>
-        <span>torsdag <span key={kl} className="inline-block animate-in fade-in-0 duration-700">{kl}</span></span>
-        <span className="ml-1.5 inline-flex items-center gap-[4px]" aria-hidden="true">
-          {STROM.map((st, q) => (
-            <span key={st.id} className="block h-[2px] w-[12px] rounded-full" style={{ background: q <= i ? 'rgba(21,19,15,0.62)' : 'rgba(21,19,15,0.15)', transition: `background 700ms ${EASE}` }} />
-          ))}
-        </span>
-      </p>
-      <h3 className={smal ? 'mt-2.5' : 'mt-4'} style={{ ...display, fontSize: smal ? 34 : 'clamp(48px, 5vw, 96px)', lineHeight: 0.96, letterSpacing: '-0.045em', color: 'rgba(21,19,15,0.88)' }} data-testid="v4-vegg-statement">
-        {ord.map((o, j) => (
-          <span key={o} className="inline-block" style={{ marginRight: j < ord.length - 1 ? '0.22em' : 0, ...(hjemme ? { animation: `v4-ord-fade 1300ms ${EASE} ${T0 + 260 + j * 110}ms both`, willChange: 'transform, opacity, filter' } : { opacity: 0 }) }}>
-            {o}{j === ord.length - 1 ? <span style={{ color: T.lilla, marginLeft: '-0.02em' }}>.</span> : null}
-          </span>
-        ))}
-      </h3>
+    <div ref={ref} className="pointer-events-none absolute inset-0 z-[2]" aria-hidden={!hjemme} data-testid="v4-vegg">
+      {maal.w > 0 && (
+        <div className="absolute v4-flyt" style={{ left, top, width: W * sk, height: H * sk, opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(22px)', transition: `opacity 1100ms ${EASE} ${hjemme ? 650 : 0}ms, transform 1400ms ${EASE} ${hjemme ? 650 : 0}ms` }}>
+          <div className="v4-flyt" style={{ animation: 'v4-flyt 9000ms ease-in-out infinite' }}>
+            <div style={{ transform: `scale(${sk})`, transformOrigin: '0 0', width: W, height: H }}>
+              <EierApp k={i < 0 ? null : i} kl={kl} adresse={adresse} synlig={hjemme} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, replay, zoom = false }) {
-  /* Direkte-modus: én blokk på veggen — meta-linje + «Kvelden er din.» (Veggstatement). */
-  if (direkte) return <Veggstatement hjemme={hjemme} smal={smal} k={fort?.puls} adresse={adresse} />;
+  /* Direkte-modus: eierportalen på mobil står på veggen (Veggmockup). */
+  if (direkte) return <Veggmockup hjemme={hjemme} smal={smal} k={fort?.puls} adresse={adresse} />;
   /* (Teksten under gjelder Street View-flyten.) Én setning som står fra første bilde og aldri skifter, én linje under, en hårlinje
      og den stille meta-linjen (adresse · klokke · status). Det eneste som beveger seg er klokken, som følger samtalen
      på telefonen. Mindre og mer dempet enn en overskrift — veggen skal ikke konkurrere med ham og telefonen.
