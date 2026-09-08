@@ -12,7 +12,7 @@ import NavV4 from '@/components/forside/v4/NavV4';
 export default function Header() {
   return (
     <div className="fixed inset-x-0 top-0 z-50" data-testid="header">
-      <NavV4 bg="rgba(253,252,251,0.88)" />
+      <NavV4 bg="rgba(253,252,251,0.88)" bgTett="#FDFCFB" />
     </div>
   );
 }

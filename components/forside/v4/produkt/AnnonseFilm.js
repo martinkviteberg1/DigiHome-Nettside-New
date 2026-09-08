@@ -636,7 +636,7 @@ function Prompt({ fase, ov, liten = false }) {
   return (
     <>
       <div className={`pointer-events-none absolute inset-x-0 top-0 z-[5] flex justify-center ${liten ? 'px-2.5 pt-10' : 'px-4 pt-12'}`} style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(-10px)', filter: vis ? 'blur(0px)' : BLUR_INN, transition: ov ? 'none' : vis ? `opacity 550ms ${EASE} 900ms, transform 650ms ${EASE} 900ms, filter 550ms ${EASE} 900ms` : `opacity 300ms ${EASE}, transform 300ms ${EASE}, filter 300ms ${EASE}` }} aria-hidden={!vis} data-testid="v4-prompt">
-        <div className={`w-full rounded-[16px] ${liten ? 'max-w-full px-3.5 py-3' : 'max-w-[440px] px-4 py-3.5'}`} style={{ background: 'rgba(251,250,248,0.84)', backdropFilter: 'blur(14px) saturate(1.2)', WebkitBackdropFilter: 'blur(14px) saturate(1.2)', color: T.ink, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.6), 0 0 0 1px rgba(21,19,15,0.06), 0 24px 60px -24px rgba(21,19,15,0.45)' }}>
+        <div className={`w-full rounded-[16px] ${liten ? 'max-w-full px-3.5 py-3' : 'max-w-[440px] px-4 py-3.5'}`} style={{ background: 'rgba(251,250,248,0.95)', color: T.ink, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.6), 0 0 0 1px rgba(21,19,15,0.06), 0 24px 60px -24px rgba(21,19,15,0.45)' }}>
           <div className="flex items-center justify-between gap-3 text-[11.5px]">
             <span className="inline-flex items-center gap-1.5 font-medium" style={{ color: DIM }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Instruks til stylingen</span>
             <span className="inline-flex items-center gap-2 font-medium" style={{ color: DIM }}>

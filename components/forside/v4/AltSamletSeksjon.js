@@ -30,7 +30,7 @@ export default function AltSamletSeksjon() {
 
   return (
     <section id="alt" ref={ref} className="relative" style={{ background: T.canvas, color: T.ink }} data-testid="v4-alt">
-      <div className="mx-auto w-full max-w-[1360px] px-5 pb-20 pt-20 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-28 lg:pt-28">
+      <div className="mx-auto w-full max-w-[1360px] px-5 pb-14 pt-14 sm:px-8 sm:pb-20 sm:pt-20 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-28 lg:pt-28">
         <div className="grid gap-12 lg:grid-cols-12 lg:gap-10">
           {/* Venstre: påstand + én setning + lenke */}
           <div className="lg:col-span-4" style={inn(0)}>

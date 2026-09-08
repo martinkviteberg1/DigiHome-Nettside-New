@@ -83,15 +83,14 @@ export default function RootLayout({ children }) {
                 __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('consent','default',{ad_storage:'denied',analytics_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',functionality_storage:'granted',security_storage:'granted',wait_for_update:500});gtag('js',new Date());gtag('config','${GA4_ID}',{send_page_view:false,anonymize_ip:true});${GADS_ID ? `gtag('config','${GADS_ID}',{allow_enhanced_conversions:true});` : ''}`,
               }}
             />
-            {/* gtag.js (176 KB) lastes ETTER første interaksjon eller etter 4s.
-                Holder det utenfor LCP/TBT-vinduet uten å miste data: alle
-                gtag()-kall køes i dataLayer av consent-shimen over og
-                prosesseres når biblioteket lastes. */}
+            {/* gtag.js (176 KB, ~350 ms CPU på en treg mobil) lastes ETTER første interaksjon — eller senest 8 s etter load,
+                i ledig tid (requestIdleCallback). Holder det utenfor LCP/TBT-vinduet og unna de første scroll-frames uten å
+                miste data: alle gtag()-kall køes i dataLayer av consent-shimen over og prosesseres når biblioteket lastes. */}
             <Script
               id="ga-deferred"
               strategy="afterInteractive"
               dangerouslySetInnerHTML={{
-                __html: `(function(){var l=false;function load(){if(l)return;l=true;var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtag/js?id=${GA4_ID}';document.head.appendChild(s);clean();}var ev=['scroll','mousemove','touchstart','keydown','pointerdown'];function clean(){ev.forEach(function(e){window.removeEventListener(e,load)})}ev.forEach(function(e){window.addEventListener(e,load,{passive:true,once:true})});setTimeout(load,4000);})();`,
+                __html: `(function(){var l=false;function inject(){if(l)return;l=true;clean();var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtag/js?id=${GA4_ID}';document.head.appendChild(s);}function load(){if(l)return;if(window.requestIdleCallback){window.requestIdleCallback(inject,{timeout:1500});}else{setTimeout(inject,200);}}var ev=['scroll','mousemove','touchstart','keydown','pointerdown'];function clean(){ev.forEach(function(e){window.removeEventListener(e,load)})}ev.forEach(function(e){window.addEventListener(e,load,{passive:true,once:true})});function tak(){setTimeout(load,8000);}if(document.readyState==='complete'){tak();}else{window.addEventListener('load',tak,{once:true});}})();`,
               }}
             />
           </>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
@@ -19,33 +19,96 @@ import { ArrowRight } from 'lucide-react';
 import { EASE, T, heading, display, displayFor, tall } from './tokens';
 export { EASE, T, heading, display, displayFor, tall };
 
+/* Media query som ekstern kilde (useSyncExternalStore): på serveren og under hydrering = `server`-verdien, på
+   klienten den faktiske — React re-rendrer synkront rett etter hydrering hvis de er ulike (ingen mismatch-feil,
+   ingen synlig blink). Komponenter som monteres først på klienten (utsatte seksjoner) får riktig verdi fra første
+   render — ingen «desktop først, så mobil»-hopp. */
+const INGEN = () => () => {};
+function useMedia(query, server = false) {
+  const subscribe = useCallback((cb) => {
+    if (typeof window === 'undefined' || !window.matchMedia) return INGEN();
+    const mq = window.matchMedia(query);
+    mq.addEventListener('change', cb);
+    return () => mq.removeEventListener('change', cb);
+  }, [query]);
+  const snapshot = useCallback(() => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(query).matches : server), [query, server]);
+  const serverSnapshot = useCallback(() => server, [server]);
+  return useSyncExternalStore(subscribe, snapshot, serverSnapshot);
+}
+
 export function useRedusert() {
-  const [r, setR] = useState(false);
-  useEffect(() => { try { setR(window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { /* ok */ } }, []);
-  return r;
+  return useMedia('(prefers-reduced-motion: reduce)');
 }
 
 /* Smal skjerm (< 640 px). SSR-default: false. */
 export function useSmal() {
-  const [s, setS] = useState(false);
-  useEffect(() => {
-    try {
-      const mq = window.matchMedia('(max-width: 639px)');
-      const f = () => setS(mq.matches);
-      f();
-      mq.addEventListener('change', f);
-      return () => mq.removeEventListener('change', f);
-    } catch (e) { return undefined; }
-  }, []);
-  return s;
+  return useMedia('(max-width: 639px)');
 }
 
+/* Én gang sann når elementet er innenfor `rootMargin` av viewporten (og forblir sann). Til utsatt montering
+   av tunge seksjoner: koden hentes og monteres først når brukeren nærmer seg. Observasjonen starter først etter
+   `load` (i ledig tid) — eller ved brukerens første scroll, hva som kommer først — så monteringen av seksjoner rett
+   under folden aldri konkurrerer med hero, fonter og hydrering om hovedtråden. */
+export function useNaer(ref, rootMargin = '800px 0px') {
+  const [naer, setNaer] = useState(false);
+  useEffect(() => {
+    if (naer) return undefined;
+    let obs = null; let idle = 0; let t = 0; let avbrutt = false; let startet = false;
+    const start = () => {
+      if (avbrutt || startet) return; startet = true;
+      window.removeEventListener('scroll', start); window.removeEventListener('load', etterLoad);
+      const el = ref.current;
+      if (!el || typeof IntersectionObserver === 'undefined') { setNaer(true); return; }
+      /* startTransition: monteringen (stor DOM) rendres avbrytbart i småbiter — ingen lang oppgave som blokkerer
+         scroll/trykk, og plassholderen står til seksjonen (og chunken) er klar. */
+      obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { startTransition(() => setNaer(true)); obs.disconnect(); } }, { rootMargin });
+      obs.observe(el);
+    };
+    const etterLoad = () => {
+      if (typeof window.requestIdleCallback === 'function') idle = window.requestIdleCallback(start, { timeout: 1200 });
+      else t = window.setTimeout(start, 150);
+    };
+    window.addEventListener('scroll', start, { passive: true });
+    if (document.readyState === 'complete') etterLoad(); else window.addEventListener('load', etterLoad, { once: true });
+    return () => {
+      avbrutt = true;
+      window.removeEventListener('scroll', start); window.removeEventListener('load', etterLoad);
+      obs?.disconnect(); if (idle && window.cancelIdleCallback) window.cancelIdleCallback(idle); window.clearTimeout(t);
+    };
+  }, [ref, naer, rootMargin]);
+  return naer;
+}
+
+/* Utsatt seksjon: en tom flate med seksjonens omtrentlige høyde (så siden ikke hopper) til den nærmer seg
+   viewporten — da monteres barnet (typisk en dynamic()-import med ssr:false → egen chunk). Står `id` i URL-ens
+   hash, monteres den straks så ankerlenker treffer. */
+export function Utsatt({ children, id, minHeight, rootMargin = '900px 0px', className = '' }) {
+  const ref = useRef(null);
+  const [straks, setStraks] = useState(false);
+  useEffect(() => {
+    try { if (id && window.location.hash === `#${id}`) setStraks(true); } catch (e) { /* ok */ }
+  }, [id]);
+  const naer = useNaer(ref, rootMargin);
+  if (naer || straks) return children;
+  return <div ref={ref} id={id} className={className} style={{ minHeight }} aria-hidden="true" data-testid={id ? `utsatt-${id}` : undefined} />;
+}
+
+/* «I bildet»: sann når minst `threshold` av elementet er synlig — ELLER når elementet fyller minst 22 % av
+   viewporten (eller alt av et lite element). Det siste er mobilregelen: en seksjon på 1 600 px på en 844 px høy
+   skjerm kan aldri bli 18 % synlig før du har scrollet langt inn i den — uten denne regelen sto overskriftene
+   usynlige (opacity 0) mens brukeren scrollet forbi. */
+const TRINN = [0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
 export function useSynlig(ref, threshold = 0.4) {
   const [synlig, setSynlig] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof IntersectionObserver === 'undefined') { setSynlig(true); return undefined; }
-    const obs = new IntersectionObserver(([e]) => setSynlig(e.isIntersecting), { threshold });
+    const obs = new IntersectionObserver(([e]) => {
+      const vh = (e.rootBounds && e.rootBounds.height) || window.innerHeight || 1;
+      const h = e.boundingClientRect.height || 1;
+      const nok = e.intersectionRatio >= threshold || e.intersectionRect.height >= Math.min(vh * 0.22, h * 0.98);
+      setSynlig(e.isIntersecting && nok);
+    }, { threshold: TRINN });
     obs.observe(el);
     return () => obs.disconnect();
   }, [ref, threshold]);

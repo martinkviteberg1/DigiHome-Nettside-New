@@ -49,18 +49,22 @@ const SCENER = {
   annonse: {
     tittel: ['Fra adressen', 'til valgt leietaker.'],
     ingress: 'Skriv inn adressen. DigiHome finner boligen, du legger til bildene — så leses detaljene, annonsen skrives og legges ut på FINN.no. Interessentene legitimerer seg og booker visning selv. Du velger hvem som får boligen.',
+    kort: 'Skriv inn adressen. DigiHome finner boligen, skriver annonsen og legger den ut på FINN. Interessentene booker visning selv — du velger leietaker.',
   },
   kontrakt: {
     tittel: ['Fra valgt leietaker', 'til nøklene i hånden.'],
     ingress: 'Kontrakten er fylt ut fra annonsen og signeres med BankID av begge. Depositumet står på egen konto hos Keyhole, og overtakelsen dokumenteres i en protokoll dere signerer i døra.',
+    kort: 'Kontrakten fylles ut fra annonsen og signeres med BankID. Depositum hos Keyhole, overtakelse med protokoll i døra.',
   },
   drift: {
     tittel: ['Fra melding til løst.', 'Du trykker én gang.'],
     ingress: 'Emma melder i chatten at varmtvannet er borte. Saken sorterer seg selv, rørleggeren svarer med tidspunkt og pris — du godkjenner med ett trykk. Torsdag er det fikset, og fakturaen ligger i regnskapet.',
+    kort: 'Emma melder at varmtvannet er borte. Rørleggeren svarer med tid og pris — du godkjenner med ett trykk. Fakturaen bokføres selv.',
   },
   okonomi: {
     tittel: ['Fra husleie', 'til ferdig regnskap.'],
     ingress: 'Den første i måneden kommer husleien inn — leilighet for leilighet. Den som mangler får en vennlig påminnelse med Vipps. Ved månedsslutt er alt bokført, og fakturaen fra rørleggeren ligger på riktig leilighet.',
+    kort: 'Husleien kommer inn leilighet for leilighet. Mangler én, purres den med Vipps. Ved månedsslutt er alt bokført.',
   },
 };
 
@@ -131,13 +135,15 @@ const VELGER = [['oslo', 'Oslo · bolig'], ['osloKveld', 'Oslo · kveld'], ['stu
 const TEMA = {
   mork: {
     seksjonBg: T.plomme, tekst: IVORY, ingress: 'rgba(244,241,234,0.68)',
-    pille: 'rgba(36,28,39,0.42)', pilleFestet: 'rgba(36,28,39,0.78)', pilleKant: 'rgba(244,241,234,0.14)',
+    pille: 'rgba(36,28,39,0.62)', pilleFestet: 'rgba(36,28,39,0.90)', pilleKant: 'rgba(244,241,234,0.14)',
     markor: IVORY, markorSkygge: '0 6px 18px -8px rgba(0,0,0,0.55)', tabAktiv: INK, tabTekst: 'rgba(244,241,234,0.74)', tabDempet: 'rgba(244,241,234,0.36)', tabHover: 'hover:text-[#F4F1EA]', ring: 'focus-visible:ring-[#F4F1EA]/40',
+    spor: 'rgba(244,241,234,0.16)', sporFerdig: 'rgba(244,241,234,0.42)', indeks: 'rgba(244,241,234,0.46)',
   },
   lys: {
     seksjonBg: IVORY, tekst: INK, ingress: 'rgba(21,19,15,0.66)',
-    pille: 'rgba(243,241,236,0.66)', pilleFestet: 'rgba(243,241,236,0.88)', pilleKant: 'rgba(21,19,15,0.08)',
+    pille: 'rgba(243,241,236,0.84)', pilleFestet: 'rgba(243,241,236,0.96)', pilleKant: 'rgba(21,19,15,0.08)',
     markor: INK, markorSkygge: '0 8px 20px -10px rgba(21,19,15,0.55)', tabAktiv: IVORY, tabTekst: 'rgba(21,19,15,0.68)', tabDempet: 'rgba(21,19,15,0.34)', tabHover: 'hover:text-[#15130F]', ring: 'focus-visible:ring-[#15130F]/30',
+    spor: 'rgba(21,19,15,0.12)', sporFerdig: 'rgba(21,19,15,0.38)', indeks: 'rgba(21,19,15,0.42)',
   },
 };
 
@@ -162,7 +168,7 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
   /* Filmene styres av om PRODUKTFLATEN er i bildet (ikke bare seksjonen): starter når rammen sees, pauser når den forlates,
      og kapittelbyttet skjer bare mens man ser på. */
   const sceneRef = useRef(null);
-  const sceneSynlig = useSynlig(sceneRef, 0.3);
+  const sceneSynlig = useSynlig(sceneRef, 0.5);   // halve flaten (eller 35 % av skjermen) må være i bildet før klokken går
   const filmSynlig = synlig && sceneSynlig;
   const scene = SCENER[aktiv] || SCENER.drift;
   const bg = BAKGRUNNER[bakgrunn] || BAKGRUNNER.plomme;
@@ -171,32 +177,32 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
   const srcSet = bg.srcSet || (bg.bilde2x ? `${bg.bilde} 2000w, ${bg.bilde2x} 4000w` : undefined);
 
   /* Sticky tabs: en 1 px vakt rett over raden. Når vakten er skrollet forbi nav-høyden, er raden festet
-     og får en frostet pille bak seg så den leser over bilde og produkt. Sjekkes på scroll (rAF-throttlet) —
-     IntersectionObserver mister hopp der vakten aldri er i skjæringen. Seksjonen bruker overflow-clip
+     og får en tettere pille bak seg så den leser over bilde og produkt. IntersectionObserver med rootMargin
+     lik nav-høyden — ingen scroll-lytter, ingen getBoundingClientRect per frame. Seksjonen bruker overflow-clip
      (ikke hidden) — hidden ville gjort seksjonen til scroll-container og skrudd av sticky. */
   useEffect(() => {
     const el = vaktRef.current;
-    if (!el) return undefined;
-    let raf = 0;
-    const sjekk = () => {
-      raf = 0;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+    let obs = null;
+    const lag = () => {
+      obs?.disconnect();
       const navH = window.innerWidth >= 1024 ? 64 : 72;
-      setFestet(el.getBoundingClientRect().top < navH + 1);
+      /* Roten strekkes langt under viewporten: vakten «skjærer» så lenge den ligger under nav-linja (også langt
+         nede på siden) — og slutter først når den er scrollet over. Da fanges også hopp (ankerlenker). */
+      obs = new IntersectionObserver(([e]) => { setFestet(!e.isIntersecting); }, { rootMargin: `-${navH + 1}px 0px 100000px 0px`, threshold: 0 });
+      obs.observe(el);
     };
-    const planlegg = () => { if (!raf) raf = window.requestAnimationFrame(sjekk); };
-    sjekk();
-    window.addEventListener('scroll', planlegg, { passive: true });
-    window.addEventListener('resize', planlegg);
-    return () => {
-      window.removeEventListener('scroll', planlegg);
-      window.removeEventListener('resize', planlegg);
-      if (raf) window.cancelAnimationFrame(raf);
-    };
+    lag();
+    let t = 0;
+    const onResize = () => { window.clearTimeout(t); t = window.setTimeout(lag, 150); };
+    window.addEventListener('resize', onResize);
+    return () => { obs?.disconnect(); window.removeEventListener('resize', onResize); window.clearTimeout(t); };
   }, []);
 
   /* Glidende markør: måles fra den aktive knappen (offsetLeft/offsetWidth relativt til listen). Måles på nytt
      når listen endrer størrelse (fonter lastes, vindu endres). På smale skjermer rulles den aktive inn midt i listen. */
   useEffect(() => {
+    if (!full) return undefined;   // ramme-varianten har ingen glidende markør (kapittelbar med spor)
     const liste = listeRef.current;
     const maal = () => {
       const b = tabRefs.current[aktiv];
@@ -211,7 +217,7 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
     ro?.observe(liste);
     window.addEventListener('resize', maal);
     return () => { ro?.disconnect(); window.removeEventListener('resize', maal); };
-  }, [aktiv]);
+  }, [aktiv, full]);
 
   /* Tabbytte fra festet rad: hold blikket der raden er — scroll produktet inn rett under den. */
   const bytt = (id) => {
@@ -325,43 +331,53 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
       <div className="relative mx-auto max-w-[1760px] px-5 pb-12 pt-12 sm:px-8 lg:px-10 lg:pb-16 lg:pt-12">
         {/* Vakt for sticky-raden */}
         <div ref={vaktRef} aria-hidden="true" className="h-px w-full" />
-        {/* Modus — segmentert pille med glidende markør. Klistres under navigasjonen når man skroller i seksjonen,
-            så neste område alltid er ett trykk unna. */}
+        {/* Kapittelbar — fire kapitler som en fortelling: nummer, navn og et tynt spor under hvert. Det aktive sporet
+            fylles lilla i takt med filmen; kapitlene før står fylt (dempet), de etter står tomme. Ingen pille, ingen
+            glidende markør — bare typografi og linjer. Klistres under navigasjonen når man skroller i seksjonen og får
+            da en rolig plate bak seg. På mobil: fire like kolonner over hele bredden, 44 px trykkflate. */}
         <div className={`sticky top-[72px] z-30 flex lg:top-[64px] ${venstre ? 'justify-start' : 'justify-center'}`} data-testid="v4-tabs-sticky" data-festet={festet ? '1' : '0'}>
           <div
-            className="inline-flex max-w-full rounded-full p-1 transition-[background-color,box-shadow] duration-300"
+            className="w-full max-w-[640px] rounded-[14px] transition-[background-color,box-shadow,padding] duration-300 sm:w-auto sm:min-w-[560px]"
             style={{
-              background: festet ? tema.pilleFestet : tema.pille,
-              boxShadow: `inset 0 0 0 1px ${tema.pilleKant}${festet ? ', 0 12px 32px -18px rgba(0,0,0,0.45)' : ''}`,
-              backdropFilter: 'blur(16px) saturate(1.3)',
-              WebkitBackdropFilter: 'blur(16px) saturate(1.3)',
+              background: festet ? tema.pilleFestet : 'transparent',
+              boxShadow: festet ? `inset 0 0 0 1px ${tema.pilleKant}, 0 14px 36px -20px rgba(0,0,0,0.45)` : 'none',
+              padding: festet ? '6px 10px' : '0',
             }}
           >
-            <div ref={listeRef} role="tablist" aria-label="Produktområder" className="relative inline-flex max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-testid="v4-tabs">
-              {markor && (
-                <span aria-hidden="true" className="absolute top-0 h-full overflow-hidden rounded-full" style={{ left: markor.x, width: markor.w, background: tema.markor, boxShadow: tema.markorSkygge, transition: `left 450ms ${EASE}, width 450ms ${EASE}, background-color 300ms ${EASE}` }} data-testid="v4-tabs-markor">
-                  {/* Kapittel-fremdrift: tynn linje langs bunnen av pillen (Annonse/Kontrakt har film; Drift står stille) */}
-                  <span className="absolute inset-x-3 bottom-[5px] h-[2px] overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.14)', opacity: frem.andel > 0 || frem.ms > 0 ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>
-                    <span className="absolute inset-y-0 left-0 rounded-full" style={{ background: T.lilla, width: `${Math.round(frem.andel * 1000) / 10}%`, transition: frem.ms ? `width ${frem.ms}ms linear` : 'none' }} data-testid="v4-tabs-fremdrift" />
-                  </span>
-                </span>
-              )}
-              {TABS.map((t) => {
+            <div ref={listeRef} role="tablist" aria-label="Kapitler" className="grid gap-1.5 sm:flex sm:gap-2" style={{ gridTemplateColumns: `repeat(${TABS.length}, minmax(0, 1fr))` }} data-testid="v4-tabs" data-variant="kapittelbar">
+              {TABS.map((t, i) => {
                 const er = t.id === aktiv;
+                const idx = KAPITLER.indexOf(t.id);
+                const ferdig = t.klar && idx > -1 && idx < KAPITLER.indexOf(aktiv);
+                const andel = er ? Math.round(frem.andel * 1000) / 10 : ferdig ? 100 : 0;
                 return (
                   <button
                     key={t.id}
-                    ref={(el) => { tabRefs.current[t.id] = el; }}
                     type="button"
                     role="tab"
                     aria-selected={er}
                     aria-disabled={!t.klar}
                     onClick={() => { if (t.klar) bytt(t.id); }}
-                    className={`relative z-[1] h-9 shrink-0 rounded-full px-3.5 text-[13.5px] tracking-[-0.005em] transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 sm:px-[18px] sm:text-[14px] ${tema.ring} ${er ? 'font-medium' : t.klar ? tema.tabHover : 'cursor-default'}`}
-                    style={{ color: er ? tema.tabAktiv : t.klar ? tema.tabTekst : tema.tabDempet }}
+                    className={`group relative flex min-h-[44px] min-w-0 flex-col justify-end gap-[9px] rounded-[10px] px-1 pb-2 pt-2 text-left text-[var(--tab)] transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 sm:min-w-[122px] sm:px-2 ${tema.ring} ${t.klar ? 'hover:text-[var(--tab-hover)]' : 'cursor-default'}`}
+                    style={{ '--tab': er ? tema.tekst : t.klar ? tema.tabTekst : tema.tabDempet, '--tab-hover': t.klar ? tema.tekst : tema.tabDempet }}
                     data-testid={`v4-tab-${t.id}`}
                   >
-                    {t.navn}
+                    <span className={`flex items-baseline gap-1.5 whitespace-nowrap text-[13px] leading-none tracking-[-0.005em] sm:text-[14px] ${er ? 'font-medium' : ''}`}>
+                      <span className="hidden text-[10.5px] font-medium tabular-nums sm:inline" style={{ color: er ? T.lilla : tema.indeks, transition: `color 300ms ${EASE}` }}>0{i + 1}</span>
+                      <span className="truncate">{t.navn}</span>
+                    </span>
+                    {/* Sporet */}
+                    <span aria-hidden="true" className="relative block h-[2px] w-full overflow-hidden rounded-full transition-opacity duration-300 group-hover:opacity-100" style={{ background: tema.spor, opacity: er || ferdig ? 1 : 0.75 }}>
+                      <span
+                        className="absolute inset-y-0 left-0 rounded-full"
+                        style={{
+                          background: er ? T.lilla : tema.sporFerdig,
+                          width: `${andel}%`,
+                          transition: er && frem.ms ? `width ${frem.ms}ms linear, background-color 300ms ${EASE}` : `width 320ms ${EASE}, background-color 300ms ${EASE}`,
+                        }}
+                        data-testid={er ? 'v4-tabs-fremdrift' : undefined}
+                      />
+                    </span>
                   </button>
                 );
               })}
@@ -370,17 +386,20 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
         </div>
 
         {/* Statement — bytter med scenen (key → sekvensiell inngang) */}
-        <div className={`mt-10 max-w-[820px] lg:mt-10 ${venstre ? 'text-left' : 'mx-auto text-center'}`} style={{ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(16px)', transition: `opacity 700ms ${EASE}, transform 700ms ${EASE}` }}>
+        <div className={`mt-8 max-w-[820px] sm:mt-10 ${venstre ? 'text-left' : 'mx-auto text-center'}`} style={{ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(16px)', transition: `opacity 700ms ${EASE}, transform 700ms ${EASE}` }}>
           <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-1 duration-500" style={{ opacity: bytter ? 0 : 1, transition: `opacity 340ms ${EASE}` }}>
             <h2 className="text-[clamp(40px,4.8vw,78px)]" style={{ ...display, color: tema.tekst }} data-testid="v4-produkt-tittel">
               {scene.tittel[0]}<br />{scene.tittel[1]}
             </h2>
-            <p className={`mt-6 max-w-[46ch] text-[17px] leading-[1.5] sm:text-[19px] ${venstre ? '' : 'mx-auto'}`} style={{ color: tema.ingress }}>{scene.ingress}</p>
+            <p className={`mt-5 max-w-[46ch] text-[16.5px] leading-[1.5] sm:mt-6 sm:text-[19px] ${venstre ? '' : 'mx-auto'}`} style={{ color: tema.ingress }}>
+              <span className="sm:hidden">{scene.kort || scene.ingress}</span>
+              <span className="hidden sm:inline">{scene.ingress}</span>
+            </p>
           </div>
         </div>
 
         {/* Produktet — alltid sentrert */}
-        <div ref={sceneRef} className="mt-12 lg:mt-20">
+        <div ref={sceneRef} className="mt-9 sm:mt-12 lg:mt-20">
           {/* Scenebytte: den nye flaten kommer inn sekvensielt (key → ny montering), ingen overlappende crossfade */}
           <div key={aktiv} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500" style={{ opacity: bytter ? 0 : 1, transform: bytter ? 'translateY(-8px)' : 'none', transition: `opacity 340ms ${EASE}, transform 340ms ${EASE}` }}>
             {aktiv === 'drift' && <DriftFilm synlig={synlig} spiller={filmSynlig} tema={bg.tema} onFerdig={videre} onFremdrift={onFremdrift} neste={nesteNavn} />}
@@ -392,9 +411,9 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
       </div>
 
       {/* Preview-velger for bakgrunn — diskré: ett lite ikon nede til venstre som åpner valgene. Fjernes når valget er låst. */}
-      <div className="absolute bottom-3 left-3 z-20 flex flex-col items-start gap-2" data-testid="v4-bg-velger">
+      <div className="absolute bottom-3 left-3 z-20 hidden flex-col items-start gap-2 lg:flex" data-testid="v4-bg-velger">
         {velgerOpen && (
-          <div className="inline-flex flex-wrap items-center gap-1 rounded-full p-1 text-[12px]" style={{ background: 'rgba(36,28,39,0.78)', boxShadow: 'inset 0 0 0 1px rgba(244,241,234,0.14)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }} data-testid="v4-bg-valg">
+          <div className="inline-flex flex-wrap items-center gap-1 rounded-full p-1 text-[12px]" style={{ background: 'rgba(36,28,39,0.78)', boxShadow: 'inset 0 0 0 1px rgba(244,241,234,0.14)', }} data-testid="v4-bg-valg">
             {VELGER.map(([id, navn]) => (
               <button key={id} type="button" onClick={() => { setBakgrunn(id); setVelgerOpen(false); }} className="h-7 rounded-full px-3" style={{ background: bakgrunn === id ? IVORY : 'transparent', color: bakgrunn === id ? T.ink : 'rgba(244,241,234,0.7)' }} data-testid={`v4-bg-${id}`}>{navn}</button>
             ))}
@@ -406,7 +425,7 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
           aria-label="Bytt bakgrunn (forhåndsvisning)"
           aria-expanded={velgerOpen}
           className="inline-flex h-7 w-7 items-center justify-center rounded-full transition-opacity duration-300 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-          style={{ background: 'rgba(36,28,39,0.55)', color: 'rgba(244,241,234,0.85)', opacity: velgerOpen ? 0.9 : 0.28, backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+          style={{ background: 'rgba(36,28,39,0.55)', color: 'rgba(244,241,234,0.85)', opacity: velgerOpen ? 0.9 : 0.28, }}
           data-testid="v4-bg-toggle"
         >
           <Layers className="h-3.5 w-3.5" strokeWidth={1.7} />

@@ -60,7 +60,7 @@ const HAIR = 'rgba(21,19,15,0.14)';
 const TOM = 'rgba(21,19,15,0.08)';
 const GRONN = '#1F9D55';
 const TAKT = 3600;       // ms mellom slagene
-const BAND = 150;        // tegnets høyde — lik i alle tre kolonner
+const BAND = 84;         // tegnets høyde — lik i alle tre kolonner (flis 64 + merket i hjørnet)
 
 function Pil({ className = '' }) {
   return (
@@ -101,22 +101,26 @@ function Hjornemerke({ hake, vis = true, delay = 0 }) {
   );
 }
 
-/* Én flis — boligen. 64 px, ink. */
-function Flis({ children, vis, delay = 0 }) {
+/* Én flis — 64 px. `bilde`: et foto fyller flisen (boligen din · forvalteren). Uten bilde: ink. */
+function Flis({ children, vis, delay = 0, bilde = null, alt = '' }) {
   return (
     <span className="relative block h-16 w-16 rounded-[14px]" style={{ background: T.ink, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(10px) scale(0.94)', transition: `opacity 600ms ${EASE} ${delay}ms, transform 800ms ${EASE} ${delay}ms` }}>
+      {bilde ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={bilde} alt={alt} width={64} height={64} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full rounded-[14px] object-cover" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.10)' }} draggable={false} />
+      ) : null}
       {children}
     </span>
   );
 }
 
-/* ── 01 Én flis. Saken (lilla punkt) kommer, du godkjenner (hake), neste sak kommer. ── */
+/* ── 01 Boligen din. Saken (lilla punkt) kommer, du godkjenner (hake), neste sak kommer. ── */
 function TegnSelv({ synlig, takt }) {
   const hake = synlig && takt % 2 === 1;
   return (
     <div className="relative" style={{ height: BAND }} aria-hidden="true" data-testid="v4-spor-tegn-selv" data-hake={hake ? '1' : '0'}>
       <div className="absolute left-0 top-1/2 -translate-y-1/2">
-        <Flis vis={synlig} delay={200}><Hjornemerke hake={hake} vis={synlig} delay={700} /></Flis>
+        <Flis vis={synlig} delay={200} bilde="/v4/privat/bolig-thumb.webp"><Hjornemerke hake={hake} vis={synlig} delay={700} /></Flis>
       </div>
     </div>
   );
@@ -144,17 +148,13 @@ function TegnSkaler({ synlig, takt }) {
   );
 }
 
-/* ── 03 Én flis med DigiHome-merket. Haken kommer av seg selv — ingen sak venter på deg. ── */
+/* ── 03 Forvalteren — Sarah. Haken kommer av seg selv — ingen sak venter på deg. ── */
 function TegnForvaltning({ synlig, takt }) {
   const hake = synlig && takt % 3 !== 0;   // gjort, gjort, ny sak (som vi tar) …
   return (
     <div className="relative" style={{ height: BAND }} aria-hidden="true" data-testid="v4-spor-tegn-forvaltning" data-hake={hake ? '1' : '0'}>
       <div className="absolute left-0 top-1/2 -translate-y-1/2">
-        <Flis vis={synlig} delay={200}>
-          <span className="absolute inset-0 flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/digihome-icon-purple.svg" alt="" width={26} height={26} loading="lazy" decoding="async" className="h-[26px] w-[26px]" draggable={false} />
-          </span>
+        <Flis vis={synlig} delay={200} bilde="/brand/sarah-sleeman-360.webp" alt="">
           <Hjornemerke hake={hake} vis={synlig} delay={900} />
         </Flis>
       </div>
@@ -173,7 +173,7 @@ function Kolonne({ s, i, synlig, takt }) {
     <li className="min-w-0 lg:grid lg:row-span-6 lg:grid-rows-subgrid" data-testid={`v4-spor-${s.id}`}>
       <Link
         href={s.href}
-        className="group relative flex flex-col pt-7 focus-visible:outline-none lg:grid lg:row-span-6 lg:grid-rows-subgrid lg:pt-8"
+        className="group relative flex flex-col pt-6 focus-visible:outline-none sm:pt-7 lg:grid lg:row-span-6 lg:grid-rows-subgrid lg:pt-8"
         style={{ color: T.ink, opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(22px)', transition: `opacity 800ms ${EASE} ${delay}ms, transform 900ms ${EASE} ${delay}ms` }}
         aria-label={`${s.hvem} — ${s.lovnad} ${s.handling}`}
       >
@@ -184,19 +184,19 @@ function Kolonne({ s, i, synlig, takt }) {
         <h3 className="text-[clamp(34px,2.7vw,46px)]" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 0.97, color: T.ink }} data-testid={`v4-spor-hvem-${s.id}`}>
           {s.hvem}
         </h3>
-        <p className="mt-3 text-[20px] font-medium leading-[1.25] tracking-[-0.01em] sm:text-[21px]" style={{ color: 'rgba(21,19,15,0.72)' }}>{s.lovnad}</p>
+        <p className="mt-2.5 text-[19px] font-medium leading-[1.25] tracking-[-0.01em] sm:mt-3 sm:text-[21px]" style={{ color: 'rgba(21,19,15,0.72)' }}>{s.lovnad}</p>
 
         {/* Tegnet — ett bilde, rett på canvas */}
-        <div className="mt-8">
+        <div className="mt-6 sm:mt-8">
           <Tegn synlig={synlig} takt={takt + i} />
         </div>
-        <p className="mt-1 text-[13px]" style={{ color: 'rgba(21,19,15,0.45)' }}>{s.legende}</p>
+        <p className="mt-2 text-[13px]" style={{ color: 'rgba(21,19,15,0.45)' }}>{s.legende}</p>
 
-        <p className="mt-8 max-w-[32ch] text-[16px] leading-[1.5] sm:text-[16.5px]" style={{ color: 'rgba(21,19,15,0.66)' }}>
+        <p className="mt-5 max-w-[32ch] text-[16px] leading-[1.5] sm:mt-8 sm:text-[16.5px]" style={{ color: 'rgba(21,19,15,0.66)' }}>
           {s.tekst}
         </p>
 
-        <div className="mt-8 lg:mt-0 lg:self-end lg:pt-10">
+        <div className="mt-6 sm:mt-8 lg:mt-0 lg:self-end lg:pt-10">
           {s.tjeneste ? (
             <span className="inline-flex h-11 w-fit items-center gap-2 rounded-[12px] px-5 text-[15px] font-medium transition-[background-color,transform] duration-300 group-hover:bg-[#2A2620] group-active:scale-[0.98]" style={{ background: T.charcoal, color: T.offwhite }}>
               {s.handling}
@@ -224,7 +224,7 @@ export default function SporSeksjon() {
 
   return (
     <section id="spor" ref={ref} className="relative" style={{ background: T.canvas, color: T.ink }} data-testid="v4-spor">
-      <div className="mx-auto w-full max-w-[1360px] px-5 pb-12 pt-24 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-16 lg:pt-32">
+      <div className="mx-auto w-full max-w-[1360px] px-5 pb-10 pt-16 sm:px-8 sm:pt-24 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-16 lg:pt-32">
         <div className="grid gap-6 lg:grid-cols-12 lg:items-end lg:gap-10" style={inn(0)}>
           <h2 className="text-[clamp(40px,4.4vw,76px)] lg:col-span-8" style={{ ...display, color: T.ink }} data-testid="v4-spor-tittel">
             Autopilot, tilpasset<br />måten du leier ut på.
@@ -234,7 +234,7 @@ export default function SporSeksjon() {
           </p>
         </div>
 
-        <ul ref={listeRef} className="mt-14 grid gap-y-14 md:grid-cols-2 md:gap-x-10 lg:mt-20 lg:grid-cols-3 lg:gap-y-0 xl:gap-x-14" data-testid="v4-spor-liste" data-takt={takt}>
+        <ul ref={listeRef} className="mt-12 grid gap-y-12 sm:mt-14 sm:gap-y-14 md:grid-cols-2 md:gap-x-10 lg:mt-20 lg:grid-cols-3 lg:gap-y-0 xl:gap-x-14" data-testid="v4-spor-liste" data-takt={takt}>
           {SPOR.map((s, i) => <Kolonne key={s.id} s={s} i={i} synlig={listeSynlig || synlig} takt={takt} />)}
         </ul>
       </div>

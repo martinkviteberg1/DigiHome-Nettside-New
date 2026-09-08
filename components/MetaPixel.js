@@ -55,11 +55,20 @@ export default function MetaPixel() {
   const first = useRef(true);
 
   useEffect(() => {
-    if (!PIXEL_ID) return;
-    loadPixel();
-    const onConsent = () => loadPixel();
+    if (!PIXEL_ID) return undefined;
+    /* Ytelse: fbevents.js (~100 KB + kjøring) holdes utenfor LCP/TBT-vinduet — lastes etter første interaksjon
+       eller senest 4 s etter at siden er ferdig lastet. Samme mønster som gtag.js i layout. */
+    let lastet = false;
+    let t = 0;
+    const ev = ['scroll', 'mousemove', 'touchstart', 'keydown', 'pointerdown'];
+    const rydd = () => ev.forEach((e) => window.removeEventListener(e, last));
+    const last = () => { if (lastet) return; lastet = true; rydd(); window.clearTimeout(t); loadPixel(); };
+    ev.forEach((e) => window.addEventListener(e, last, { passive: true, once: true }));
+    const planlegg = () => { t = window.setTimeout(last, 4000); };
+    if (document.readyState === 'complete') planlegg(); else window.addEventListener('load', planlegg, { once: true });
+    const onConsent = () => { last(); loadPixel(); };
     window.addEventListener('dh-consent-granted', onConsent);
-    return () => window.removeEventListener('dh-consent-granted', onConsent);
+    return () => { rydd(); window.clearTimeout(t); window.removeEventListener('load', planlegg); window.removeEventListener('dh-consent-granted', onConsent); };
   }, []);
 
   // SPA-navigasjon → PageView + ViewContent (hopper over første render; den dekkes av loadPixel).

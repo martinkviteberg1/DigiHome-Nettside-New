@@ -24,7 +24,8 @@ export const P = 48;           // rammens indre marg
 export const MORF = 'cubic-bezier(0.65, 0, 0.18, 1)';
 /* Moderne overflater: indre lys-hårlinje på bildefliser, frostet glass på etiketter over bilder, blur-inn på det som kommer inn */
 export const LYSKANT = 'inset 0 0 0 1px rgba(255,255,255,0.32)';
-export const GLASS = { background: 'rgba(251,250,248,0.78)', backdropFilter: 'blur(10px) saturate(1.2)', WebkitBackdropFilter: 'blur(10px) saturate(1.2)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.55), 0 6px 20px -10px rgba(21,19,15,0.35)' };
+/* Ingen backdrop-filter (blur bak bevegelige flater tegnes om per frame — dyrt på mobil); flaten er tett nok. */
+export const GLASS = { background: 'rgba(251,250,248,0.94)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.55), 0 6px 20px -10px rgba(21,19,15,0.35)' };
 export const BLUR_INN = 'blur(6px)';
 
 export const TONE = {

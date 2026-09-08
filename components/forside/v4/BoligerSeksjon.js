@@ -142,13 +142,14 @@ export default function BoligerSeksjon() {
     return () => { aktiv = false; };
   }, []);
 
-  const H = smal ? 300 : 420;
+  const H = smal ? 216 : 420;   // mobil: 3:2-kort på 324 px — ett helt kort i bildet, neste stikker inn
   /* Minst åtte kort i sporet så løkka aldri viser tomrom. */
   const spor = useMemo(() => { let l = kort; while (l.length < 8) l = l.concat(kort); return l; }, [kort]);
 
-  /* ── Motoren ── */
+  /* ── Motoren ── kjører bare mens seksjonen er i bildet (ingen rAF-løkke i bakgrunnen mens du leser resten av
+        siden), og skriver bare til DOM når posisjonen faktisk har endret seg. */
   useEffect(() => {
-    if (redusert) return undefined;
+    if (redusert || !synlig) return undefined;
     const el = sporRef.current;
     if (!el) return undefined;
     const s = st.current;
@@ -158,6 +159,8 @@ export default function BoligerSeksjon() {
     ro?.observe(el);
     let raf = 0;
     let forrige = performance.now();
+    let sistX = NaN;
+    s.rullY = null;
     const loop = (now) => {
       const dt = Math.min(0.05, Math.max(0.001, (now - forrige) / 1000));
       forrige = now;
@@ -172,12 +175,13 @@ export default function BoligerSeksjon() {
         s.rullY = y;
       }
       if (s.halv > 0) { while (s.x <= -s.halv) s.x += s.halv; while (s.x > 0) s.x -= s.halv; }
-      el.style.transform = `translate3d(${s.x.toFixed(2)}px,0,0)`;
+      const nx = Math.round(s.x * 100) / 100;
+      if (nx !== sistX) { sistX = nx; el.style.transform = `translate3d(${nx}px,0,0)`; }
       raf = window.requestAnimationFrame(loop);
     };
     raf = window.requestAnimationFrame(loop);
     return () => { window.cancelAnimationFrame(raf); ro?.disconnect(); };
-  }, [redusert, spor, H]);
+  }, [redusert, synlig, spor, H]);
 
   const ned = useCallback((e) => {
     if (redusert || (e.button != null && e.button !== 0)) return;
@@ -215,7 +219,7 @@ export default function BoligerSeksjon() {
 
   return (
     <section ref={ref} className="relative overflow-hidden" style={{ background: T.canvas }} data-testid="v4-boliger">
-      <div className="mx-auto w-full max-w-[1360px] px-5 pt-24 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pt-32">
+      <div className="mx-auto w-full max-w-[1360px] px-5 pt-16 sm:px-8 sm:pt-24 lg:w-[calc(100%-128px)] lg:px-0 lg:pt-32">
         <div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div style={inn(0)}>
             <h2 className="max-w-[14ch] text-[40px] sm:text-[52px] lg:text-[64px]" style={{ ...display, color: T.ink }} data-testid="v4-boliger-h2">
@@ -240,7 +244,7 @@ export default function BoligerSeksjon() {
       </div>
 
       {/* Sporet — kant til kant. Dra, rull eller la det gli. */}
-      <div className="relative mt-12 pb-24 sm:mt-14 lg:pb-32" style={inn(140)} data-testid="v4-boliger-spor">
+      <div className="relative mt-9 pb-16 sm:mt-14 sm:pb-24 lg:pb-32" style={inn(140)} data-testid="v4-boliger-spor">
         {redusert ? (
           <div className="flex gap-5 overflow-x-auto px-5 pb-2 sm:px-8" style={{ scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}>
             {kort.map((k, i) => <div key={k.id} style={{ scrollSnapAlign: 'start' }}><Kort k={k} form={FORM[i % FORM.length]} H={H} prioritet={i < 2} /></div>)}

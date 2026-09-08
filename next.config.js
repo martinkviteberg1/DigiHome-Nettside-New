@@ -1,5 +1,8 @@
 const nextConfig = {
   output: 'standalone',
+  // Måling: `NEXT_DIST_DIR=.next-prod yarn build` gir et produksjonsbygg ved siden av dev-serverens .next
+  // (Lighthouse/bundle-analyse uten å stoppe dev). Uten variabelen: standard .next.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   // SEO: gamle /blogg-URL-er (nav-historikk + evt. eksterne lenker) sendes
   // permanent (308/301) til /nyheter så lenkekraft ikke går tapt i 404.
   //

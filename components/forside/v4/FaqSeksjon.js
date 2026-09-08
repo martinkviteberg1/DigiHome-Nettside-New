@@ -47,7 +47,7 @@ export default function FaqSeksjon({ sporsmal = SPORSMAL, prisSvar = null }) {
 
   return (
     <section id="faq" ref={ref} className="relative" style={{ background: T.canvas, color: T.ink }} data-testid="v4-faq">
-      <div className="mx-auto w-full max-w-[1360px] px-5 pb-24 pt-8 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-32 lg:pt-12">
+      <div className="mx-auto w-full max-w-[1360px] px-5 pb-16 pt-6 sm:px-8 sm:pb-24 sm:pt-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-32 lg:pt-12">
         <div className="grid gap-10 lg:grid-cols-12 lg:gap-10">
           <div className="lg:col-span-4" style={inn(0)}>
             <h2 className="text-[clamp(38px,3.6vw,64px)]" style={{ ...display, color: T.ink }} data-testid="v4-faq-tittel">

@@ -23,8 +23,10 @@ const LENKER = [
   ['Priser', '/priser'],
 ];
 
-/* `bg` — bakgrunn for linja (gamle sider har varm hvit flate, V4-sidene canvas). */
-export default function NavV4({ bg = 'rgba(243,241,236,0.85)' } = {}) {
+/* `bg` — bakgrunn for linja (gamle sider har varm hvit flate, V4-sidene canvas). `bgTett` — samme flate uten
+   gjennomsiktighet, brukt under lg: en sticky linje med backdrop-blur over video og animasjoner tegnes om for hver
+   scroll-frame på mobil. Fra lg beholdes den frostede flaten. */
+export default function NavV4({ bg = 'rgba(243,241,236,0.85)', bgTett = '#F3F1EC' } = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [apen, setApen] = useState(false);
   const [velger, setVelger] = useState(false);
@@ -39,10 +41,13 @@ export default function NavV4({ bg = 'rgba(243,241,236,0.85)' } = {}) {
   const lukkVelger = useCallback(() => setVelger(false), []);
 
   useEffect(() => {
-    const f = () => setScrolled(window.scrollY > 8);
+    /* rAF-throttlet: én lesing av scrollY per frame (aldri flere tvungne layout-flushes per frame) */
+    let raf = 0;
+    const f = () => { raf = 0; setScrolled(window.scrollY > 8); };
+    const on = () => { if (!raf) raf = window.requestAnimationFrame(f); };
     f();
-    window.addEventListener('scroll', f, { passive: true });
-    return () => window.removeEventListener('scroll', f);
+    window.addEventListener('scroll', on, { passive: true });
+    return () => { window.removeEventListener('scroll', on); if (raf) window.cancelAnimationFrame(raf); };
   }, []);
 
   useEffect(() => {
@@ -58,7 +63,7 @@ export default function NavV4({ bg = 'rgba(243,241,236,0.85)' } = {}) {
 
   return (
     <>
-      <header className={`sticky top-0 z-50 border-b backdrop-blur-md transition-colors duration-300 ${scrolled || apen ? 'border-[#15130F]/[0.08]' : 'border-transparent'}`} style={{ background: bg }} data-testid="v4-nav">
+      <header className={`sticky top-0 z-50 border-b bg-[var(--dh-nav-tett)] transition-colors duration-300 lg:bg-[var(--dh-nav-bg)] lg:backdrop-blur-md ${scrolled || apen ? 'border-[#15130F]/[0.08]' : 'border-transparent'}`} style={{ '--dh-nav-bg': bg, '--dh-nav-tett': bgTett }} data-testid="v4-nav">
         {/* Samme kanter som scenen på forsiden: 1600 maks, 32 px marg på desktop. */}
         <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-6 px-5 sm:px-8 lg:h-[64px] lg:w-[calc(100%-64px)] lg:px-0">
           <div className="flex items-center gap-6">
@@ -69,7 +74,7 @@ export default function NavV4({ bg = 'rgba(243,241,236,0.85)' } = {}) {
             <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Hovedmeny">
               {LENKER.map(([l, h]) => (h.startsWith('#')
                 ? <a key={l} href={h} className={lenke}>{l}</a>
-                : <Link key={l} href={h} className={lenke}>{l}</Link>))}
+                : <Link key={l} prefetch={false} href={h} className={lenke}>{l}</Link>))}
             </nav>
           </div>
           <div className="flex items-center gap-2">
@@ -95,7 +100,7 @@ export default function NavV4({ bg = 'rgba(243,241,236,0.85)' } = {}) {
           <nav className="flex flex-col" aria-label="Mobilmeny">
             {[...LENKER, ['Om oss', '/om-oss']].map(([l, h]) => (h.startsWith('#')
               ? <a key={l} href={h} onClick={() => setApen(false)} className="border-b border-[#15130F]/[0.08] py-4 text-[26px] text-[#15130F]" style={{ fontFamily: 'var(--font-heading)' }}>{l}</a>
-              : <Link key={l} href={h} onClick={() => setApen(false)} className="border-b border-[#15130F]/[0.08] py-4 text-[26px] text-[#15130F]" style={{ fontFamily: 'var(--font-heading)' }}>{l}</Link>))}
+              : <Link key={l} prefetch={false} href={h} onClick={() => setApen(false)} className="border-b border-[#15130F]/[0.08] py-4 text-[26px] text-[#15130F]" style={{ fontFamily: 'var(--font-heading)' }}>{l}</Link>))}
           </nav>
           <div className="mt-auto flex flex-col gap-2 pt-8">
             <Knapp href="/kom-i-gang" onClick={apneVelger} aria-haspopup="dialog" data-testid="v4-nav-cta-mobil">Kom i gang</Knapp>

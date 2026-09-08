@@ -25,7 +25,7 @@ export default function HeroVeksler({ hero, produkt = 'ramme' }) {
   };
   return (
     <div
-      className="fixed bottom-3 left-3 z-[60] flex items-center gap-1.5 rounded-full px-2 py-1.5 opacity-25 transition-opacity hover:opacity-90 focus-within:opacity-90"
+      className="fixed bottom-3 left-3 z-[60] hidden items-center gap-1.5 lg:flex rounded-full px-2 py-1.5 opacity-25 transition-opacity hover:opacity-90 focus-within:opacity-90"
       style={{ transition: `opacity 300ms ${EASE}` }}
       role="group"
       aria-label="Bytt hero-variant"

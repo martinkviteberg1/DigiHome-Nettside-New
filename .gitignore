@@ -94,3 +94,4 @@ credentials.json
 *.env
 .next/cache/webpack/server-development/1.pack.gz
 .tmp-qa/
+.next-prod

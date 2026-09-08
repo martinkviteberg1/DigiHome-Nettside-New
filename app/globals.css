@@ -1068,3 +1068,28 @@ html.dh-nav-klar [data-testid="v4-nav"] { background-color: transparent; border-
 
 /* V4: boligkort i bevegelse (BoligerSeksjon). Halve sporet = én runde, sporet er duplisert. */
 @keyframes v4-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ── Forside V4, ytelse ──────────────────────────────────────────────────────
+   Utsatte seksjoner (ForsideV4 → Utsatt): plassholderens høyde ≈ seksjonens faktiske høyde per flate, målt i
+   produksjonsbygg, så siden ikke hopper når seksjonen monteres. Mobil / nettbrett / desktop. */
+:root { --dh-h-system: 800px; --dh-h-produkt: 1234px; --dh-h-boliger: 930px; --dh-h-leietaker: 966px; }
+@media (max-width: 1023px) { :root { --dh-h-system: 882px; --dh-h-produkt: 1029px; --dh-h-boliger: 926px; --dh-h-leietaker: 1470px; } }
+@media (max-width: 639px) { :root { --dh-h-system: 854px; --dh-h-produkt: 920px; --dh-h-boliger: 661px; --dh-h-leietaker: 1177px; } }
+
+/* Smal skjerm: ord-animasjonene uten filter: blur() — uskarphet per frame er det dyreste en mobil-GPU gjør over video.
+   Samme bevegelse (opp/ned + opacity), ingen blur. */
+@media (max-width: 639px) {
+  @keyframes v4-ord-inn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes v4-ord-ut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-6px); } }
+}
+
+/* Heroens scene: mål i CSS (ikke JS-state etter hydrering) — mobil stående 4:5.6, ellers 1.92:1. Ingen hopp fra
+   «desktop-mål» til «mobil-mål» når React tar over. */
+.dh-hero-scene { aspect-ratio: 4 / 5.6; min-height: 600px; }
+@media (min-width: 640px) { .dh-hero-scene { aspect-ratio: 1.92 / 1; min-height: 520px; max-height: min(880px, calc(100svh - 124px)); } }
+.dh-hero-hjem { object-position: 30% 50%; }
+@media (min-width: 640px) { .dh-hero-hjem { object-position: 50% 50%; } }
+/* Stua på smal skjerm: rammen (poster + video) skaleres om et punkt i bunnen så huseieren kommer opp over
+   veggtekstens toning (= HJEM_ZOOM_SMAL i HeroStage). Fra 640 px: 1:1. */
+.dh-hero-hjem-ramme { transform-origin: 30% 100%; }
+@media (max-width: 639px) { .dh-hero-hjem-ramme { transform: scale(1.26); } }

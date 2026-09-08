@@ -97,7 +97,7 @@ export default function SammenligningSeksjon({
 
   return (
     <section id="sammenlign" ref={ref} className="relative scroll-mt-16" style={{ background: T.canvas, color: T.ink }} data-testid={`${testid}-sammenlign`}>
-      <div className="mx-auto w-full max-w-[1360px] px-5 pb-24 pt-16 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-32 lg:pt-24">
+      <div className="mx-auto w-full max-w-[1360px] px-5 pb-16 pt-14 sm:px-8 sm:pb-24 sm:pt-16 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-32 lg:pt-24">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between" style={inn(0)}>
           <div>
             <h2 className="text-[clamp(38px,3.8vw,64px)]" style={{ ...display, color: T.ink }} data-testid={`${testid}-sammenlign-tittel`}>

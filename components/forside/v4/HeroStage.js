@@ -51,8 +51,11 @@ const FILM_ASPEKT = 30 / 17;
 /* Smal skjerm: scenen er stående (4:5.6) og viser bare ~40 % av filmens bredde. Mannen sitter til venstre i bildet
    (hodet ~29 %, telefonen 33 %) — med object-position 50 % kuttes han i venstre kant. 30 % legger utsnittet på
    ~18–58 % av filmen: han står i venstre halvdel av scenen, med veggen til høyre der telefonstrømmen projiseres. */
-const HJEM_FOKUS_SMAL_X = 0.30;
-const hjemPos = (smal) => (smal ? `${Math.round(HJEM_FOKUS_SMAL_X * 100)}% 50%` : '50% 50%');
+const HJEM_FOKUS_SMAL_X = 0.30;   // = .dh-hero-hjem i globals.css (object-position 30 % under 640 px, 50 % ellers)
+/* Smal skjerm: stua er et liggende bilde i en stående ramme — hele høyden vises, og han sitter lavt, der veggteksten
+   tones inn. Rammen (poster + video) skaleres derfor litt opp om et punkt i bunnen (origo 30 % 100 %, se
+   .dh-hero-hjem-ramme): bunnen står, han vokser oppover og kommer opp over toningen. = CSS-verdien. */
+const HJEM_ZOOM_SMAL = 1.26;
 /* Rekkefølgen følger veggen: Annonse → Kontrakt → Økonomi → Drift. Ingen beløp, ingen «forfaller». */
 const STROM = [
   { id: 'visning', t: 'Visning booket', u: 'Lørdag 12:00 · 2 påmeldte', ikon: 'prikk' },
@@ -102,15 +105,18 @@ function Telefonstrom({ hjemme, redusert, smal, puls }) {
   const A = maal.w && maal.h ? maal.w / maal.h : FILM_ASPEKT;
   /* object-position x (ox) på smal skjerm flytter utsnittet: filmpunkt t → beholder t·R − (R − 1)·ox, R = FILM_ASPEKT/A */
   const ox = smal ? HJEM_FOKUS_SMAL_X : 0.5;
-  const px = A >= FILM_ASPEKT ? TELEFON.x : TELEFON.x * (FILM_ASPEKT / A) - (FILM_ASPEKT / A - 1) * ox;
-  const py = A >= FILM_ASPEKT ? 0.5 + (TELEFON.y - 0.5) * (A / FILM_ASPEKT) : TELEFON.y;
+  let px = A >= FILM_ASPEKT ? TELEFON.x : TELEFON.x * (FILM_ASPEKT / A) - (FILM_ASPEKT / A - 1) * ox;
+  let py = A >= FILM_ASPEKT ? 0.5 + (TELEFON.y - 0.5) * (A / FILM_ASPEKT) : TELEFON.y;
+  /* Smal: rammen er skalert HJEM_ZOOM_SMAL om (30 %, 100 %) — punktet følger med */
+  if (smal) { px = HJEM_FOKUS_SMAL_X + (px - HJEM_FOKUS_SMAL_X) * HJEM_ZOOM_SMAL; py = 1 - (1 - py) * HJEM_ZOOM_SMAL; }
   const X = px * maal.w; const Y = py * maal.h;
   /* Flatens bredde følger scenen: på mellomstore skjermer (nettbrett, 640–1000 px scene) smalner den (196–252 px) så
      den aldri går inn i veggteksten, som starter ved max(61 %, 38 % + 208 px) — se Veggfortelling. */
   const trang = !smal && maal.w < 1010;
   const B = smal ? 212 : Math.max(196, Math.min(252, Math.round(maal.w * 0.246 - 12)));
-  /* Flaten står opp og til høyre for skjermen — over skulderen, aldri over ansiktet. Bunnen bindes til skjermen. */
-  const fx = X + (smal || trang ? 16 : Math.round(maal.w * 0.034)); const fy = Y - (smal || trang ? 26 : Math.round(maal.h * 0.042));
+  /* Flaten står opp og til høyre for skjermen — over skulderen, aldri over ansiktet. Bunnen bindes til skjermen.
+     På smal skjerm klemmes den inn så den aldri går ut av scenens høyrekant. */
+  const fx = Math.min(X + (smal || trang ? 16 : Math.round(maal.w * 0.034)), smal ? Math.max(0, maal.w - B - 12) : Infinity); const fy = Y - (smal || trang ? 26 : Math.round(maal.h * 0.042));
   const inne = n >= 0;
   const rader = inne ? [n, n - 1, n - 2, n - 3].filter((k) => k >= 0) : [];
 
@@ -205,21 +211,36 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
   const vidRef = useRef(null);
   const hjemRef = useRef(null);
 
-  /* Loopen hjemme: hentes først når historien er i gang (så den ikke konkurrerer med filmen om båndbredden),
-     og spilles fra start idet stua kommer opp av mørket. Ingen transform på selve video-elementet.
-     I direkte-modus er loopen selve scenen: hentes og spilles fra første stund. */
+  /* Direkte-modus, ytelse: LCP er posteren (et <img> med høy prioritet, mobilbeskåret på smal skjerm). Selve loopen
+     (0,7–2,4 MB) hentes først etter at siden er lastet (load + et lite pust, senest etter 3,5 s) — så den aldri
+     konkurrerer med bilde, fonter og hydrering om båndbredden. Når den spiller, tones den inn over posteren. */
+  const [hentLoop, setHentLoop] = useState(false);
+  const [loopSpiller, setLoopSpiller] = useState(false);
+  useEffect(() => {
+    if (!direkte || !film?.hjemVideo || redusert) return undefined;
+    let t = 0;
+    const start = () => { window.clearTimeout(t); t = window.setTimeout(() => setHentLoop(true), 250); };
+    if (document.readyState === 'complete') start();
+    else window.addEventListener('load', start, { once: true });
+    const tak = window.setTimeout(() => setHentLoop(true), 3500);
+    return () => { window.removeEventListener('load', start); window.clearTimeout(t); window.clearTimeout(tak); };
+  }, [direkte, film, redusert]);
+
+  /* Loopen hjemme (ikke-direkte): hentes først når historien er i gang (så den ikke konkurrerer med filmen om
+     båndbredden), og spilles fra start idet stua kommer opp av mørket. Ingen transform på selve video-elementet. */
   useEffect(() => {
     const v = hjemRef.current;
-    if (!v || !film?.hjemVideo || redusert) return;
-    if ((kjorer || direkte) && v.preload !== 'auto') { try { v.preload = 'auto'; v.load(); } catch (e) { /* ok */ } }
+    if (!v || !film?.hjemVideo || redusert || direkte) return;
+    if (kjorer && v.preload !== 'auto') { try { v.preload = 'auto'; v.load(); } catch (e) { /* ok */ } }
   }, [kjorer, direkte, film, redusert]);
   useEffect(() => {
     const v = hjemRef.current;
     if (!v || !film?.hjemVideo || redusert) return;
     try {
-      if (hjemme || direkte) { if (!direkte && v.currentTime > 0.05) v.currentTime = 0; v.play().catch(() => {}); } else if (!v.paused) v.pause();
+      if (direkte) { if (!hentLoop) return; if (v.networkState === 3 /* NETWORK_NO_SOURCE */ || v.readyState === 0) v.load(); v.play().catch(() => {}); return; }
+      if (hjemme) { if (v.currentTime > 0.05) v.currentTime = 0; v.play().catch(() => {}); } else if (!v.paused) v.pause();
     } catch (e) { /* ok */ }
-  }, [hjemme, direkte, film, redusert]);
+  }, [hjemme, direkte, film, redusert, hentLoop]);
 
   /* Filmen ligger i HTML-en fra serveren (<source> med media/type) — nettleseren begynner å hente den idet
      siden parses, lenge før React er hydrert. Ingen fetch→blob først (det var 2–3 MB å vente på før første
@@ -266,9 +287,11 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
     const hjem = smal && film.hjemSmal ? film.hjemSmal : film.hjem;
     if (redusert) {
       // eslint-disable-next-line @next/next/no-img-element
-      return <img src={hjem || film.poster} alt="" {...felles} style={{ ...felles.style, objectPosition: hjemPos(smal) }} />;
+      return <img src={hjem || film.poster} alt="" {...felles} className={`${felles.className} dh-hero-hjem`} style={{ ...felles.style, objectPosition: undefined }} />;
     }
     const visHjem = direkte || hjemme;
+    /* Direkte: loopens video-element får kildene først når `hentLoop` er sann (etter load). Til da står posteren. */
+    const loopKilder = !direkte || hentLoop;
     return (
       <>
         {!direkte && (
@@ -298,39 +321,52 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
         {hjem ? (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 will-change-transform"
-            style={{
+            className={`pointer-events-none absolute inset-0 will-change-transform ${direkte ? 'dh-hero-hjem-ramme' : ''}`}
+            style={direkte ? { opacity: 1 } : {
               opacity: visHjem ? 1 : 0,
               transform: visHjem ? 'scale(1)' : 'scale(1.05)',
-              transition: direkte ? 'none' : visHjem ? `opacity 420ms linear 380ms, transform 3000ms ${EASE} 520ms` : 'opacity 240ms linear, transform 0ms linear 240ms',
+              transition: visHjem ? `opacity 420ms linear 380ms, transform 3000ms ${EASE} 520ms` : 'opacity 240ms linear, transform 0ms linear 240ms',
             }}
             data-testid="v4-film-hjem-ramme"
           >
+            {/* Direkte: posteren er LCP-bildet — i HTML fra serveren, høy prioritet, mobilbeskåret under 640 px.
+                Videoen ligger over og tones inn idet den spiller. */}
+            {direkte && film.hjemPoster ? (
+              <picture>
+                {film.hjemPosterSmal ? <source media="(max-width: 639px)" srcSet={film.hjemPosterSmal} /> : null}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={film.hjemPoster} alt="" fetchPriority="high" decoding="async" draggable={false} className="dh-hero-hjem absolute inset-0 h-full w-full select-none object-cover" data-testid="v4-film-hjem-poster" />
+              </picture>
+            ) : null}
             {film.hjemVideo ? (
               <video
                 ref={hjemRef}
-                className="absolute inset-0 h-full w-full object-cover"
-                style={{ objectPosition: hjemPos(smal) }}
-                poster={film.hjemPoster || hjem}
+                className="dh-hero-hjem absolute inset-0 h-full w-full object-cover"
+                style={direkte ? { opacity: loopSpiller ? 1 : 0, transition: 'opacity 480ms linear' } : undefined}
+                poster={direkte ? undefined : film.hjemPoster || hjem}
                 muted
                 loop
                 playsInline
                 autoPlay={direkte}
-                preload={direkte ? 'auto' : 'none'}
+                preload={direkte ? (hentLoop ? 'auto' : 'none') : 'none'}
+                disablePictureInPicture
+                disableRemotePlayback
                 aria-hidden="true"
+                onPlaying={direkte ? () => setLoopSpiller(true) : undefined}
                 data-testid="v4-film-hjem"
+                data-kilder={loopKilder ? '1' : '0'}
               >
-                {film.hjemVideoSmal ? <source src={film.hjemVideoSmal} type='video/mp4; codecs="avc1.640028"' media="(max-width: 639px)" /> : null}
-                <source src={film.hjemVideo} type='video/mp4; codecs="avc1.640028"' />
-                {film.hjemVideoWebm ? <source src={film.hjemVideoWebm} type="video/webm" /> : null}
+                {loopKilder && film.hjemVideoSmal ? <source src={film.hjemVideoSmal} type='video/mp4; codecs="avc1.640028"' media="(max-width: 639px)" /> : null}
+                {loopKilder ? <source src={film.hjemVideo} type='video/mp4; codecs="avc1.640028"' /> : null}
+                {loopKilder && film.hjemVideoWebm ? <source src={film.hjemVideoWebm} type="video/webm" /> : null}
               </video>
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={hjem}
                 alt=""
-                className="absolute inset-0 h-full w-full object-cover will-change-transform"
-                style={{ objectPosition: hjemPos(smal), transform: hjemme ? 'scale(1.045)' : 'scale(1)', transition: hjemme ? 'transform 16000ms cubic-bezier(0.22, 0.61, 0.36, 1) 2200ms' : 'transform 0ms linear' }}
+                className="dh-hero-hjem absolute inset-0 h-full w-full object-cover will-change-transform"
+                style={{ transform: hjemme ? 'scale(1.045)' : 'scale(1)', transition: hjemme ? 'transform 16000ms cubic-bezier(0.22, 0.61, 0.36, 1) 2200ms' : 'transform 0ms linear' }}
                 data-testid="v4-film-hjem"
               />
             )}
@@ -445,12 +481,12 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
     : [[husleie, 'husleie inn'], ['1 min', smal ? 'til rørlegger' : 'fra melding til rørlegger'], ['1', hvem === 'deg' ? 'godkjenning — din' : 'godkjenning']];
   return (
     <div
-      className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-24' : `absolute flex flex-col justify-center ${zoom ? 'dh-zoom-vegg' : ''}`}
+      className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-16' : `absolute flex flex-col justify-center ${zoom ? 'dh-zoom-vegg' : ''}`}
       style={{
         /* Venstrekanten viker for telefonstrømmens flate på mellomstore scener (flaten ender ved ~36 % + 196–252 px) */
         ...(smal ? {} : { left: 'max(61%, calc(38% + 208px))', right: '5%', top: '8%', bottom: '8%' }),
         color: blekk,
-        background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 30%, rgba(243,241,236,0.98) 100%)' : 'none',
+        background: smal ? 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 24%, rgba(243,241,236,0.98) 100%)' : 'none',
         opacity: hjemme ? 1 : 0,
         pointerEvents: hjemme ? 'auto' : 'none',
         transition: `opacity 500ms ${EASE} ${hjemme ? (direkte ? 150 : 900) : 0}ms`,
@@ -703,8 +739,8 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom =
           fra CSS-variablene HeroZoom skriver. Under lg: vanlig kort. */}
       <div
         ref={ref}
-        className={`relative w-full overflow-hidden rounded-[20px] sm:rounded-[24px] ${zoom ? 'dh-zoom-scene' : ''}`}
-        style={{ aspectRatio: smal ? '4 / 5.6' : '1.92 / 1', minHeight: smal ? 600 : 520, maxHeight: smal ? undefined : 'min(880px, calc(100svh - 124px))', background: T.charcoal, boxShadow: '0 0 0 1px rgba(21,19,15,0.08)', opacity: skifter ? 0 : 1, transition: `opacity 320ms ${EASE}` }}
+        className={`dh-hero-scene relative w-full overflow-hidden rounded-[20px] sm:rounded-[24px] ${zoom ? 'dh-zoom-scene' : ''}`}
+        style={{ background: T.charcoal, boxShadow: '0 0 0 1px rgba(21,19,15,0.08)', opacity: skifter ? 0 : 1, transition: `opacity 320ms ${EASE}` }}
         data-zoom={zoom ? '1' : '0'}
         role="group"
         aria-label={direkte ? `Animert eksempel: eieren hjemme i sofaen mens DigiHome håndterer ${adresse} — annonse, kontrakt, husleie og drift går av seg selv; han godkjenner resten.` : `Animert eksempel: en dag i ${adresse} med DigiHome — husleie registrert, kontrakt signert, et spørsmål fra leietaker besvart fra kontrakten, og et varmtvannsproblem løst med én godkjenning fra eier.`}

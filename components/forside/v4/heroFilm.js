@@ -15,6 +15,9 @@ export const FILM = {
   hjemVideoSmal: '/v4/video/eier-hjemme-loop-1280.mp4?v=2',
   hjemVideoWebm: '/v4/video/eier-hjemme-loop-1280.webm?v=2',
   hjemPoster: '/v4/video/eier-hjemme-loop-poster.webp?v=2',
+  /* Smal skjerm: samme bilde beskåret til båndet som faktisk vises (x 288–1248 av 1920, object-position 30 %) —
+     43 KB i stedet for 108, og LCP-bildet er skarpt der det teller. Matematikken: a = X·(W − c) med X = 0.30. */
+  hjemPosterSmal: '/v4/video/eier-hjemme-loop-poster-mobil.webp',
   /* direkte: heroen åpner rett i sofaen — ingen gåtur, ingen panelhistorie. Loopen er scenen fra første bilde;
      tekst og feeden fra mobilen kommer inn i rolig rekkefølge. (Din adresse → Street View-flyten er som før.) */
   direkte: true,

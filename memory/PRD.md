@@ -1474,3 +1474,25 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   p.t. Erstattet med produktfilmene i rammen (`ProduktSeksjon kapitler={['drift','okonomi','kontrakt']}` – ny prop). FAQ: forvaltnings-
   spørsmål ut, «Hva med regnskapet?» inn; prissvar uten forvaltningsandel. Hero-label «For eiendomsselskaper», ny ingress. Rekkefølge:
   Hero → Tillit → Film → Én dag/Tre roller → Moduler → Steg → FAQ → Avslutning.
+- Forsiden mobil først / «lynraskt» (bruker: «1000 ganger mer optimalisert for mobil, laster og scroller lynraskt»). Produksjonsbygg
+  (`NEXT_DIST_DIR=.next-prod yarn build`, `scripts/lh.sh`, `scripts/profil.py`, `scripts/cpuprofil.py`): Lighthouse mobil 57 → 89, TBT 1000 →
+  90 ms, LCP 5,4 → 3,7 s (sim. treg 4G), First Load JS 192 → 142 kB, bilder ved start 474 → 65 kB, fonter 8 → 4 filer (subsettet −31 %,
+  `scripts/subset-fonter.py`, Instrument Serif uten preload). Grep: `Utsatt`/`useNaer` (motion.js) + dynamic ssr:false for System/Produkt/
+  Boliger/Leietaker (plassholderhøyder i CSS-var `--dh-h-*`), startTransition ved montering, forvarm av chunks i idle etter load; hero-loopen
+  hentes etter load (poster <picture> m/ mobilbeskåret `eier-hjemme-loop-poster-mobil.webp` er LCP), scene-mål i CSS (`.dh-hero-scene`,
+  `.dh-hero-hjem`), stua zoomet 1,26 om (30 %, 100 %) på smal (`.dh-hero-hjem-ramme`, HJEM_ZOOM_SMAL) så huseieren står over veggtekstens
+  toning; `useSmal`/`useRedusert` via useSyncExternalStore; `useSynlig` avslører også når 22 % av viewporten er dekket (mobilregel);
+  System-parallakse som CSS-var (ingen render per frame, bare på bred flate), Boliger-rAF bare når synlig, ingen backdrop-filter (nav under lg,
+  produkt-tabs, GLASS, Leietaker), blur-keyframes av på mobil, GA etter interaksjon/8 s idle, Meta-pixel etter interaksjon/4 s, footer/nav-
+  lenker prefetch={false}. Døde komponentmapper (home, nyest, landing, hjem, ny, bedrift(gml), ny2) slettet (mindre CSS).
+- Mobil-UX forside: portalen på smal uten sidepanel (utenSide), skalert 0,7, flush i venstre kant m/ høyre-toning; galleri-kort 216 px høye;
+  kortere produkt-ingresser (`kort`); tettere seksjonsrytme (pt/pb-16 på mobil); veksler + bakgrunnsvelger skjult på mobil; Spor-fliser m/
+  boligfoto (01) og Sarah (03), BAND 84.
+- Kapittelbar i ProduktSeksjon (ramme-variant): nummererte kapitler med 2 px spor som fylles lilla i takt med filmen (kapitler før: fylt
+  dempet, etter: tomme), plate bare når festet, IO-basert festet-deteksjon (rootMargin stor bunn), filmen starter først når flaten er godt i
+  bildet (sceneSynlig 0.5). Antall kolonner = antall kapitler (bedrift: 3).
+- /bedrift løftet (bruker: «se for deg at du er Eiendomsspar»): ny `StrukturSeksjon` (konsern → selskaper → bygg → enheter som ledger m/ rail;
+  rapport/roller/historikk per nivå), ny `KontrollSeksjon` (steinflate: «Beslutningene er deres. Sporet er komplett.» – roller, godkjennings-
+  grenser, historikk, BankID – hvert m/ ett produkteksempel; erstatter den lille Kontroll-listen i ModulSeksjon), hero-ingress om selskaper/
+  roller/grenser/logg, «Hvor stor er porteføljen?», to nye FAQ (sikkerhet/tilganger, start med ett selskap), steg 2–3 presisert, produktfilmene
+  utsatt (Utsatt + dynamic). Rekkefølge: Hero → Tillit → Struktur → Film → Én dag/Tre roller → Moduler → Kontroll → Steg → FAQ → Avslutning.

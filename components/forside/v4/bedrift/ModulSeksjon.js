@@ -239,7 +239,7 @@ function Kapittel({ k, i }) {
   const vis = useSynlig(ref, 0.3);
   const Obj = k.Obj;
   return (
-    <li ref={ref} className="grid gap-8 border-t py-12 lg:grid-cols-12 lg:gap-10 lg:py-16" style={{ borderColor: HAIR }} data-testid={`v4e-modul-${i + 1}`}>
+    <li ref={ref} className="grid gap-7 border-t py-10 sm:gap-8 sm:py-12 lg:grid-cols-12 lg:gap-10 lg:py-16" style={{ borderColor: HAIR }} data-testid={`v4e-modul-${i + 1}`}>
       <div className="lg:col-span-5">
         <p className="text-[13px] tabular-nums" style={{ color: T.lilla, ...inn(vis, 0) }}>{k.nr}</p>
         <h3 className="mt-3 text-[clamp(26px,2.2vw,36px)]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.ink, ...inn(vis, 80) }}>{k.t}</h3>
@@ -250,49 +250,24 @@ function Kapittel({ k, i }) {
   );
 }
 
-const KONTROLL = [
-  ['Roller og rettigheter', 'Hver bruker ser og gjør bare det rollen tillater.'],
-  ['Full historikk', 'Hvem gjorde hva, når — på hver enhet og hver sak.'],
-  ['BankID via Posten', 'Kontrakter og oppgjør signeres av identifiserte parter.'],
-  ['Eksport til regnskap', 'Rapport per bygg og selskap, klar for regnskapsføreren.'],
-];
-
-function Kontroll() {
-  const ref = useRef(null);
-  const vis = useSynlig(ref, 0.4);
-  return (
-    <ul ref={ref} className="mt-12 grid gap-8 sm:grid-cols-2 lg:mt-16 lg:grid-cols-4 lg:gap-10" data-testid="v4e-kontroll">
-      {KONTROLL.map(([t, d], i) => (
-        <li key={t} style={inn(vis, i * 110)}>
-          <span className="block h-[2px] w-8 rounded-full" style={{ background: T.lilla }} />
-          <p className="mt-4 text-[16px] font-medium" style={{ color: T.ink }}>{t}</p>
-          <p className="mt-1.5 text-[14.5px] leading-[1.5]" style={{ color: DIM }}>{d}</p>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 export default function ModulSeksjon() {
   const ref = useRef(null);
   const vis = useSynlig(ref, 0.15);
   return (
     <section id="moduler" ref={ref} className="relative" style={{ background: T.canvas, color: T.ink }} data-testid="v4e-moduler">
-      <div className="mx-auto w-full max-w-[1360px] px-5 pb-16 pt-20 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-24 lg:pt-28">
+      <div className="mx-auto w-full max-w-[1360px] px-5 pb-12 pt-16 sm:px-8 sm:pb-16 sm:pt-20 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-24 lg:pt-28">
         <div className="max-w-[820px]">
           <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(vis, 0) }}>Plattformen</p>
           <h2 className="mt-4 text-[clamp(38px,4.2vw,72px)]" style={{ ...display, color: T.ink, ...inn(vis, 80) }} data-testid="v4e-moduler-tittel">
             Bygget for team med portefølje<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
           </h2>
           <p className="mt-6 max-w-[52ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(vis, 160) }}>
-            Seks ting som gjør DigiHome til et system for selskaper — ikke en app for én utleier.
+            Seks ting som gjør DigiHome til et system for selskaper med portefølje — ikke en app for én utleier.
           </p>
         </div>
-        <ol className="mt-10 border-b lg:mt-14" style={{ borderColor: HAIR }}>
+        <ol className="mt-8 border-b sm:mt-10 lg:mt-14" style={{ borderColor: HAIR }}>
           {KAPITLER.map((k, i) => <Kapittel key={k.nr} k={k} i={i} />)}
         </ol>
-        {/* Kontroll — det et selskap spør om først */}
-        <Kontroll />
       </div>
     </section>
   );

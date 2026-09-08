@@ -75,7 +75,7 @@ function Nyhetsbrev() {
         </button>
       </div>
       <p className="mt-2.5 text-[12px] leading-[1.5]" style={{ color: status === 'error' ? 'rgba(255,160,160,0.9)' : SVAK }}>
-        {status === 'error' ? 'Sjekk e-postadressen og prøv igjen.' : <>Maks én e-post i måneden. Meld deg av når som helst — se <Link href="/personvern" className="underline underline-offset-3 hover:text-white">personvern</Link>.</>}
+        {status === 'error' ? 'Sjekk e-postadressen og prøv igjen.' : <>Maks én e-post i måneden. Meld deg av når som helst — se <Link prefetch={false} href="/personvern" className="underline underline-offset-3 hover:text-white">personvern</Link>.</>}
       </p>
     </form>
   );
@@ -121,7 +121,7 @@ export default function FooterV4({ org } = {}) {
                   <li key={l}>
                     {h.startsWith('/#')
                       ? <a href={h} className={lenke} style={{ color: DIM }}>{l}</a>
-                      : <Link href={h} className={lenke} style={{ color: DIM }}>{l}</Link>}
+                      : <Link prefetch={false} href={h} className={lenke} style={{ color: DIM }}>{l}</Link>}
                   </li>
                 ))}
               </ul>
@@ -145,9 +145,9 @@ export default function FooterV4({ org } = {}) {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px]" style={{ color: SVAK }}>
-            <Link href="/personvern" className="transition-colors hover:text-white">Personvern</Link>
-            <Link href="/vilkar" className="transition-colors hover:text-white">Vilkår</Link>
-            <Link href="/slett-konto" className="transition-colors hover:text-white">Slett konto</Link>
+            <Link prefetch={false} href="/personvern" className="transition-colors hover:text-white">Personvern</Link>
+            <Link prefetch={false} href="/vilkar" className="transition-colors hover:text-white">Vilkår</Link>
+            <Link prefetch={false} href="/slett-konto" className="transition-colors hover:text-white">Slett konto</Link>
             <a href={site.social?.instagram || 'https://instagram.com/digihome'} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-white">Instagram</a>
             <a href={site.social?.linkedin || 'https://linkedin.com/company/digihome'} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-white">LinkedIn</a>
             <span>&copy; {new Date().getFullYear()} {navn}</span>

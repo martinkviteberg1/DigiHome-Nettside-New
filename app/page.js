@@ -56,7 +56,14 @@ export default function ForsidePage({ searchParams }) {
     <>
       {/* Scenebildet er LCP. Preload riktig utsnitt per flate; fontene preloades av next/font. */}
       {hero !== 'side' ? (
-        <link rel="preload" as="image" href={stageBilde} media={FILM.direkte && !bilde ? undefined : '(min-width: 640px)'} fetchPriority="high" />
+        FILM.direkte && !bilde ? (
+          <>
+            <link rel="preload" as="image" href={FILM.hjemPosterSmal} media="(max-width: 639px)" fetchPriority="high" />
+            <link rel="preload" as="image" href={FILM.hjemPoster} media="(min-width: 640px)" fetchPriority="high" />
+          </>
+        ) : (
+          <link rel="preload" as="image" href={stageBilde} media="(min-width: 640px)" fetchPriority="high" />
+        )
       ) : (
         <>
           <link rel="preload" as="image" href="/v4/bolig-hero.webp" media="(min-width: 640px)" fetchPriority="high" />

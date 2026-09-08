@@ -46,7 +46,7 @@ export default function AvslutningSeksjon({ tittel = 'Utleie på autopilot', und
       </div>
       <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.66) 0%, rgba(21,18,15,0.50) 45%, rgba(21,18,15,0.82) 100%)' }} />
 
-      <div className="relative mx-auto w-full max-w-[1360px] px-5 pb-24 pt-24 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-32 lg:pt-36">
+      <div className="relative mx-auto w-full max-w-[1360px] px-5 pb-16 pt-16 sm:px-8 sm:pb-24 sm:pt-24 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-32 lg:pt-36">
         <div className="max-w-[880px]">
           <h2 className="text-[clamp(52px,6.2vw,104px)]" style={{ ...display, color: T.offwhite, ...inn(0) }} data-testid="v4-avslutning-tittel">
             {tittel}<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>

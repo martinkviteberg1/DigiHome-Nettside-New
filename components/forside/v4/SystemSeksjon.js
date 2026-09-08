@@ -279,7 +279,7 @@ function Saker() {
 const VISNING = { oversikt: Oversikt, eiendommer: Eiendommer, leietakere: Leietakere, okonomi: Okonomi, saker: Saker };
 
 /* ── Portalen — ett hairline-kort, ingen vindusramme ── */
-function Portal({ aktiv, onVelg }) {
+function Portal({ aktiv, onVelg, utenSide = false }) {
   const refs = useRef({});
   const [mark, setMark] = useState(null);
   useEffect(() => {
@@ -296,9 +296,9 @@ function Portal({ aktiv, onVelg }) {
   }, [aktiv, vist]);
   const Vis = VISNING[vist] || Oversikt;
   return (
-    <div className="grid overflow-hidden rounded-[18px] text-[#15130F]" style={{ width: DW, height: DH, gridTemplateColumns: `${SIDE}px minmax(0,1fr)`, background: PAPIR, boxShadow: `0 0 0 1px ${HAIR2}, 0 40px 90px -40px rgba(21,19,15,0.28), 0 2px 6px -2px rgba(21,19,15,0.06)` }} data-testid="v4-system-portal" data-visning={vist}>
-      {/* Sidepanelet — alle modulene */}
-      <aside className="relative flex flex-col border-r px-3 pb-4 pt-5" style={{ borderColor: HAIR }}>
+    <div className="grid overflow-hidden rounded-[18px] text-[#15130F]" style={{ width: utenSide ? DW - SIDE : DW, height: DH, gridTemplateColumns: utenSide ? 'minmax(0,1fr)' : `${SIDE}px minmax(0,1fr)`, background: PAPIR, boxShadow: `0 0 0 1px ${HAIR2}, 0 40px 90px -40px rgba(21,19,15,0.28), 0 2px 6px -2px rgba(21,19,15,0.06)` }} data-testid="v4-system-portal" data-visning={vist}>
+      {/* Sidepanelet — alle modulene (utelatt på smal skjerm: der vises bare hovedflaten, i sidens marg) */}
+      {!utenSide && <aside className="relative flex flex-col border-r px-3 pb-4 pt-5" style={{ borderColor: HAIR }}>
         <div className="px-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img loading="lazy" decoding="async" src="/digihome-hero-logo.svg" alt="DigiHome" className="h-[15px] w-auto" draggable={false} />
@@ -322,7 +322,7 @@ function Portal({ aktiv, onVelg }) {
           <Avatar p={KARI} size={26} />
           <span className="min-w-0"><span className="block truncate font-medium">{KARI.navn}</span><span className="block text-[11.5px]" style={{ color: DIM }}>Eier · 1 eiendom</span></span>
         </div>
-      </aside>
+      </aside>}
 
       {/* Hovedflaten */}
       <div className="flex min-w-0 flex-col">
@@ -404,12 +404,13 @@ function App({ synlig }) {
 }
 
 /* Skalerer portalen (designbredde DW) til bredden den får */
-function PortalSkalert({ aktiv, onVelg, bredde }) {
-  const s = Math.min(1, bredde / DW);
+function PortalSkalert({ aktiv, onVelg, bredde, utenSide = false }) {
+  const bw = utenSide ? DW - SIDE : DW;
+  const s = Math.min(1, bredde / bw);
   return (
-    <div style={{ width: Math.round(DW * s), height: Math.round(DH * s) }}>
-      <div style={{ width: DW, height: DH, transform: `scale(${s})`, transformOrigin: '0 0' }}>
-        <Portal aktiv={aktiv} onVelg={onVelg} />
+    <div style={{ width: Math.round(bw * s), height: Math.round(DH * s) }}>
+      <div style={{ width: bw, height: DH, transform: `scale(${s})`, transformOrigin: '0 0' }}>
+        <Portal aktiv={aktiv} onVelg={onVelg} utenSide={utenSide} />
       </div>
     </div>
   );
@@ -443,31 +444,35 @@ function GodkjennKort() {
     </div>
   );
 }
-/* Rolig parallakse: 0 → 1 mens seksjonen går gjennom skjermen */
-function useFremdrift(ref) {
-  const [p, setP] = useState(0);
+/* Rolig parallakse: 0 → 1 mens seksjonen går gjennom skjermen. Skrives rett til DOM som CSS-variabel (--dh-frem)
+   — ingen React-render per scroll-frame (det var hele portal-mockupen som ble tegnet på nytt for hver frame).
+   Måles bare mens seksjonen er i bildet, og bare der lagene faktisk beveger seg (bred flate). */
+function useFremdrift(ref, aktiv, pa) {
   useEffect(() => {
     const el = ref.current; if (!el) return undefined;
+    if (!pa) { el.style.setProperty('--dh-frem', '0.5'); return undefined; }
+    if (!aktiv) return undefined;
     let raf = 0;
     const f = () => {
       raf = 0;
       const r = el.getBoundingClientRect(); const vh = window.innerHeight || 1;
-      setP(Math.max(0, Math.min(1, (vh - r.top) / (vh + r.height))));
+      const p = Math.max(0, Math.min(1, (vh - r.top) / (vh + r.height)));
+      el.style.setProperty('--dh-frem', p.toFixed(4));
     };
     const on = () => { if (!raf) raf = window.requestAnimationFrame(f); };
     f();
     window.addEventListener('scroll', on, { passive: true });
     window.addEventListener('resize', on);
     return () => { window.removeEventListener('scroll', on); window.removeEventListener('resize', on); if (raf) window.cancelAnimationFrame(raf); };
-  }, [ref]);
-  return p;
+  }, [ref, aktiv, pa]);
 }
 
 export default function SystemSeksjon() {
   const ref = useRef(null);
   const synlig = useSynlig(ref, 0.16);
   const [sceneRef, W] = useBredde();
-  const frem = useFremdrift(ref);
+  const bred = W >= 980;
+  useFremdrift(ref, synlig, bred);
   const [aktiv, setAktiv] = useState('oversikt');
   const pause = useRef(0);
   /* Modulene bytter av seg selv mens seksjonen er i bildet; et trykk holder valget i 15 s */
@@ -480,17 +485,21 @@ export default function SystemSeksjon() {
     return () => window.clearInterval(t);
   }, [synlig]);
   const velg = (id) => { pause.current = Date.now() + 15000; setAktiv(id); };
-  /* Entré (opacity + løft) og parallakse (lagene glir i ulik fart) i samme transform */
-  const lag = (d, dy, fart) => ({ opacity: synlig ? 1 : 0, transform: synlig ? `translateY(${Math.round((0.5 - frem) * fart)}px)` : `translateY(${dy}px)`, transition: `opacity 900ms ${EASE} ${d}ms, transform ${synlig ? 500 : 1000}ms ${synlig ? 'cubic-bezier(0.2, 0.6, 0.2, 1)' : EASE} ${synlig ? 0 : d}ms`, willChange: 'transform, opacity' });
+  /* Entré (opacity + løft) og parallakse (lagene glir i ulik fart, fra --dh-frem) i samme transform */
+  const lag = (d, dy, fart) => ({ opacity: synlig ? 1 : 0, transform: synlig ? (fart ? `translateY(calc((0.5 - var(--dh-frem, 0.5)) * ${fart}px))` : 'none') : `translateY(${dy}px)`, transition: `opacity 900ms ${EASE} ${d}ms, transform ${synlig ? 500 : 1000}ms ${synlig ? 'cubic-bezier(0.2, 0.6, 0.2, 1)' : EASE} ${synlig ? 0 : d}ms`, willChange: synlig && fart ? 'transform' : undefined });
 
   /* Ingen scene, ingen boks: portalen ligger rett på flaten, venstrejustert, og tones ut mot bunnen (mask) —
      appen står foran til høyre, så vidt over portalens kant; to løse detaljkort står i sonen der portalen tones bort.
      Under 980 px stables de. */
-  const bred = W >= 980;
-  /* Smalt: portalen vises som et lesbart utsnitt (skalert 0,62, kuttet i bredden, tonet ut i bunnen) — appen er hovedsaken. */
-  const portalB = bred ? Math.min(DW, W - (APP_W - 48)) : Math.max(W, Math.round(DW * 0.62));
-  const s = Math.min(1, portalB / DW);
-  const pw = Math.round(DW * s); const ph = Math.round(DH * s);
+  /* Smalt (mobil først): portalen vises uten sidepanel, som hovedflaten alene — skalert 0,7, lagt helt i sidens
+     venstre kant (kortet går ut av skjermen, −seksjonsmargen) så «God morgen, Kari.» og tallene starter i margen
+     (28 px · 0,7 ≈ 20 px), kuttet og tonet ut mot
+     høyre og i bunnen. Appen er hovedsaken og står foran. */
+  const utenSide = !bred;
+  const designB = utenSide ? DW - SIDE : DW;
+  const portalB = bred ? Math.min(DW, W - (APP_W - 48)) : Math.max(W, Math.round(designB * 0.7));
+  const s = Math.min(1, portalB / designB);
+  const pw = Math.round(designB * s); const ph = Math.round(DH * s);
   const synligH = Math.round(ph * 0.82);
   const maske = bred ? 'linear-gradient(180deg, #000 0%, #000 56%, rgba(0,0,0,0.5) 74%, rgba(0,0,0,0) 100%)' : 'linear-gradient(180deg, #000 0%, #000 40%, rgba(0,0,0,0) 100%)';
   const utsnittH = bred ? ph : Math.round(ph * 0.5);
@@ -504,10 +513,15 @@ export default function SystemSeksjon() {
           {W > 0 && (
             <>
               {/* Et stille lys bak — så flatene svever uten boks */}
-              <div aria-hidden="true" className="pointer-events-none absolute" style={{ left: -120, right: -120, top: -80, height: Math.round(ph * 0.9), background: 'radial-gradient(60% 70% at 45% 35%, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0) 100%)', opacity: synlig ? 1 : 0, transition: `opacity 1400ms ${EASE}` }} />
-              <div className="absolute top-0" style={{ left: bred ? 0 : Math.round((W - pw) / 2), width: pw, height: ph, maskImage: maske, WebkitMaskImage: maske, ...lag(0, 24, 10) }}>
-                <PortalSkalert aktiv={aktiv} onVelg={velg} bredde={portalB} />
+              <div aria-hidden="true" className="pointer-events-none absolute" style={{ left: -120, right: -120, top: bred ? -80 : 0, height: Math.round(ph * 0.9), background: 'radial-gradient(60% 70% at 45% 35%, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0) 100%)', opacity: synlig ? 1 : 0, transition: `opacity 1400ms ${EASE}` }} />
+              {/* Smalt: utsnittet forankres i hovedflaten — sidepanelet ligger utenfor til venstre, «God morgen, Kari.»
+                  og tallene starter i sidens marg. Høyre kant tones ut i lerretet, så kuttet leses som et utsnitt, ikke en feil. */}
+              <div className="absolute top-0" style={{ left: bred ? 0 : -(W >= 576 ? 32 : 20), width: pw, height: ph, maskImage: maske, WebkitMaskImage: maske, ...lag(0, 24, 10) }}>
+                <PortalSkalert aktiv={aktiv} onVelg={velg} bredde={portalB} utenSide={utenSide} />
               </div>
+              {!bred && (
+                <div aria-hidden="true" className="pointer-events-none absolute top-0 z-[1]" style={{ right: -20, width: 120, height: ph, background: `linear-gradient(90deg, ${T.canvas}00 0%, ${T.canvas} 78%)` }} />
+              )}
               {bred && (
                 <>
                   <div className="absolute z-[2]" style={{ left: Math.round(pw * 0.22), top: Math.round(ph * 0.60), ...lag(260, 32, 46) }}>

@@ -43,7 +43,7 @@ function SceneVideo({ aktiv }) {
   useEffect(() => {
     const el = holder.current;
     if (!el || typeof IntersectionObserver === 'undefined') { setNaer(true); return undefined; }
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setNaer(true); obs.disconnect(); } }, { rootMargin: '900px 0px' });
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setNaer(true); obs.disconnect(); } }, { rootMargin: '240px 0px' });
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
@@ -134,7 +134,8 @@ const TRAD = [
 const HAIR = 'rgba(21,19,15,0.08)';
 const SKYGGE = '0 14px 36px -18px rgba(0,0,0,0.5), 0 1px 0 rgba(21,19,15,0.04)';
 const MORK = '#15120F';
-const GLASS = { background: 'rgba(21,18,15,0.80)', color: T.offwhite, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.14), 0 10px 30px -16px rgba(0,0,0,0.55)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' };
+/* Ingen backdrop-filter over video (tegnes om per frame på mobil) — boblen er tett nok i seg selv. */
+const GLASS = { background: 'rgba(21,18,15,0.90)', color: T.offwhite, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.14), 0 10px 30px -16px rgba(0,0,0,0.55)' };
 
 function Hake({ className = '', style }) {
   return (
@@ -204,7 +205,7 @@ function Trad({ er }) {
                       <p className="max-w-[80%] rounded-[18px] rounded-br-[6px] px-4 py-2.5 text-[14.5px] leading-[1.42]" style={GLASS}>{m.t}</p>
                     )}
                     {sisteIGruppe && m.tid && (
-                      <span className="mt-1.5 inline-flex h-[18px] items-center rounded-full px-2 text-[11px]" style={{ background: 'rgba(21,18,15,0.42)', color: 'rgba(244,241,234,0.88)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>Ida · {m.tid}</span>
+                      <span className="mt-1.5 inline-flex h-[18px] items-center rounded-full px-2 text-[11px]" style={{ background: 'rgba(21,18,15,0.58)', color: 'rgba(244,241,234,0.88)' }}>Ida · {m.tid}</span>
                     )}
                   </div>
                 </Inn>
@@ -294,7 +295,7 @@ export default function LeietakerSeksjon() {
   return (
     <section id="leietaker" ref={ref} className="relative" style={{ background: T.canvas, color: T.ink }} data-testid="v4-leietaker">
       {/* Container: editorial (1360) — 58/42, 80 px gap. Én komposisjon, ikke to ting som fyller hver sin halvdel av skjermen. */}
-      <div className="mx-auto w-full max-w-[1360px] px-5 pb-24 pt-16 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-32 lg:pt-24">
+      <div className="mx-auto w-full max-w-[1360px] px-5 pb-16 pt-12 sm:px-8 sm:pb-24 sm:pt-16 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-32 lg:pt-24">
         <div className="grid gap-12 lg:grid-cols-[58fr_42fr] lg:items-center lg:gap-16 xl:gap-20">
           {/* ── Venstre: 1:1-scene med kompakt tråd nederst ── */}
           <div>
@@ -307,9 +308,9 @@ export default function LeietakerSeksjon() {
 
               {/* Kontekst øverst — små mørke glasspiller, lesbare på alt opptak */}
               <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 px-5 pt-5 text-[12.5px] sm:px-7 sm:pt-7" style={{ color: 'rgba(244,241,234,0.86)' }}>
-                <span className="inline-flex h-7 items-center rounded-full px-3" style={{ background: 'rgba(21,18,15,0.42)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}><span className="hidden sm:inline">Nygårdsgaten 5 · </span>Leilighet 2</span>
+                <span className="inline-flex h-7 items-center rounded-full px-3" style={{ background: 'rgba(21,18,15,0.58)' }}><span className="hidden sm:inline">Nygårdsgaten 5 · </span>Leilighet 2</span>
                 {/* Status — én og samme glasspille hele veien; bare prikken og teksten skifter (ingen grønn plate) */}
-                <span className="inline-flex h-7 shrink-0 items-center gap-2 rounded-full px-3" style={{ background: 'rgba(21,18,15,0.42)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }} data-testid="v4-scene-status">
+                <span className="inline-flex h-7 shrink-0 items-center gap-2 rounded-full px-3" style={{ background: 'rgba(21,18,15,0.58)' }} data-testid="v4-scene-status">
                   <span className="inline-grid h-3 w-3 place-items-center">
                     <span className="col-start-1 row-start-1 h-1.5 w-1.5 rounded-full" style={{ background: venterNa ? T.lilla : 'rgba(244,241,234,0.7)', opacity: lost ? 0 : 1, transition: `background-color 300ms ${EASE}, opacity 200ms ${EASE}` }} />
                     <Hake className="col-start-1 row-start-1" style={{ color: '#5FCB8A', opacity: lost ? 1 : 0, transition: `opacity 300ms ${EASE} 200ms` }} />
