@@ -113,18 +113,29 @@ function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5
   /* Smal: rammen er skalert HJEM_ZOOM_SMAL om (30 %, 100 %) — punktet følger med */
   if (smal) { px = HJEM_FOKUS_SMAL_X + (px - HJEM_FOKUS_SMAL_X) * HJEM_ZOOM_SMAL; py = 1 - (1 - py) * HJEM_ZOOM_SMAL; }
   const X = px * maal.w; const Y = py * maal.h;
-  /* Flatens bredde følger scenen: på mellomstore skjermer (nettbrett, 640–1000 px scene) smalner den (196–252 px) så
-     den aldri går inn i veggteksten, som starter ved max(61 %, 38 % + 208 px) — se Veggfortelling. */
-  const trang = !smal && maal.w < 1010;
-  const B = smal ? 212 : Math.max(196, Math.min(252, Math.round(maal.w * 0.246 - 12)));
   /* Flaten står opp og til høyre for skjermen — over skulderen, aldri over ansiktet. Bunnen bindes til skjermen.
-     På smal skjerm klemmes den inn så den aldri går ut av scenens høyrekant. */
+     Bredden følger scenen (204–272 px); på smal skjerm klemmes den inn så den aldri går ut av scenens høyrekant. */
+  const trang = !smal && maal.w < 1010;
+  const B = smal ? 220 : Math.max(204, Math.min(272, Math.round(maal.w * 0.246 - 4)));
   const fx = Math.min(X + (smal || trang ? 16 : Math.round(maal.w * 0.034)), smal ? Math.max(0, maal.w - B - 12) : Infinity);
-  const fy = Y - (smal || trang ? 26 : Math.round(maal.h * 0.042));
+  /* Smal skjerm: rammen er lav og utsnittet zoomet, så Emma-slaget (fire kort) må ha plass — bunnen ligger i høyde med
+     hendene hans (Y + 18), til høyre for telefonen, og stabelen vokser opp langs lampen uten å gå ut av rammen. */
+  const fy = smal ? Y + 18 : Y - (trang ? 26 : Math.round(maal.h * 0.042));
   const inne = n >= 0;
-  const fs = 12.5;
-  const bildePx = 52;
-  const avatarPx = 22;
+  const fs = smal ? 13 : 13.5;
+  const bildePx = smal ? 54 : 60;
+  const avatarPx = 24;
+  /* Hårlinjens to ender: skjermpunktet og kortets nedre venstre hjørne. Pakken reiser langs samme linje. */
+  const L0 = { x: X + 4, y: Y - 2 }; const L1 = { x: fx + 14, y: fy + 1 };
+  const bane = `path("M ${L0.x} ${L0.y} L ${L1.x} ${L1.y}")`;
+  /* Glass — tre materialer. Alltid transform/opacity i bevegelse; backdrop-filter bare på små flater. */
+  const GLASS = {
+    dh: { background: 'rgba(21,19,15,0.72)', color: '#F4F1EA', border: '1px solid rgba(255,255,255,0.10)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10), 0 24px 60px -24px rgba(0,0,0,0.6)' },
+    deg: { background: 'rgba(201,160,255,0.66)', color: T.ink, border: '1px solid rgba(255,255,255,0.55)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7), 0 20px 50px -22px rgba(60,20,120,0.45)' },
+    emma: { background: 'rgba(251,250,248,0.66)', color: T.ink, border: '1px solid rgba(255,255,255,0.7)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.85), 0 20px 50px -22px rgba(0,0,0,0.35)' },
+  };
+  const glass = { backdropFilter: 'blur(18px) saturate(150%)', WebkitBackdropFilter: 'blur(18px) saturate(150%)' };
+  const FJAER = 'cubic-bezier(0.34, 1.45, 0.64, 1)';   // fjærende overskyting
 
   return (
     <div ref={ref} aria-hidden="true" className="pointer-events-none absolute inset-0 z-[3] overflow-hidden" data-testid="v4-telefonstrom" data-n={n}>
@@ -132,55 +143,77 @@ function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5
         <>
           {/* Hårlinjen fra skjermen opp til samtalens nedre venstre hjørne — boblene hører til telefonen */}
           <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${maal.w} ${maal.h}`} preserveAspectRatio="none" style={{ opacity: inne ? 1 : 0, transition: `opacity 600ms ${EASE} 500ms` }}>
-            <line x1={X + 4} y1={Y - 2} x2={fx + 14} y2={fy + 1} stroke="rgba(251,250,248,0.55)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-            <circle cx={X + 4} cy={Y - 2} r="2" fill="rgba(251,250,248,0.95)" />
+            <line x1={L0.x} y1={L0.y} x2={L1.x} y2={L1.y} stroke="rgba(251,250,248,0.5)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+            <circle cx={L0.x} cy={L0.y} r="2" fill="rgba(251,250,248,0.95)" />
           </svg>
-          {/* Samtalen: frittstående bobler (ingen boks, ingen skjerm) som kommer én og én — Emma til venstre med bilde,
-              eieren til høyre i lilla, DigiHome svarer i blekk. Skriveindikator (···) før hvert svar. Forrige slags
-              bobler glir opp og tones bort. Ingen glød, ingen blink. Siste slag blir stående. */}
-          <div className="absolute flex flex-col justify-end" style={{ left: fx, bottom: maal.h - fy, width: B, opacity: inne ? 1 : 0, transition: `opacity 500ms ${EASE}` }} data-testid="v4-strom-flate">
+          {/* Pakkene: én lysprikk per boble i det nye slaget — sendes fra skjermen 520 ms før boblen, lander idet den kommer.
+              En ring slår ut fra skjermpunktet når pakken går. */}
+          {inne && (STROM[n].chat || []).map((c, j) => {
+            const t0 = 200 + j * BOBLE_TAKT;
+            const start = Math.max(0, t0 - 520);
+            return (
+              <span key={`${n}-${j}`}>
+                <span className="absolute block rounded-full" style={{ left: 0, top: 0, width: 6, height: 6, background: '#FFFFFF', boxShadow: '0 0 0 2px rgba(255,255,255,0.25), 0 0 14px 3px rgba(255,255,255,0.7)', offsetPath: bane, offsetRotate: '0deg', opacity: 0, animation: `v4-pakke 520ms cubic-bezier(0.3, 0, 0.2, 1) ${start}ms both` }} />
+                <span className="absolute block rounded-full" style={{ left: L0.x - 7, top: L0.y - 7, width: 14, height: 14, border: '1px solid rgba(255,255,255,0.8)', opacity: 0, animation: `v4-ring 520ms ${EASE} ${start}ms both` }} />
+              </span>
+            );
+          })}
+          {/* Samtalen: glasskort som vokser ut av sitt hjørne med en fjær — Emma til venstre med bilde, eieren til høyre i
+              lilla glass, DigiHome i mørkt glass. Skriveindikator (···) før hvert svar. Forrige slag løftes og tones bort.
+              Hele kolonnen svever nesten umerkelig. Siste slag blir stående. */}
+          <div className="absolute flex flex-col justify-end v4-flyt" style={{ left: fx, bottom: maal.h - fy, width: B, opacity: inne ? 1 : 0, transition: `opacity 500ms ${EASE}`, animation: 'v4-flyt 7000ms ease-in-out infinite' }} data-testid="v4-strom-flate">
             {[n - 1, n].filter((k) => k >= 0 && k < STROM.length).map((k) => {
               const m = STROM[k];
               const ny = k === n;
-              const bobler = m.chat || [{ fra: 'dh', t: m.t, u: m.u, ikon: m.ikon }];
+              const bobler = m.chat || [];
               return (
-                <div key={k} className="flex w-full flex-col gap-1.5" style={{ transformOrigin: '0% 100%', animation: ny ? 'none' : `v4-boble-ut 560ms cubic-bezier(0.4, 0, 0.6, 1) both`, position: ny ? 'relative' : 'absolute', bottom: ny ? undefined : 0, left: 0, willChange: 'transform, opacity' }} data-testid={`v4-strom-${m.id}`} aria-hidden={!ny}>
+                <div key={k} className="flex w-full flex-col gap-2" style={{ transformOrigin: '0% 100%', animation: ny ? 'none' : `v4-glass-ut 520ms cubic-bezier(0.4, 0, 0.6, 1) both`, position: ny ? 'relative' : 'absolute', bottom: ny ? undefined : 0, left: 0, willChange: 'transform, opacity' }} data-testid={`v4-strom-${m.id}`} aria-hidden={!ny}>
                   {bobler.map((c, j) => {
                     const hoyre = c.fra !== 'emma';
                     const dh = c.fra === 'dh';
                     const t0 = ny ? 200 + j * BOBLE_TAKT : 0;               // når boblen kommer
                     const svar = dh || (c.fra === 'emma' && j > 0);          // svar får skriveindikator først
                     const tekst = String(c.t || '').replace('{adresse}', adresse);
+                    const mat = GLASS[c.fra] || GLASS.dh;
+                    const radius = hoyre ? '18px 18px 6px 18px' : '18px 18px 18px 6px';
+                    const kort = { ...mat, ...glass, borderRadius: radius, transformOrigin: hoyre ? '100% 100%' : '0% 100%', opacity: 0, animation: `v4-glass-inn 640ms ${FJAER} ${t0}ms both`, willChange: 'transform, opacity' };
                     return (
                       <div key={j} className={`flex w-full items-end gap-1.5 ${hoyre ? 'justify-end' : 'justify-start'}`}>
                         {c.fra === 'emma' && (
                           /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={m.bilde || '/v4/annonse/leietaker-emma.webp'} alt="" width={avatarPx} height={avatarPx} className="shrink-0 rounded-full object-cover" style={{ width: avatarPx, height: avatarPx, boxShadow: '0 0 0 1.5px rgba(251,250,248,0.9)', opacity: 0, animation: `v4-chat-inn 420ms ${EASE} ${t0}ms both` }} />
+                          <img src={m.bilde || '/v4/annonse/leietaker-emma.webp'} alt="" width={avatarPx} height={avatarPx} className="shrink-0 rounded-full object-cover" style={{ width: avatarPx, height: avatarPx, boxShadow: '0 0 0 1.5px rgba(251,250,248,0.9), 0 6px 16px -6px rgba(0,0,0,0.5)', opacity: 0, animation: `v4-glass-inn 560ms ${FJAER} ${t0}ms both` }} />
                         )}
-                        <span className="relative max-w-[86%]">
+                        <span className="relative max-w-[88%]">
                           {/* Skriveindikatoren: kommer 780 ms før svaret, går idet svaret kommer */}
                           {ny && svar && (
-                            <span className={`absolute bottom-0 inline-flex items-center gap-[3px] px-3 ${hoyre ? 'right-0' : 'left-0'}`} style={{ height: 30, borderRadius: hoyre ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: dh ? T.ink : 'rgba(251,250,248,0.96)', opacity: 0, animation: `v4-skriver 760ms linear ${Math.max(0, t0 - 780)}ms both` }}>
+                            <span className={`absolute bottom-0 inline-flex items-center gap-[3px] px-3 ${hoyre ? 'right-0' : 'left-0'}`} style={{ ...mat, ...glass, height: 30, borderRadius: radius, boxShadow: 'none', opacity: 0, animation: `v4-skriver 760ms linear ${Math.max(0, t0 - 780)}ms both` }}>
                               {[0, 1, 2].map((d) => <span key={d} className="block h-[5px] w-[5px] rounded-full" style={{ background: dh ? 'rgba(244,241,234,0.7)' : 'rgba(21,19,15,0.4)', animation: `v4-prikk 900ms ease-in-out ${d * 150}ms infinite` }} />)}
                             </span>
                           )}
                           {c.bilder ? (
-                            /* Bildene eieren sendte: tre, kommer én og én */
-                            <span className="flex gap-1 p-1" style={{ borderRadius: '16px 16px 4px 16px', background: T.lilla, boxShadow: '0 16px 40px -20px rgba(0,0,0,0.45)', opacity: 0, animation: `v4-chat-inn 480ms ${EASE} ${t0}ms both` }}>
+                            /* Bildene eieren sendte: fanner ut fra midten av kortet, retter seg opp */
+                            <span className="flex gap-1 p-1" style={{ ...kort }}>
                               {c.bilder.map((b, q) => (
                                 /* eslint-disable-next-line @next/next/no-img-element */
-                                <img key={b} src={b} alt="" width={bildePx} height={bildePx} className="rounded-[12px] object-cover" style={{ width: bildePx, height: bildePx, opacity: 0, animation: `v4-chat-inn 420ms ${EASE} ${t0 + 180 + q * 160}ms both` }} />
+                                <img key={b} src={b} alt="" width={bildePx} height={bildePx} className="rounded-[14px] object-cover" style={{ width: bildePx, height: bildePx, '--fra': `${(1 - q) * (bildePx + 4)}px`, '--rot': `${(q - 1) * 9}deg`, boxShadow: '0 8px 20px -10px rgba(0,0,0,0.45)', opacity: 0, animation: `v4-foto-fan 680ms ${FJAER} ${t0 + 160 + q * 70}ms both` }} />
                               ))}
                             </span>
                           ) : (
-                          <span className="block" style={{ padding: '7px 12px', fontSize: fs, lineHeight: 1.35, borderRadius: hoyre ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: dh ? T.ink : c.fra === 'deg' ? T.lilla : 'rgba(251,250,248,0.96)', color: dh ? '#F4F1EA' : T.ink, boxShadow: dh ? '0 16px 40px -20px rgba(0,0,0,0.55)' : '0 16px 40px -20px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.6)', transformOrigin: hoyre ? '100% 100%' : '0% 100%', opacity: 0, animation: `v4-chat-inn 480ms ${EASE} ${t0}ms both`, willChange: 'transform, opacity' }}>
-                            {c.ikon && <span className="mr-1.5 inline-block h-[6px] w-[6px] rounded-full align-middle" style={{ background: c.ikon === 'hake' ? '#5FD39A' : T.lilla }} />}
-                            {tekst}{c.u ? <span className="block text-[11px]" style={{ color: 'rgba(244,241,234,0.62)' }}>{c.u}</span> : null}
+                          <span className="block" style={{ ...kort, padding: '8px 12px 8px 12px', fontSize: fs, lineHeight: 1.35 }}>
+                            <span className="inline-flex items-start gap-1.5" style={{ opacity: 0, animation: `v4-innhold-inn 420ms ${EASE} ${t0 + 140}ms both` }}>
+                              {c.ikon === 'hake' && (
+                                <svg width="13" height="13" viewBox="0 0 12 12" fill="none" className="mt-[3px] shrink-0" aria-hidden="true">
+                                  <path d="M2.4 6.4 L5 8.9 L9.7 3.3" stroke="#5FD39A" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="24" strokeDashoffset="24" style={{ animation: `v4-hake-tegn 460ms ${EASE} ${t0 + 380}ms both` }} />
+                                </svg>
+                              )}
+                              {c.ikon === 'prikk' && <span className="mt-[6px] inline-block h-[6px] w-[6px] shrink-0 rounded-full" style={{ background: T.lilla, boxShadow: '0 0 10px 1px rgba(201,160,255,0.7)' }} />}
+                              <span>{tekst}</span>
+                            </span>
                           </span>
                           )}
                           {/* Kvittering under eierens bobler — «Levert», så «Lest» */}
                           {c.kvittering && ny && (
-                            <span className="block pr-1 pt-[3px] text-right text-[10px]" style={{ color: 'rgba(251,250,248,0.75)', textShadow: '0 1px 6px rgba(0,0,0,0.4)', opacity: 0, animation: `v4-chat-inn 360ms ${EASE} ${t0 + 620}ms both` }}>{c.kvittering}</span>
+                            <span className="block pr-1 pt-[3px] text-right text-[10px]" style={{ color: 'rgba(251,250,248,0.8)', textShadow: '0 1px 6px rgba(0,0,0,0.45)', opacity: 0, animation: `v4-innhold-inn 360ms ${EASE} ${t0 + 640}ms both` }}>{c.kvittering}</span>
                           )}
                         </span>
                       </div>
@@ -192,6 +225,28 @@ function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* Undertekst — som i en dokumentar: én liten presis linje nederst til høyre i rammen (sted · tid), og fem kapittelstreker
+   som fylles ett hakk per slag i samtalen. Ingen budskap på veggen; bildet får tid og sted, ikke ord. */
+function Undertekst({ hjemme, smal, k, adresse }) {
+  const i = k === null || k === undefined ? -1 : Math.min(k, STROM.length - 1);
+  const kl = STROM[Math.max(0, i)].kl;
+  const meta = 'rgba(21,19,15,0.62)';
+  return (
+    <div className="absolute z-[4]" style={{ right: smal ? 14 : 28, bottom: smal ? 14 : 22, opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(6px)', transition: `opacity 900ms ${EASE} ${hjemme ? 700 : 0}ms, transform 900ms ${EASE} ${hjemme ? 700 : 0}ms` }} aria-hidden={!hjemme} data-testid="v4-undertekst">
+      <p className="flex items-center justify-end gap-x-2 whitespace-nowrap tabular-nums" style={{ fontSize: smal ? 11 : 11.5, letterSpacing: '0.01em', color: meta }}>
+        <span>{adresse}, Bergen</span>
+        <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.22)' }}>·</span>
+        <span>torsdag <span key={kl} className="inline-block animate-in fade-in-0 duration-700">{kl}</span></span>
+      </p>
+      <div className="mt-2 flex justify-end gap-[5px]" aria-hidden="true">
+        {STROM.map((s, q) => (
+          <span key={s.id} className="block h-[2px] w-[14px] rounded-full" style={{ background: q <= i ? 'rgba(21,19,15,0.66)' : 'rgba(21,19,15,0.16)', transition: `background 700ms ${EASE}` }} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -476,7 +531,9 @@ function useFortelling(aktiv, redusert) {
 }
 
 function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, replay, zoom = false }) {
-  /* Direkte-modus: veggen er ROLIG. Én setning som står fra første bilde og aldri skifter, én linje under, en hårlinje
+  /* Direkte-modus: ingenting på veggen. Bare undertekst i hjørnet (sted · tid · kapitler). */
+  if (direkte) return <Undertekst hjemme={hjemme} smal={smal} k={fort?.puls} adresse={adresse} />;
+  /* (Teksten under gjelder Street View-flyten.) Én setning som står fra første bilde og aldri skifter, én linje under, en hårlinje
      og den stille meta-linjen (adresse · klokke · status). Det eneste som beveger seg er klokken, som følger samtalen
      på telefonen. Mindre og mer dempet enn en overskrift — veggen skal ikke konkurrere med ham og telefonen.
      Street View-flyten (din adresse → din bolig): som før — én setning, én linje, tallene og feltet. */

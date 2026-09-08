@@ -1116,6 +1116,24 @@ html.dh-nav-klar [data-testid="v4-nav"] { background-color: transparent; border-
 @keyframes v4-prikk { 0%, 100% { transform: translateY(0); opacity: 0.55; } 50% { transform: translateY(-2px); opacity: 1; } }
 /* Boble i samtalen: kommer opp fra sitt hjørne, liten og svak → på plass */
 @keyframes v4-chat-inn { from { opacity: 0; transform: translateY(6px) scale(0.85); } to { opacity: 1; transform: none; } }
+/* Telefonstrømmen (glass): kortet vokser ut av sitt hjørne med en fjærende overskyting (easing satt inline), innholdet
+   kommer 120 ms etter. Ut: løftes, krymper litt og forsvinner. Kun transform/opacity — over video koster alt annet. */
+@keyframes v4-glass-inn { 0% { opacity: 0; transform: translateY(16px) scale(0.72); } 60% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes v4-glass-ut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-26px) scale(0.94); } }
+@keyframes v4-innhold-inn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+/* Pakken: en lysprikk som reiser fra skjermen opp langs hårlinjen (offset-path) og lander idet kortet kommer */
+@keyframes v4-pakke { 0% { offset-distance: 0%; opacity: 0; transform: scale(0.5); } 14% { opacity: 1; transform: scale(1); } 86% { opacity: 1; } 100% { offset-distance: 100%; opacity: 0; transform: scale(0.5); } }
+/* Ringen som slår ut fra skjermpunktet idet pakken sendes */
+@keyframes v4-ring { 0% { opacity: 0.8; transform: scale(0.3); } 100% { opacity: 0; transform: scale(2.8); } }
+/* Bildene fanner ut fra midten med en liten rotasjon som retter seg opp */
+@keyframes v4-foto-fan { 0% { opacity: 0; transform: translateX(var(--fra, 0px)) rotate(var(--rot, 0deg)) scale(0.5); } 65% { opacity: 1; transform: translateX(0) rotate(calc(var(--rot, 0deg) * -0.3)) scale(1.04); } 100% { opacity: 1; transform: none; } }
+/* Haken tegnes med ett strøk */
+@keyframes v4-hake-tegn { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+/* Kolonnen svever nesten umerkelig — den lever */
+@keyframes v4-flyt { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) {
+  .v4-flyt { animation: none !important; }
+}
 /* Beholdt for eldre referanser */
 @keyframes v4-ord-loft { from { opacity: 0; transform: translateY(104%); } 60% { opacity: 1; } to { opacity: 1; transform: translateY(0); } }
 @keyframes v4-ord-loft-ut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-70%); } }
