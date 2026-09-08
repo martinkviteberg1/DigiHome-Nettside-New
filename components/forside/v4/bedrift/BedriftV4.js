@@ -113,35 +113,37 @@ export default function BedriftV4() {
                 Alle selskaper, bygg og leieforhold i ett system. Rutinen — husleie, kontrakter og saker — går automatisk. Beslutningene tar dere, etter roller og grenser dere setter. Alt logges.
               </p>
 
-              {/* Adressefeltets tvilling: størrelsen. Skalerer scenen og spiller dagen på nytt. */}
-              <div className="dh-cover-inn mt-9" style={{ animationDelay: '.14s' }}>
-                <p className="text-[13.5px]" style={{ color: 'rgba(21,19,15,0.55)' }} id="v4b-storrelse-label">Hvor stor er porteføljen? <span className="text-[#15130F]/40">Enheter</span></p>
-                <div role="radiogroup" aria-labelledby="v4b-storrelse-label" className="mt-2.5 inline-flex rounded-[12px] p-1" style={{ background: 'rgba(21,19,15,0.06)' }} data-testid="v4b-storrelse">
-                  {Object.entries(STORRELSER).map(([id, s]) => {
-                    const er = id === storrelse;
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        role="radio"
-                        aria-checked={er}
-                        onClick={() => setStorrelse(id)}
-                        className="h-9 rounded-[9px] px-4 text-[14px] transition-[background-color,color,box-shadow] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
-                        style={{ background: er ? '#FBFAF8' : 'transparent', color: er ? T.ink : 'rgba(21,19,15,0.6)', fontWeight: er ? 500 : 400, boxShadow: er ? '0 1px 2px rgba(21,19,15,0.08), 0 0 0 1px rgba(21,19,15,0.05)' : 'none', transitionTimingFunction: EASE }}
-                        data-testid={`v4b-storrelse-${id}`}
-                      >
-                        {s.navn}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-x-6 gap-y-3" style={{ animationDelay: '.2s' }}>
+              <div className="dh-cover-inn mt-9 flex flex-wrap items-center gap-x-6 gap-y-3" style={{ animationDelay: '.14s' }}>
                 <Knapp href="/book-mote" data-testid="v4b-cta">Book en demo</Knapp>
                 <Link href="/bli-utleier/start?kind=business" className="text-[15px] font-medium underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:text-[#15130F]/60" style={{ color: T.ink }} data-testid="v4b-registrer">Registrer selskapet</Link>
               </div>
-              <p className="dh-cover-inn mt-4 text-[14px]" style={{ color: 'rgba(21,19,15,0.5)', animationDelay: '.24s' }}>30 minutter — med deres portefølje som eksempel.</p>
+
+              {/* Størrelsen — som en stille tekstlinje, ikke et skjemaelement: velg, og scenen spiller dagen deres. */}
+              <div className="dh-cover-inn mt-10 flex flex-wrap items-baseline gap-x-2 text-[14px]" style={{ animationDelay: '.2s', color: 'rgba(21,19,15,0.5)' }}>
+                <span id="v4b-storrelse-label">Se dagen for en portefølje på</span>
+                <span role="radiogroup" aria-labelledby="v4b-storrelse-label" className="inline-flex items-baseline gap-x-1" data-testid="v4b-storrelse">
+                  {Object.entries(STORRELSER).map(([id, s], i) => {
+                    const er = id === storrelse;
+                    return (
+                      <React.Fragment key={id}>
+                        {i > 0 && <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.25)' }}>·</span>}
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={er}
+                          onClick={() => setStorrelse(id)}
+                          className="rounded-[6px] px-1 py-0.5 tabular-nums underline-offset-4 transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
+                          style={{ color: er ? T.ink : 'rgba(21,19,15,0.5)', fontWeight: er ? 500 : 400, textDecoration: er ? 'underline' : 'none', textDecorationColor: er ? T.lilla : 'transparent', textDecorationThickness: 2, transitionTimingFunction: EASE }}
+                          data-testid={`v4b-storrelse-${id}`}
+                        >
+                          {s.navn}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+                </span>
+                <span>enheter</span>
+              </div>
             </div>
 
             <div className="dh-cover-inn" style={{ animationDelay: '.12s' }}>

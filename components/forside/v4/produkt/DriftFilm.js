@@ -119,18 +119,19 @@ function Naal({ fase, ov, vis, liten = false }) {
 }
 
 /* ── Rader i forløpet ── */
-function Rad({ h, fase, ov, delay = 0 }) {
+function Rad({ h, fase, ov, delay = 0, pal = PAL.lys }) {
   const vis = fase >= h.p;
   const klar = h.vp == null || fase >= h.vp;   // «Venter på deg» → godkjent
+  const DIM = pal.dim; const HAIR = pal.hair;
   return (
     <Vokse vis={vis} ov={ov} delay={fase === h.p ? 220 + delay : 100}>
-      <div className="flex items-center gap-3 border-t py-2" style={{ borderColor: HAIR }} data-testid={`v4-rad-${h.id}`} data-klar={h.vp != null ? (klar ? '1' : '0') : undefined}>
+      <div className="flex items-center gap-3 border-t py-2" style={{ borderColor: HAIR, color: pal.tekst }} data-testid={`v4-rad-${h.id}`} data-klar={h.vp != null ? (klar ? '1' : '0') : undefined}>
         {h.portrett && <Portrett src={h.portrett} alt="" size={28} />}
-        {h.hake && <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(31,157,85,0.14)', color: '#166B3C' }}><Hake size={13} /></span>}
-        {h.merke && <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(212,150,255,0.22)' }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} /></span>}
+        {h.hake && <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ background: pal.hakeBg, color: pal.hakeFg }}><Hake size={13} /></span>}
+        {h.merke && <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ background: pal.chipLilla }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} /></span>}
         <span className="min-w-0 flex-1">
           <span className="grid">
-            <span className="col-start-1 row-start-1 flex items-center gap-1.5 truncate text-[13.5px] font-medium" style={{ opacity: klar ? 1 : 0, transition: ov ? 'none' : `opacity 320ms ${EASE} 220ms` }}>{h.vp != null && <span style={{ color: '#166B3C' }}><Hake size={12} /></span>}{h.t}</span>
+            <span className="col-start-1 row-start-1 flex items-center gap-1.5 truncate text-[13.5px] font-medium" style={{ opacity: klar ? 1 : 0, transition: ov ? 'none' : `opacity 320ms ${EASE} 220ms` }}>{h.vp != null && <span style={{ color: pal.hakeFg }}><Hake size={12} /></span>}{h.t}</span>
             {h.vp != null && (
               <span className="col-start-1 row-start-1 flex items-center gap-2 text-[13.5px] font-medium" style={{ opacity: klar ? 0 : 1, transition: ov ? 'none' : `opacity 200ms ${EASE}` }} aria-hidden={klar}>
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }}>{!ov && <span aria-hidden="true" className="absolute inset-0 rounded-full" style={{ boxShadow: `0 0 0 1px ${T.lilla}`, animation: 'v4-ping 1300ms cubic-bezier(0.2, 0.6, 0.2, 1) infinite', opacity: 0 }} />}</span>
@@ -183,41 +184,75 @@ function statusFor(fase) {
   return null;
 }
 
-/* Kortstilen — lyst kort som står på det mørke bildet */
-const KORT = { background: 'rgba(251,250,248,0.97)', boxShadow: '0 0 0 1px rgba(255,255,255,0.45), 0 50px 100px -40px rgba(0,0,0,0.75), 0 18px 40px -24px rgba(0,0,0,0.5)' };
+/* Materialene — glass, som i heroen. Natt (desktop): mørkt glass med offwhite tekst, så bygården og det tente vinduet
+   lyser gjennom. Morgen og mobil (kortet står på papir): lyst glass med blekk. Én palett per modus, sendt ned. */
+const BLUR = { backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)' };
+const PAL = {
+  mork: {
+    kort: { ...BLUR, background: 'rgba(24,22,20,0.66)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 1px rgba(255,255,255,0.08), 0 50px 100px -40px rgba(0,0,0,0.85), 0 18px 40px -24px rgba(0,0,0,0.6)' },
+    tekst: '#F4F1EA', dim: 'rgba(244,241,234,0.62)', hair: 'rgba(255,255,255,0.10)',
+    chip: 'rgba(255,255,255,0.10)', chipLilla: 'rgba(212,150,255,0.28)', hakeBg: 'rgba(95,211,154,0.16)', hakeFg: '#5FD39A', prikk: 'rgba(244,241,234,0.4)',
+    emma: { ...BLUR, background: 'rgba(251,250,248,0.86)', color: T.ink, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 18px 40px -22px rgba(0,0,0,0.7)' },
+    dh: { ...BLUR, background: 'rgba(212,150,255,0.30)', color: '#F4F1EA', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 0 0 1px rgba(255,255,255,0.08), 0 18px 40px -22px rgba(0,0,0,0.6)' },
+  },
+  lys: {
+    kort: { ...BLUR, background: 'rgba(251,250,248,0.84)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 1px rgba(255,255,255,0.55), 0 50px 100px -40px rgba(0,0,0,0.45), 0 18px 40px -24px rgba(0,0,0,0.3)' },
+    tekst: T.ink, dim: DIM, hair: HAIR,
+    chip: 'rgba(21,19,15,0.06)', chipLilla: 'rgba(212,150,255,0.22)', hakeBg: 'rgba(31,157,85,0.14)', hakeFg: '#166B3C', prikk: 'rgba(21,19,15,0.35)',
+    emma: { background: 'rgba(255,255,255,0.9)', color: T.ink, boxShadow: `inset 0 0 0 1px ${HAIR}, 0 12px 30px -18px rgba(0,0,0,0.35)` },
+    dh: { background: T.ink, color: '#F4F1EA', boxShadow: '0 12px 30px -18px rgba(0,0,0,0.5)' },
+  },
+};
+const FJAER = 'cubic-bezier(0.34, 1.45, 0.64, 1)';
 
-/* ── Nattkortet: Emmas melding → saken ── */
-function SakKort({ fase, ov, kompakt = false }) {
+/* Én boble i samtalen — kommer med en fjær fra sitt hjørne, innholdet like etter */
+function Boble({ fra, pal, vis, ov, delay = 0, children, testid }) {
+  const emma = fra === 'emma';
+  const mat = emma ? pal.emma : pal.dh;
+  return (
+    <div className={`flex items-end gap-2 ${emma ? 'justify-start' : 'justify-end'}`} data-testid={testid}>
+      {emma && <Portrett src={EMMA.bilde} alt="" size={22} className="mb-0.5" style={{ opacity: vis ? 1 : 0 }} />}
+      <div className="max-w-[86%] px-3.5 py-2.5 text-[13.5px] leading-[1.4]" style={{ ...mat, borderRadius: emma ? '16px 16px 16px 5px' : '16px 16px 5px 16px', transformOrigin: emma ? '0% 100%' : '100% 100%', opacity: vis ? 1 : 0, animation: vis && !ov ? `v4-glass-inn 620ms ${FJAER} ${delay}ms both` : 'none', willChange: 'transform, opacity' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ── Nattkortet: Emmas melding → saken ──
+   Først er det bare en samtale — tre bobler som står rett på bildet, uten kort. Så MATERIALISERER kortet seg rundt
+   dem: glasset kommer, og samme flate blir saken slik Kari ser den. Én ting som forandrer seg, ikke to. */
+function SakKort({ fase, ov, kompakt = false, pal = PAL.lys }) {
   const sak = fase >= F.SAK;
   const st = statusFor(fase);
+  const DIM = pal.dim; const HAIR = pal.hair;
+  const naken = !sak && !kompakt;   // samtalen står rett på bildet (desktop)
   return (
-    <div className={`overflow-hidden rounded-[18px] ${kompakt ? 'p-4' : 'p-5'}`} style={KORT} data-testid="v4-sakkort" data-modus={sak ? 'sak' : 'melding'} data-status={st ? st[0] : ''}>
-      {/* Meldingen */}
+    <div className={`overflow-hidden rounded-[18px] ${kompakt ? 'p-4' : 'p-5'}`} style={{ ...(naken ? { background: 'transparent', boxShadow: 'none' } : pal.kort), color: pal.tekst, transition: ov ? 'none' : `background-color 700ms ${EASE}, box-shadow 700ms ${EASE}` }} data-testid="v4-sakkort" data-modus={sak ? 'sak' : 'melding'} data-status={st ? st[0] : ''}>
+      {/* Samtalen */}
       <Vokse vis={!sak} ov={ov} delay={200}>
-        <div data-testid="v4-melding">
-          <div className="flex items-center gap-2.5">
-            <Portrett src={EMMA.bilde} alt={EMMA.navn} size={30} />
-            <span className="min-w-0 flex-1"><span className="block truncate text-[13.5px] font-medium">{EMMA.navn}</span><span className="block text-[11.5px]" style={{ color: DIM }}>{BOLIG.enhet} · til DigiHome</span></span>
-            <span className="text-[12px] tabular-nums" style={{ color: DIM }}>22:41</span>
-          </div>
-          <div className="mt-3 flex items-start gap-3">
-            <p className="min-w-0 flex-1 text-[14px] leading-[1.45]">«Varmtvannet er helt borte. Har prøvd å slå berederen av og på.»</p>
-            <span className="relative shrink-0 overflow-hidden rounded-[10px]" style={{ width: kompakt ? 64 : 76, height: kompakt ? 84 : 100, boxShadow: `0 0 0 1px ${HAIR}` }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={BEREDER} alt="Varmtvannsberederen" className="absolute inset-0 h-full w-full object-cover" draggable={false} />
+        <div className="flex flex-col gap-2" data-testid="v4-melding">
+          <p className="mb-1 flex items-center justify-between text-[11.5px]" style={{ color: naken ? 'rgba(244,241,234,0.7)' : DIM, textShadow: naken ? '0 1px 8px rgba(0,0,0,0.5)' : 'none' }}>
+            <span>{EMMA.navn} · {BOLIG.enhet}</span><span className="tabular-nums">22:41</span>
+          </p>
+          <Boble fra="emma" pal={pal} vis={fase >= F.MELD} ov={ov} delay={120}>
+            <span className="flex items-start gap-3">
+              <span className="min-w-0 flex-1">Varmtvannet er helt borte. Har prøvd å slå berederen av og på.</span>
+              <span className="relative shrink-0 overflow-hidden rounded-[10px]" style={{ width: kompakt ? 54 : 62, height: kompakt ? 72 : 82, boxShadow: `0 0 0 1px ${HAIR}` }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={BEREDER} alt="Varmtvannsberederen" className="absolute inset-0 h-full w-full object-cover" draggable={false} />
+              </span>
             </span>
-          </div>
+          </Boble>
           {/* Ett avgrensende spørsmål — og svaret */}
-          <Vokse vis={fase >= F.SPM} ov={ov} delay={200}>
-            <div className="mt-3 flex items-start gap-2.5 border-t pt-3 text-[13px]" style={{ borderColor: HAIR }} data-testid="v4-spm">
-              <span className="mt-[3px] inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(212,150,255,0.22)' }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} /></span>
-              <span className="min-w-0 flex-1"><span className="text-[11.5px]" style={{ color: DIM }}>DigiHome · 22:41</span><span className="block">Er radiatorene også kalde — eller er det bare vannet?</span></span>
+          <Vokse vis={fase >= F.SPM} ov={ov} delay={120}>
+            <div className="pt-1" data-testid="v4-spm">
+              <Boble fra="dh" pal={pal} vis={fase >= F.SPM} ov={ov} delay={80}>Er radiatorene også kalde — eller er det bare vannet?</Boble>
             </div>
           </Vokse>
-          <Vokse vis={fase >= F.SVAR} ov={ov} delay={200}>
-            <div className="mt-2.5 flex items-start gap-2.5 text-[13px]" data-testid="v4-svar">
-              <Portrett src={EMMA.bilde} alt="" size={16} className="mt-[3px]" />
-              <span className="min-w-0 flex-1"><span className="text-[11.5px]" style={{ color: DIM }}>Emma · 22:42</span><span className="block font-medium">Bare vannet.</span></span>
+          <Vokse vis={fase >= F.SVAR} ov={ov} delay={120}>
+            <div className="pt-1" data-testid="v4-svar">
+              <Boble fra="emma" pal={pal} vis={fase >= F.SVAR} ov={ov} delay={80}><span className="font-medium">Bare vannet.</span></Boble>
             </div>
           </Vokse>
         </div>
@@ -232,23 +267,27 @@ function SakKort({ fase, ov, kompakt = false }) {
               <h4 className={`${kompakt ? 'mt-1 text-[23px]' : 'mt-1 text-[26px]'}`} style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.05 }}>Ingen varmtvann</h4>
             </div>
             <span className="mt-0.5 shrink-0" style={{ opacity: st ? 1 : 0, transform: st ? 'none' : 'translateY(4px)', transition: ov ? 'none' : `opacity 400ms ${EASE}, transform 400ms ${EASE}` }} aria-hidden={!st}>
-              {st && <Chip tekst={st[0]} tone={st[1]} liten />}
+              {st && (
+                <span key={st[0]} className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[11.5px] font-medium animate-in fade-in-0 duration-300" style={{ background: st[1] === 'lilla' ? pal.chipLilla : pal.chip, color: pal.tekst }}>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: st[1] === 'lilla' ? T.lilla : pal.prikk }} />{st[0]}
+                </span>
+              )}
             </span>
           </div>
           <div className="mt-3 flex flex-wrap gap-1.5" data-testid="v4-detaljer">
             {DETALJER.map((d) => {
               const vis = fase >= d.p; const nr = DETALJER.filter((x) => x.p === d.p).indexOf(d); const lilla = d.tone === 'lilla';
               return (
-                <span key={d.id} className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full pl-2 pr-2.5 text-[12.5px] font-medium" style={{ background: lilla ? 'rgba(212,150,255,0.22)' : 'rgba(21,19,15,0.06)', color: T.ink, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? 300 + nr * 160 : 0}ms, transform 420ms ${EASE} ${vis ? 300 + nr * 160 : 0}ms` }} aria-hidden={!vis}>
-                  {d.portrett ? <Portrett src={d.portrett} alt="" size={18} /> : <span className="ml-0.5 h-1.5 w-1.5 rounded-full" style={{ background: lilla ? T.lilla : 'rgba(21,19,15,0.35)' }} />}
+                <span key={d.id} className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full pl-2 pr-2.5 text-[12.5px] font-medium" style={{ background: lilla ? pal.chipLilla : pal.chip, color: pal.tekst, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', transition: ov ? 'none' : `opacity 420ms ${EASE} ${vis ? 300 + nr * 160 : 0}ms, transform 420ms ${EASE} ${vis ? 300 + nr * 160 : 0}ms` }} aria-hidden={!vis}>
+                  {d.portrett ? <Portrett src={d.portrett} alt="" size={18} /> : <span className="ml-0.5 h-1.5 w-1.5 rounded-full" style={{ background: lilla ? T.lilla : pal.prikk }} />}
                   {d.t}
                 </span>
               );
             })}
           </div>
-          <p className="mt-4 text-[12px] font-medium text-[#15130F]/60">Forløp</p>
+          <p className="mt-4 text-[12px] font-medium" style={{ color: DIM }}>Forløp</p>
           <div className="mt-1">
-            {FORLOP.map((h, i) => <Rad key={h.id} h={h} fase={fase} ov={ov} delay={h.p === F.SAK ? 200 + i * 140 : 0} />)}
+            {FORLOP.map((h, i) => <Rad key={h.id} h={h} fase={fase} ov={ov} pal={pal} delay={h.p === F.SAK ? 200 + i * 140 : 0} />)}
           </div>
         </div>
       </Vokse>
@@ -260,7 +299,7 @@ function SakKort({ fase, ov, kompakt = false }) {
 function MorgenKort({ fase, ov, kompakt = false }) {
   const lost = fase >= F.FAKTURA;
   return (
-    <div className={`overflow-hidden rounded-[18px] ${kompakt ? 'p-4' : 'p-5'}`} style={KORT} data-testid="v4-morgenkort" data-lost={lost ? '1' : '0'}>
+    <div className={`overflow-hidden rounded-[18px] ${kompakt ? 'p-4' : 'p-5'}`} style={{ ...PAL.lys.kort, color: T.ink }} data-testid="v4-morgenkort" data-lost={lost ? '1' : '0'}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-[12px]" style={{ color: DIM }}>Torsdag · {BOLIG.adresse}, {BOLIG.enhet.toLowerCase()}</p>
@@ -373,7 +412,7 @@ function Desktop({ fase, ov, onAkt, neste, startet }) {
 
           {/* Kortet — vokser ut fra vinduet (origo mot nålen). Natt: melding → sak. Morgen: kvitteringen. */}
           <div className="absolute z-[4]" style={{ left: L.kort.x, top: L.kort.y, width: L.kort.w, transformOrigin: '100% 30%', opacity: nattKort ? 1 : 0, transform: nattKort ? 'translateX(0px) scale(1)' : fase < F.MELD ? 'translateX(14px) scale(0.94)' : 'translateY(-10px) scale(0.985)', transition: ov ? 'none' : nattKort ? `opacity 600ms ${EASE} 120ms, transform 900ms ${MORF} 120ms` : `opacity 450ms ${EASE}, transform 450ms ${EASE}`, pointerEvents: nattKort ? 'auto' : 'none', willChange: 'transform, opacity' }} aria-hidden={!nattKort}>
-            <SakKort fase={fase} ov={ov} />
+            <SakKort fase={fase} ov={ov} pal={PAL.mork} />
           </div>
           <div className="absolute z-[4]" style={{ left: L.kort.x, top: L.kort.y, width: L.kort.w, transformOrigin: '100% 30%', opacity: morgenKort ? 1 : 0, transform: morgenKort ? 'translateX(0px) scale(1)' : slutt ? 'translateY(-10px) scale(0.985)' : 'translateX(14px) scale(0.94)', transition: ov ? 'none' : morgenKort ? `opacity 600ms ${EASE} 150ms, transform 900ms ${MORF} 150ms` : `opacity 500ms ${EASE}, transform 500ms ${EASE}`, pointerEvents: morgenKort ? 'auto' : 'none', willChange: 'transform, opacity' }} aria-hidden={!morgenKort}>
             <MorgenKort fase={fase} ov={ov} />

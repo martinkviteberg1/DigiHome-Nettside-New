@@ -93,15 +93,14 @@ function Kort({ s, i, synlig, testid }) {
       }}
       data-testid={`${testid}-kort-${s.id}`}
     >
-      <div className="flex items-center justify-between gap-3">
-        <span className="flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex h-[26px] items-center rounded-full px-2.5 text-[12.5px] font-medium" style={{ background: mork ? 'rgba(244,241,234,0.10)' : 'rgba(21,19,15,0.07)' }}>{s.merke}</span>
-          {/* Typen sier hva flaten ER: programvare du driver i, eller tjeneste vi leverer. Samme kode som fargen. */}
-          {s.type ? (
-            <span className="inline-flex h-[26px] items-center rounded-full px-2.5 text-[12.5px]" style={{ color: dim, boxShadow: `inset 0 0 0 1px ${hair}` }} data-testid={`${testid}-type-${s.id}`}>{s.type}</span>
-          ) : null}
+      {/* Én stille metalinje i stedet for piller: nummer · navn — typen sier hva flaten ER (programvare du driver i,
+          eller tjeneste vi leverer; samme kode som fargen) · hvor. */}
+      <div className="flex items-baseline justify-between gap-4 text-[13px]" style={{ color: dim }}>
+        <span className="flex min-w-0 items-baseline gap-2.5">
+          <span className="tabular-nums" style={{ color: mork ? T.lilla : 'rgba(21,19,15,0.45)' }}>0{i + 1}</span>
+          <span className="truncate"><span className="font-medium" style={{ color: fg }}>{s.merke}</span>{s.type ? <span data-testid={`${testid}-type-${s.id}`}> — {s.type}</span> : null}</span>
         </span>
-        <span className="shrink-0 text-[13px]" style={{ color: dim }}>{s.meta}</span>
+        <span className="shrink-0">{s.meta}</span>
       </div>
 
       <h3 className="mt-8 text-[clamp(34px,3vw,54px)] sm:mt-10" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 0.98 }}>
@@ -109,14 +108,14 @@ function Kort({ s, i, synlig, testid }) {
       </h3>
       <p className="mt-5 max-w-[42ch] text-[16px] leading-[1.5] sm:text-[17px]" style={{ color: dim }}>{s.tekst}</p>
 
-      <ul className="mt-8 sm:mt-9" data-testid={`${testid}-punkter-${s.id}`}>
-        {s.punkter.map((t) => (
-          <li key={t} className="flex items-baseline gap-3 py-3 text-[15.5px] leading-[1.4]" style={{ borderTop: `1px solid ${hair}` }}>
-            <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 translate-y-[-1px] rounded-full" style={{ background: T.lilla }} />
+      <ol className="mt-8 sm:mt-9" data-testid={`${testid}-punkter-${s.id}`}>
+        {s.punkter.map((t, k) => (
+          <li key={t} className="grid grid-cols-[28px_minmax(0,1fr)] items-baseline gap-3 py-3 text-[15.5px] leading-[1.4]" style={{ borderTop: `1px solid ${hair}` }}>
+            <span className="text-[12.5px] tabular-nums" style={{ color: dim }}>{k + 1}</span>
             <span>{t}</span>
           </li>
         ))}
-      </ul>
+      </ol>
 
       {/* Prisen — stor, ærlig. */}
       <div className="mt-10 border-t pt-7 lg:mt-auto lg:pt-8" style={{ borderColor: hair }}>

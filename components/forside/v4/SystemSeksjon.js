@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { LayoutGrid, Building2, Users, FileText, Wallet, Wrench, FolderOpen, Settings, Search, Bell, Home, MessageSquare, User, ChevronDown, ArrowUpRight } from 'lucide-react';
+import { LayoutGrid, Building2, Users, FileText, Wallet, Wrench, FolderOpen, Settings, Search, Bell, Home, MessageSquare, User, ChevronDown, ArrowUpRight, ChevronLeft, Download } from 'lucide-react';
 import { EASE, T, display, tall, useSynlig } from './motion';
 
 /* ---------------------------------------------------------------------------
@@ -35,17 +35,19 @@ const GRONN = '#166B3C';
 const DW = 1128; const DH = 760;   // portalens designmål (bredde = beholderen minus appen)
 const SIDE = 216;                  // sidepanelets bredde
 
+/* Alle modulene kan åpnes (vis: true). Av seg selv går portalen bare gjennom de fem viktigste (VISNINGER); trykker
+   du, holder valget i 15 s. Saker-tallet er levende: det som venter på deg akkurat nå. */
 const MODULER = [
-  { id: 'oversikt', navn: 'Oversikt', Ikon: LayoutGrid, vis: true },
-  { id: 'eiendommer', navn: 'Eiendommer', Ikon: Building2, vis: true },
-  { id: 'leietakere', navn: 'Leietakere', Ikon: Users, vis: true },
-  { id: 'kontrakter', navn: 'Kontrakter', Ikon: FileText },
-  { id: 'okonomi', navn: 'Økonomi', Ikon: Wallet, vis: true },
-  { id: 'saker', navn: 'Saker', Ikon: Wrench, vis: true, tall: 1 },
-  { id: 'dokumenter', navn: 'Dokumenter', Ikon: FolderOpen },
-  { id: 'innstillinger', navn: 'Innstillinger', Ikon: Settings },
+  { id: 'oversikt', navn: 'Oversikt', Ikon: LayoutGrid, vis: true, auto: true },
+  { id: 'eiendommer', navn: 'Eiendommer', Ikon: Building2, vis: true, auto: true },
+  { id: 'leietakere', navn: 'Leietakere', Ikon: Users, vis: true, auto: true },
+  { id: 'kontrakter', navn: 'Kontrakter', Ikon: FileText, vis: true },
+  { id: 'okonomi', navn: 'Økonomi', Ikon: Wallet, vis: true, auto: true },
+  { id: 'saker', navn: 'Saker', Ikon: Wrench, vis: true, auto: true, tall: true },
+  { id: 'dokumenter', navn: 'Dokumenter', Ikon: FolderOpen, vis: true },
+  { id: 'innstillinger', navn: 'Innstillinger', Ikon: Settings, vis: true },
 ];
-const VISNINGER = MODULER.filter((m) => m.vis).map((m) => m.id);
+const VISNINGER = MODULER.filter((m) => m.auto).map((m) => m.id);
 const AUTO_MS = 4800;
 
 const EMMA = { navn: 'Emma Sørensen', bilde: '/v4/annonse/leietaker-emma.webp' };
@@ -242,15 +244,34 @@ function Okonomi() {
   );
 }
 
-function Saker() {
+/* Godkjenn-knappen — den ene handlingen i systemet. Lilla → grønn «Godkjent» med hake. */
+function GodkjennKnapp({ godkjent, presser = false, onClick, className = '', rund = false, testid }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={godkjent}
+      aria-label={godkjent ? 'Godkjent' : 'Godkjenn'}
+      className={`inline-flex h-9 items-center justify-center gap-1.5 px-4 text-[13px] font-medium transition-[background-color,transform,color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${rund ? 'rounded-full' : 'rounded-[10px]'} ${godkjent ? 'cursor-default' : 'cursor-pointer hover:brightness-95 active:scale-[0.97]'} ${className}`}
+      style={{ background: godkjent ? T.gronn : T.lilla, color: godkjent ? '#fff' : T.ink, transform: presser ? 'scale(0.95)' : undefined }}
+      data-testid={testid}
+      data-godkjent={godkjent ? '1' : '0'}
+    >
+      {godkjent && <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-6.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+      {godkjent ? 'Godkjent' : 'Godkjenn'}
+    </button>
+  );
+}
+
+function Saker({ nokkel = false, onNokkel = () => {} }) {
   const saker = [
     { t: 'Ingen varmtvann', u: 'Leilighet 2 · Emma · rørlegger · 3 900 kr', st: 'Løst · torsdag', tone: 'gronn', p: EMMA },
     { t: 'Dryppende kran på badet', u: 'Leilighet 3 · Nora · ikke haster', st: 'Hos leverandør', tone: 'noytral', p: { init: 'NL' } },
-    { t: 'Ekstra nøkkel', u: 'Leilighet 1 · Henrik · låsesmed · 890 kr', st: 'Venter på deg', tone: 'lilla', p: { init: 'HD' } },
+    { t: 'Ekstra nøkkel', u: 'Leilighet 1 · Henrik · låsesmed · 890 kr', st: nokkel ? 'Bestilt · fredag' : 'Venter på deg', tone: nokkel ? 'gronn' : 'lilla', p: { init: 'HD' } },
   ];
   return (
     <div>
-      <Overskrift sub="1 venter på deg · 1 hos leverandør · 1 løst denne uken">Saker</Overskrift>
+      <Overskrift sub={nokkel ? 'Ingen venter på deg · 1 hos leverandør · 1 løst denne uken' : '1 venter på deg · 1 hos leverandør · 1 løst denne uken'}>Saker</Overskrift>
       <div className="mt-7 grid grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-8">
         <ol>
           {saker.map((s, i) => (
@@ -262,13 +283,13 @@ function Saker() {
           ))}
         </ol>
         {/* Godkjenningen — det ene du gjør */}
-        <div className="self-start rounded-[16px] p-5" style={{ background: T.charcoal, color: T.offwhite }}>
-          <div className="flex items-center justify-between text-[12px]" style={{ color: 'rgba(244,241,234,0.6)' }}><span className="inline-flex items-center gap-2"><Prikk tone="lilla" />Venter på deg</span><span className="tabular-nums">09:14</span></div>
+        <div className="self-start rounded-[16px] p-5" style={{ background: T.charcoal, color: T.offwhite }} data-testid="v4-saker-kort">
+          <div className="flex items-center justify-between text-[12px]" style={{ color: 'rgba(244,241,234,0.6)' }}><span className="inline-flex items-center gap-2"><Prikk tone={nokkel ? 'gronn' : 'lilla'} />{nokkel ? 'Godkjent av deg · nå' : 'Venter på deg'}</span><span className="tabular-nums">09:14</span></div>
           <p className="mt-3.5 text-[15px] font-medium">Ekstra nøkkel · Leilighet 1</p>
-          <p className="mt-0.5 text-[12.5px]" style={{ color: 'rgba(244,241,234,0.6)' }}>Låsesmed · fredag 12–14 · Henrik har bekreftet</p>
+          <p className="mt-0.5 text-[12.5px]" style={{ color: 'rgba(244,241,234,0.6)' }}>{nokkel ? 'Låsesmed bestilt · fredag 12–14 · Henrik har fått beskjed' : 'Låsesmed · fredag 12–14 · Henrik har bekreftet'}</p>
           <div className="mt-5 flex items-center justify-between gap-3">
             <span className="text-[26px] tabular-nums" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>{tall(890)} kr</span>
-            <span className="inline-flex h-9 items-center rounded-[10px] px-4 text-[13px] font-medium" style={{ background: T.lilla, color: T.ink }}>Godkjenn</span>
+            <GodkjennKnapp godkjent={nokkel} onClick={onNokkel} testid="v4-saker-godkjenn" />
           </div>
         </div>
       </div>
@@ -276,10 +297,85 @@ function Saker() {
   );
 }
 
-const VISNING = { oversikt: Oversikt, eiendommer: Eiendommer, leietakere: Leietakere, okonomi: Okonomi, saker: Saker };
+function Kontrakter() {
+  const rader = [
+    ['Leilighet 1', 'Henrik Dahl', 'Tidsbestemt · til 30. juni 2026', `${tall(11900)} kr`, 'Signert · BankID', 'gronn'],
+    ['Leilighet 2', EMMA.navn, 'Tidsbestemt · 3 år · fra 1. nov 2025', `${tall(12500)} kr`, 'Signert · BankID', 'gronn'],
+    ['Leilighet 3', 'Nora Lie', 'Tidsbestemt · til 31. des 2025', `${tall(13200)} kr`, 'Fornyelse foreslått', 'lilla'],
+  ];
+  return (
+    <div>
+      <Overskrift sub="3 aktive · alle signert med BankID via Posten signering">Kontrakter</Overskrift>
+      <div className="mt-7 grid grid-cols-[1fr_1.4fr_1.8fr_1fr_1.3fr] gap-4 text-[11.5px]" style={{ color: DIM }}><span>Enhet</span><span>Leietaker</span><span>Avtale</span><span>Leie</span><span className="text-right">Status</span></div>
+      <ol className="mt-1">
+        {rader.map(([e, n, a, l, st, tone]) => (
+          <li key={e} className="grid grid-cols-[1fr_1.4fr_1.8fr_1fr_1.3fr] items-center gap-4 border-t py-3 text-[13px]" style={{ borderColor: HAIR }}>
+            <span className="font-medium">{e}</span><span className="truncate">{n}</span><span className="truncate" style={{ color: DIM }}>{a}</span><span className="tabular-nums">{l}</span><span className="text-right"><Status t={st} tone={tone} /></span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-6 grid grid-cols-3 gap-4">
+        {[['Neste som utløper', 'Leilighet 3 · 31. des', 'Forslag til fornyelse sendt Nora'], ['Regulering', 'KPI · 1. januar', 'Varsel går automatisk 30 dager før'], ['Mal', 'DigiHome standard', 'Husleieloven · sist oppdatert 2025']].map(([k, v, u]) => (
+          <Panel key={k} className="p-4"><p className="text-[12px]" style={{ color: DIM }}>{k}</p><p className="mt-1.5 text-[13.5px] font-medium">{v}</p><p className="mt-0.5 text-[12px]" style={{ color: DIM }}>{u}</p></Panel>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Dokumenter() {
+  const filer = [
+    ['Leiekontrakt · Leilighet 2', 'Signert med BankID · 28. okt', 'PDF · 412 kB'],
+    ['Overtakelsesprotokoll · Leilighet 2', 'Signert av begge · 1. nov', 'PDF · 1,8 MB'],
+    ['Depositumsgaranti · Keyhole', 'Utstedt 30. okt · 37 500 kr', 'PDF · 96 kB'],
+    ['Faktura · Rørlegger AS', 'Bokført 6. nov · 3 900 kr', 'PDF · 140 kB'],
+    ['Leiekontrakt · Leilighet 1', 'Signert med BankID · 12. juni 2023', 'PDF · 398 kB'],
+    ['Strømavlesning · november', 'Automatisk · 1. nov · 48 213 kWh', 'CSV · 4 kB'],
+  ];
+  return (
+    <div>
+      <Overskrift sub="14 filer · samlet på boligen, delt med den det gjelder">Dokumenter</Overskrift>
+      <div className="mt-7 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_110px_24px] gap-4 text-[11.5px]" style={{ color: DIM }}><span>Dokument</span><span>Hendelse</span><span className="text-right">Fil</span><span /></div>
+      <ol className="mt-1">
+        {filer.map(([n, h, f]) => (
+          <li key={n} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_110px_24px] items-center gap-4 border-t py-3 text-[13px]" style={{ borderColor: HAIR }}>
+            <span className="inline-flex items-center gap-2.5 truncate font-medium"><FileText size={14} strokeWidth={1.75} style={{ color: DIM }} />{n}</span><span className="truncate" style={{ color: DIM }}>{h}</span><span className="text-right tabular-nums" style={{ color: DIM }}>{f}</span><Download size={14} strokeWidth={1.75} style={{ color: 'rgba(21,19,15,0.35)' }} />
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function Innstillinger() {
+  const valg = [
+    ['Godkjenning', 'Alt som koster over 0 kr', 'Du godkjenner alle kostnader med ett trykk'],
+    ['Varsler', 'Push og e-post', 'Husleie, saker og signeringer'],
+    ['Regnskap', 'PowerOffice · koblet', 'Bilag og husleie bokføres automatisk'],
+    ['Utbetaling', 'Konto ···· 4821', 'Husleie videre den 3. hver måned'],
+    ['Leverandører', '4 faste', 'Rørlegger, elektriker, låsesmed, rengjøring'],
+    ['Tilgang', `${KARI.navn} · eier`, 'Regnskapsfører har lesetilgang'],
+  ];
+  return (
+    <div>
+      <Overskrift sub="Slik systemet jobber for deg — endre når du vil">Innstillinger</Overskrift>
+      <ol className="mt-7">
+        {valg.map(([k, v, u], i) => (
+          <li key={k} className="grid grid-cols-[160px_minmax(0,1fr)_auto] items-center gap-6 border-t py-3.5 text-[13px]" style={{ borderColor: i === 0 ? 'transparent' : HAIR }}>
+            <span className="font-medium">{k}</span>
+            <span className="min-w-0"><span className="block truncate">{v}</span><span className="block truncate text-[12px]" style={{ color: DIM }}>{u}</span></span>
+            <span className="text-[12.5px]" style={{ color: DIM }}>Endre</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+const VISNING = { oversikt: Oversikt, eiendommer: Eiendommer, leietakere: Leietakere, kontrakter: Kontrakter, okonomi: Okonomi, saker: Saker, dokumenter: Dokumenter, innstillinger: Innstillinger };
 
 /* ── Portalen — ett hairline-kort, ingen vindusramme ── */
-function Portal({ aktiv, onVelg, utenSide = false }) {
+function Portal({ aktiv, onVelg, utenSide = false, visProps = {} }) {
   const refs = useRef({});
   const [mark, setMark] = useState(null);
   useEffect(() => {
@@ -313,7 +409,7 @@ function Portal({ aktiv, onVelg, utenSide = false }) {
             return (
               <button key={m.id} type="button" ref={(el) => { refs.current[m.id] = el; }} onClick={() => m.vis && onVelg(m.id)} tabIndex={m.vis ? 0 : -1} aria-current={er ? 'page' : undefined} className={`relative flex h-[34px] items-center justify-between rounded-[9px] px-2.5 text-[13px] ${m.vis ? 'cursor-pointer' : 'cursor-default'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/20`} style={{ color: er ? T.ink : m.vis ? 'rgba(21,19,15,0.62)' : 'rgba(21,19,15,0.40)', fontWeight: er ? 500 : 400, transition: `color 300ms ${EASE}` }} data-testid={`v4-modul-${m.id}`}>
                 <span className="inline-flex items-center gap-2.5"><m.Ikon size={15} strokeWidth={1.75} style={{ opacity: er ? 1 : 0.7 }} />{m.navn}</span>
-                {m.tall && <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-medium" style={{ background: T.lilla, color: T.ink }}>{m.tall}</span>}
+                {m.tall && !visProps.nokkel && <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-medium" style={{ background: T.lilla, color: T.ink }}>1</span>}
               </button>
             );
           })}
@@ -331,7 +427,7 @@ function Portal({ aktiv, onVelg, utenSide = false }) {
           <span className="inline-flex items-center gap-4"><span className="tabular-nums">Torsdag 6. november</span><span className="relative inline-flex"><Bell size={15} /><span className="absolute -right-0.5 -top-0.5 h-[7px] w-[7px] rounded-full" style={{ background: T.lilla, boxShadow: `0 0 0 2px ${PAPIR}` }} /></span></span>
         </div>
         <div className="min-h-0 flex-1 pb-8 pl-7 pr-16 pt-4" style={{ opacity: ut ? 0 : 1, transform: ut ? 'translateY(-6px)' : 'none', transition: ut ? `opacity 220ms ${EASE}, transform 220ms ${EASE}` : `opacity 520ms ${EASE} 40ms, transform 520ms ${EASE} 40ms` }}>
-          <Vis />
+          <Vis {...visProps} />
         </div>
       </div>
     </div>
@@ -339,78 +435,219 @@ function Portal({ aktiv, onVelg, utenSide = false }) {
 }
 
 /* ── Appen — leietakerens flate i en outline-ramme: én tynn strek, ingen bezel. Samme språk som portalen:
-   luft, hårlinjer, tall i display, én aksent. ── */
+   luft, hårlinjer, tall i display, én aksent. Den kan brukes: fanene nederst bytter flate (Hjem · Meldinger ·
+   Dokumenter · Profil), «Betal» betaler, «Meld fra om noe» åpner meldingene, radene åpner det de gjelder. ── */
 const APP_W = 272; const APP_H = 620;
-function App({ synlig }) {
-  const [ny, setNy] = useState(false);
-  useEffect(() => { if (!synlig) return undefined; const t = window.setTimeout(() => setNy(true), 2400); return () => window.clearTimeout(t); }, [synlig]);
+const FANER = [['hjem', 'Hjem', Home], ['meldinger', 'Meldinger', MessageSquare], ['dokumenter', 'Dokumenter', FileText], ['profil', 'Profil', User]];
+
+function AppKnapp({ children, onClick, mork = false, className = '', testid, disabled = false }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} className={`inline-flex items-center justify-center rounded-full font-medium transition-[background-color,transform,color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/25 ${disabled ? 'cursor-default' : 'cursor-pointer hover:brightness-95 active:scale-[0.97]'} ${className}`} style={{ background: mork ? T.ink : T.lilla, color: mork ? T.offwhite : T.ink }} data-testid={testid}>{children}</button>
+  );
+}
+
+function AppHjem({ ny, betalt, onBetal, gaaTil }) {
   const rader = [
-    { t: 'Sak · Ingen varmtvann', u: 'Løst · torsdag 09:58', hake: true },
-    { t: 'Leiekontrakt', u: 'Signert med BankID · 3 år', p: { init: 'K' } },
-    { t: 'Depositum', u: 'Garanti · 37 500 kr', p: { init: 'D' } },
+    { t: 'Sak · Ingen varmtvann', u: ny ? 'Løst · torsdag 09:58' : 'Rørlegger torsdag 08–10', hake: ny, p: { init: 'S' }, til: 'meldinger' },
+    { t: 'Leiekontrakt', u: 'Signert med BankID · 3 år', p: { init: 'K' }, til: 'dokumenter' },
+    { t: 'Depositum', u: 'Garanti · 37 500 kr', p: { init: 'D' }, til: 'dokumenter' },
   ];
   return (
-    <div className="relative" style={{ width: APP_W, height: APP_H, borderRadius: 46, padding: 5, boxShadow: `0 0 0 1px rgba(21,19,15,0.18), 0 40px 90px -36px rgba(21,19,15,0.35), 0 2px 6px -2px rgba(21,19,15,0.08)` }} data-testid="v4-system-app">
-      <div className="relative flex h-full flex-col overflow-hidden text-[#15130F]" style={{ borderRadius: 41, background: PAPIR, boxShadow: `inset 0 0 0 1px ${HAIR2}` }}>
-        <div className="px-5 pt-7">
-          <div className="flex items-center justify-between">
-            <Avatar p={EMMA} size={30} />
-            <span className="relative inline-flex"><Bell size={16} style={{ color: DIM }} /><span className="absolute -right-0.5 -top-0.5 h-[7px] w-[7px] rounded-full" style={{ background: T.lilla, boxShadow: `0 0 0 2px ${PAPIR}` }} /></span>
+    <>
+      <div className="px-5 pt-7">
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={() => gaaTil('profil')} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/25" aria-label="Profil"><Avatar p={EMMA} size={30} /></button>
+          <button type="button" onClick={() => gaaTil('meldinger')} className="relative inline-flex rounded-full p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/25" aria-label="Varsler"><Bell size={16} style={{ color: DIM }} />{ny && <span className="absolute right-0.5 top-0.5 h-[7px] w-[7px] rounded-full" style={{ background: T.lilla, boxShadow: `0 0 0 2px ${PAPIR}` }} />}</button>
+        </div>
+        <p className="mt-6 text-[26px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>Hei, Emma.</p>
+        <p className="mt-1.5 text-[12px]" style={{ color: DIM }}>Nygårdsgaten 5 · Leilighet 2</p>
+        {/* Husleien — som et tall i portalen, ikke en boks */}
+        <div className="mt-6 border-t pt-4" style={{ borderColor: HAIR }}>
+          <p className="text-[11.5px]" style={{ color: DIM }}>Husleie · desember</p>
+          <div className="mt-1.5 flex items-end justify-between gap-3">
+            <span className="text-[30px] tabular-nums" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 1 }}>{tall(12500)} kr</span>
+            <button type="button" onClick={onBetal} disabled={betalt} className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-medium transition-[background-color,transform,color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/25 ${betalt ? 'cursor-default' : 'cursor-pointer active:scale-[0.97]'}`} style={{ background: betalt ? 'rgba(31,157,85,0.12)' : T.ink, color: betalt ? GRONN : T.offwhite }} data-testid="v4-app-betal" data-betalt={betalt ? '1' : '0'}>
+              {betalt && <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-6.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+              {betalt ? 'Betalt' : 'Betal'}
+            </button>
           </div>
-          <p className="mt-6 text-[26px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>Hei, Emma.</p>
-          <p className="mt-1.5 text-[12px]" style={{ color: DIM }}>Nygårdsgaten 5 · Leilighet 2</p>
-          {/* Husleien — som et tall i portalen, ikke en boks */}
-          <div className="mt-6 border-t pt-4" style={{ borderColor: HAIR }}>
-            <p className="text-[11.5px]" style={{ color: DIM }}>Husleie · desember</p>
-            <div className="mt-1.5 flex items-end justify-between gap-3">
-              <span className="text-[30px] tabular-nums" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 1 }}>{tall(12500)} kr</span>
-              <span className="inline-flex h-8 items-center rounded-full px-3.5 text-[12.5px] font-medium" style={{ background: T.ink, color: T.offwhite }}>Betal</span>
-            </div>
-            <p className="mt-2 text-[11.5px]" style={{ color: DIM }}>Forfaller 1. desember</p>
+          <p className="mt-2 text-[11.5px]" style={{ color: betalt ? GRONN : DIM }}>{betalt ? 'Betalt nå · kvitteringen ligger i Dokumenter' : 'Forfaller 1. desember'}</p>
+        </div>
+      </div>
+      <div className="mt-4 flex-1 px-5">
+        <p className="text-[11.5px] font-medium" style={{ color: DIM }}>I dag</p>
+        {/* Melding som kommer inn — vokser fram, skyver listen under seg */}
+        <div className="grid" style={{ gridTemplateRows: ny ? '1fr' : '0fr', transition: `grid-template-rows 650ms ${EASE}` }} aria-hidden={!ny} data-testid="v4-app-melding">
+          <div className="min-h-0 overflow-hidden">
+            <button type="button" onClick={() => gaaTil('meldinger')} className="flex w-full items-center gap-2.5 py-2.5 text-left focus-visible:outline-none" style={{ opacity: ny ? 1 : 0, transform: ny ? 'none' : 'translateY(6px)', transition: `opacity 500ms ${EASE} 200ms, transform 650ms ${EASE} 200ms` }} tabIndex={ny ? 0 : -1}>
+              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(212,150,255,0.24)' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img loading="lazy" decoding="async" src="/brand/digihome-icon-purple.svg" alt="" width={11} height={11} className="h-[11px] w-[11px]" draggable={false} />
+              </span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-[12.5px] font-medium">Berederen er byttet</span><span className="block truncate text-[11.5px]" style={{ color: DIM }}>Si fra om noe ikke stemmer</span></span>
+              <span className="shrink-0 text-[11px]" style={{ color: DIM }}>nå</span>
+            </button>
           </div>
         </div>
-        <div className="mt-4 flex-1 px-5">
-          <p className="text-[11.5px] font-medium" style={{ color: DIM }}>I dag</p>
-          {/* Melding som kommer inn — vokser fram, skyver listen under seg */}
-          <div className="grid" style={{ gridTemplateRows: ny ? '1fr' : '0fr', transition: `grid-template-rows 650ms ${EASE}` }} aria-hidden={!ny} data-testid="v4-app-melding">
-            <div className="min-h-0 overflow-hidden">
-              <div className="flex items-center gap-2.5 py-2.5" style={{ opacity: ny ? 1 : 0, transform: ny ? 'none' : 'translateY(6px)', transition: `opacity 500ms ${EASE} 200ms, transform 650ms ${EASE} 200ms` }}>
-                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(212,150,255,0.24)' }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img loading="lazy" decoding="async" src="/brand/digihome-icon-purple.svg" alt="" width={11} height={11} className="h-[11px] w-[11px]" draggable={false} />
-                </span>
-                <span className="min-w-0 flex-1"><span className="block truncate text-[12.5px] font-medium">Berederen er byttet</span><span className="block truncate text-[11.5px]" style={{ color: DIM }}>Si fra om noe ikke stemmer</span></span>
-                <span className="shrink-0 text-[11px]" style={{ color: DIM }}>nå</span>
+        {rader.map((r) => (
+          <button key={r.t} type="button" onClick={() => gaaTil(r.til)} className="flex w-full items-center gap-2.5 border-t py-2.5 text-left transition-colors hover:bg-[#15130F]/[0.025] focus-visible:outline-none" style={{ borderColor: HAIR }}>
+            {r.hake ? <Hake size={11} /> : <Avatar p={r.p} size={22} />}
+            <span className="min-w-0 flex-1"><span className="block truncate text-[12.5px] font-medium">{r.t}</span><span className="block truncate text-[11.5px]" style={{ color: r.hake ? GRONN : DIM }}>{r.u}</span></span>
+            <ArrowUpRight size={13} style={{ color: 'rgba(21,19,15,0.3)' }} />
+          </button>
+        ))}
+      </div>
+      <div className="px-4 pb-2"><AppKnapp onClick={() => gaaTil('meldinger')} className="h-10 w-full text-[13px]" testid="v4-app-meld">Meld fra om noe</AppKnapp></div>
+    </>
+  );
+}
+
+function AppMeldinger({ ny, tilbake }) {
+  const bobler = [
+    { fra: 'emma', t: 'Hei! Varmtvannet er borte 😕', kl: 'tir. 22:41' },
+    { fra: 'dh', t: 'Så kjipt — jeg har opprettet en sak. Rørlegger AS kan komme torsdag 08–10. Passer det?', kl: '22:41' },
+    { fra: 'emma', t: 'Ja, det passer!', kl: '22:44' },
+    { fra: 'dh', t: 'Bestilt. Kari har godkjent — du får beskjed når rørleggeren er på vei.', kl: '22:52' },
+    ...(ny ? [{ fra: 'dh', t: 'Berederen er byttet, og du har varmt vann igjen. Si fra om noe ikke stemmer.', kl: 'tor. 09:58' }] : []),
+  ];
+  return (
+    <>
+      <div className="flex items-center gap-2 px-4 pt-6">
+        <button type="button" onClick={tilbake} className="inline-flex h-8 w-8 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/25" aria-label="Tilbake"><ChevronLeft size={18} strokeWidth={1.75} /></button>
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full" style={{ background: '#D298FF' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img loading="lazy" decoding="async" src="/brand/digihome-icon-purple.svg" alt="" width={13} height={13} className="h-[13px] w-[13px]" draggable={false} />
+        </span>
+        <span className="min-w-0"><span className="block text-[13px] font-medium">DigiHome</span><span className="block text-[11px]" style={{ color: DIM }}>Nygårdsgaten 5 · svarer straks</span></span>
+      </div>
+      <div className="mt-3 flex-1 overflow-hidden px-4">
+        <p className="py-2 text-center text-[10.5px]" style={{ color: DIM }}>Tirsdag</p>
+        <div className="flex flex-col gap-1.5">
+          {bobler.map((b, i) => {
+            const meg = b.fra === 'emma';
+            return (
+              <div key={i} className={`flex flex-col ${meg ? 'items-end' : 'items-start'}`} style={i === bobler.length - 1 && ny ? { animation: `v4-chat-inn 500ms ${EASE} both` } : undefined}>
+                <span className="max-w-[86%] px-3 py-2 text-[12px] leading-[1.35]" style={{ background: meg ? T.ink : 'rgba(21,19,15,0.06)', color: meg ? T.offwhite : T.ink, borderRadius: meg ? '14px 14px 4px 14px' : '14px 14px 14px 4px' }}>{b.t}</span>
+                <span className="mt-0.5 px-1 text-[10px]" style={{ color: DIM }}>{b.kl}</span>
               </div>
-            </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="px-4 pb-2">
+        <div className="flex h-10 items-center justify-between rounded-full pl-4 pr-1.5 text-[12.5px]" style={{ background: 'rgba(21,19,15,0.05)', color: DIM }}>
+          <span>Skriv en melding …</span>
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full" style={{ background: T.ink, color: T.offwhite }}><ArrowUpRight size={13} /></span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function AppDokumenter({ betalt, tilbake }) {
+  const filer = [
+    ...(betalt ? [['Kvittering · husleie desember', 'Betalt nå · 12 500 kr', true]] : []),
+    ['Leiekontrakt', 'Signert med BankID · 28. okt'],
+    ['Overtakelsesprotokoll', 'Signert av begge · 1. nov'],
+    ['Depositumsgaranti', 'Keyhole · 37 500 kr'],
+    ['Husordensregler', 'Nygårdsgaten 5'],
+    ['Kvittering · husleie november', 'Betalt 1. nov · 12 500 kr'],
+  ];
+  return (
+    <>
+      <div className="flex items-center gap-2 px-4 pt-6">
+        <button type="button" onClick={tilbake} className="inline-flex h-8 w-8 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/25" aria-label="Tilbake"><ChevronLeft size={18} strokeWidth={1.75} /></button>
+        <span className="text-[13px] font-medium">Dokumenter</span>
+      </div>
+      <p className="mt-6 px-5 text-[26px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>Alt på ett sted.</p>
+      <p className="mt-1.5 px-5 text-[12px]" style={{ color: DIM }}>{filer.length} dokumenter · delt med deg</p>
+      <div className="mt-5 flex-1 px-5">
+        {filer.map(([n, u, nyfil], i) => (
+          <div key={n} className="flex items-center gap-2.5 border-t py-2.5" style={{ borderColor: i === 0 ? 'transparent' : HAIR, ...(nyfil ? { animation: `v4-chat-inn 500ms ${EASE} both` } : {}) }}>
+            <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: nyfil ? 'rgba(31,157,85,0.12)' : 'rgba(21,19,15,0.06)', color: nyfil ? GRONN : DIM }}><FileText size={12} strokeWidth={1.75} /></span>
+            <span className="min-w-0 flex-1"><span className="block truncate text-[12.5px] font-medium">{n}</span><span className="block truncate text-[11.5px]" style={{ color: nyfil ? GRONN : DIM }}>{u}</span></span>
+            <Download size={13} style={{ color: 'rgba(21,19,15,0.3)' }} />
           </div>
-          {rader.map((r, i) => (
-            <div key={r.t} className="flex items-center gap-2.5 border-t py-2.5" style={{ borderColor: HAIR }}>
-              {r.hake ? <Hake size={11} /> : <Avatar p={r.p} size={22} />}
-              <span className="min-w-0 flex-1"><span className="block truncate text-[12.5px] font-medium">{r.t}</span><span className="block truncate text-[11.5px]" style={{ color: r.hake ? GRONN : DIM }}>{r.u}</span></span>
-              <ArrowUpRight size={13} style={{ color: 'rgba(21,19,15,0.3)' }} />
-            </div>
-          ))}
+        ))}
+      </div>
+    </>
+  );
+}
+
+function AppProfil({ tilbake }) {
+  const [varsler, setVarsler] = useState(true);
+  const rader = [['Bolig', 'Nygårdsgaten 5 · Leilighet 2'], ['Innflyttet', '1. november 2025'], ['Kontrakt', '3 år · til 31. okt 2028'], ['Utleier', KARI.navn], ['Husleie', '12 500 kr · den 1.']];
+  return (
+    <>
+      <div className="flex items-center gap-2 px-4 pt-6">
+        <button type="button" onClick={tilbake} className="inline-flex h-8 w-8 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/25" aria-label="Tilbake"><ChevronLeft size={18} strokeWidth={1.75} /></button>
+        <span className="text-[13px] font-medium">Profil</span>
+      </div>
+      <div className="mt-6 flex items-center gap-3 px-5">
+        <Avatar p={EMMA} size={44} />
+        <div><p className="text-[17px] font-medium tracking-[-0.01em]">{EMMA.navn}</p><p className="text-[12px]" style={{ color: DIM }}>Leietaker · verifisert med BankID</p></div>
+      </div>
+      <dl className="mt-5 flex-1 px-5 text-[12.5px]">
+        {rader.map(([k, v]) => (
+          <div key={k} className="flex items-baseline justify-between gap-3 border-t py-2.5" style={{ borderColor: HAIR }}><dt style={{ color: DIM }}>{k}</dt><dd className="text-right font-medium">{v}</dd></div>
+        ))}
+        <div className="flex items-center justify-between gap-3 border-t py-2.5" style={{ borderColor: HAIR }}>
+          <dt style={{ color: DIM }}>Varsler</dt>
+          <dd>
+            <button type="button" role="switch" aria-checked={varsler} onClick={() => setVarsler((v) => !v)} className="relative inline-flex h-[22px] w-[38px] items-center rounded-full transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/25" style={{ background: varsler ? T.ink : 'rgba(21,19,15,0.15)' }} data-testid="v4-app-varsler">
+              <span className="absolute h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform duration-300" style={{ transform: `translateX(${varsler ? 18 : 2}px)` }} />
+            </button>
+          </dd>
         </div>
-        <div className="px-4 pb-2"><span className="inline-flex h-10 w-full items-center justify-center rounded-full text-[13px] font-medium" style={{ background: T.lilla, color: T.ink }}>Meld fra om noe</span></div>
-        <div className="flex items-center justify-around px-4 pb-4 pt-2 text-[10px]" style={{ color: DIM }}>
-          {[['Hjem', Home, true], ['Meldinger', MessageSquare], ['Dokumenter', FileText], ['Profil', User]].map(([n, Ikon, er]) => (
-            <span key={n} className="inline-flex flex-col items-center gap-1" style={{ color: er ? T.ink : DIM }}><Ikon size={16} strokeWidth={1.75} />{n}</span>
-          ))}
+      </dl>
+    </>
+  );
+}
+
+function App({ synlig, ny = false }) {
+  const [fane, setFane] = useState('hjem');
+  const [betalt, setBetalt] = useState(false);
+  const gaaTil = (f) => setFane(f);
+  const [vist, setVist] = useState('hjem');
+  const [ut, setUt] = useState(false);
+  useEffect(() => {
+    if (fane === vist) return undefined;
+    setUt(true);
+    const t = window.setTimeout(() => { setVist(fane); setUt(false); }, 160);
+    return () => window.clearTimeout(t);
+  }, [fane, vist]);
+  return (
+    <div className="relative" style={{ width: APP_W, height: APP_H, borderRadius: 46, padding: 5, boxShadow: `0 0 0 1px rgba(21,19,15,0.18), 0 40px 90px -36px rgba(21,19,15,0.35), 0 2px 6px -2px rgba(21,19,15,0.08)` }} data-testid="v4-system-app" data-fane={vist}>
+      <div className="relative flex h-full flex-col overflow-hidden text-[#15130F]" style={{ borderRadius: 41, background: PAPIR, boxShadow: `inset 0 0 0 1px ${HAIR2}` }}>
+        <div className="flex min-h-0 flex-1 flex-col" style={{ opacity: ut ? 0 : 1, transform: ut ? 'translateY(4px)' : 'none', transition: ut ? `opacity 160ms ${EASE}, transform 160ms ${EASE}` : `opacity 360ms ${EASE}, transform 360ms ${EASE}` }}>
+          {vist === 'hjem' && <AppHjem ny={ny} betalt={betalt} onBetal={() => setBetalt(true)} gaaTil={gaaTil} />}
+          {vist === 'meldinger' && <AppMeldinger ny={ny} tilbake={() => gaaTil('hjem')} />}
+          {vist === 'dokumenter' && <AppDokumenter betalt={betalt} tilbake={() => gaaTil('hjem')} />}
+          {vist === 'profil' && <AppProfil tilbake={() => gaaTil('hjem')} />}
         </div>
+        <nav className="flex items-center justify-around px-4 pb-4 pt-2 text-[10px]" style={{ color: DIM }} aria-label="Appens faner">
+          {FANER.map(([id, n, Ikon]) => {
+            const er = id === fane;
+            return (
+              <button key={id} type="button" onClick={() => gaaTil(id)} aria-current={er ? 'page' : undefined} className="inline-flex flex-col items-center gap-1 rounded-[8px] px-2 py-1 transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/25" style={{ color: er ? T.ink : DIM }} data-testid={`v4-app-fane-${id}`}>
+                <Ikon size={16} strokeWidth={1.75} />{n}
+              </button>
+            );
+          })}
+        </nav>
       </div>
     </div>
   );
 }
 
 /* Skalerer portalen (designbredde DW) til bredden den får */
-function PortalSkalert({ aktiv, onVelg, bredde, utenSide = false }) {
+function PortalSkalert({ aktiv, onVelg, bredde, utenSide = false, visProps }) {
   const bw = utenSide ? DW - SIDE : DW;
   const s = Math.min(1, bredde / bw);
   return (
     <div style={{ width: Math.round(bw * s), height: Math.round(DH * s) }}>
       <div style={{ width: bw, height: DH, transform: `scale(${s})`, transformOrigin: '0 0' }}>
-        <Portal aktiv={aktiv} onVelg={onVelg} utenSide={utenSide} />
+        <Portal aktiv={aktiv} onVelg={onVelg} utenSide={utenSide} visProps={visProps} />
       </div>
     </div>
   );
@@ -431,15 +668,15 @@ function useBredde() {
 }
 
 /* ── Løse detaljkort — det som «stikker ut» av portalen, i sonen der den tones bort ── */
-function GodkjennKort() {
+function GodkjennKort({ godkjent, presser, onGodkjenn }) {
   return (
-    <div className="rounded-[18px] p-4" style={{ width: 288, background: T.charcoal, color: T.offwhite, boxShadow: '0 40px 80px -30px rgba(21,19,15,0.55), 0 2px 8px -2px rgba(21,19,15,0.2)' }} data-testid="v4-system-godkjenn">
-      <div className="flex items-center justify-between text-[11.5px]" style={{ color: 'rgba(244,241,234,0.6)' }}><span className="inline-flex items-center gap-2"><Prikk tone="lilla" />Venter på deg</span><span className="tabular-nums">22:49</span></div>
+    <div className="rounded-[18px] p-4" style={{ width: 288, background: T.charcoal, color: T.offwhite, boxShadow: '0 40px 80px -30px rgba(21,19,15,0.55), 0 2px 8px -2px rgba(21,19,15,0.2)' }} data-testid="v4-system-godkjenn" data-godkjent={godkjent ? '1' : '0'}>
+      <div className="flex items-center justify-between text-[11.5px]" style={{ color: 'rgba(244,241,234,0.6)' }}><span className="inline-flex items-center gap-2"><Prikk tone={godkjent ? 'gronn' : 'lilla'} />{godkjent ? 'Godkjent av deg' : 'Venter på deg'}</span><span className="tabular-nums">{godkjent ? '22:52' : '22:49'}</span></div>
       <p className="mt-3 text-[14.5px] font-medium">Ingen varmtvann · Leilighet 2</p>
-      <p className="mt-0.5 text-[12px]" style={{ color: 'rgba(244,241,234,0.6)' }}>Rørlegger · torsdag 08–10 · Emma varsles</p>
+      <p className="mt-0.5 text-[12px]" style={{ color: 'rgba(244,241,234,0.6)' }}>{godkjent ? 'Rørlegger bestilt · torsdag 08–10 · Emma har fått beskjed' : 'Rørlegger · torsdag 08–10 · Emma varsles'}</p>
       <div className="mt-4 flex items-center justify-between gap-3">
         <span className="text-[24px] tabular-nums" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>{tall(3900)} kr</span>
-        <span className="inline-flex h-9 items-center rounded-full px-4 text-[13px] font-medium" style={{ background: T.lilla, color: T.ink }}>Godkjenn</span>
+        <GodkjennKnapp godkjent={godkjent} presser={presser} onClick={onGodkjenn} rund testid="v4-system-godkjenn-knapp" />
       </div>
     </div>
   );
@@ -485,6 +722,25 @@ export default function SystemSeksjon() {
     return () => window.clearInterval(t);
   }, [synlig]);
   const velg = (id) => { pause.current = Date.now() + 15000; setAktiv(id); };
+  /* Godkjenningene — ekte knapper. Varmtvannet (det løse kortet): trykker du, bestilles rørleggeren og Emma får
+     meldingen i appen 1,2 s etter. Har du ikke trykket etter 7 s i bildet, trykker historien for deg (knappen presses
+     ned synlig), så appen alltid får fortsettelsen. Ekstra nøkkel (i Saker) er din alene — tallet i sidepanelet følger. */
+  const [vv, setVv] = useState(false);
+  const [vvPresser, setVvPresser] = useState(false);
+  const [nokkel, setNokkel] = useState(false);
+  const [appNy, setAppNy] = useState(false);
+  const godkjennVv = () => { if (!vv) { setVv(true); pause.current = Date.now() + 15000; } };
+  useEffect(() => {
+    if (!synlig || vv) return undefined;
+    const t = window.setTimeout(() => { setVvPresser(true); window.setTimeout(() => { setVvPresser(false); setVv(true); }, 180); }, 7000);
+    return () => window.clearTimeout(t);
+  }, [synlig, vv]);
+  useEffect(() => {
+    if (!vv) return undefined;
+    const t = window.setTimeout(() => setAppNy(true), 1200);
+    return () => window.clearTimeout(t);
+  }, [vv]);
+  const visProps = { nokkel, onNokkel: () => { setNokkel(true); pause.current = Date.now() + 15000; } };
   /* Entré (opacity + løft) og parallakse (lagene glir i ulik fart, fra --dh-frem) i samme transform */
   const lag = (d, dy, fart) => ({ opacity: synlig ? 1 : 0, transform: synlig ? (fart ? `translateY(calc((0.5 - var(--dh-frem, 0.5)) * ${fart}px))` : 'none') : `translateY(${dy}px)`, transition: `opacity 900ms ${EASE} ${d}ms, transform ${synlig ? 500 : 1000}ms ${synlig ? 'cubic-bezier(0.2, 0.6, 0.2, 1)' : EASE} ${synlig ? 0 : d}ms`, willChange: synlig && fart ? 'transform' : undefined });
 
@@ -517,7 +773,7 @@ export default function SystemSeksjon() {
               {/* Smalt: utsnittet forankres i hovedflaten — sidepanelet ligger utenfor til venstre, «God morgen, Kari.»
                   og tallene starter i sidens marg. Høyre kant tones ut i lerretet, så kuttet leses som et utsnitt, ikke en feil. */}
               <div className="absolute top-0" style={{ left: bred ? 0 : -(W >= 576 ? 32 : 20), width: pw, height: ph, maskImage: maske, WebkitMaskImage: maske, ...lag(0, 24, 10) }}>
-                <PortalSkalert aktiv={aktiv} onVelg={velg} bredde={portalB} utenSide={utenSide} />
+                <PortalSkalert aktiv={aktiv} onVelg={velg} bredde={portalB} utenSide={utenSide} visProps={visProps} />
               </div>
               {!bred && (
                 <div aria-hidden="true" className="pointer-events-none absolute top-0 z-[1]" style={{ right: -20, width: 120, height: ph, background: `linear-gradient(90deg, ${T.canvas}00 0%, ${T.canvas} 78%)` }} />
@@ -525,12 +781,12 @@ export default function SystemSeksjon() {
               {bred && (
                 <>
                   <div className="absolute z-[2]" style={{ left: Math.round(pw * 0.22), top: Math.round(ph * 0.60), ...lag(260, 32, 46) }}>
-                    <GodkjennKort />
+                    <GodkjennKort godkjent={vv} presser={vvPresser} onGodkjenn={godkjennVv} />
                   </div>
                 </>
               )}
               <div className="absolute z-[3]" style={{ left: bred ? undefined : Math.round((W - APP_W) / 2), right: bred ? 0 : undefined, top: appTop, ...lag(220, 40, bred ? 64 : 0) }}>
-                <App synlig={synlig} />
+                <App synlig={synlig} ny={appNy} />
               </div>
             </>
           )}

@@ -6,7 +6,7 @@ import NavV4 from '../NavV4';
 import Footer from '@/components/dh/Footer';
 import AdresseFelt from '../AdresseFelt';
 import { T, display } from '../motion';
-import BoligScene from './BoligScene';
+import AarScene from './AarScene';
 import VeiskilleSeksjon from '../VeiskilleSeksjon';
 import SammenligningSeksjon from '../SammenligningSeksjon';
 import LeietakerSeksjon from '../LeietakerSeksjon';
@@ -89,39 +89,38 @@ export default function BoligeiereV4({ label = 'For boligeiere', tittel = 'Bolig
     <div className="min-h-screen overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid={testid}>
       <NavV4 />
       <main>
-        {/* ── 1. Hero — nøytral. Gjenkjennelse før valg. ── */}
-        <section className="relative lg:flex lg:min-h-[calc(100svh-64px)] lg:flex-col lg:justify-center" data-testid="v4b-hero">
-          <div className="mx-auto grid w-full max-w-[1440px] gap-14 px-5 pb-16 pt-10 sm:px-8 sm:pt-12 lg:w-[calc(100%-128px)] lg:grid-cols-[minmax(0,6fr)_minmax(0,7fr)] lg:items-center lg:gap-14 lg:px-0 lg:py-10 2xl:gap-16">
-            <div className="min-w-0 max-w-[600px]">
-              <p className="dh-cover-inn text-[15px] font-medium" style={{ color: 'rgba(21,19,15,0.55)' }} data-testid="v4b-label">{label}</p>
-              <h1
-                className="dh-cover-inn mt-4 max-w-[10ch] text-[52px] sm:text-[68px] lg:text-[clamp(64px,5vw,96px)]"
-                style={{ ...display, color: T.ink, animationDelay: '.04s' }}
-                data-testid="v4b-h1"
-              >
-                {tittel}<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
-              </h1>
-              <p className="dh-cover-inn mt-7 max-w-[38ch] text-[18px] leading-[1.45] text-[#15130F]/70 sm:mt-8 sm:text-[20px]" style={{ animationDelay: '.08s' }} data-testid="v4b-ingress">
-                <span className="sm:hidden">{ingressKort || 'Én bolig eller fem. Lei ut selv, med et system som tar rutinen — eller la oss ta alt.'}</span>
-                <span className="hidden sm:inline">{ingressLang || 'Én bolig eller fem. Lei ut selv, med et system som tar rutinen — eller la en fast forvalter hos oss ta alt. Du har oversikten og siste ord uansett.'}</span>
-              </p>
-
-              {/* Handlingen er feltet. relative z-20: forslagslisten skal ligge over scenen. */}
-              <div className="dh-cover-inn relative z-20 mt-9 w-full sm:max-w-[460px]" style={{ animationDelay: '.16s' }}>
-                <AdresseFelt onValgt={valgt} />
-              </div>
-              <p className="dh-cover-inn mt-4 text-[14px]" style={{ color: 'rgba(21,19,15,0.5)', animationDelay: '.22s' }} data-testid="v4b-under">
-                {under || 'Hele Norge · ingen bindingstid · fra 5 % av husleien'}
-              </p>
+        {/* ── 1. Hero — én setning, én handling, én scene i full bredde (samme struktur som forsiden). Scenen er ett
+               leieår med boligen: tolv måneder går, husleien kommer inn — tre beslutninger var dine. ── */}
+        <section className="relative flex flex-col" data-testid="v4b-hero">
+          <div className="mx-auto w-full max-w-[1100px] px-5 pb-7 pt-7 text-center sm:px-8 sm:pb-9 sm:pt-12 lg:pb-11 lg:pt-14">
+            <p className="dh-cover-inn text-[14.5px] font-medium sm:text-[15px]" style={{ color: 'rgba(21,19,15,0.55)' }} data-testid="v4b-label">{label}</p>
+            <h1
+              className="dh-cover-inn mx-auto mt-4 text-[52px] sm:text-[76px] lg:text-[clamp(72px,6.2vw,112px)]"
+              style={{ ...display, color: T.ink, animationDelay: '.04s' }}
+              data-testid="v4b-h1"
+            >
+              {tittel}<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+            </h1>
+            <p className="dh-cover-inn mx-auto mt-5 max-w-[44ch] text-[18px] leading-[1.45] text-[#15130F]/70 sm:mt-6 sm:text-[21px]" style={{ animationDelay: '.08s' }} data-testid="v4b-ingress">
+              <span className="sm:hidden">{ingressKort || 'Én bolig eller fem. Lei ut selv, med et system som tar rutinen — eller la oss ta alt.'}</span>
+              <span className="hidden sm:inline">{ingressLang || 'Én bolig eller fem. Lei ut selv, med et system som tar rutinen — eller la en fast forvalter hos oss ta alt. Du har oversikten og siste ord uansett.'}</span>
+            </p>
+            {/* Handlingen er feltet. relative z-20: forslagslisten skal ligge over scenen. */}
+            <div className="dh-cover-inn relative z-20 mx-auto mt-7 w-full max-w-[520px] sm:mt-9" style={{ animationDelay: '.14s' }}>
+              <AdresseFelt onValgt={valgt} variant="ink" />
             </div>
-
-            <div ref={sceneRef} className="dh-cover-inn min-w-0" style={{ animationDelay: '.12s' }}>
-              <BoligScene eiendom={eiendom} />
-            </div>
+            <p className="dh-cover-inn mt-4 text-[13.5px] sm:text-[14px]" style={{ color: 'rgba(21,19,15,0.5)', animationDelay: '.2s' }} data-testid="v4b-under">
+              {under || 'Hele Norge · ingen bindingstid · fra 5 % av husleien'}
+            </p>
+          </div>
+          {/* Scenen: én flate, litt bredere enn seksjonene under — boligen, og året som går. */}
+          <div ref={sceneRef} className="mx-auto w-full max-w-[1600px] min-w-0 px-4 pb-6 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0 lg:pb-8">
+            <AarScene eiendom={eiendom} />
           </div>
         </section>
 
-        {tillit ? <TillitStripe /> : null}
+        {/* Tillit: heroens fot — koblet til tjenestene boligeieren kjenner (FINN, BankID, Vipps …). */}
+        <TillitStripe />
         {/* ── 2. Veiskillet ── */}
         <VeiskilleSeksjon />
         {/* ── 3. Samme leieår, hvem gjør hva ── */}

@@ -107,7 +107,13 @@ export default function SammenligningSeksjon({
               {under}
             </p>
           </div>
-          <Bryter verdi={modell} onChange={setModell} valg={valg} testid={testid} />
+          <div className="flex flex-col items-start gap-3 lg:items-end">
+            <Bryter verdi={modell} onChange={setModell} valg={valg} testid={testid} />
+            <p className="hidden items-center gap-4 text-[12.5px] sm:flex" style={{ color: 'rgba(21,19,15,0.5)' }}>
+              <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} />Din beslutning</span>
+              <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: T.gronn }} />Skjer uten deg</span>
+            </p>
+          </div>
         </div>
 
         {/* Registeret */}
@@ -121,14 +127,19 @@ export default function SammenligningSeksjon({
             {hendelser.map((h, i) => {
               const [du, dh] = h[vist];
               return (
+                /* Fargespråket er sidens: lilla = det som er DITT (en beslutning), grønn = det som går av seg selv / gjøres for deg */
                 <li key={h.t} className="grid gap-x-10 gap-y-2 border-b py-5 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)] sm:py-6" style={{ borderColor: HAIR }} data-testid={`${testid}-rad-${i}`}>
-                  <p className="text-[18px] font-medium leading-[1.3] sm:text-[19px]" style={{ letterSpacing: '-0.01em' }}>{h.t}</p>
-                  <p className="text-[15.5px] leading-[1.45]" style={{ ...celle, color: du ? 'rgba(21,19,15,0.82)' : 'rgba(21,19,15,0.3)' }}>
-                    <span className="mr-2 text-[12.5px] sm:hidden" style={{ color: 'rgba(21,19,15,0.45)' }}>{kol[1]}</span>{du || '—'}
+                  <p className="flex items-baseline gap-3 text-[18px] font-medium leading-[1.3] sm:text-[19px]" style={{ letterSpacing: '-0.01em' }}>
+                    <span className="text-[12.5px] font-normal tabular-nums" style={{ color: 'rgba(21,19,15,0.4)' }}>0{i + 1}</span>{h.t}
+                  </p>
+                  <p className="flex items-baseline gap-2.5 text-[15.5px] leading-[1.45]" style={{ ...celle, color: du ? 'rgba(21,19,15,0.82)' : 'rgba(21,19,15,0.3)' }}>
+                    <span className="text-[12.5px] sm:hidden" style={{ color: 'rgba(21,19,15,0.45)' }}>{kol[1]}</span>
+                    {du ? <span aria-hidden="true" className="hidden h-1.5 w-1.5 shrink-0 translate-y-[-1px] rounded-full sm:block" style={{ background: T.lilla, boxShadow: '0 0 0 3px rgba(212,150,255,0.22)' }} /> : null}
+                    <span>{du || '—'}</span>
                   </p>
                   <p className="flex items-baseline gap-2.5 text-[15.5px] leading-[1.45]" style={{ ...celle, color: dh ? 'rgba(21,19,15,0.82)' : 'rgba(21,19,15,0.3)' }}>
                     <span className="text-[12.5px] sm:hidden" style={{ color: 'rgba(21,19,15,0.45)' }}>{kol[2]}</span>
-                    {dh ? <span aria-hidden="true" className="hidden h-1.5 w-1.5 shrink-0 translate-y-[-1px] rounded-full sm:block" style={{ background: T.lilla }} /> : null}
+                    {dh ? <span aria-hidden="true" className="hidden h-1.5 w-1.5 shrink-0 translate-y-[-1px] rounded-full sm:block" style={{ background: T.gronn }} /> : null}
                     <span>{dh || '—'}</span>
                   </p>
                 </li>

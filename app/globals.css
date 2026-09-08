@@ -1144,6 +1144,44 @@ html.dh-nav-klar [data-testid="v4-nav"] { background-color: transparent; border-
 @keyframes v4-dot-pop { 0% { transform: scale(0); } 60% { transform: scale(1.4); } 100% { transform: scale(1); } }
 /* Kolonnen svever nesten umerkelig — den lever */
 @keyframes v4-flyt { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+/* Telefonstrømmen — tråden (Telefonstrom.js). Raden vokser og skyver de eldre opp; skrivepillen popper og MORFER til
+   boblen (bredde/høyde mot målt sluttverdi i --bw/--bh); prikkene tones bort; teksten kommer skarp ut av uskarpheten.
+   Eierens bobler sendes fra telefonens punkt (--dx/--dy) og lander i tråden. */
+@keyframes v4-rad-inn { from { grid-template-rows: 0fr; } to { grid-template-rows: 1fr; } }
+@keyframes v4-pille-inn { 0% { opacity: 0; transform: translateY(6px) scale(0.6); } 55% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes v4-morf { from { width: 46px; height: 30px; } to { width: var(--bw, 100%); height: var(--bh, 100%); } }
+@keyframes v4-prikker-ut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes v4-tekst-inn { from { opacity: 0; transform: translateY(3px); filter: blur(6px); } 70% { filter: blur(0); } to { opacity: 1; transform: none; filter: blur(0); } }
+/* Sendes fra telefonen i en lett bue (kontrollpunkt løftet 22 px) — ikke en rett strek */
+@keyframes v4-send { 0% { opacity: 0; transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(0.2); } 26% { opacity: 1; } 50% { transform: translate(calc(var(--dx, 0px) * 0.42), calc(var(--dy, 0px) * 0.5 - 22px)) scale(0.74); } 100% { opacity: 1; transform: none; } }
+/* Ordene i boblen: ett og ett, skarpt ut av uskarpheten */
+@keyframes v4-ord-boble { from { opacity: 0; transform: translateY(3px); filter: blur(5px); } 70% { filter: blur(0); } to { opacity: 1; transform: none; filter: blur(0); } }
+/* Glansen som går over glasset én gang idet boblen lander */
+@keyframes v4-glans { 0% { transform: translateX(-130%) skewX(-14deg); opacity: 0; } 18% { opacity: 1; } 82% { opacity: 1; } 100% { transform: translateX(330%) skewX(-14deg); opacity: 0; } }
+/* «Hele utleien»: fragmentet på scenen — inn nedenfra, skarpt ut av uskarpheten; det forrige løfter seg bort */
+@keyframes v4-frag-inn { from { opacity: 0; transform: translateY(14px) scale(0.985); filter: blur(6px); } 70% { filter: blur(0); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes v4-frag-ut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-12px) scale(0.985); } }
+/* Leselysets fremdrift i registeret — én tynn linje som fyller raden i takt med at det går videre */
+@keyframes v4-fremdrift { from { width: 0; } to { width: 100%; } }
+/* Godkjenn-knappen i samtalen: presses ned, blir grønn, lander */
+@keyframes v4-godkjent { 0% { background-color: #D298FF; color: #15130F; transform: scale(1); } 30% { transform: scale(0.9); background-color: #D298FF; color: #15130F; } 62% { background-color: #1F9D55; color: #fff; transform: scale(1.05); } 100% { background-color: #1F9D55; color: #fff; transform: none; } }
+/* Skjermen lyser opp når noe kommer inn — et mykt bloom rundt telefonens punkt */
+@keyframes v4-bloom { 0% { opacity: 0; transform: scale(0.35); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(1.6); } }
+@media (max-width: 639px) {
+  @keyframes v4-tekst-inn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+  @keyframes v4-ord-boble { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+}
+/* Ekte fjærkurver (linear()) der nettleseren kan — cubic-bezier som reserve. Brukes som var() i animation-shorthand. */
+:root {
+  --dh-fjaer: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --dh-land: cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+@supports (animation-timing-function: linear(0, 1)) {
+  :root {
+    --dh-fjaer: linear(0, 0.0605 3.8%, 0.2037 7.7%, 0.3828 11.5%, 0.5642 15.4%, 0.7268 19.2%, 0.8593 23.1%, 0.9581 26.9%, 1.0248 30.8%, 1.0637 34.6%, 1.081 38.5%, 1.0827 42.3%, 1.0745 46.2%, 1.0611 50%, 1.0457 53.8%, 1.031 57.7%, 1.0183 61.5%, 1.0083 65.4%, 1.0011 69.2%, 0.9965 73.1%, 0.9939 76.9%, 0.9931 80.8%, 0.9933 84.6%, 0.9942 88.5%, 0.9954 92.3%, 0.9967 96.2%, 1);
+    --dh-land: linear(0, 0.0343 3.8%, 0.1197 7.7%, 0.2342 11.5%, 0.3609 15.4%, 0.4876 19.2%, 0.6063 23.1%, 0.7119 26.9%, 0.8018 30.8%, 0.8753 34.6%, 0.933 38.5%, 0.9763 42.3%, 1.0071 46.2%, 1.0275 50%, 1.0394 53.8%, 1.045 57.7%, 1.0458 61.5%, 1.0435 65.4%, 1.0391 69.2%, 1.0336 73.1%, 1.0277 76.9%, 1.0219 80.8%, 1.0166 84.6%, 1.012 88.5%, 1.0081 92.3%, 1.0049 96.2%, 1);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .v4-flyt { animation: none !important; }
 }
