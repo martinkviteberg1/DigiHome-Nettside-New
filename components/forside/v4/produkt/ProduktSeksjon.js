@@ -37,8 +37,8 @@ const TABS = [
 
 const SCENER = {
   annonse: {
-    tittel: ['Fra fem bilder', 'til valgt leietaker.'],
-    ingress: 'Du tar bildene. DigiHome leser detaljene, skriver annonsen og legger den ut på FINN.no. Interessentene legitimerer seg og booker visning selv — du velger hvem som får boligen.',
+    tittel: ['Fra adressen', 'til valgt leietaker.'],
+    ingress: 'Skriv inn adressen. DigiHome finner boligen, du legger til bildene — så leses detaljene, annonsen skrives og legges ut på FINN.no. Interessentene legitimerer seg og booker visning selv. Du velger hvem som får boligen.',
   },
   kontrakt: {
     tittel: ['Fra valgt leietaker', 'til nøklene i hånden.'],

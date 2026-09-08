@@ -40,7 +40,7 @@ export const KARI = { navn: 'Kari Nilsen', fornavn: 'Kari', bilde: '/v4/kari.web
 
 /* Keyframes for pekerens ring og nålenes ping — legges én gang i hver film */
 export function FilmStil() {
-  return <style>{'@keyframes v4-ring { from { transform: scale(0.45); opacity: 0.6 } to { transform: scale(1.7); opacity: 0 } } @keyframes v4-ping { from { transform: scale(0.6); opacity: 0.55 } to { transform: scale(2.6); opacity: 0 } }'}</style>;
+  return <style>{'@keyframes v4-ring { from { transform: scale(0.45); opacity: 0.6 } to { transform: scale(1.7); opacity: 0 } } @keyframes v4-ping { from { transform: scale(0.6); opacity: 0.55 } to { transform: scale(2.6); opacity: 0 } } @keyframes v4-caret { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }'}</style>;
 }
 
 /* ── Små byggeklosser ── */

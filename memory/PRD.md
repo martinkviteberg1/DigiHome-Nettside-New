@@ -1435,3 +1435,15 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   («Rullebanen»: akkumulert kontantstrøm etter skatt m/ bunn-markør og bånd for hentet kapital) i Det vi trenger; H2 avsløres ord for ord
   (`deck-ord`) på alle kapitler; Risiko har ett display-tall per risiko (+kapital ved 8 000 kr, utvikling/mnd, enheter truffet, churn %);
   bunnlinjen viser «Neste · <kapittel>» ved pilene. Mobil uten overflow, ingen konsollfeil.
+
+## Annonsefilmen — ny åpning «filmen begynner der heroen slutter» (sept 2026)
+- Bruker: «forbedre alt med starten på annonse-animasjonen … begynner med et adressefelt, fyller inn, så lag annonse … drop alt med logo … verdensklasse».
+- `AnnonseFilm.js`: faser START→SKRIV→VELG→FUNNET→PEKER→HOVER→TRYKK_START (logo, app-hode og «Hei, Kari» fjernet). Samme grid som resten av
+  filmen: tekstspalten (ny akt 0 «Begynn med adressen.») + scenen. Adressefeltet (heroens objekt) står midt i scenen, «Nygårdsgaten 5» skrives
+  med ujevn tasterytme (`TAST`, `useSkriving`), forslagsliste som smalner (`forslagFor`), ↵-markør på første rad, Enter → «Nygårdsgaten 5,
+  5015 Bergen» m/ hake. FUNNET: feltet glir opp og blir toppen av «boligarket»: fasaden (flisen 'fasade' — samme piksler som senere i
+  mosaikken) til venstre, fire fakta m/ kilde (`BOLIGFAKTA`: Matrikkelen, Kartverket, Entur, Leiemarkedet) til høyre. «Lag annonse» står i
+  tekstspalten (som Publiser/Velg); pekeren trykker. FELT: opplastingsfeltet vokser ut fra knappen (måles i Desktop), fasaden glir ned i det
+  som første bilde; pekeren kommer med fire (`HAAND`), caption «Slipp fire bilder fra mobilen her». Mobil: samme, stablet; knappen i tekstblokken.
+- Tenant-fasen het VELG → nå `VELG_LEIETAKER`. `v4-caret` keyframes i `FilmStil`. ProduktSeksjon: «Fra adressen til valgt leietaker.»
+- Skjermbilder ok desktop 1920 + mobil 390 (ingen ny overflow, ingen konsollfeil). Ikke brukergodkjent; frontend-agent ikke kjørt.
