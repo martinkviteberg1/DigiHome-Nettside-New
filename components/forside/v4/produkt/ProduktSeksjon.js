@@ -183,21 +183,27 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
      (ikke hidden) — hidden ville gjort seksjonen til scroll-container og skrudd av sticky. */
   useEffect(() => {
     const el = vaktRef.current;
-    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
-    let obs = null;
+    const sek = ref.current;
+    if (!el || !sek || typeof IntersectionObserver === 'undefined') return undefined;
+    let obsVakt = null; let obsSek = null;
+    let vaktPassert = false; let seksjonInne = true;
+    const oppdater = () => setFestet(vaktPassert && seksjonInne);
     const lag = () => {
-      obs?.disconnect();
+      obsVakt?.disconnect(); obsSek?.disconnect();
       const navH = window.innerWidth >= 1024 ? 64 : 72;
-      /* Roten strekkes langt under viewporten: vakten «skjærer» så lenge den ligger under nav-linja (også langt
-         nede på siden) — og slutter først når den er scrollet over. Da fanges også hopp (ankerlenker). */
-      obs = new IntersectionObserver(([e]) => { setFestet(!e.isIntersecting); }, { rootMargin: `-${navH + 1}px 0px 100000px 0px`, threshold: 0 });
-      obs.observe(el);
+      /* Vakten: roten strekkes langt under viewporten, så vakten «skjærer» så lenge den ligger under nav-linja — og
+         slutter først når den er scrollet over. Fanger også hopp (ankerlenker). */
+      obsVakt = new IntersectionObserver(([e]) => { vaktPassert = !e.isIntersecting; oppdater(); }, { rootMargin: `-${navH + 1}px 0px 100000px 0px`, threshold: 0 });
+      obsVakt.observe(el);
+      /* Seksjonen: så lenge bunnen ligger under nav-linja er vi «i» seksjonen. Forbi den → vanlig nav igjen. */
+      obsSek = new IntersectionObserver(([e]) => { seksjonInne = e.isIntersecting; oppdater(); }, { rootMargin: `-${navH + 1}px 0px 0px 0px`, threshold: 0 });
+      obsSek.observe(sek);
     };
     lag();
     let t = 0;
     const onResize = () => { window.clearTimeout(t); t = window.setTimeout(lag, 150); };
     window.addEventListener('resize', onResize);
-    return () => { obs?.disconnect(); window.removeEventListener('resize', onResize); window.clearTimeout(t); };
+    return () => { obsVakt?.disconnect(); obsSek?.disconnect(); window.removeEventListener('resize', onResize); window.clearTimeout(t); };
   }, []);
 
   /* Glidende markør: måles fra den aktive knappen (offsetLeft/offsetWidth relativt til listen). Måles på nytt

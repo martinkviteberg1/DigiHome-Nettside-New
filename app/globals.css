@@ -1093,3 +1093,9 @@ html.dh-nav-klar [data-testid="v4-nav"] { background-color: transparent; border-
    veggtekstens toning (= HJEM_ZOOM_SMAL i HeroStage). Fra 640 px: 1:1. */
 .dh-hero-hjem-ramme { transform-origin: 30% 100%; }
 @media (max-width: 639px) { .dh-hero-hjem-ramme { transform: scale(1.26); } }
+
+/* Heroens veggfortelling (direkte): ordene løftes opp gjennom en maske — krisp, ingen blur. Ut: opp og bort. */
+@keyframes v4-ord-loft { from { opacity: 0; transform: translateY(104%); } 60% { opacity: 1; } to { opacity: 1; transform: translateY(0); } }
+@keyframes v4-ord-loft-ut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-70%); } }
+/* Beatets puls langs hårlinjen */
+@keyframes v4-vegg-frem { from { transform: scaleX(0); } to { transform: scaleX(1); } }

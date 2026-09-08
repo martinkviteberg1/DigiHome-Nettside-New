@@ -1502,3 +1502,10 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   på mobil, spor m/ fremdrift), viser hamburger også på desktop (menyarket, maks 720 px) og skjuler «Logg inn» i linja. Seksjonens egen bar
   tones ut når festet (plassen beholdes). `bytt` fra festet: scroller produktflaten inn rett under navbaren (forblir festet). Under 420 px:
   bare merke-ikonet.
+- Hero-fortelling (direkte) raskere og mer filmatisk: T0 380→140 ms, pause 340→180, direkteInne 40 ms, telefonstrøm 2,4→1,5 s. Ordene løftes
+  gjennom en maske (`v4-ord-loft`, 1000 ms expo, 70 ms stagger, ingen blur; ut `v4-ord-loft-ut` 380 ms), hårlinjen tegnes ved 420 ms og bærer
+  beatets puls (`v4-vegg-frem`, lilla, beat.ms lineært). Ikke-direkte uendret.
+- AnnonseFilm-åpning fikset («starten ser jævlig ut»): plassholder «Adressen din», skrevet tekst og breddeholder ligger i samme grid-celle
+  (inline-grid) — linjen kollapser/hopper ikke ved første tegn, plassholderen kan ikke brytes, markøren står inne i cellen (før plassholder /
+  etter siste tegn).
+- Kapittelbar i nav: festet = vakt passert OG seksjonen fortsatt under nav-linja (to IntersectionObservers) → vanlig nav igjen forbi seksjonen.

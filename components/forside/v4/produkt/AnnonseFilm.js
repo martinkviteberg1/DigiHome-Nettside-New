@@ -346,6 +346,12 @@ function Storskrift({ fase, ov, n, fs, x, y, til, kompakt = false, listeW = 560 
   const maal = kompakt ? 16 : 22;
   const sc = maal / fs;
   const morf = til ? `translate(${til.x - x}px, ${til.y - y}px) scale(${sc})` : `translateY(-24px) scale(0.9)`;
+  const kw = Math.max(2, Math.round(fs / 30)); const kh = Math.round(fs * 0.92);
+  const karetVis = fase >= F.START && fase <= F.SKRIV;
+  const karet = (venstre = false) => (
+    <span aria-hidden="true" className="inline-block shrink-0 self-center rounded-[1px] align-middle" style={{ width: kw, height: kh, marginRight: venstre ? Math.round(fs * 0.1) : 0, marginLeft: venstre ? 0 : Math.round(fs * 0.06), background: T.ink, opacity: karetVis ? 1 : 0, animation: blink && !ov ? 'v4-caret 1.05s steps(1) infinite' : 'none', transition: `opacity 200ms ${EASE}`, verticalAlign: 'baseline', transform: `translateY(${Math.round(fs * 0.08)}px)` }} />
+  );
+  const tom = n === 0 && !valgt;
   return (
     <div
       className="absolute z-[8]"
@@ -355,18 +361,22 @@ function Storskrift({ fase, ov, n, fs, x, y, til, kompakt = false, listeW = 560 
       data-tekst={skrevet}
       data-apen={apen ? '1' : '0'}
     >
-      {/* Linjen: tekst + markør på én hårlinje som vokser med teksten */}
-      <div className="relative inline-flex items-baseline" style={{ paddingBottom: kompakt ? 8 : 12, boxShadow: `inset 0 -1px 0 ${valgt ? 'rgba(21,19,15,0.16)' : skriver ? T.lilla : 'rgba(21,19,15,0.22)'}`, transition: `box-shadow 300ms ${EASE}` }}>
-        {/* Markøren står FØR plassholderen mens feltet er tomt — som i et ekte felt */}
-        {n === 0 && !valgt && <span aria-hidden="true" className="inline-block shrink-0 self-center rounded-[1px]" style={{ width: Math.max(2, Math.round(fs / 30)), height: Math.round(fs * 0.92), marginRight: Math.round(fs * 0.1), background: T.ink, opacity: fase >= F.START && fase <= F.SKRIV ? 1 : 0, animation: blink && !ov ? 'v4-caret 1.05s steps(1) infinite' : 'none', transition: `opacity 200ms ${EASE}` }} />}
-        <span className="relative whitespace-nowrap" style={{ ...display, fontSize: fs, lineHeight: 1, letterSpacing: '-0.035em', color: T.ink }}>
-          {/* Plassholderen — står til første tegn */}
-          <span className="absolute left-0 top-0" style={{ color: 'rgba(21,19,15,0.26)', opacity: n === 0 && !valgt ? 1 : 0, transition: `opacity 220ms ${EASE}` }} aria-hidden="true">Adressen din</span>
-          <span style={{ opacity: n > 0 || valgt ? 1 : 0 }}>{valgt ? ADRESSE_SKREVET : skrevet}</span>
-          {/* Usynlig bredde-holder så linjen ikke kollapser før første tegn */}
-          {n === 0 && !valgt && <span className="invisible" aria-hidden="true">Adressen din</span>}
+      {/* Linjen: én hårlinje under teksten. Plassholder, skrevet tekst og en usynlig breddeholder ligger i SAMME
+          grid-celle — bredden er alltid den bredeste av dem, så linjen aldri kollapser eller hopper når første tegn
+          kommer, og plassholderen kan aldri brytes over to linjer. Markøren står inne i cellen: før plassholderen når
+          feltet er tomt, rett etter siste tegn når det skrives. */}
+      <div className="relative inline-grid" style={{ paddingBottom: kompakt ? 8 : 12, boxShadow: `inset 0 -1px 0 ${valgt ? 'rgba(21,19,15,0.16)' : skriver ? T.lilla : 'rgba(21,19,15,0.22)'}`, transition: `box-shadow 300ms ${EASE}`, ...display, fontSize: fs, lineHeight: 1, letterSpacing: '-0.035em', color: T.ink }}>
+        {/* Plassholderen — står til første tegn, går så rolig opp og ut */}
+        <span className="whitespace-nowrap" style={{ gridArea: '1 / 1', color: 'rgba(21,19,15,0.26)', opacity: tom ? 1 : 0, transform: tom ? 'none' : 'translateY(-10px)', transition: ov ? 'none' : tom ? `opacity 400ms ${EASE}, transform 0ms linear` : `opacity 160ms ${EASE}, transform 380ms ${EASE}`, pointerEvents: 'none' }} aria-hidden="true">
+          {karet(true)}Adressen din
         </span>
-        {(n > 0 || valgt) && <span aria-hidden="true" className="inline-block shrink-0 self-center rounded-[1px]" style={{ width: Math.max(2, Math.round(fs / 30)), height: Math.round(fs * 0.92), marginLeft: Math.round(fs * 0.06), background: T.ink, opacity: fase >= F.START && fase <= F.SKRIV ? 1 : 0, animation: blink && !ov ? 'v4-caret 1.05s steps(1) infinite' : 'none', transition: `opacity 200ms ${EASE}` }} />}
+        {/* Det skrevne — kommer inn der plassholderen sto, med markøren etter siste tegn */}
+        <span className="whitespace-nowrap" style={{ gridArea: '1 / 1', opacity: tom ? 0 : 1, transition: `opacity 120ms ${EASE}` }}>
+          {valgt ? ADRESSE_SKREVET : skrevet}
+          {!valgt && karet()}
+        </span>
+        {/* Breddeholder: linjen er aldri smalere enn plassholderen før adressen er valgt */}
+        {!valgt && <span className="invisible whitespace-nowrap" style={{ gridArea: '1 / 1' }} aria-hidden="true">Adressen din</span>}
       </div>
       {/* Stedet — kommer under når forslaget er valgt */}
       <p className={`${kompakt ? 'mt-3 text-[15px]' : 'mt-4 text-[22px]'} font-medium tracking-[-0.01em]`} style={{ color: 'rgba(21,19,15,0.5)', opacity: valgt ? 1 : 0, transform: valgt ? 'none' : 'translateY(6px)', transition: ov ? 'none' : valgt ? `opacity 420ms ${EASE} 200ms, transform 520ms ${UT} 200ms` : 'none' }} aria-hidden={!valgt} data-testid="v4-storskrift-sted">{ADRESSE_FULL.slice(ADRESSE_SKREVET.length + 2)}</p>

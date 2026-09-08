@@ -63,7 +63,7 @@ const STROM = [
   { id: 'regnskap', t: 'Regnskapet er ført', u: 'September · 8 av 8 betalt', ikon: 'hake' },
   { id: 'emma', t: 'Emma bekreftet', u: '«Varmt vann igjen. Takk!»', bilde: '/v4/annonse/leietaker-emma.webp' },
 ];
-const STROM_START = 2400; const STROM_TAKT = 3000; const STROM_ETTER = 1300;
+const STROM_START = 1500; const STROM_TAKT = 3000; const STROM_ETTER = 1300;
 const STROM_TID = ['nå', '3 min', '9 min', '14 min'];
 
 function StromIkon({ m }) {
@@ -418,8 +418,8 @@ const REGISTER = [
   { id: 'drift', t: 'Drift' },
 ];
 const FORTELLING_T0 = 1500;   // rommet må komme opp av mørket før teksten begynner (ikke-direkte)
-const FORTELLING_T0_DIREKTE = 380; // direkte: scenen står alt — teksten skal være der før du har rukket å scrolle
-const FORTELLING_PAUSE = 340; // det gamle går ut, så kommer det nye
+const FORTELLING_T0_DIREKTE = 140; // direkte: scenen står alt — teksten skal være der før du har rukket å scrolle
+const FORTELLING_PAUSE = 180; // det gamle går ut, så kommer det nye — nesten i ett drag
 
 /* Klokken for fortellingen. `aktiv` = veggen er synlig (hjemme). Returnerer beat (k), om ordene står (vis) og
    runden (for telefonstrømmen). Redusert bevegelse: siste beat, stille. */
@@ -457,16 +457,18 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
   const beat = direkte ? FORTELLING[k] : { id: 'auto', ord: ['Utleie', 'på', 'autopilot'], u: 'Én godkjenning. Resten skjedde mens du gikk hjem.', slutt: true };
   const inne = direkte ? hjemme && vis : hjemme;
   const T0 = direkte ? 0 : FORTELLING_T0;
-  const fastT0 = direkte ? FORTELLING_T0_DIREKTE + 260 : FORTELLING_T0;
+  const fastT0 = direkte ? FORTELLING_T0_DIREKTE + 160 : FORTELLING_T0;
   const fast = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(12px)', transition: `opacity 900ms ${EASE} ${hjemme ? fastT0 + i * 130 : 0}ms, transform 900ms ${EASE} ${hjemme ? fastT0 + i * 130 : 0}ms` });
   /* Ordene monteres på nytt per beat (key) — derfor keyframes, ikke transitions: inn (blur, nedenfra) når de står,
      ut (opp, blur) når beatet er over. Før rommet er oppe: bare skjult. */
   const ut = direkte && hjemme && !vis;
+  /* Direkte: hvert ord løftes opp gjennom en maske (som en linje som settes), 1000 ms expo, 70 ms mellom ordene —
+     ingen blur (skarpt, og billig over video). Ut: ordene glir opp og ut på 380 ms. Ikke-direkte: som før. */
   const ordStil = (i) => (inne
-    ? { animation: `v4-ord-inn 900ms ${EASE} ${T0 + 80 + i * 95}ms both`, willChange: 'transform, opacity' }
-    : ut ? { animation: `v4-ord-ut 320ms ${EASE} ${i * 22}ms both` } : { opacity: 0 });
+    ? { animation: `${direkte ? 'v4-ord-loft' : 'v4-ord-inn'} ${direkte ? 1000 : 900}ms ${EASE} ${T0 + (direkte ? 40 : 80) + i * (direkte ? 70 : 95)}ms both`, willChange: 'transform, opacity' }
+    : ut ? { animation: `${direkte ? 'v4-ord-loft-ut' : 'v4-ord-ut'} ${direkte ? 380 : 320}ms ${EASE} ${i * 22}ms both` } : { opacity: 0 });
   const linjeStil = (d) => (inne
-    ? { animation: `v4-linje-inn 900ms ${EASE} ${T0 + d}ms both` }
+    ? { animation: `v4-linje-inn ${direkte ? 800 : 900}ms ${EASE} ${T0 + d}ms both` }
     : ut ? { animation: `v4-linje-ut 300ms ${EASE} 60ms both` } : { opacity: 0 });
   const husleie = vist ? `${tall(18500)}\u00A0kr` : `${tall(64500)}\u00A0kr`;
   const slutt = !!beat.slutt;
@@ -497,16 +499,28 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
     >
       {/* Setningen — fast høyde for to linjer (align nederst), så ingenting under flytter seg mellom beatene */}
       <h3 style={{ ...display, fontSize: fs, lineHeight: 0.94, letterSpacing: '-0.045em', color: blekk, ...(direkte ? { minHeight: 'calc(2 * 0.94em)', display: 'flex', flexWrap: 'wrap', alignContent: 'flex-end' } : {}) }} data-testid="v4-slutt-tittel">
-        {beat.ord.map((o, i) => (
+        {beat.ord.map((o, i) => (direkte ? (
+          /* Masken: overflow-hidden med luft til underlengder (g, j, y) og Å — layouten er uendret (negativ margin) */
+          <span key={`${beat.id}-${i}`} className="inline-block overflow-hidden" style={{ marginRight: i < beat.ord.length - 1 ? '0.22em' : 0, paddingBottom: '0.14em', marginBottom: '-0.14em', paddingTop: '0.08em', marginTop: '-0.08em' }}>
+            <span className="inline-block" style={ordStil(i)}>
+              {o}{slutt && i === beat.ord.length - 1 ? <span style={{ color: T.lilla, marginLeft: '-0.03em' }}>.</span> : null}
+            </span>
+          </span>
+        ) : (
           <span key={`${beat.id}-${i}`} className="inline-block" style={{ ...ordStil(i), marginRight: i < beat.ord.length - 1 ? '0.22em' : 0 }}>
             {o}{slutt && i === beat.ord.length - 1 ? <span style={{ color: T.lilla, marginLeft: '-0.03em' }}>.</span> : null}
           </span>
-        ))}
+        )))}
       </h3>
-      <p key={`u-${beat.id}`} className="mt-5 max-w-[30ch] text-[16.5px] leading-[1.45] sm:mt-7 sm:text-[20px]" style={{ ...linjeStil(140 + beat.ord.length * 120), color: dempet, minHeight: direkte ? '2.9em' : undefined }}>{beat.u}</p>
+      <p key={`u-${beat.id}`} className="mt-5 max-w-[30ch] text-[16.5px] leading-[1.45] sm:mt-7 sm:text-[20px]" style={{ ...linjeStil(direkte ? 260 + beat.ord.length * 70 : 140 + beat.ord.length * 120), color: dempet, minHeight: direkte ? '2.9em' : undefined }}>{beat.u}</p>
 
       {/* Hårlinjen tegnes én gang. Under: meta (adresse · klokke · status) — i siste beat dagens tall. */}
-      <div aria-hidden="true" className="mt-9 h-px sm:mt-12" style={{ background: 'rgba(21,19,15,0.12)', transform: hjemme ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: '0 50%', transition: `transform 1200ms ${EASE} ${hjemme ? FORTELLING_T0 + 800 : 0}ms` }} />
+      <div aria-hidden="true" className="relative mt-9 h-px sm:mt-12" style={{ background: 'rgba(21,19,15,0.12)', transform: hjemme ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: '0 50%', transition: `transform 1200ms ${EASE} ${hjemme ? (direkte ? 420 : FORTELLING_T0 + 800) : 0}ms` }}>
+        {/* Beatets puls: en lilla linje som går fra venstre til høyre i løpet av beatet — historien har tempo, og du ser at det kommer mer */}
+        {direkte && !slutt && (
+          <span key={`frem-${beat.id}`} className="absolute inset-y-0 left-0 w-full" style={{ background: T.lilla, transformOrigin: '0 50%', opacity: inne ? 0.9 : 0, animation: inne ? `v4-vegg-frem ${beat.ms}ms linear ${T0 + 200}ms both` : 'none', transition: `opacity 260ms ${EASE}` }} data-testid="v4-slutt-frem" />
+        )}
+      </div>
       <div className="mt-5 grid" style={fast(7.5)}>
         <p className="col-start-1 row-start-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] sm:text-[13.5px]" style={{ color: meta, opacity: slutt ? 0 : 1, transition: `opacity 500ms ${EASE} ${slutt ? 0 : 200}ms` }} aria-hidden={slutt} data-testid="v4-slutt-status">
           <span className="whitespace-nowrap">{adresse}</span>
@@ -652,7 +666,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom =
   const [direkteInne, setDirekteInne] = useState(false);
   useEffect(() => {
     if (!direkte) { setDirekteInne(false); return undefined; }
-    const t = window.setTimeout(() => setDirekteInne(true), 120);
+    const t = window.setTimeout(() => setDirekteInne(true), 40);
     return () => window.clearTimeout(t);
   }, [direkte]);
   const hjemme = direkte ? direkteInne : hjemmeState;
