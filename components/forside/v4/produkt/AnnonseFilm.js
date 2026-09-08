@@ -155,7 +155,16 @@ const forslagFor = (n) => {
   if (n >= 8) return [{ t: 'Nygårdsgaten', s: 'Bergen' }];
   return [{ t: 'Nygårdsgaten', s: 'Bergen' }, { t: 'Nygårdstangen', s: 'Bergen' }, { t: 'Nygårdshøyden', s: 'Bergen' }];
 };
-/* Faktaene som glir inn når boligen er kjent — verdi og kilde. Ingen ord om KI: dette er offentlige data. */
+/* Spesifikasjonene på arket (desktop): fire kolonner — etikett, verdi, kilde. Offentlige data, ingen ord om KI. */
+const SPEKK = [
+  { l: 'Byggeår', v: '1890', k: 'Matrikkelen' },
+  { l: 'Areal', v: '54 m² · 2 rom', k: 'Kartverket' },
+  { l: 'Etasje', v: '2. etasje', k: 'Kartverket' },
+  { l: 'Kollektiv', v: 'Bybanen · 5 min', k: 'Entur' },
+  { l: 'Leie i området', v: '12 000–13 500 kr', k: 'Leiemarkedet' },
+];
+const KOORD = '60.3878° N · 5.3252° Ø';
+/* Faktaene som glir inn når boligen er kjent (mobil) — verdi og kilde. */
 const BOLIGFAKTA = [
   { v: 'Bygård fra 1890 · leilighet 2', k: 'Matrikkelen' },
   { v: '54 m² · 2 rom · 2. etasje', k: 'Kartverket' },
@@ -298,7 +307,7 @@ const Brodtekst = () => (
    Alt som beveger seg: transform/opacity. Ingen logo, ingen app-hode, ingen hilsen. ── */
 const UT = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
 const ADRESSE_LANG = 'Nygårdsgaten 5 · Leilighet 2 · ledig fra 1. november';
-const HODE_H = 34;           // boligarkets hode: adressen i 22 px + sted
+const HODE_H = 40;           // boligarkets hode: adressen i 26 px + sted + koordinater
 
 /* Skrivingen: hvor mange tegn som står, styrt av TAST fra SKRIV starter. Før SKRIV: ingen. Etter: alle. */
 function useSkriving(fase) {
@@ -462,10 +471,12 @@ function Arkhode({ fase, r, ov, kompakt = false }) {
   const vis = fase >= F.FUNNET && fase <= F.TRYKK_START;
   const ut = fase > F.TRYKK_START;
   return (
-    <div className="absolute z-[8] flex items-baseline gap-3 whitespace-nowrap" style={{ left: r.x, top: r.y, height: r.h, opacity: vis ? 1 : 0, transform: vis ? 'none' : ut ? 'translateY(-8px)' : 'translateY(10px)', transition: ov ? 'none' : vis ? `opacity 460ms ${EASE} ${fase === F.FUNNET ? 560 : 0}ms, transform 760ms ${UT} ${fase === F.FUNNET ? 560 : 0}ms` : `opacity 240ms ${EASE}, transform 320ms ${EASE}`, pointerEvents: 'none' }} aria-hidden={!vis} data-testid="v4-arkhode">
-      <span className={`${kompakt ? 'text-[16px]' : 'text-[22px]'} font-medium tracking-[-0.015em]`} style={{ color: T.ink }}>{ADRESSE_SKREVET}</span>
+    <div className="absolute z-[8] flex items-baseline gap-3 whitespace-nowrap" style={{ left: r.x, top: r.y, width: r.w, height: r.h, opacity: vis ? 1 : 0, transform: vis ? 'none' : ut ? 'translateY(-8px)' : 'translateY(10px)', transition: ov ? 'none' : vis ? `opacity 460ms ${EASE} ${fase === F.FUNNET ? 560 : 0}ms, transform 760ms ${UT} ${fase === F.FUNNET ? 560 : 0}ms` : `opacity 240ms ${EASE}, transform 320ms ${EASE}`, pointerEvents: 'none' }} aria-hidden={!vis} data-testid="v4-arkhode">
+      <span className={`${kompakt ? 'text-[16px]' : 'text-[26px]'} font-medium tracking-[-0.02em]`} style={{ color: T.ink }}>{ADRESSE_SKREVET}</span>
       <span className={kompakt ? 'text-[13px]' : 'text-[15px]'} style={{ color: 'rgba(21,19,15,0.5)' }}>{ADRESSE_FULL.slice(ADRESSE_SKREVET.length + 2)}</span>
       <span className="inline-flex h-5 w-5 items-center justify-center self-center rounded-full" style={{ background: 'rgba(31,157,85,0.12)', color: '#166B3C', opacity: vis ? 1 : 0, transform: vis ? 'none' : 'scale(0.6)', transition: ov ? 'none' : vis ? `opacity 300ms ${EASE} 1000ms, transform 500ms ${LANDING} 1000ms` : 'none' }}><Hake size={10} /></span>
+      {/* Koordinatene — der nålen står. Tabulære tall, dempet, ytterst til høyre. */}
+      {!kompakt && <span className="ml-auto self-center text-[12.5px]" style={{ color: 'rgba(21,19,15,0.45)', letterSpacing: '0.01em', opacity: vis ? 1 : 0, transition: ov ? 'none' : vis ? `opacity 500ms ${EASE} 900ms` : `opacity 200ms ${EASE}` }}>{KOORD}</span>}
     </div>
   );
 }
@@ -508,6 +519,58 @@ function Boligfakta({ fase, L, ov, rader = BOLIGFAKTA, r = L.apn.fakta, radH = L
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/* Fasadepanelet — det brede bildet i arket (FUNNET → TRYKK_START). «Utvikles» inn: en svak lysning + skala 1.03 → 1.
+   Ved FELT toner det ut mens fasade-flisen (3:2) kommer på sin plass i mosaikken. */
+function FasadePanel({ fase, L, ov }) {
+  const r = L.apn.funnet;
+  const inne = fase >= F.FUNNET && fase <= F.TRYKK_START;
+  const ut = fase > F.TRYKK_START;
+  const b = KILDE.fasade;
+  return (
+    <div className="absolute z-[3] overflow-hidden" style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: 14, background: 'rgba(21,19,15,0.06)', boxShadow: SKYGGE_FLAT, opacity: inne ? 1 : 0, transform: inne ? 'none' : ut ? 'translateY(-8px) scale(0.985)' : 'scale(0.985)', transition: ov ? 'none' : inne ? `opacity 800ms ${EASE} 360ms, transform 1400ms ${UT} 360ms` : `opacity 420ms ${EASE}, transform 500ms ${EASE}`, pointerEvents: 'none' }} aria-hidden={!inne} data-testid="v4-fasade-panel">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img loading="lazy" decoding="async" src={b.src} alt={b.navn} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: b.pos || '50% 45%', transform: inne ? 'scale(1)' : 'scale(1.04)', transition: ov ? 'none' : `transform ${AUTO[F.FUNNET] + AUTO[F.PEKER] + 600}ms cubic-bezier(0.3, 0.05, 0.7, 0.95)` }} draggable={false} />
+      {/* Et svakt lys nederst så etiketten står, og en tynn lyskant */}
+      <div className="absolute inset-0" style={{ boxShadow: LYSKANT, borderRadius: 14 }} />
+      <span className="absolute left-3 bottom-3 inline-flex h-[24px] items-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-medium" style={{ background: 'rgba(251,250,248,0.9)', color: T.ink, boxShadow: '0 6px 18px -8px rgba(0,0,0,0.35)', opacity: inne ? 1 : 0, transform: inne ? 'none' : 'translateY(4px)', transition: ov ? 'none' : inne ? `opacity 400ms ${EASE} 1250ms, transform 500ms ${UT} 1250ms` : `opacity 160ms ${EASE}` }}>
+        <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.gronn }} />Fasade · funnet fra adressen
+      </span>
+    </div>
+  );
+}
+
+/* Spesifikasjonsraden (desktop): fire kolonner under panelet. Hårlinjen øverst tegnes fra venstre; så SLÅS hver kolonne
+   opp i takt: en lilla linje løper under kolonnen, verdien lander, kilden kommer med grønn prikk. Etiketten står i små
+   versaler over. Ett system som henter — ikke tekst som toner inn. */
+function Spekk({ fase, L, ov }) {
+  const r = L.apn.fakta;
+  const funnet = fase >= F.FUNNET && fase <= F.TRYKK_START;
+  const ut = fase > F.TRYKK_START;
+  const fersk = funnet && fase === F.FUNNET && !ov;
+  const T0 = 900; const TAKT = 440;
+  return (
+    <div className="absolute z-[8]" style={{ left: r.x, top: r.y, width: r.w, height: r.h, pointerEvents: 'none', opacity: funnet ? 1 : 0, transition: ov ? 'none' : funnet ? `opacity 300ms ${EASE} ${T0 - 300}ms` : `opacity 260ms ${EASE}` }} aria-hidden={!funnet} data-testid="v4-boligfakta" data-vis={funnet ? '1' : '0'}>
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px" style={{ background: 'rgba(21,19,15,0.12)', transformOrigin: '0 50%', transform: funnet ? 'scaleX(1)' : 'scaleX(0)', transition: ov ? 'none' : funnet ? `transform 1100ms ${EASE} ${T0 - 300}ms` : 'none' }} />
+      <div className="grid h-full" style={{ gridTemplateColumns: '0.85fr 1fr 0.9fr 1.05fr 1.2fr' }}>
+        {SPEKK.map((f, i) => {
+          const d = T0 + i * TAKT;
+          return (
+            <div key={f.l} className="relative flex flex-col justify-end pb-[2px] pr-5 pt-4">
+              {fersk && <span aria-hidden="true" className="absolute left-0 top-0 h-px w-full" style={{ background: T.lilla, transformOrigin: '0 50%', opacity: 0, animation: `v4-slaa-opp 760ms ${EASE} ${Math.max(0, d - 480)}ms both` }} />}
+              <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: DIM, opacity: funnet ? 1 : 0, transform: funnet ? 'none' : 'translateY(4px)', transition: ov ? 'none' : funnet ? `opacity 380ms ${EASE} ${d - 120}ms, transform 500ms ${UT} ${d - 120}ms` : `opacity 200ms ${EASE}` }}>{f.l}</p>
+              <p className="mt-1.5 whitespace-nowrap text-[17px] font-medium leading-[1.2] tracking-[-0.01em]" style={{ color: T.ink, opacity: funnet ? 1 : 0, transform: funnet ? 'none' : ut ? 'translateY(-6px)' : 'translateY(8px)', transition: ov ? 'none' : funnet ? `opacity 420ms ${EASE} ${d}ms, transform 620ms ${UT} ${d}ms` : `opacity 220ms ${EASE} ${i * 30}ms, transform 300ms ${EASE} ${i * 30}ms` }}>{f.v}</p>
+              <p className="mt-1.5 inline-flex items-center gap-1.5 whitespace-nowrap text-[11.5px]" style={{ color: DIM, opacity: funnet ? 1 : 0, transform: funnet ? 'none' : 'translateY(4px)', transition: ov ? 'none' : funnet ? `opacity 380ms ${EASE} ${d + 320}ms, transform 500ms ${UT} ${d + 320}ms` : `opacity 200ms ${EASE}` }}>
+                <span aria-hidden="true" className="inline-block h-[5px] w-[5px] rounded-full" style={{ background: T.gronn, transform: funnet ? 'scale(1)' : 'scale(0.4)', transition: ov ? 'none' : funnet ? `transform 420ms ${LANDING} ${d + 400}ms` : 'none' }} />
+                {f.k}
+              </p>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -576,8 +639,8 @@ function Aapning({ fase, L, ov, startet }) {
     <>
       <AdresseScene fase={fase} L={L} ov={ov} inne={inne} />
       <Arkhode fase={fase} r={L.apn.hode} ov={ov} />
-      <Boligfakta fase={fase} L={L} ov={ov} />
-      <FasadeLapp fase={fase} r={L.apn.funnet} ov={ov} />
+      <FasadePanel fase={fase} L={L} ov={ov} />
+      <Spekk fase={fase} L={L} ov={ov} />
       <Adresse fase={fase} L={L} ov={ov} />
     </>
   );
@@ -1070,20 +1133,22 @@ function layout(W) {
      scenen mens det skrives, og glir opp til toppen av «boligarket» når boligen er funnet: fasaden (3:2) til venstre,
      faktaene til høyre, kantene på linje med feltet. Kontekstlinjen (adressen) øverst til høyre fra trykket. */
   const hode = { y: 24 };
-  /* Arket bruker hele scenen: fasaden (3:2) tar 56 %, faktaene resten. Ingenting sentrert i en smalere kolonne. */
+  /* Arket er ETT objekt i hele scenens bredde, som et oppslag: hodet (adresse · koordinater), et bredt kinematisk
+     fasadepanel (2.5:1), og en spesifikasjonsrad med fire kolonner under. Vertikalt sentrert i scenen. */
   const SW = VW; const sx = vx;
-  const bildeW = Math.round(SW * 0.56); const bildeH = Math.min(Math.round(bildeW / 1.5), VH - HODE_H - 22);
-  const sy = vy + Math.round((VH - (HODE_H + 22 + bildeH)) / 2);
+  const SPEKK_H = 84; const GAP1 = 20; const GAP2 = 22;
+  const bildeH = Math.min(Math.round(SW / 2.5), VH - HODE_H - GAP1 - GAP2 - SPEKK_H);
+  const sy = vy + Math.round((VH - (HODE_H + GAP1 + bildeH + GAP2 + SPEKK_H)) / 2);
   const arkHode = { x: sx, y: sy, w: SW, h: HODE_H };
-  const funnet = { x: sx, y: sy + HODE_H + 22, w: bildeW, h: bildeH };
-  const fakta = { x: sx + bildeW + 36, y: funnet.y, w: SW - bildeW - 36 };
+  const funnet = { x: sx, y: sy + HODE_H + GAP1, w: SW, h: bildeH };
+  const fakta = { x: sx, y: funnet.y + bildeH + GAP2, w: SW, h: SPEKK_H };
   /* Storskriften: adressen skrives stort midt i HELE rammen (tekstspalten er ikke kommet), venstrejustert ved fast x
      så teksten vokser til høyre. Størrelsen følger rammen (84 px ved 1400). */
   /* Adressefeltet: sentrert, litt over midten så forslagskortet får plass under. Bredde 600 (mindre i smale rammer). */
   const feltW = Math.round(Math.min(600, W - 80));
   const skrift = { x: Math.round((W - feltW) / 2), y: Math.round(H / 2 - 32 - Math.min(90, H * 0.08)), w: feltW };
   const storFs = 20;
-  const apn = { hode: arkHode, stor: skrift, storFs, funnet, fakta, radH: Math.min(64, Math.max(52, Math.round(bildeH / 4))) };
+  const apn = { hode: arkHode, stor: skrift, storFs, funnet, fakta, radH: 58 };
   /* Opplastingsfeltet rundt bunken i scenen — litt mer luft nederst til linjen om bildene fra mobilen */
   const felt = { x: stabel.x - 30, y: stabel.y - 30, w: stabel.w + 60, h: stabel.h + 30 + 64 };
   return { hel, tekst, omr, mosaikk, stabel, stor, banner, finnBilde, finnTekst, finnBeskrivelse, topp, hode, apn, felt, smal: VW < 660 };
@@ -1126,16 +1191,13 @@ function bunkeTransform({ id, fase, L, ov, base = L.stor }) {
   if (id === 'fasade' && fase < F.BILDER) {
     /* Fasaden er funnet fra adressen: står stor til venstre i arket (FUNNET → TRYKK_START), glir så rolig til sin plass
        i mosaikken (FELT →) og venter der på de fire fra mobilen. Samme piksler hele veien. */
-    const kk = til(L.apn.funnet);
-    if (fase < F.FUNNET) {
-      transform = tr({ ...kk, sc: kk.sc * 0.96 }); radius = `${12 / kk.sc}px`; op = 0; zi = 3; skygge = SKYGGE_FLAT; overgang = 'none';
-    } else if (fase <= F.TRYKK_START) {
-      const d = fase === F.FUNNET ? 380 : 0;
-      transform = tr(kk); radius = `${12 / kk.sc}px`; op = 1; zi = 3; skygge = SKYGGE_FLAT;
-      overgang = ov ? 'none' : `opacity 700ms ${EASE} ${d}ms, transform 900ms ${UT} ${d}ms`;
+    /* Mens panelet står (FUNNET → TRYKK_START) er flisen usynlig, litt større, på sin plass. Ved FELT toner panelet ut
+       og flisen lander på plassen sin (skala 1.06 → 1) — fasaden «setter seg» i mosaikken. */
+    if (fase <= F.TRYKK_START) {
+      transform = tr({ ...slot, sc: slot.sc * 1.06 }); radius = `${10 / slot.sc}px`; op = 0; zi = LAG.fasade; skygge = SKYGGE_FLAT; overgang = 'none';
     } else {
       transform = tr(slot); radius = `${10 / slot.sc}px`; op = 1; zi = LAG.fasade; skygge = SKYGGE_FLAT;
-      overgang = ov ? 'none' : `transform 1100ms ${MORF} 120ms, border-radius 1100ms ${MORF} 120ms`;
+      overgang = ov ? 'none' : `opacity 520ms ${EASE} 260ms, transform 900ms ${LANDING} 260ms`;
     }
   } else if (fase < F.DRA) {
     /* Venter utenfor scenens høyrekant, i høyde med sin plass — usynlig */

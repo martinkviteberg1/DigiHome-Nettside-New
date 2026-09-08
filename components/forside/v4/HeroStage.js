@@ -519,17 +519,75 @@ const KORT_FAKTA = [
   { k: 'Areal', v: '54 m² · 2 rom' },
   { k: 'Etasje', v: '2. etasje' },
 ];
+const LANDING = 'cubic-bezier(0.22, 1.2, 0.36, 1)';   // lander med en liten overskyting
+
+/* Verdi som byttes: det gamle glir opp og ut, det nye kommer nedenfra — og et sveip går over raden én gang. */
+function Bytt({ bytt, foer, naa, sveip = true }) {
+  return (
+    <span className="relative grid">
+      <span className="col-start-1 row-start-1 inline-flex items-center gap-2 whitespace-nowrap" style={{ animation: bytt ? `v4-verdi-ut 420ms ${EASE} both` : 'none' }} aria-hidden={bytt}>{foer}</span>
+      <span className="col-start-1 row-start-1 inline-flex items-center gap-2 whitespace-nowrap" style={{ opacity: bytt ? undefined : 0, animation: bytt ? `v4-verdi-inn 620ms ${LANDING} 260ms both` : 'none' }} aria-hidden={!bytt}>{naa}</span>
+      {bytt && sveip && <span aria-hidden="true" className="pointer-events-none absolute -inset-x-3 -inset-y-2 w-2/5" style={{ background: 'linear-gradient(90deg, rgba(201,160,255,0) 0%, rgba(201,160,255,0.35) 50%, rgba(201,160,255,0) 100%)', animation: `v4-sveip 1200ms ${EASE} 120ms both` }} />}
+    </span>
+  );
+}
+
+/* Veggen: boligkortet — det systemet vet om boligen hans, som et editorialt oppslag rett på veggen. Ingen ramme, ingen
+   mockup: kartbånd tone-i-tone (samme Bergen-kart som Annonse-scenen) med én lilla nål, adressen i display, og fakta som
+   et spesifikasjonsark. Ligger i perspektiv PÅ veggen (multiply), i lyset fra vinduet.
+
+   Koreografi når rommet står (≈2,4 s): kartet avdukes fra nålen og ut → nålen lander og ringen slår ut én gang → adressen
+   toner inn ord for ord → hårlinjene tegnes fra venstre, rad for rad, og etikett + verdi trykkes på like etter. Så står
+   alt stille — bortsett fra to øyeblikk i takt med samtalen: «Ledig fra 1. november» glir ut og Emma inn idet hun har
+   signert; den grønne prikken popper og «betalt» kommer idet husleien er inne. Et sveip går over raden begge ganger. */
 function Veggkort({ hjemme, smal, k, adresse }) {
   const i = k === null || k === undefined ? -1 : Math.min(k, STROM.length - 1);
-  const signert = i >= 1; const betalt = i >= 2;
-  const blekk = 'rgba(21,19,15,0.9)'; const dim = 'rgba(21,19,15,0.55)'; const hair = 'rgba(21,19,15,0.12)';
-  const T0 = 650;
-  const inn = (j) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(10px)', transition: `opacity 900ms ${EASE} ${hjemme ? T0 + j * 110 : 0}ms, transform 1000ms ${EASE} ${hjemme ? T0 + j * 110 : 0}ms` });
+  /* Endringene lander idet boblen det gjelder kommer i samtalen (ikke ved slagets start) */
+  const [signert, setSignert] = useState(false);
+  const [betalt, setBetalt] = useState(false);
+  useEffect(() => {
+    if (i < 1) { setSignert(false); return undefined; }
+    if (i > 1) { setSignert(true); return undefined; }
+    const t = window.setTimeout(() => setSignert(true), 1000);
+    return () => window.clearTimeout(t);
+  }, [i]);
+  useEffect(() => {
+    if (i < 2) { setBetalt(false); return undefined; }
+    if (i > 2) { setBetalt(true); return undefined; }
+    const t = window.setTimeout(() => setBetalt(true), 2000);
+    return () => window.clearTimeout(t);
+  }, [i]);
+
+  const blekk = 'rgba(21,19,15,0.9)'; const dim = 'rgba(21,19,15,0.55)'; const hair = 'rgba(21,19,15,0.13)';
+  const T0 = 600;
+  const an = (navn, ms, d, ease = EASE) => (hjemme ? { animation: `${navn} ${ms}ms ${ease} ${T0 + d}ms both` } : { opacity: 0 });
   const bandH = smal ? 84 : 132;
+  const ord = String(adresse).split(' ');
+  const RAD0 = 1250; const TAKT = 150;
   const rader = [
-    ...KORT_FAKTA,
-    { k: 'Leie', v: `${tall(14500)} kr/mnd`, status: betalt ? 'betalt' : null },
-    { k: 'Leietaker', v: signert ? 'Emma Sørensen · fra 1. nov' : 'Ledig fra 1. november', emma: signert },
+    ...KORT_FAKTA.map((r) => ({ ...r, innhold: <span>{r.v}</span> })),
+    { k: 'Leie', innhold: (
+      <span className="inline-flex items-center gap-2 whitespace-nowrap">
+        {tall(14500)} kr/mnd
+        <span className="inline-flex items-center gap-1.5 text-[11.5px] font-normal" style={{ color: '#1F7A4D', opacity: betalt ? 1 : 0, transition: `opacity 400ms ${EASE} 200ms` }} aria-hidden={!betalt}>
+          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55', animation: betalt ? `v4-dot-pop 600ms ${LANDING} both` : 'none' }} />betalt
+        </span>
+        {betalt && <span aria-hidden="true" className="pointer-events-none absolute -inset-x-3 -inset-y-2 w-2/5" style={{ background: 'linear-gradient(90deg, rgba(201,160,255,0) 0%, rgba(201,160,255,0.35) 50%, rgba(201,160,255,0) 100%)', animation: `v4-sveip 1200ms ${EASE} both` }} />}
+      </span>
+    ) },
+    { k: 'Leietaker', innhold: (
+      <Bytt
+        bytt={signert}
+        foer={<span style={{ color: dim }}>Ledig fra 1. november</span>}
+        naa={(
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/v4/annonse/leietaker-emma.webp" alt="" width={18} height={18} className="rounded-full object-cover" style={{ width: 18, height: 18, boxShadow: '0 0 0 1px rgba(243,241,236,0.9)', animation: signert ? `v4-dot-pop 700ms ${LANDING} 260ms both` : 'none' }} />
+            Emma Sørensen · fra 1. nov
+          </>
+        )}
+      />
+    ) },
   ];
   return (
     <div
@@ -538,47 +596,48 @@ function Veggkort({ hjemme, smal, k, adresse }) {
         ...(smal
           ? { background: 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 28%, rgba(243,241,236,0.98) 100%)' }
           /* Perspektiv: kameraet står til høyre og ser skrått mot venstre — veggen kommer MOT oss på høyre side (gulvlisten
-             faller mot høyre, ca. 8°). Kortet dreies rundt sin venstre kant med høyre side nærmest, så bunnlinjene faller
-             parallelt med listen og toppen stiger. Én transform, ingen filtre. */
+             faller mot høyre). Kortet dreies rundt sin venstre kant med høyre side nærmest. Multiply: blekket ligger på
+             veggen, lyset i filmen går gjennom. */
           : { left: 'max(60%, calc(38% + 208px))', right: '8%', top: '12%', transform: 'perspective(1000px) rotateY(-14deg)', transformOrigin: '0% 50%', transformStyle: 'preserve-3d', backfaceVisibility: 'hidden', mixBlendMode: 'multiply' }),
         color: blekk,
         opacity: hjemme ? 1 : 0,
-        transition: `opacity 600ms ${EASE} ${hjemme ? T0 - 200 : 0}ms`,
+        transition: `opacity 400ms ${EASE} ${hjemme ? T0 - 300 : 0}ms`,
       }}
       aria-hidden={!hjemme}
       data-testid="v4-vegg"
       data-slag={i}
+      data-signert={signert ? '1' : '0'}
+      data-betalt={betalt ? '1' : '0'}
     >
-      {/* Kartbåndet: adressen ligger i sentrum av kartet (viewBox 1600×1000 → 800,500). Kantene toner ut. */}
-      <div className="relative overflow-hidden" style={{ height: bandH, ...inn(0), WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 22%, #000 100%)', WebkitMaskComposite: 'source-in', maskImage: 'linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 22%, #000 100%)', maskComposite: 'intersect' }} data-testid="v4-vegg-kart">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/v4/annonse/bergen-kart-m.svg" alt="" width={1600} height={1000} draggable={false} className="absolute select-none" style={{ left: '50%', top: '50%', width: 1600, height: 1000, maxWidth: 'none', transform: `translate(-50%, -50%) scale(${smal ? 0.7 : 0.82})`, opacity: 0.9 }} />
+      {/* Kartbåndet: adressen ligger i sentrum av kartet (viewBox 1600×1000 → 800,500). Avdukes fra nålen og ut. */}
+      <div className="relative overflow-hidden" style={{ height: bandH, WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 22%, #000 100%)', WebkitMaskComposite: 'source-in', maskImage: 'linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 22%, #000 100%)', maskComposite: 'intersect' }} data-testid="v4-vegg-kart">
+        <div className="absolute inset-0" style={an('v4-kart-avduk', 1400, 0)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/v4/annonse/bergen-kart-m.svg" alt="" width={1600} height={1000} draggable={false} className="absolute select-none" style={{ left: '50%', top: '50%', width: 1600, height: 1000, maxWidth: 'none', transform: `translate(-50%, -50%) scale(${smal ? 0.7 : 0.82})`, opacity: 0.9 }} />
+        </div>
         <span className="absolute" style={{ left: '50%', top: '50%' }} aria-hidden="true">
-          <span className="absolute rounded-full" style={{ left: -16, top: -16, width: 32, height: 32, boxShadow: `inset 0 0 0 1px ${T.lilla}`, opacity: 0.55 }} />
-          <span className="absolute rounded-full" style={{ left: -5, top: -5, width: 10, height: 10, background: T.lilla, boxShadow: '0 0 0 2.5px rgba(243,241,236,0.95), 0 6px 14px -6px rgba(21,19,15,0.5)' }} />
+          <span className="absolute rounded-full" style={{ left: -16, top: -16, width: 32, height: 32, boxShadow: `inset 0 0 0 1px ${T.lilla}`, ...an('v4-ring-en', 1000, 1000) }} />
+          <span className="absolute rounded-full" style={{ left: -16, top: -16, width: 32, height: 32, boxShadow: `inset 0 0 0 1px ${T.lilla}`, opacity: 0, animation: hjemme ? `v4-ring-pust 6400ms ease-in-out ${T0 + 2600}ms infinite` : 'none' }} />
+          <span className="absolute rounded-full" style={{ left: -5, top: -5, width: 10, height: 10, background: T.lilla, boxShadow: '0 0 0 2.5px rgba(243,241,236,0.95), 0 6px 14px -6px rgba(21,19,15,0.5)', ...an('v4-naal-land', 760, 700, LANDING) }} />
         </span>
       </div>
 
-      {/* Adressen */}
-      <div className={smal ? 'mt-1' : 'mt-3'} style={inn(1)}>
-        <p style={{ ...display, fontSize: smal ? 30 : 'clamp(36px, 3.4vw, 64px)', lineHeight: 1, letterSpacing: '-0.04em', color: blekk }} data-testid="v4-vegg-adresse">{adresse}</p>
-        <p className={`${smal ? 'mt-1.5 text-[12px]' : 'mt-2 text-[13.5px]'}`} style={{ color: dim }}>5015 Bergen · Leilighet 2</p>
+      {/* Adressen — ord for ord */}
+      <div className={smal ? 'mt-1' : 'mt-3'}>
+        <p style={{ ...display, fontSize: smal ? 30 : 'clamp(36px, 3.4vw, 64px)', lineHeight: 1, letterSpacing: '-0.04em', color: blekk }} data-testid="v4-vegg-adresse">
+          {ord.map((o, j) => <span key={`${o}-${j}`} className="inline-block" style={{ marginRight: j < ord.length - 1 ? '0.22em' : 0, ...an('v4-ord-fade', 1200, 520 + j * 110) }}>{o}</span>)}
+        </p>
+        <p className={`${smal ? 'mt-1.5 text-[12px]' : 'mt-2 text-[13.5px]'}`} style={{ color: dim, ...an('v4-verdi-inn', 700, 1050) }}>5015 Bergen · Leilighet 2</p>
       </div>
 
-      {/* Fakta — et spesifikasjonsark, ikke en tabell: etiketten i en smal venstre kolonne (versaler, sperret, dempet),
-          verdien venstrestilt ved siden av, hårlinje under hver rad. Én ren venstrekant å lese nedover. */}
-      <div className={smal ? 'mt-3' : 'mt-5'} style={{ borderTop: `1px solid ${hair}` }}>
+      {/* Spesifikasjonsarket: hårlinjen tegnes, så etikett og verdi */}
+      <div className={smal ? 'mt-3' : 'mt-5'}>
+        <div aria-hidden="true" className="h-px" style={{ background: hair, transformOrigin: '0 50%', ...an('v4-linje-tegn', 900, 1150) }} />
         {rader.map((r, j) => (
-          <div key={r.k} className={`grid items-center gap-4 ${smal ? 'h-[30px] grid-cols-[72px_1fr] text-[12.5px]' : 'h-[42px] grid-cols-[104px_1fr] text-[16px]'}`} style={{ borderBottom: `1px solid ${hair}`, ...inn(2 + j) }} data-testid={`v4-vegg-rad-${j}`}>
-            <span className={`uppercase ${smal ? 'text-[9.5px] tracking-[0.12em]' : 'text-[10.5px] tracking-[0.14em]'}`} style={{ color: dim }}>{r.k}</span>
-            <span key={r.v} className="inline-flex items-center gap-2 whitespace-nowrap font-medium tabular-nums animate-in fade-in-0 duration-700" style={{ color: blekk }}>
-              {r.emma && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src="/v4/annonse/leietaker-emma.webp" alt="" width={18} height={18} className="rounded-full object-cover" style={{ width: 18, height: 18, boxShadow: '0 0 0 1px rgba(243,241,236,0.9)' }} />
-              )}
-              {r.v}
-              {r.status && <span className="inline-flex items-center gap-1.5 text-[11.5px] font-normal" style={{ color: '#1F7A4D' }}><span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55' }} />betalt</span>}
-            </span>
+          <div key={r.k} className={`relative grid items-center gap-4 ${smal ? 'h-[30px] grid-cols-[72px_1fr] text-[12.5px]' : 'h-[42px] grid-cols-[104px_1fr] text-[16px]'}`} data-testid={`v4-vegg-rad-${j}`}>
+            <span className={`uppercase ${smal ? 'text-[9.5px] tracking-[0.12em]' : 'text-[10.5px] tracking-[0.14em]'}`} style={{ color: dim, ...an('v4-verdi-inn', 520, RAD0 + 100 + j * TAKT) }}>{r.k}</span>
+            <span className="relative inline-flex min-w-0 items-center font-medium" style={{ color: blekk, ...an('v4-verdi-inn', 620, RAD0 + 200 + j * TAKT) }}>{r.innhold}</span>
+            <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-px" style={{ background: hair, transformOrigin: '0 50%', ...an('v4-linje-tegn', 800, RAD0 + j * TAKT) }} />
           </div>
         ))}
       </div>
