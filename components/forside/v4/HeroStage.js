@@ -540,7 +540,7 @@ function Veggkort({ hjemme, smal, k, adresse }) {
           /* Perspektiv: kameraet står til høyre og ser skrått mot venstre — veggen kommer MOT oss på høyre side (gulvlisten
              faller mot høyre, ca. 8°). Kortet dreies rundt sin venstre kant med høyre side nærmest, så bunnlinjene faller
              parallelt med listen og toppen stiger. Én transform, ingen filtre. */
-          : { left: 'max(60%, calc(38% + 208px))', right: '8%', top: '12%', transform: 'perspective(1000px) rotateY(-14deg)', transformOrigin: '0% 50%', transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }),
+          : { left: 'max(60%, calc(38% + 208px))', right: '8%', top: '12%', transform: 'perspective(1000px) rotateY(-14deg)', transformOrigin: '0% 50%', transformStyle: 'preserve-3d', backfaceVisibility: 'hidden', mixBlendMode: 'multiply' }),
         color: blekk,
         opacity: hjemme ? 1 : 0,
         transition: `opacity 600ms ${EASE} ${hjemme ? T0 - 200 : 0}ms`,
@@ -565,11 +565,12 @@ function Veggkort({ hjemme, smal, k, adresse }) {
         <p className={`${smal ? 'mt-1.5 text-[12px]' : 'mt-2 text-[13.5px]'}`} style={{ color: dim }}>5015 Bergen · Leilighet 2</p>
       </div>
 
-      {/* Fakta — hårlinjerader: etikett til venstre, verdi til høyre */}
+      {/* Fakta — et spesifikasjonsark, ikke en tabell: etiketten i en smal venstre kolonne (versaler, sperret, dempet),
+          verdien venstrestilt ved siden av, hårlinje under hver rad. Én ren venstrekant å lese nedover. */}
       <div className={smal ? 'mt-3' : 'mt-5'} style={{ borderTop: `1px solid ${hair}` }}>
         {rader.map((r, j) => (
-          <div key={r.k} className={`flex items-center justify-between gap-4 ${smal ? 'h-[30px] text-[12.5px]' : 'h-[40px] text-[15.5px]'}`} style={{ borderBottom: `1px solid ${hair}`, ...inn(2 + j) }} data-testid={`v4-vegg-rad-${j}`}>
-            <span style={{ color: dim }}>{r.k}</span>
+          <div key={r.k} className={`grid items-center gap-4 ${smal ? 'h-[30px] grid-cols-[72px_1fr] text-[12.5px]' : 'h-[42px] grid-cols-[104px_1fr] text-[16px]'}`} style={{ borderBottom: `1px solid ${hair}`, ...inn(2 + j) }} data-testid={`v4-vegg-rad-${j}`}>
+            <span className={`uppercase ${smal ? 'text-[9.5px] tracking-[0.12em]' : 'text-[10.5px] tracking-[0.14em]'}`} style={{ color: dim }}>{r.k}</span>
             <span key={r.v} className="inline-flex items-center gap-2 whitespace-nowrap font-medium tabular-nums animate-in fade-in-0 duration-700" style={{ color: blekk }}>
               {r.emma && (
                 /* eslint-disable-next-line @next/next/no-img-element */
