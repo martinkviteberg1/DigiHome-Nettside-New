@@ -58,14 +58,13 @@ const HJEM_FOKUS_SMAL_X = 0.30;   // = .dh-hero-hjem i globals.css (object-posit
 const HJEM_ZOOM_SMAL = 1.26;
 /* Samtalen — fem slag. To av dem er små samtaler: eieren spør systemet, og Emma melder fra og får svar
    (`fra`: 'deg' = eieren, 'dh' = DigiHome svarer, 'emma' = leietakeren). `ms` = hvor lenge slaget står før neste;
-   `kl` = klokken i den stille linjen under samtalen. Siste slag er kveldsoppsummeringen — den bærer poenget
-   («Én beslutning var din») og blir stående. {adresse} byttes ut med scenens adresse. */
+   `kl` = klokken i veggens stille linje. Siste slag er kveldsmeldingen — den blir stående. {adresse} byttes ut. */
 const STROM = [
   { id: 'visning', kl: '20:41', ms: 4800, chat: [{ fra: 'deg', bilder: ['/v4/annonse/kjokken-600.webp', '/v4/annonse/soverom-600.webp', '/v4/annonse/kjokken-bar-600.webp'], t: '5 bilder', kvittering: 'Levert 08:52' }, { fra: 'dh', t: 'Annonsen er ute på FINN. Visning lørdag 12:00 — 4 påmeldt.', ikon: 'prikk' }] },
   { id: 'kontrakt', kl: '20:42', ms: 5400, chat: [{ fra: 'dh', t: 'Emma signerte leiekontrakten med BankID.', ikon: 'hake' }, { fra: 'dh', t: 'Depositumet står på konto. Nøkler lørdag 12:00.' }, { fra: 'deg', t: '👍', kvittering: 'Lest' }] },
   { id: 'regnskap', kl: '20:43', ms: 4600, chat: [{ fra: 'deg', t: 'Har Emma betalt?', kvittering: 'Lest 08:12' }, { fra: 'dh', t: 'Ja — 14 500 kr kom 08:12. Bokført.' }] },
   { id: 'emma', kl: '20:44', ms: 6600, bilde: '/v4/annonse/leietaker-emma.webp', chat: [{ fra: 'emma', t: 'Hei! Varmtvannet er borte 😕' }, { fra: 'dh', t: 'Rørlegger i dag 14:00 · 2 400 kr. Godkjenner du?' }, { fra: 'deg', t: 'Ja, kjør på', kvittering: 'Lest 10:04' }, { fra: 'emma', t: 'Varmt vann igjen — tusen takk!' }] },
-  { id: 'kveld', kl: '20:45', ms: 0, slutt: true, chat: [{ fra: 'dh', t: 'Alt i orden på {adresse}. Én beslutning var din i dag — rørleggerens pris. God kveld.', ikon: 'hake' }] },
+  { id: 'kveld', kl: '20:45', ms: 0, slutt: true, chat: [{ fra: 'dh', t: 'Alt i orden på {adresse}. Ingenting venter på deg — god kveld.', ikon: 'hake' }] },
 ];
 const STROM_START = 1500; const STROM_TAKT = 3000; const STROM_ETTER = 700;
 const BOBLE_TAKT = 1050;   // ms mellom boblene i ett slag
@@ -114,38 +113,27 @@ function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5
   /* Smal: rammen er skalert HJEM_ZOOM_SMAL om (30 %, 100 %) — punktet følger med */
   if (smal) { px = HJEM_FOKUS_SMAL_X + (px - HJEM_FOKUS_SMAL_X) * HJEM_ZOOM_SMAL; py = 1 - (1 - py) * HJEM_ZOOM_SMAL; }
   const X = px * maal.w; const Y = py * maal.h;
-  /* Desktop: samtalen står ute på den lyse veggen til høyre for ham — der det er plass, i øyehøyde. Kolonnen er
-     ~400 px, sentrert på ~78 % av scenen og aldri lenger til venstre enn 58 %. Bunnen (der boblene vokser opp fra)
-     ligger på 60 % av høyden — i flukt med telefonen, så linjen går svakt oppover mot veggen; nyeste boble nederst. Smal skjerm: som før, oppe til høyre for ham. */
+  /* Flatens bredde følger scenen: på mellomstore skjermer (nettbrett, 640–1000 px scene) smalner den (196–252 px) så
+     den aldri går inn i veggteksten, som starter ved max(61 %, 38 % + 208 px) — se Veggfortelling. */
   const trang = !smal && maal.w < 1010;
-  const B = smal ? 212 : Math.round(Math.min(400, maal.w * 0.30));
-  const fx = smal ? Math.min(X + 16, Math.max(0, maal.w - B - 12)) : Math.max(Math.round(maal.w * 0.58), Math.round(maal.w * 0.78 - B / 2));
-  const fy = smal ? Y - 26 : Math.round(maal.h * 0.60);
+  const B = smal ? 212 : Math.max(196, Math.min(252, Math.round(maal.w * 0.246 - 12)));
+  /* Flaten står opp og til høyre for skjermen — over skulderen, aldri over ansiktet. Bunnen bindes til skjermen.
+     På smal skjerm klemmes den inn så den aldri går ut av scenens høyrekant. */
+  const fx = Math.min(X + (smal || trang ? 16 : Math.round(maal.w * 0.034)), smal ? Math.max(0, maal.w - B - 12) : Infinity);
+  const fy = Y - (smal || trang ? 26 : Math.round(maal.h * 0.042));
   const inne = n >= 0;
-  const beat = inne ? STROM[Math.min(n, STROM.length - 1)] : null;
-  /* Størrelser: på veggen er det plass til å lese — 15 px tekst, 72 px bilder. Nettbrett litt mindre. Smal som før. */
-  const fs = smal ? 13 : trang ? 13.5 : 15;
-  const bildePx = smal ? 52 : trang ? 58 : 72;
-  const avatarPx = smal ? 22 : 26;
-  const blekk = 'rgba(21,19,15,0.92)';
+  const fs = 12.5;
+  const bildePx = 52;
+  const avatarPx = 22;
 
   return (
     <div ref={ref} aria-hidden="true" className="pointer-events-none absolute inset-0 z-[3] overflow-hidden" data-testid="v4-telefonstrom" data-n={n}>
       {maal.w > 0 && hjemme && !redusert && (
         <>
-          {/* Hårlinjen fra skjermen ut til samtalens nedre venstre hjørne — det som står på veggen, kommer fra telefonen.
-              Én piksel, lys ved telefonen (mørk skjerm) og blekk ute på veggen (lys flate). Ingen pilspiss. */}
-          <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${maal.w} ${maal.h}`} preserveAspectRatio="none" style={{ opacity: inne ? 1 : 0, transition: `opacity 700ms ${EASE} 400ms` }}>
-            <defs>
-              <linearGradient id="v4-strek" gradientUnits="userSpaceOnUse" x1={X + 4} y1={Y - 2} x2={fx - 2} y2={fy + 1}>
-                <stop offset="0" stopColor="rgba(251,250,248,0.75)" />
-                <stop offset="0.45" stopColor="rgba(120,112,100,0.45)" />
-                <stop offset="1" stopColor="rgba(21,19,15,0.32)" />
-              </linearGradient>
-            </defs>
-            <line x1={X + 4} y1={Y - 2} x2={fx - 2} y2={fy + 1} stroke="url(#v4-strek)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          {/* Hårlinjen fra skjermen opp til samtalens nedre venstre hjørne — boblene hører til telefonen */}
+          <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${maal.w} ${maal.h}`} preserveAspectRatio="none" style={{ opacity: inne ? 1 : 0, transition: `opacity 600ms ${EASE} 500ms` }}>
+            <line x1={X + 4} y1={Y - 2} x2={fx + 14} y2={fy + 1} stroke="rgba(251,250,248,0.55)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
             <circle cx={X + 4} cy={Y - 2} r="2" fill="rgba(251,250,248,0.95)" />
-            <circle cx={fx - 2} cy={fy + 1} r="1.5" fill="rgba(21,19,15,0.35)" />
           </svg>
           {/* Samtalen: frittstående bobler (ingen boks, ingen skjerm) som kommer én og én — Emma til venstre med bilde,
               eieren til høyre i lilla, DigiHome svarer i blekk. Skriveindikator (···) før hvert svar. Forrige slags
@@ -156,7 +144,7 @@ function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5
               const ny = k === n;
               const bobler = m.chat || [{ fra: 'dh', t: m.t, u: m.u, ikon: m.ikon }];
               return (
-                <div key={k} className="flex w-full flex-col gap-2" style={{ transformOrigin: '0% 100%', animation: ny ? 'none' : `v4-boble-ut 560ms cubic-bezier(0.4, 0, 0.6, 1) both`, position: ny ? 'relative' : 'absolute', bottom: ny ? undefined : 0, left: 0, willChange: 'transform, opacity' }} data-testid={`v4-strom-${m.id}`} aria-hidden={!ny}>
+                <div key={k} className="flex w-full flex-col gap-1.5" style={{ transformOrigin: '0% 100%', animation: ny ? 'none' : `v4-boble-ut 560ms cubic-bezier(0.4, 0, 0.6, 1) both`, position: ny ? 'relative' : 'absolute', bottom: ny ? undefined : 0, left: 0, willChange: 'transform, opacity' }} data-testid={`v4-strom-${m.id}`} aria-hidden={!ny}>
                   {bobler.map((c, j) => {
                     const hoyre = c.fra !== 'emma';
                     const dh = c.fra === 'dh';
@@ -164,7 +152,7 @@ function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5
                     const svar = dh || (c.fra === 'emma' && j > 0);          // svar får skriveindikator først
                     const tekst = String(c.t || '').replace('{adresse}', adresse);
                     return (
-                      <div key={j} className={`flex w-full items-end gap-2 ${hoyre ? 'justify-end' : 'justify-start'}`}>
+                      <div key={j} className={`flex w-full items-end gap-1.5 ${hoyre ? 'justify-end' : 'justify-start'}`}>
                         {c.fra === 'emma' && (
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img src={m.bilde || '/v4/annonse/leietaker-emma.webp'} alt="" width={avatarPx} height={avatarPx} className="shrink-0 rounded-full object-cover" style={{ width: avatarPx, height: avatarPx, boxShadow: '0 0 0 1.5px rgba(251,250,248,0.9)', opacity: 0, animation: `v4-chat-inn 420ms ${EASE} ${t0}ms both` }} />
@@ -172,27 +160,27 @@ function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5
                         <span className="relative max-w-[86%]">
                           {/* Skriveindikatoren: kommer 780 ms før svaret, går idet svaret kommer */}
                           {ny && svar && (
-                            <span className={`absolute bottom-0 inline-flex items-center gap-[3px] px-3 ${hoyre ? 'right-0' : 'left-0'}`} style={{ height: smal ? 30 : 34, borderRadius: hoyre ? '18px 18px 5px 18px' : '18px 18px 18px 5px', background: dh ? T.ink : 'rgba(251,250,248,0.96)', opacity: 0, animation: `v4-skriver 760ms linear ${Math.max(0, t0 - 780)}ms both` }}>
+                            <span className={`absolute bottom-0 inline-flex items-center gap-[3px] px-3 ${hoyre ? 'right-0' : 'left-0'}`} style={{ height: 30, borderRadius: hoyre ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: dh ? T.ink : 'rgba(251,250,248,0.96)', opacity: 0, animation: `v4-skriver 760ms linear ${Math.max(0, t0 - 780)}ms both` }}>
                               {[0, 1, 2].map((d) => <span key={d} className="block h-[5px] w-[5px] rounded-full" style={{ background: dh ? 'rgba(244,241,234,0.7)' : 'rgba(21,19,15,0.4)', animation: `v4-prikk 900ms ease-in-out ${d * 150}ms infinite` }} />)}
                             </span>
                           )}
                           {c.bilder ? (
                             /* Bildene eieren sendte: tre, kommer én og én */
-                            <span className="flex gap-1.5 p-1.5" style={{ borderRadius: '18px 18px 5px 18px', background: T.lilla, boxShadow: '0 16px 40px -20px rgba(0,0,0,0.45)', opacity: 0, animation: `v4-chat-inn 480ms ${EASE} ${t0}ms both` }}>
+                            <span className="flex gap-1 p-1" style={{ borderRadius: '16px 16px 4px 16px', background: T.lilla, boxShadow: '0 16px 40px -20px rgba(0,0,0,0.45)', opacity: 0, animation: `v4-chat-inn 480ms ${EASE} ${t0}ms both` }}>
                               {c.bilder.map((b, q) => (
                                 /* eslint-disable-next-line @next/next/no-img-element */
-                                <img key={b} src={b} alt="" width={bildePx} height={bildePx} className="rounded-[13px] object-cover" style={{ width: bildePx, height: bildePx, opacity: 0, animation: `v4-chat-inn 420ms ${EASE} ${t0 + 180 + q * 160}ms both` }} />
+                                <img key={b} src={b} alt="" width={bildePx} height={bildePx} className="rounded-[12px] object-cover" style={{ width: bildePx, height: bildePx, opacity: 0, animation: `v4-chat-inn 420ms ${EASE} ${t0 + 180 + q * 160}ms both` }} />
                               ))}
                             </span>
                           ) : (
-                          <span className="block" style={{ padding: smal ? '7px 12px' : '9px 14px', fontSize: fs, lineHeight: 1.38, borderRadius: hoyre ? '18px 18px 5px 18px' : '18px 18px 18px 5px', background: dh ? T.ink : c.fra === 'deg' ? T.lilla : 'rgba(251,250,248,0.96)', color: dh ? '#F4F1EA' : T.ink, boxShadow: dh ? '0 16px 40px -20px rgba(0,0,0,0.55)' : '0 16px 40px -20px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.6)', transformOrigin: hoyre ? '100% 100%' : '0% 100%', opacity: 0, animation: `v4-chat-inn 480ms ${EASE} ${t0}ms both`, willChange: 'transform, opacity' }}>
+                          <span className="block" style={{ padding: '7px 12px', fontSize: fs, lineHeight: 1.35, borderRadius: hoyre ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: dh ? T.ink : c.fra === 'deg' ? T.lilla : 'rgba(251,250,248,0.96)', color: dh ? '#F4F1EA' : T.ink, boxShadow: dh ? '0 16px 40px -20px rgba(0,0,0,0.55)' : '0 16px 40px -20px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.6)', transformOrigin: hoyre ? '100% 100%' : '0% 100%', opacity: 0, animation: `v4-chat-inn 480ms ${EASE} ${t0}ms both`, willChange: 'transform, opacity' }}>
                             {c.ikon && <span className="mr-1.5 inline-block h-[6px] w-[6px] rounded-full align-middle" style={{ background: c.ikon === 'hake' ? '#5FD39A' : T.lilla }} />}
                             {tekst}{c.u ? <span className="block text-[11px]" style={{ color: 'rgba(244,241,234,0.62)' }}>{c.u}</span> : null}
                           </span>
                           )}
                           {/* Kvittering under eierens bobler — «Levert», så «Lest» */}
                           {c.kvittering && ny && (
-                            <span className="block pr-1 pt-[3px] text-right" style={{ fontSize: smal ? 10 : 11, color: smal ? 'rgba(251,250,248,0.75)' : 'rgba(21,19,15,0.5)', textShadow: smal ? '0 1px 6px rgba(0,0,0,0.4)' : 'none', opacity: 0, animation: `v4-chat-inn 360ms ${EASE} ${t0 + 620}ms both` }}>{c.kvittering}</span>
+                            <span className="block pr-1 pt-[3px] text-right text-[10px]" style={{ color: 'rgba(251,250,248,0.75)', textShadow: '0 1px 6px rgba(0,0,0,0.4)', opacity: 0, animation: `v4-chat-inn 360ms ${EASE} ${t0 + 620}ms both` }}>{c.kvittering}</span>
                           )}
                         </span>
                       </div>
@@ -202,23 +190,6 @@ function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5
               );
             })}
           </div>
-          {/* Den stille linjen under samtalen (kun desktop): adresse · klokke · status. Står fra første bilde og endrer
-              seg bare med klokken. En hårlinje over, i kolonnens bredde — hyllen samtalen står på. */}
-          {!smal && (
-            <div className="absolute" style={{ left: fx, top: fy + 18, width: B, opacity: 1, transition: `opacity 700ms ${EASE} 300ms` }} data-testid="v4-vegg-status">
-              <div aria-hidden="true" className="h-px" style={{ background: 'rgba(21,19,15,0.14)', transform: 'scaleX(1)', transformOrigin: '0 50%', transition: `transform 1200ms ${EASE} 200ms` }} />
-              <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 whitespace-nowrap" style={{ fontSize: trang ? 12.5 : 13.5, color: 'rgba(21,19,15,0.55)' }}>
-                <span>{adresse}</span>
-                <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.2)' }}>·</span>
-                <span className="tabular-nums">torsdag <span key={beat?.kl || 'x'} className="inline-block animate-in fade-in-0 duration-500">{beat?.kl || STROM[0].kl}</span></span>
-                <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.2)' }}>·</span>
-                <span className="inline-flex items-center gap-2">
-                  <span aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55', animation: 'v4-puls-dot 3200ms ease-in-out 1400ms infinite' }} />
-                  Alt i orden
-                </span>
-              </p>
-            </div>
-          )}
         </>
       )}
     </div>
@@ -505,37 +476,33 @@ function useFortelling(aktiv, redusert) {
 }
 
 function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, replay, zoom = false }) {
-  /* Direkte-modus: veggen er samtalens lerret (Telefonstrom) — ingen overskrifter, ingen tall. */
-  if (direkte) return null;
-  /* Street View-flyten (din adresse → din bolig): én setning, én linje, feltet — som før. */
-  const beat = { id: 'auto', ord: ['Utleie', 'på', 'autopilot'], u: 'Én godkjenning. Resten skjedde mens du gikk hjem.', slutt: true };
+  /* Direkte-modus: veggen er ROLIG. Én setning som står fra første bilde og aldri skifter, én linje under, en hårlinje
+     og den stille meta-linjen (adresse · klokke · status). Det eneste som beveger seg er klokken, som følger samtalen
+     på telefonen. Mindre og mer dempet enn en overskrift — veggen skal ikke konkurrere med ham og telefonen.
+     Street View-flyten (din adresse → din bolig): som før — én setning, én linje, tallene og feltet. */
+  const beat = direkte
+    ? { id: 'ro', ord: ['Én', 'beslutning', 'var', 'din.'], u: 'Alt annet gikk av seg selv.', slutt: true }
+    : { id: 'auto', ord: ['Utleie', 'på', 'autopilot'], u: 'Én godkjenning. Resten skjedde mens du gikk hjem.', slutt: true };
   const inne = hjemme;
   const T0 = direkte ? 0 : FORTELLING_T0;
   const fastT0 = direkte ? FORTELLING_T0_DIREKTE + 160 : FORTELLING_T0;
   const fast = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(12px)', transition: `opacity 900ms ${EASE} ${hjemme ? fastT0 + i * 130 : 0}ms, transform 900ms ${EASE} ${hjemme ? fastT0 + i * 130 : 0}ms` });
-  /* Ordene monteres på nytt per beat (key) — derfor keyframes, ikke transitions: inn (blur, nedenfra) når de står,
-     ut (opp, blur) når beatet er over. Før rommet er oppe: bare skjult. */
-  const ut = false;
-  /* Direkte: filmatisk. Hvert ord tones inn fra en svak uskarphet og et lite løft (1300 ms expo, 90 ms mellom
-     ordene); ut: ordene tones rolig bort oppover (560 ms, 30 ms stagger) FØR det nye kommer (FORTELLING_PAUSE).
-     Ingen maske, ingen harde kanter. Under 640 px kjøres samme keyframes uten blur (globals.css). */
+  /* Ordene tones inn én gang (svak uskarphet, lite løft) når rommet står. Ingen ut-animasjon — de blir stående. */
   const ordStil = (i) => (inne
-    ? { animation: `${direkte ? 'v4-ord-fade' : 'v4-ord-inn'} ${direkte ? 1300 : 900}ms ${EASE} ${T0 + (direkte ? 40 : 80) + i * (direkte ? 90 : 95)}ms both`, willChange: 'transform, opacity, filter' }
-    : ut ? { animation: `${direkte ? 'v4-ord-fade-ut' : 'v4-ord-ut'} ${direkte ? 560 : 320}ms ${direkte ? 'cubic-bezier(0.4, 0, 0.6, 1)' : EASE} ${i * (direkte ? 30 : 22)}ms both` } : { opacity: 0 });
+    ? { animation: `${direkte ? 'v4-ord-fade' : 'v4-ord-inn'} ${direkte ? 1300 : 900}ms ${EASE} ${T0 + (direkte ? 240 : 80) + i * (direkte ? 90 : 95)}ms both`, willChange: 'transform, opacity, filter' }
+    : { opacity: 0 });
   const linjeStil = (d) => (inne
     ? { animation: `${direkte ? 'v4-linje-fade' : 'v4-linje-inn'} ${direkte ? 1100 : 900}ms ${EASE} ${T0 + d}ms both` }
-    : ut ? { animation: `${direkte ? 'v4-linje-fade-ut' : 'v4-linje-ut'} ${direkte ? 460 : 300}ms cubic-bezier(0.4, 0, 0.6, 1) ${direkte ? 120 : 60}ms both` } : { opacity: 0 });
+    : { opacity: 0 });
   const husleie = vist ? `${tall(18500)}\u00A0kr` : `${tall(64500)}\u00A0kr`;
   const slutt = !!beat.slutt;
-  /* Så lite som mulig: setningen, én linje, en hårlinje, én stille meta-linje. Ingen indeks, ingen prikker, ingen
-     blend-modus (over video koster det per frame). Blekk med et hint av luft — aldri helt svart. */
-  const fs = smal ? (direkte ? 38 : 42) : direkte ? 'clamp(34px, 3.9vw, 76px)' : 'clamp(48px, 7.4svh, 86px)';
-  const blekk = 'rgba(21,19,15,0.94)';
-  const dempet = 'rgba(21,19,15,0.60)';
+  /* Direkte: en størrelse under overskrift — rolig, ikke plakat. Blekk med et hint av luft — aldri helt svart. */
+  const fs = smal ? (direkte ? 30 : 42) : direkte ? 'clamp(28px, 2.9vw, 56px)' : 'clamp(48px, 7.4svh, 86px)';
+  const blekk = direkte ? 'rgba(21,19,15,0.86)' : 'rgba(21,19,15,0.94)';
+  const dempet = 'rgba(21,19,15,0.58)';
   const meta = 'rgba(21,19,15,0.50)';
-  const TALL = direkte
-    ? [[husleie, 'husleie inn'], ['3', smal ? 'spørsmål besvart' : 'spørsmål besvart for deg'], ['1', 'godkjenning — din']]
-    : [[husleie, 'husleie inn'], ['1 min', smal ? 'til rørlegger' : 'fra melding til rørlegger'], ['1', hvem === 'deg' ? 'godkjenning — din' : 'godkjenning']];
+  const klokke = direkte ? (STROM[Math.min(fort?.k ?? 0, STROM.length - 1)]?.kl || STROM[0].kl) : '22:42';
+  const TALL = [[husleie, 'husleie inn'], ['1 min', smal ? 'til rørlegger' : 'fra melding til rørlegger'], ['1', hvem === 'deg' ? 'godkjenning — din' : 'godkjenning']];
   return (
     <div
       className={smal ? 'absolute inset-x-0 bottom-0 px-4 pb-5 pt-16' : `absolute flex flex-col justify-center ${zoom ? 'dh-zoom-vegg' : ''}`}
@@ -552,43 +519,39 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
       data-testid="v4-slutt"
       data-beat={beat.id}
     >
-      {/* Setningen — fast høyde for to linjer (align nederst), så ingenting under flytter seg mellom beatene */}
-      <h3 style={{ ...display, fontSize: fs, lineHeight: 0.94, letterSpacing: '-0.045em', color: blekk, ...(direkte ? { minHeight: 'calc(2 * 0.94em)', display: 'flex', flexWrap: 'wrap', alignContent: 'flex-end' } : {}) }} data-testid="v4-slutt-tittel">
+      <h3 style={{ ...display, fontSize: fs, lineHeight: 0.98, letterSpacing: '-0.04em', color: blekk }} data-testid="v4-slutt-tittel">
         {beat.ord.map((o, i) => (
           <span key={`${beat.id}-${i}`} className="inline-block" style={{ ...ordStil(i), marginRight: i < beat.ord.length - 1 ? '0.22em' : 0 }}>
             {o}{slutt && !direkte && i === beat.ord.length - 1 ? <span style={{ color: T.lilla, marginLeft: '-0.03em' }}>.</span> : null}
           </span>
         ))}
       </h3>
-      <p key={`u-${beat.id}`} className="mt-5 max-w-[30ch] text-[16.5px] leading-[1.45] sm:mt-7 sm:text-[20px]" style={{ ...linjeStil(direkte ? 420 + beat.ord.length * 90 : 140 + beat.ord.length * 120), color: dempet, minHeight: direkte ? '2.9em' : undefined }}>{beat.u}</p>
+      <p key={`u-${beat.id}`} className={`max-w-[30ch] leading-[1.45] ${direkte ? 'mt-3 text-[15px] sm:mt-4 sm:text-[17px]' : 'mt-5 text-[16.5px] sm:mt-7 sm:text-[20px]'}`} style={{ ...linjeStil(direkte ? 520 + beat.ord.length * 90 : 140 + beat.ord.length * 120), color: dempet }}>{beat.u}</p>
 
-      {/* Hårlinjen tegnes én gang. Under: meta (adresse · klokke · status) — i siste beat dagens tall. */}
-      <div aria-hidden="true" className="relative mt-9 h-px sm:mt-12" style={{ background: 'rgba(21,19,15,0.12)', transform: hjemme ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: '0 50%', transition: `transform 1200ms ${EASE} ${hjemme ? (direkte ? 420 : FORTELLING_T0 + 800) : 0}ms` }}>
-        {/* Beatets puls: en lilla linje som går fra venstre til høyre i løpet av beatet — historien har tempo, og du ser at det kommer mer */}
-        {direkte && !slutt && (
-          <span key={`frem-${beat.id}`} className="absolute inset-y-0 left-0 w-full" style={{ background: T.lilla, transformOrigin: '0 50%', opacity: inne ? 0.9 : 0, animation: inne ? `v4-vegg-frem ${beat.ms}ms linear ${T0 + 200}ms both` : 'none', transition: `opacity 260ms ${EASE}` }} data-testid="v4-slutt-frem" />
-        )}
-      </div>
+      {/* Hårlinjen tegnes én gang. Under: meta (adresse · klokke · status) — i Street View-flyten dagens tall. */}
+      <div aria-hidden="true" className={`relative h-px ${direkte ? 'mt-7 sm:mt-9' : 'mt-9 sm:mt-12'}`} style={{ background: 'rgba(21,19,15,0.12)', transform: hjemme ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: '0 50%', transition: `transform 1200ms ${EASE} ${hjemme ? (direkte ? 900 : FORTELLING_T0 + 800) : 0}ms` }} />
       <div className="mt-5 grid" style={fast(7.5)}>
-        <p className="col-start-1 row-start-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] sm:text-[13.5px]" style={{ color: meta, opacity: slutt ? 0 : 1, transition: `opacity 500ms ${EASE} ${slutt ? 0 : 200}ms` }} aria-hidden={slutt} data-testid="v4-slutt-status">
+        <p className="col-start-1 row-start-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] sm:text-[13.5px]" style={{ color: meta, opacity: direkte || !slutt ? 1 : 0, transition: `opacity 500ms ${EASE} 200ms` }} aria-hidden={!direkte && slutt} data-testid="v4-slutt-status">
           <span className="whitespace-nowrap">{adresse}</span>
           <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.2)' }}>·</span>
-          <span className="whitespace-nowrap tabular-nums">torsdag <span key={beat.kl || 'x'} className="inline-block animate-in fade-in-0 duration-500">{direkte ? beat.kl : '22:42'}</span></span>
+          <span className="whitespace-nowrap tabular-nums">torsdag <span key={klokke} className="inline-block animate-in fade-in-0 duration-500">{klokke}</span></span>
           <span aria-hidden="true" className="hidden sm:inline" style={{ color: 'rgba(21,19,15,0.2)' }}>·</span>
           <span className="hidden items-center gap-2 whitespace-nowrap sm:inline-flex">
             <span aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55', animation: hjemme ? 'v4-puls-dot 3200ms ease-in-out 1400ms infinite' : 'none' }} />
             Alt i orden
           </span>
         </p>
-        {/* Dagens tall — tre stille kolonner: tallet i display, hva det er under */}
-        <div className="col-start-1 row-start-1 grid grid-cols-3 gap-4" style={{ opacity: slutt ? 1 : 0, transition: `opacity 600ms ${EASE} ${slutt ? 300 : 0}ms` }} aria-hidden={!slutt} data-testid="v4-slutt-tall">
-          {TALL.map(([v, l], i) => (
-            <div key={l} style={{ opacity: slutt ? 1 : 0, transform: slutt ? 'none' : 'translateY(8px)', transition: `opacity 600ms ${EASE} ${slutt ? 300 + i * 120 : 0}ms, transform 800ms ${EASE} ${slutt ? 300 + i * 120 : 0}ms` }}>
-              <p className="tabular-nums" style={{ ...display, fontSize: smal ? 22 : 'clamp(22px, 1.5vw, 30px)', letterSpacing: '-0.03em', lineHeight: 1, color: blekk }}>{v}</p>
-              <p className="mt-1.5 text-[12px] sm:text-[12.5px]" style={{ color: meta }}>{l}</p>
-            </div>
-          ))}
-        </div>
+        {/* Dagens tall (kun Street View-flyten) — tre stille kolonner */}
+        {!direkte && (
+          <div className="col-start-1 row-start-1 grid grid-cols-3 gap-4" style={{ opacity: slutt ? 1 : 0, transition: `opacity 600ms ${EASE} ${slutt ? 300 : 0}ms` }} aria-hidden={!slutt} data-testid="v4-slutt-tall">
+            {TALL.map(([v, l], i) => (
+              <div key={l} style={{ opacity: slutt ? 1 : 0, transform: slutt ? 'none' : 'translateY(8px)', transition: `opacity 600ms ${EASE} ${slutt ? 300 + i * 120 : 0}ms, transform 800ms ${EASE} ${slutt ? 300 + i * 120 : 0}ms` }}>
+                <p className="tabular-nums" style={{ ...display, fontSize: smal ? 22 : 'clamp(22px, 1.5vw, 30px)', letterSpacing: '-0.03em', lineHeight: 1, color: blekk }}>{v}</p>
+                <p className="mt-1.5 text-[12px] sm:text-[12.5px]" style={{ color: meta }}>{l}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Neste steg er ett felt unna (ikke i direkte-modus — feltet står allerede over scenen). */}
