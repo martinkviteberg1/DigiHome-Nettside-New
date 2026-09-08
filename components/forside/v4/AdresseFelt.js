@@ -2,13 +2,12 @@
 
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight } from 'lucide-react';
 import { EASE, T } from './motion';
 
 /* ---------------------------------------------------------------------------
    AdresseFelt — heroens handling. Ett objekt, ikke et skjema.
 
-   · Én pill: felt + lilla knapp inne i feltet. Ingen label, ingen løs knapp.
+   · Én pill: bare feltet. Ingen label, ingen knapp, ingen pil — Enter eller valg i listen går videre.
    · Ekte forslag fra /api/address (Google Places m/Bergen-bias, Geonorge-fallback).
    · Valg → Place Details (postnr/poststed/lat/lng). Med `onValgt` personaliseres heroen
      først (din adresse → din bolig) og knappen blir «Fortsett». Uten `onValgt` går valget
@@ -141,7 +140,7 @@ export default function AdresseFelt({ className = '', onValgt, variant = 'lilla'
     <div ref={boksRef} className={`relative ${className}`} data-testid="v4-adressefelt">
       <form onSubmit={send} role="search" aria-label="Start med din adresse" className="relative">
         <div
-          className="flex h-14 items-center rounded-[14px] pl-5 pr-2"
+          className="flex h-14 items-center rounded-[14px] px-5"
           style={{ ...flate, boxShadow: ring, transition: `box-shadow 200ms ${EASE}, background-color 200ms ${EASE}` }}
         >
           <input
@@ -162,22 +161,13 @@ export default function AdresseFelt({ className = '', onValgt, variant = 'lilla'
             aria-controls={listeId}
             aria-autocomplete="list"
             aria-activedescendant={aktiv >= 0 ? `${listeId}-${aktiv}` : undefined}
+            readOnly={sender}
             className="h-full min-w-0 flex-1 appearance-none border-0 bg-transparent text-[16px] text-[#15130F] shadow-none outline-none ring-0 placeholder:text-[#15130F]/45 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:outline-none"
-            style={{ outline: 'none', boxShadow: 'none', WebkitAppearance: 'none' }}
+            style={{ outline: 'none', boxShadow: 'none', WebkitAppearance: 'none', opacity: sender ? 0.45 : 1, transition: `opacity 260ms ${EASE}` }}
             data-testid="v4-adresse-input"
           />
-          {/* Ingen Start-knapp: du velger adressen i listen og er videre. Pilen er et stille hint (Enter går også),
-              og blir en rolig puls mens siden bytter. */}
-          <button
-            type="submit"
-            disabled={sender}
-            aria-label="Gå videre"
-            className="ml-2 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-[background-color,color,opacity] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30"
-            style={{ background: verdi.trim() ? (ink ? T.ink : T.lilla) : 'transparent', color: verdi.trim() ? (ink ? '#F4F1EA' : T.ink) : 'rgba(21,19,15,0.35)', opacity: sender ? 0.55 : 1, animation: sender ? 'v4-puls-dot 900ms ease-in-out infinite' : 'none' }}
-            data-testid="v4-adresse-start"
-          >
-            <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
-          </button>
+          {/* Ingen knapp, ingen pil: du velger adressen i listen (eller trykker Enter) og er videre. Feltet er ett rent
+              objekt — mens siden bytter, dempes teksten stille. */}
         </div>
 
         {/* Forslag — samme språk som dagsloggen: hårlinjer, ingen kort, ingen ikoner */}

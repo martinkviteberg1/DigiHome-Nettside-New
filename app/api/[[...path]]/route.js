@@ -9362,6 +9362,54 @@ async function handleRoute(request, { params }) {
     // Admin-siden er nøkkel-gatet; investor-siden gates av revokerbare tokens.
     // Tall gjenbrukes fra finance-motoren (computeBoardPack) — NULL PII.
     // ===================================================================
+    // ===================================================================
+    // INVESTORDECK (egen modul) — scenen over budsjettet: aktiv plan, alle
+    // eksterne deck-lenker på tvers av planer med statistikk, og aktivitet.
+    // Tallene i decket ER budsjettplanen; her styres bare visning og deling.
+    // ===================================================================
+    if (route === '/admin/deck/oversikt' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const [planerAlle, lenker, audit, innst] = await Promise.all([
+        listPlaner(db, {}),
+        ddListDeckShares(db, {}),
+        ddListAudit(db, { limit: 400 }),
+        db.collection('innstillinger').findOne({ id: 'deck' }, { projection: { _id: 0 } }),
+      ]);
+      const planer = planerAlle.filter((p) => p.type === 'modell' && p.selskap !== 'tech');
+      const techPlaner = planerAlle.filter((p) => p.selskap === 'tech');
+      const aktivitet = audit.filter((a) => String(a.event || '').startsWith('deck_')).slice(0, 80);
+      const naa = Date.now(); const d30 = naa - 30 * 86400000;
+      const i30 = audit.filter((a) => String(a.event || '').startsWith('deck_') && new Date(a.at).getTime() >= d30);
+      const tell = (ev) => i30.filter((a) => a.event === ev).length;
+      const sammendrag = {
+        aktive: lenker.filter((l) => l.status === 'active').length,
+        aapninger30: tell('deck_aapnet'),
+        sider30: tell('deck_side'),
+        nedlastinger30: tell('deck_nedlasting'),
+        unikeLenker30: new Set(i30.map((a) => a.linkId)).size,
+      };
+      const navnFor = Object.fromEntries(planerAlle.map((p) => [p.id, p.navn]));
+      return cors(NextResponse.json({
+        ok: true,
+        planer, techPlaner,
+        aktiv: innst?.planId && planer.some((p) => p.id === innst.planId) ? { planId: innst.planId, techPlanId: techPlaner.some((p) => p.id === innst.techPlanId) ? innst.techPlanId : null } : null,
+        lenker: lenker.map((l) => ({ ...l, planNavn: navnFor[l.planId] || null, techPlanNavn: l.techPlanId ? navnFor[l.techPlanId] || null : null })),
+        aktivitet: aktivitet.map((a) => ({ ...a, lenkeLabel: a.label || lenker.find((l) => l.id === a.linkId)?.label || null })),
+        sammendrag,
+      }));
+    }
+    if (route === '/admin/deck/aktiv' && method === 'POST') {
+      if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const planId = String(body.planId || '').trim();
+      const p = planId ? await hentPlan(db, planId) : null;
+      if (!p || p.type !== 'modell' || p.selskap === 'tech') return cors(NextResponse.json({ ok: false, error: 'Planen finnes ikke (må være en Digihome AS-modell)' }, { status: 400 }));
+      let techPlanId = String(body.techPlanId || '').trim() || null;
+      if (techPlanId) { const tp = await hentPlan(db, techPlanId); if (!tp || tp.selskap !== 'tech') techPlanId = null; }
+      await db.collection('innstillinger').updateOne({ id: 'deck' }, { $set: { id: 'deck', planId, techPlanId, updatedAt: new Date().toISOString() } }, { upsert: true });
+      return cors(NextResponse.json({ ok: true, aktiv: { planId, techPlanId } }));
+    }
+
     if (route === '/admin/investor-room' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const [links, documents, questions, audit] = await Promise.all([

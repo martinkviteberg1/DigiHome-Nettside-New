@@ -100,11 +100,12 @@ const nextConfig = {
         source: "/fonts/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
-      {
-        // Bilder/medier: rask cache + revalidering i bakgrunnen.
-        source: "/:asset(.+\\.(?:png|jpe?g|webp|gif|svg|avif|mp4|webm|woff2?|ttf|otf))",
-        headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }],
-      },
+      // Bilder/medier: INGEN sti-basert Cache-Control her. I produksjon serveres alle medier
+      // via fallback-rewriten til /api/media (serveMedia), som selv setter riktig header:
+      // 200 → «public, max-age=31536000, immutable», 404 → «no-store». En sti-regel her
+      // gjelder uavhengig av statuskode og ga 404-svarene «public, max-age=86400» i tillegg —
+      // CDN-en normaliserte det, og nettlesere husket manglende bilder i et døgn selv etter
+      // at filene var lastet opp (ødelagte bilder på digihome.no, sept. 2026).
     ];
   },
   // Deploy-safe media: i produksjon (Next.js standalone) inkluderes ikke /public,
