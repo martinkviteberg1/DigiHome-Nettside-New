@@ -7,41 +7,32 @@ import { EASE, T, display, useSynlig } from './motion';
 /* ---------------------------------------------------------------------------
    SporSeksjon — «Samme motor, tre måter å bruke den.»
 
-   Svarer på «ok — autopilot for hvem?» rett etter produktet (hero → tillit →
-   produkt → SPOR → leietaker). Tre spor, formulert som det du prøver å få
-   gjort — ikke som organisasjonskart.
-
-   Form: editorial + tre små levende scener. Tre åpne kolonner på canvas, hver
-   med én hårlinje øverst, merke og tall, stor display-tittel, én setning — og
-   så DEN samme motoren i tre utsnitt: en liten flate med hendelser, som i
-   heroens telefonstrøm. Det som skiller sporene er skala og hvem som gjør
-   jobben, og det er akkurat det scenene viser:
+   Svarer på «ok — autopilot for hvem?» rett etter produktet. Tre kolonner,
+   og det første du ser i hver er HVEM den er for — i display-type, med samme
+   ord som i menyen: For boligeiere · For eiendomsselskaper · Full forvaltning.
+   Under: løftet i én setning, så DEN samme motoren i tre utsnitt — en liten
+   levende flate med hendelser, som heroens telefonstrøm. Det som skiller
+   sporene er skala og hvem som gjør jobben, og det er det scenene viser:
      01 Én bolig — du godkjenner det ene som koster (knappen trykkes, blir hake).
      02 42 enheter i tre bygg — rutenettet fylles etter hvert som husleien kommer,
         og godkjenningen ligger hos en rolle, ikke en person.
-     03 Én bolig — DigiHome gjør jobben; din rad er den siste: du leste rapporten.
-   Scenene beveger seg i rolig takt (én ting om gangen, ~3,6 s), bare mens
-   seksjonen er i bildet. Kun transform/opacity. Ingen bilder, ingen kort-i-kort.
-   Tredje spor er en tjeneste, ikke programvare — handlingen er den ene mørke
-   pillen (charcoal), ikke en tekstlenke.
-
-   To former, valgt av radens bredde (ikke viewport):
-     · Stage (≥ 1100 px): tre paneler i én rad, ett åpent om gangen. Det åpne
-       får plassen — tittel, setning, scenen stort, det du får, handlingen. De
-       to andre står som smale rygger (tall, merke, tittel). Bytter av seg
-       selv hvert 8. sekund med en lilla fremdriftslinje; pek på en rygg, så
-       åpner den, og ingenting skifter mens pekeren hviler på stagen.
-     · Kolonner (< 1100 px): tre stablede kolonner, hver med sin scene.
+     03 Én bolig — DigiHome gjør jobben; hendelsene strømmer, din rad er den
+        siste: du leste rapporten.
+   Så: hvorfor (én setning), hva du får (tre linjer på hårlinjer), handlingen.
+   Hele kolonnen er lenken; hårlinjen øverst blir lilla på hover, scenen løfter
+   seg 2 px. Scenene beveger seg i rolig takt (~3,6 s), bare mens seksjonen er
+   i bildet. Kun transform/opacity. Ingen bilder, ingen kort-i-kort. Tredje spor
+   er en tjeneste — handlingen er den ene mørke pillen, ikke en tekstlenke.
 --------------------------------------------------------------------------- */
 
 const SPOR = [
   {
     id: 'selv',
     nr: '01',
-    merke: 'Boligeier',
+    hvem: 'For boligeiere',
     meta: '1–5 boliger',
-    tittel: ['Lei ut', 'selv.'],
-    tekst: 'Du eier én eller noen få boliger og vil ha det ryddig uten å bruke kveldene på det.',
+    lovnad: 'Lei ut selv.',
+    tekst: 'Du eier én eller noen få boliger og vil ha det ryddig — uten å bruke kveldene på det.',
     punkter: ['Leiekontrakt signert med BankID', 'Husleie med oppfølging og purring', 'Saker: leverandør og pris — du godkjenner'],
     handling: 'Start med adressen din',
     href: '/boligeiere',
@@ -49,9 +40,9 @@ const SPOR = [
   {
     id: 'skaler',
     nr: '02',
-    merke: 'Eiendomsselskap',
+    hvem: 'For eiendomsselskaper',
     meta: 'Portefølje · flere bygg',
-    tittel: ['Skaler', 'forvaltningen.'],
+    lovnad: 'Skaler forvaltningen.',
     tekst: 'Dere drifter mange enheter på tvers av bygg og trenger én oversikt — med roller og kontroll.',
     punkter: ['Alle bygg og enheter i én oversikt', 'Roller og godkjenning på tvers', 'Saker, økonomi og dokumenter samlet'],
     handling: 'Se løsningen for selskaper',
@@ -60,9 +51,9 @@ const SPOR = [
   {
     id: 'forvaltning',
     nr: '03',
-    merke: 'Forvaltning',
+    hvem: 'Full forvaltning',
     meta: 'Bergen og omegn',
-    tittel: ['Overlat jobben', 'til oss.'],
+    lovnad: 'Overlat jobben til oss.',
     tekst: 'Du vil slippe det praktiske helt. DigiHome forvalter boligen — du beholder oversikten og siste ord.',
     punkter: ['Vi finner og følger opp leietaker', 'Vi håndterer drift og leverandører', 'Du får oversikten — og siste ord'],
     handling: 'Se full forvaltning',
@@ -272,47 +263,49 @@ function SceneForvaltning({ synlig, takt }) {
 
 const SCENER = { selv: SceneSelv, skaler: SceneSkaler, forvaltning: SceneForvaltning };
 
-/* Én kolonne. Hele kolonnen er lenken. Hårlinje → merke → tittel → setning → scenen → hva du får → handling nederst. */
+/* Én kolonne. Hele kolonnen er lenken. Hårlinje → tall og meta → HVEM (display) → løftet → scenen → hvorfor → hva du
+   får → handlingen nederst (mt-auto: handlingene står på linje i alle tre). */
 function Kolonne({ s, i, synlig, takt }) {
   const delay = 160 + i * 120;
   const Scene = SCENER[s.id];
   return (
-    <li className="min-w-0" data-testid={`v4-spor-${s.id}`}>
+    <li className="min-w-0 lg:grid lg:row-span-7 lg:grid-rows-subgrid" data-testid={`v4-spor-${s.id}`}>
+      {/* Subgrid på lg: de sju radene (tall, hvem, løfte, scene, hvorfor, punkter, handling) deles på tvers av de tre
+          kolonnene — så scenene, punktene og handlingene står på linje uansett om en tittel bryter over to linjer. */}
       <Link
         href={s.href}
-        className="group relative flex h-full flex-col pt-5 focus-visible:outline-none lg:pt-6"
+        className="group relative flex flex-col pt-5 focus-visible:outline-none lg:grid lg:row-span-7 lg:grid-rows-subgrid lg:pt-6"
         style={{ color: T.ink, opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(22px)', transition: `opacity 800ms ${EASE} ${delay}ms, transform 900ms ${EASE} ${delay}ms` }}
-        aria-label={`${s.tittel.join(' ')} — ${s.handling}`}
+        aria-label={`${s.hvem} — ${s.lovnad} ${s.handling}`}
       >
         {/* Hårlinjen øverst — ink, blir lilla på hover/fokus */}
         <span aria-hidden="true" className="absolute inset-x-0 top-0 h-px" style={{ background: HAIR }} />
         <span aria-hidden="true" className="absolute inset-x-0 top-0 h-px origin-left scale-x-0 transition-transform duration-700 group-hover:scale-x-100 group-focus-visible:scale-x-100" style={{ background: T.lilla, transitionTimingFunction: EASE }} />
 
-        {/* Hvem: merke (pille) + meta, tallet ytterst — man skal se på ett blikk hvem sporet er for */}
-        <span className="flex items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-2.5">
-            <span className="inline-flex h-[26px] items-center rounded-full px-2.5 text-[12.5px] font-medium" style={{ background: 'rgba(21,19,15,0.07)', color: T.ink }} data-testid={`v4-spor-merke-${s.id}`}>{s.merke}</span>
-            <span className="hidden text-[13px] sm:inline" style={{ color: 'rgba(21,19,15,0.5)' }}>{s.meta}</span>
-          </span>
-          <span className="text-[13px] tabular-nums" style={{ color: 'rgba(21,19,15,0.4)' }}>{s.nr}</span>
+        {/* Tall og meta */}
+        <span className="flex items-center justify-between gap-3 text-[13px]" style={{ color: 'rgba(21,19,15,0.45)' }}>
+          <span>{s.nr}</span>
+          <span>{s.meta}</span>
         </span>
 
-        <h3 className="mt-7 text-[clamp(38px,3.1vw,56px)] sm:mt-8" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 0.96, color: T.ink }}>
-          {s.tittel[0]}<br />{s.tittel[1]}
+        {/* HVEM — det første du ser. Samme ord som i menyen. Plass til to linjer på lg, så løftene står på linje. */}
+        <h3 className="mt-6 text-[clamp(34px,2.7vw,46px)]" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 0.97, color: T.ink }} data-testid={`v4-spor-hvem-${s.id}`}>
+          {s.hvem}
         </h3>
-
-        {/* Fast høyde for tre linjer på lg — så scenene står på samme linje i alle tre kolonnene */}
-        <p className="mt-4 max-w-[32ch] text-[16px] leading-[1.5] sm:text-[16.5px] lg:min-h-[4.5em]" style={{ color: 'rgba(21,19,15,0.64)' }}>
-          {s.tekst}
-        </p>
+        {/* Løftet — én linje, tung nok til å leses som overskrift nummer to */}
+        <p className="mt-3 text-[20px] font-medium leading-[1.25] tracking-[-0.01em] sm:text-[21px]" style={{ color: T.ink }}>{s.lovnad}</p>
 
         {/* Scenen — samme motor, dette sporets utsnitt */}
         <div className="mt-7">
           <Scene synlig={synlig} takt={takt} />
         </div>
 
+        <p className="mt-7 max-w-[34ch] text-[15.5px] leading-[1.5] sm:text-[16px]" style={{ color: 'rgba(21,19,15,0.64)' }}>
+          {s.tekst}
+        </p>
+
         {/* Hva du får — tre linjer på hårlinjer. Kort, konkret, sant. */}
-        <ul className="mt-7" data-testid={`v4-spor-punkter-${s.id}`}>
+        <ul className="mt-5" data-testid={`v4-spor-punkter-${s.id}`}>
           {s.punkter.map((t) => (
             <li key={t} className="py-2.5 text-[14.5px] leading-[1.4]" style={{ borderTop: '1px solid rgba(21,19,15,0.09)', color: 'rgba(21,19,15,0.78)' }}>
               {t}
@@ -320,7 +313,7 @@ function Kolonne({ s, i, synlig, takt }) {
           ))}
         </ul>
 
-        <div className="mt-8 lg:mt-auto lg:pt-9">
+        <div className="mt-8 lg:mt-0 lg:self-end lg:pt-9">
           {s.tjeneste ? (
             <span className="inline-flex h-11 w-fit items-center gap-2 rounded-[12px] px-5 text-[15px] font-medium transition-[background-color,transform] duration-300 group-hover:bg-[#2A2620] group-active:scale-[0.98]" style={{ background: T.charcoal, color: T.offwhite }}>
               {s.handling}
@@ -338,134 +331,13 @@ function Kolonne({ s, i, synlig, takt }) {
   );
 }
 
-/* ── Stagen (bred skjerm, ≥ 1100 px container): tre paneler i én rad, ett åpent om gangen. Det åpne panelet får plassen
-   (scenen stort, det du får, handlingen); de to andre står som smale «rygger» med tall og tittel. Panelene bytter av seg
-   selv (AUTO_MS) mens seksjonen er i bildet — pek eller trykk på en rygg, så åpner den og autoskiftet hviler i 14 s.
-   Bredden animeres som flex-basis i px; innholdet ligger på faste bredder inni, så ingen tekst reflower underveis —
-   bare boksen beveger seg, og innholdet krysstoner. Kun transform/opacity/flex-basis. ── */
-const AUTO_MS = 8000;
-const KOLLAPS = 272;
-const GAP = 12;
-const PANEL_H = 520;
-const MORF = 'cubic-bezier(0.65, 0, 0.35, 1)';
-
-/* Den lilla linjen øverst i det åpne panelet: fylles fra 0 til 100 % over AUTO_MS — starter på nytt hver gang panelet
-   åpner (key), og bare når stagen går av seg selv. */
-function Fremdrift({ aktiv }) {
-  const [gaar, setGaar] = useState(false);
-  useEffect(() => {
-    if (!aktiv) { setGaar(false); return undefined; }
-    const id = window.requestAnimationFrame(() => window.requestAnimationFrame(() => setGaar(true)));
-    return () => window.cancelAnimationFrame(id);
-  }, [aktiv]);
-  return (
-    <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[2px] overflow-hidden" style={{ opacity: aktiv ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>
-      <span className="absolute inset-y-0 left-0 block" style={{ background: T.lilla, width: gaar ? '100%' : '0%', transition: gaar ? `width ${AUTO_MS}ms linear` : 'none' }} />
-    </span>
-  );
-}
-
-function Panel({ s, er, aktivW, onVelg, synlig, takt, auto }) {
-  const Scene = SCENER[s.id];
-  return (
-    <li
-      className="relative overflow-hidden rounded-[20px]"
-      style={{ flex: `0 0 ${er ? aktivW : KOLLAPS}px`, height: PANEL_H, background: er ? PAPIR : 'rgba(21,19,15,0)', boxShadow: `0 0 0 1px ${er ? 'rgba(21,19,15,0.10)' : 'rgba(21,19,15,0.13)'}`, transition: `flex-basis 820ms ${MORF}, background-color 520ms ${EASE}, box-shadow 520ms ${EASE}`, cursor: er ? 'default' : 'pointer', willChange: 'flex-basis' }}
-      onMouseEnter={() => { if (!er) onVelg(s.id); }}
-      onClick={() => { if (!er) onVelg(s.id); }}
-      data-testid={`v4-spor-${s.id}`}
-      data-aktiv={er ? '1' : '0'}
-    >
-      {/* Fremdriften — den lilla linjen øverst fylles i takt med autoskiftet (bare når stagen går av seg selv) */}
-      <Fremdrift aktiv={er && auto} />
-
-      {/* Ryggen — det panelet viser når det er lukket: tall øverst, tittel nederst, pil */}
-      <div className="absolute inset-y-0 left-0 flex flex-col p-7" style={{ width: KOLLAPS, opacity: er ? 0 : 1, transition: `opacity 320ms ${EASE} ${er ? 0 : 320}ms`, pointerEvents: 'none' }} aria-hidden={er}>
-        <div className="flex items-center justify-between">
-          <span className="inline-flex h-[26px] items-center rounded-full px-2.5 text-[12.5px] font-medium" style={{ background: 'rgba(21,19,15,0.07)', color: T.ink }}>{s.merke}</span>
-          <span className="text-[13px]" style={{ color: 'rgba(21,19,15,0.4)' }}>{s.nr}</span>
-        </div>
-        <h3 className="mt-auto text-[30px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 0.98, color: T.ink }}>
-          {s.tittel[0]}<br />{s.tittel[1]}
-        </h3>
-        <p className="mt-4 text-[13px]" style={{ color: 'rgba(21,19,15,0.5)' }}>{s.meta}</p>
-        <span className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-medium" style={{ color: T.ink }}>Se hvordan <Pil className="h-4 w-4" /></span>
-      </div>
-
-      {/* Det åpne panelet: hvem · tittel · setning · scenen stort til venstre, det du får og handlingen til høyre */}
-      <div className="absolute inset-y-0 left-0 flex flex-col p-7" style={{ width: aktivW, opacity: er ? 1 : 0, transition: `opacity 460ms ${EASE} ${er ? 300 : 0}ms`, pointerEvents: er ? 'auto' : 'none' }} aria-hidden={!er}>
-        <div className="flex items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-2.5">
-            <span className="inline-flex h-[26px] items-center rounded-full px-2.5 text-[12.5px] font-medium" style={{ background: 'rgba(21,19,15,0.07)', color: T.ink }} data-testid={`v4-spor-merke-${s.id}`}>{s.merke}</span>
-            <span className="text-[13px]" style={{ color: 'rgba(21,19,15,0.5)' }}>{s.meta}</span>
-          </span>
-          <span className="text-[13px]" style={{ color: 'rgba(21,19,15,0.4)' }}>{s.nr}</span>
-        </div>
-        <div className="mt-7 grid grid-cols-12 items-end gap-x-10">
-          <h3 className="col-span-7 text-[clamp(40px,3.2vw,56px)]" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 0.96, color: T.ink }}>
-            {s.tittel[0]}<br />{s.tittel[1]}
-          </h3>
-          <p className="col-span-5 max-w-[34ch] pb-1 text-[16px] leading-[1.5]" style={{ color: 'rgba(21,19,15,0.64)' }}>{s.tekst}</p>
-        </div>
-        <div className="mt-auto grid grid-cols-12 items-end gap-x-10">
-          <div className="col-span-7"><Scene synlig={synlig && er} takt={takt} /></div>
-          <div className="col-span-5">
-            <ul data-testid={`v4-spor-punkter-${s.id}`}>
-              {s.punkter.map((t, k) => (
-                <li key={t} className="py-2.5 text-[14.5px] leading-[1.4]" style={{ borderTop: k === 0 ? 'none' : '1px solid rgba(21,19,15,0.09)', color: 'rgba(21,19,15,0.78)', opacity: er ? 1 : 0, transform: er ? 'none' : 'translateY(6px)', transition: `opacity 500ms ${EASE} ${er ? 420 + k * 90 : 0}ms, transform 600ms ${EASE} ${er ? 420 + k * 90 : 0}ms` }}>
-                  {t}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-6">
-              <Link href={s.href} className={`group/l inline-flex h-11 items-center gap-2 text-[15px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30 ${s.tjeneste ? 'rounded-[12px] px-5 transition-[background-color,transform] duration-300 hover:bg-[#2A2620] active:scale-[0.98]' : 'hover:opacity-80'}`} style={s.tjeneste ? { background: T.charcoal, color: T.offwhite } : { color: T.ink }} tabIndex={er ? 0 : -1} aria-label={`${s.tittel.join(' ')} — ${s.handling}`}>
-                {s.handling}
-                <Pil className="h-[18px] w-[18px] transition-transform duration-500 ease-out group-hover/l:translate-x-1" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </li>
-  );
-}
-
 export default function SporSeksjon() {
   const ref = useRef(null);
   const synlig = useSynlig(ref, 0.18);
-  /* Scenene våkner når panelene er i bildet — og slår i takt bare mens de sees */
+  /* Scenene våkner når kolonnene er i bildet — og slår i takt bare mens de sees */
   const sceneRef = useRef(null);
   const sceneSynlig = useSynlig(sceneRef, 0.25);
   const takt = useTakt(sceneSynlig);
-  /* Bredden på raden avgjør formen: stage (ett åpent panel) fra 1100 px, ellers tre stablede kolonner */
-  const [W, setW] = useState(0);
-  useEffect(() => {
-    const el = sceneRef.current; if (!el) return undefined;
-    const f = () => setW(el.offsetWidth);
-    f();
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(f) : null;
-    ro?.observe(el);
-    return () => ro?.disconnect();
-  }, []);
-  const bred = W >= 1100;
-  const aktivW = Math.max(0, W - 2 * KOLLAPS - 2 * GAP);
-  /* Hvilket panel som er åpent. Bytter av seg selv mens stagen er i bildet; et valg holder i 14 s. */
-  const [aktiv, setAktiv] = useState('selv');
-  const [auto, setAuto] = useState(true);
-  const pause = useRef(0);
-  useEffect(() => {
-    if (!bred || !sceneSynlig) return undefined;
-    const id = window.setInterval(() => {
-      if (Date.now() < pause.current) return;
-      setAuto(true);
-      setAktiv((a) => SPOR[(SPOR.findIndex((s) => s.id === a) + 1) % SPOR.length].id);
-    }, AUTO_MS);
-    return () => window.clearInterval(id);
-  }, [bred, sceneSynlig]);
-  const velg = (id) => { pause.current = Date.now() + 14000; setAuto(false); setAktiv(id); };
-  /* Mens pekeren hviler på stagen skifter ingenting av seg selv — folk leser. Når den går ut, tar autoskiftet over igjen. */
-  const paaStagen = () => { pause.current = Number.MAX_SAFE_INTEGER; setAuto(false); };
-  const avStagen = () => { pause.current = Date.now() + 3000; };
   const inn = (i) => ({ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(18px)', transition: `opacity 700ms ${EASE} ${i * 90}ms, transform 800ms ${EASE} ${i * 90}ms` });
 
   return (
@@ -482,17 +354,10 @@ export default function SporSeksjon() {
           </p>
         </div>
 
-        <div ref={sceneRef} className="mt-12 lg:mt-16" data-testid="v4-spor-liste" data-takt={takt} data-form={bred ? 'stage' : 'kolonner'} data-aktiv={aktiv}>
-          {bred ? (
-            <ul className="flex items-stretch" style={{ gap: GAP, opacity: sceneSynlig || synlig ? 1 : 0, transform: sceneSynlig || synlig ? 'none' : 'translateY(22px)', transition: `opacity 800ms ${EASE} 160ms, transform 900ms ${EASE} 160ms` }} onMouseEnter={paaStagen} onMouseLeave={avStagen}>
-              {SPOR.map((s) => <Panel key={s.id} s={s} er={aktiv === s.id} aktivW={aktivW} onVelg={velg} synlig={sceneSynlig || synlig} takt={takt} auto={auto} />)}
-            </ul>
-          ) : (
-            <ul className="grid gap-y-14 md:grid-cols-2 md:gap-x-10">
-              {SPOR.map((s, i) => <Kolonne key={s.id} s={s} i={i} synlig={sceneSynlig || synlig} takt={takt} />)}
-            </ul>
-          )}
-        </div>
+        {/* Tre åpne kolonner — hele kolonnen er lenken */}
+        <ul ref={sceneRef} className="mt-14 grid gap-y-14 md:grid-cols-2 md:gap-x-10 lg:mt-20 lg:grid-cols-3 lg:gap-y-0 xl:gap-x-14" data-testid="v4-spor-liste" data-takt={takt}>
+          {SPOR.map((s, i) => <Kolonne key={s.id} s={s} i={i} synlig={sceneSynlig || synlig} takt={takt} />)}
+        </ul>
       </div>
     </section>
   );
