@@ -663,7 +663,8 @@ async function provisionSelfService(lead, request) {
   if (!target.url) return { ok: false, error: 'Plattform-URL mangler' };
   const payload = buildSelfServicePayload(lead, {
     ip: clientIp(request) || '',
-    termsUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no'}/vilkar`,
+    // Lenken plattformen lagrer som agreement.pdf_url: selve avtalen kunden godtok — ikke de generelle brukervilkårene.
+    termsUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no'}/avtale/selvforvaltning`,
   });
   try {
     const res = await fetch(`${target.url}/api/bridge/self-service-customer`, {

@@ -5,6 +5,10 @@ import { rentCitySlugs } from '@/lib/rentmarket';
 import { guides, REDIRECTED_POST_SLUGS } from '@/lib/guides';
 import { getPublishedListingSlugs } from '@/lib/listings-server';
 
+// Dynamisk sitemap.xml (Next.js App Router). force-dynamic: uten dette ble
+// filen generert ved bygg (uten databasetilgang) og manglet alle boligsidene.
+export const dynamic = 'force-dynamic';
+
 // Dynamisk sitemap.xml (Next.js App Router).
 // Inneholder kun offentlige, indekserbare sider. Film-/deck-/admin-ruter
 // (noindex) er bevisst utelatt. Lokasjonssider + publiserte artikler inkluderes dynamisk.

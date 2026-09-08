@@ -97,7 +97,9 @@ function ListingCard({ c, preview }) {
 // en tom side fanger vi boligsøkerens kriterier i HousingAlertForm, som både
 // gir oss et lead og forteller forvalteren hvilke boliger det venter folk på.
 
-export default function ListingsGrid({ listings = [] }) {
+// `dbOk === false`: serveren fikk ikke svar fra databasen — da sier vi det, og
+// påstår ikke at alt er utleid.
+export default function ListingsGrid({ listings = [], dbOk = true }) {
   const [q, setQ] = useState('');
   const [district, setDistrict] = useState('');
   const [beds, setBeds] = useState('');
@@ -291,12 +293,14 @@ export default function ListingsGrid({ listings = [] }) {
         </div>
       ) : (
         <div className="rounded-[30px] bg-white p-8 sm:p-12 ring-1 ring-black/[0.05] shadow-[0_14px_50px_-30px_rgba(0,0,0,0.3)]" data-testid="listings-empty">
-          <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#7c3aed]">Status i Bergen</p>
+          <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#7c3aed]">{dbOk ? 'Status i Bergen' : 'Et lite øyeblikk'}</p>
           <h2 className="mt-3 max-w-[24ch] text-[28px] sm:text-[36px] font-bold leading-[1.08] tracking-[-0.025em] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
-            Ingen ledige boliger akkurat nå
+            {dbOk ? 'Ingen ledige boliger akkurat nå' : 'Boligene lastet ikke'}
           </h2>
           <p className="mt-4 max-w-[58ch] text-[15.5px] leading-relaxed text-[#4a4a4a]">
-            Boligene vi forvalter går ofte til noen på varslingslista før annonsen rekker å bli publisert. Legg inn e-posten din — så kan du si hva du leter etter etterpå, og bare høre fra oss når boligen faktisk passer.
+            {dbOk
+              ? 'Boligene vi forvalter går ofte til noen på varslingslista før annonsen rekker å bli publisert. Legg inn e-posten din — så kan du si hva du leter etter etterpå, og bare høre fra oss når boligen faktisk passer.'
+              : 'Vi fikk ikke kontakt med boligoversikten i dette sekundet. Last siden på nytt — eller legg inn e-posten din, så varsler vi deg om ledige boliger i Bergen.'}
           </p>
           <div className="mt-6"><HousingAlertForm /></div>
           <div className="mt-8 grid gap-4 border-t border-black/[0.06] pt-8 sm:grid-cols-3">

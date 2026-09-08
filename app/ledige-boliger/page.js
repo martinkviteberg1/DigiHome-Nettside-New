@@ -5,7 +5,7 @@ import { JsonLd } from '@/components/site/JsonLd';
 import { breadcrumbLd, webPageLd } from '@/lib/seo';
 import { site } from '@/lib/site';
 import ListingsGrid from '@/components/dh/ListingsGrid';
-import { getPublishedListings } from '@/lib/listings-server';
+import { getPublishedListingsResult } from '@/lib/listings-server';
 import { Home, ArrowUpRight, ShieldCheck } from 'lucide-react';
 
 // LEDIGE BOLIGER — offentlig boligflate.
@@ -17,15 +17,22 @@ import { Home, ArrowUpRight, ShieldCheck } from 'lucide-react';
 // Kun boliger som er BÅDE publiseringsklare og satt synlige i adminportalen
 // vises. Innlogget admin kan legge til ?forhandsvis=1 for å se upubliserte
 // kandidater — adminnøkkelen leses fra localStorage, aldri fra URL-en.
+//
+// ALLTID FERSK (force-dynamic, ikke ISR): med `revalidate` ble siden bygget
+// i CI uten databasetilgang, og den tomme «Alle boligene er utleid»-versjonen
+// lå i cachen til første regenerering etter hver deploy — så første besøkende
+// (og Google) fikk en side som løy om at ingenting var ledig, mens forsiden
+// (klient-fetch mot /api/public/properties) viste sju ledige. Ett indeksert
+// Mongo-oppslag per visning er billig; en falsk «utleid»-side er dyr.
 
-export const revalidate = 120;
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Ledige leiligheter og boliger til leie i Bergen',
   description: 'Ledige utleieboliger i Bergen forvaltet av DigiHome — kvalitetssikret utleie, digital kontrakt og depositumskonto. Se ledige leiligheter, meld interesse og bli varslet om nye boliger.',
   alternates: { canonical: '/ledige-boliger' },
-  openGraph: {
   twitter: { card: 'summary_large_image', images: ['/og/ledige-boliger.jpg'] },
+  openGraph: {
     title: 'Ledige boliger til leie i Bergen | DigiHome',
     description: 'Se ledige utleieboliger i Bergen. Meld interesse direkte, eller bli varslet når noe nytt blir ledig.',
     url: `${site.url}/ledige-boliger`, type: 'website', locale: 'nb_NO',
@@ -34,7 +41,7 @@ export const metadata = {
 };
 
 export default async function LedigeBoligerPage() {
-  const listings = await getPublishedListings();
+  const { ok: dbOk, listings } = await getPublishedListingsResult();
   const vacant = listings.filter((l) => l.status === 'active');
   const districts = [...new Set(vacant.map((l) => l.district).filter(Boolean))];
   const amounts = vacant.map((l) => Number(l.rentAmount) || 0).filter(Boolean);
@@ -75,7 +82,9 @@ export default async function LedigeBoligerPage() {
         <p className="mt-5 max-w-[62ch] text-[16px] leading-relaxed text-[#4a4a4a] sm:text-[18px]">
           {vacant.length > 0
             ? <>Vi forvalter {vacant.length === 1 ? 'denne boligen' : `${vacant.length} ledige boliger`}{districts.length ? ` i ${districts.slice(0, 3).join(', ')}${districts.length > 3 ? ' med flere' : ''}` : ' i Bergen'}{from ? `, fra ${String(from).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0')} kr/mnd` : ''}. Meld interesse direkte — vi svarer samme dag.</>
-            : <>Alle boligene våre er utleid akkurat nå. Vi får nye boliger fortløpende i Bergen, og varsler deg gjerne før de blir annonsert.</>}
+            : dbOk
+              ? <>Alle boligene våre er utleid akkurat nå. Vi får nye boliger fortløpende i Bergen, og varsler deg gjerne før de blir annonsert.</>
+              : <>Vi fikk ikke hentet boligene akkurat nå. Last siden på nytt om et øyeblikk — eller legg inn e-posten din, så varsler vi deg om ledige boliger i Bergen.</>}
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13.5px] text-[#78726a]">
           <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-[#7c3aed]" /> Kredittsjekk og digital kontrakt</span>
@@ -85,7 +94,7 @@ export default async function LedigeBoligerPage() {
       </section>
 
       <section className="mx-auto max-w-[1400px] px-6 pb-20 sm:px-10 lg:px-16 lg:pb-28">
-        <ListingsGrid listings={listings} />
+        <ListingsGrid listings={listings} dbOk={dbOk} />
       </section>
 
       <section className="mx-auto max-w-[1400px] px-6 pb-20 sm:px-10 lg:px-16">
