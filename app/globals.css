@@ -1129,6 +1129,8 @@ html.dh-nav-klar [data-testid="v4-nav"] { background-color: transparent; border-
 @keyframes v4-foto-fan { 0% { opacity: 0; transform: translateX(var(--fra, 0px)) rotate(var(--rot, 0deg)) scale(0.5); } 65% { opacity: 1; transform: translateX(0) rotate(calc(var(--rot, 0deg) * -0.3)) scale(1.04); } 100% { opacity: 1; transform: none; } }
 /* Haken tegnes med ett strøk */
 @keyframes v4-hake-tegn { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+/* Annonse-filmen: oppslaget — en tynn lilla linje løper langs faktaradens bunn rett før verdien lander */
+@keyframes v4-slaa-opp { 0% { transform: scaleX(0); opacity: 0.9; } 58% { transform: scaleX(1); opacity: 0.9; } 100% { transform: scaleX(1); opacity: 0; } }
 /* Kolonnen svever nesten umerkelig — den lever */
 @keyframes v4-flyt { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) {

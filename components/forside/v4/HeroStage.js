@@ -4,7 +4,6 @@ import { FILM } from './heroFilm';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EASE, T, display, tall, useRedusert, useSekvens, useSmal, useSynlig } from './motion';
 import AdresseFelt from './AdresseFelt';
-import EierApp, { APP_DW, APP_DH } from './EierApp';
 
 /* ---------------------------------------------------------------------------
    HeroStage — én scene i full bredde. Sana-strukturen, DigiHomes innhold.
@@ -510,46 +509,84 @@ function useFortelling(aktiv, redusert) {
 }
 
 
-/* Veggen: eierportalen på mobil — det han ser på telefonen, stort og rolig, i lyset fra vinduet. Én ekte enhet rett
-   forfra (EierApp), skalert etter scenens høyde (≈ 80 % av høyden), sentrert på ~78 % av bredden. Kommer opp én gang
-   når rommet står, svever nesten umerkelig. Ingen tekst på veggen ellers — klokken bor i telefonens statuslinje.
-   Smal skjerm: ingen mockup (veggen er beskåret bort; boblene ved telefonen bærer historien alene). */
-function Veggmockup({ hjemme, smal, k, adresse }) {
-  const ref = useRef(null);
-  const [maal, setMaal] = useState({ w: 0, h: 0 });
-  useEffect(() => {
-    const el = ref.current; if (!el) return undefined;
-    const f = () => setMaal({ w: el.offsetWidth, h: el.offsetHeight });
-    f();
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(f) : null;
-    ro?.observe(el);
-    return () => ro?.disconnect();
-  }, []);
-  if (smal) return null;
-  const W = APP_DW + 14; const H = APP_DH + 14;
-  const sk = maal.h ? Math.min(1.7, (maal.h * 0.8) / H) : 1;
-  const left = Math.round(maal.w * 0.78 - (W * sk) / 2);
-  const top = Math.round(maal.h * 0.5 - (H * sk) / 2);
+/* Veggen: boligkortet — det systemet vet om boligen hans, som et editorialt oppslag rett på veggen. Ingen ramme, ingen
+   mockup: et kartbånd tone-i-tone (samme Bergen-kart som Annonse-scenen) med én lilla nål, adressen i display, og fakta
+   som hårlinjerader. Står i lyset fra vinduet, venstrejustert der veggen begynner. Kommer én gang, står stille —
+   to rolige endringer i takt med samtalen: leietaker-raden når Emma har signert, «betalt» når husleien er inne.
+   Smal skjerm: samme kort nederst i rammen over en myk gradient. */
+const KORT_FAKTA = [
+  { k: 'Byggeår', v: '1890' },
+  { k: 'Areal', v: '54 m² · 2 rom' },
+  { k: 'Etasje', v: '2. etasje' },
+];
+function Veggkort({ hjemme, smal, k, adresse }) {
   const i = k === null || k === undefined ? -1 : Math.min(k, STROM.length - 1);
-  const kl = STROM[Math.max(0, i)].kl;
+  const signert = i >= 1; const betalt = i >= 2;
+  const blekk = 'rgba(21,19,15,0.9)'; const dim = 'rgba(21,19,15,0.55)'; const hair = 'rgba(21,19,15,0.12)';
+  const T0 = 650;
+  const inn = (j) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(10px)', transition: `opacity 900ms ${EASE} ${hjemme ? T0 + j * 110 : 0}ms, transform 1000ms ${EASE} ${hjemme ? T0 + j * 110 : 0}ms` });
+  const bandH = smal ? 84 : 132;
+  const rader = [
+    ...KORT_FAKTA,
+    { k: 'Leie', v: `${tall(14500)} kr/mnd`, status: betalt ? 'betalt' : null },
+    { k: 'Leietaker', v: signert ? 'Emma Sørensen · fra 1. nov' : 'Ledig fra 1. november', emma: signert },
+  ];
   return (
-    <div ref={ref} className="pointer-events-none absolute inset-0 z-[2]" aria-hidden={!hjemme} data-testid="v4-vegg">
-      {maal.w > 0 && (
-        <div className="absolute v4-flyt" style={{ left, top, width: W * sk, height: H * sk, opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(22px)', transition: `opacity 1100ms ${EASE} ${hjemme ? 650 : 0}ms, transform 1400ms ${EASE} ${hjemme ? 650 : 0}ms` }}>
-          <div className="v4-flyt" style={{ animation: 'v4-flyt 9000ms ease-in-out infinite' }}>
-            <div style={{ transform: `scale(${sk})`, transformOrigin: '0 0', width: W, height: H }}>
-              <EierApp k={i < 0 ? null : i} kl={kl} adresse={adresse} synlig={hjemme} />
-            </div>
+    <div
+      className={smal ? 'absolute inset-x-0 bottom-0 px-5 pb-5 pt-14' : 'absolute'}
+      style={{
+        ...(smal
+          ? { background: 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.9) 28%, rgba(243,241,236,0.98) 100%)' }
+          /* Perspektiv: veggen i filmen viker bakover mot høyre (listen stiger, linjene samles). Kortet dreies rundt sin
+             venstre kant så det ligger PÅ veggen — høyre side litt lenger unna, litt mindre. Én transform, ingen filtre. */
+          : { left: 'max(61%, calc(38% + 208px))', right: '3%', top: '14%', transform: 'perspective(1500px) rotateY(11deg) rotateX(1.2deg)', transformOrigin: '0% 50%', transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }),
+        color: blekk,
+        opacity: hjemme ? 1 : 0,
+        transition: `opacity 600ms ${EASE} ${hjemme ? T0 - 200 : 0}ms`,
+      }}
+      aria-hidden={!hjemme}
+      data-testid="v4-vegg"
+      data-slag={i}
+    >
+      {/* Kartbåndet: adressen ligger i sentrum av kartet (viewBox 1600×1000 → 800,500). Kantene toner ut. */}
+      <div className="relative overflow-hidden" style={{ height: bandH, ...inn(0), WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 22%, #000 100%)', WebkitMaskComposite: 'source-in', maskImage: 'linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 22%, #000 100%)', maskComposite: 'intersect' }} data-testid="v4-vegg-kart">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/v4/annonse/bergen-kart-m.svg" alt="" width={1600} height={1000} draggable={false} className="absolute select-none" style={{ left: '50%', top: '50%', width: 1600, height: 1000, maxWidth: 'none', transform: `translate(-50%, -50%) scale(${smal ? 0.7 : 0.82})`, opacity: 0.9 }} />
+        <span className="absolute" style={{ left: '50%', top: '50%' }} aria-hidden="true">
+          <span className="absolute rounded-full" style={{ left: -16, top: -16, width: 32, height: 32, boxShadow: `inset 0 0 0 1px ${T.lilla}`, opacity: 0.55 }} />
+          <span className="absolute rounded-full" style={{ left: -5, top: -5, width: 10, height: 10, background: T.lilla, boxShadow: '0 0 0 2.5px rgba(243,241,236,0.95), 0 6px 14px -6px rgba(21,19,15,0.5)' }} />
+        </span>
+      </div>
+
+      {/* Adressen */}
+      <div className={smal ? 'mt-1' : 'mt-3'} style={inn(1)}>
+        <p style={{ ...display, fontSize: smal ? 30 : 'clamp(34px, 3.1vw, 58px)', lineHeight: 1, letterSpacing: '-0.04em', color: blekk }} data-testid="v4-vegg-adresse">{adresse}</p>
+        <p className={`${smal ? 'mt-1.5 text-[12px]' : 'mt-2 text-[13.5px]'}`} style={{ color: dim }}>5015 Bergen · Leilighet 2</p>
+      </div>
+
+      {/* Fakta — hårlinjerader: etikett til venstre, verdi til høyre */}
+      <div className={smal ? 'mt-3' : 'mt-5'} style={{ borderTop: `1px solid ${hair}` }}>
+        {rader.map((r, j) => (
+          <div key={r.k} className={`flex items-center justify-between gap-4 ${smal ? 'h-[30px] text-[12.5px]' : 'h-[38px] text-[14px]'}`} style={{ borderBottom: `1px solid ${hair}`, ...inn(2 + j) }} data-testid={`v4-vegg-rad-${j}`}>
+            <span style={{ color: dim }}>{r.k}</span>
+            <span key={r.v} className="inline-flex items-center gap-2 whitespace-nowrap font-medium tabular-nums animate-in fade-in-0 duration-700" style={{ color: blekk }}>
+              {r.emma && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src="/v4/annonse/leietaker-emma.webp" alt="" width={18} height={18} className="rounded-full object-cover" style={{ width: 18, height: 18, boxShadow: '0 0 0 1px rgba(243,241,236,0.9)' }} />
+              )}
+              {r.v}
+              {r.status && <span className="inline-flex items-center gap-1.5 text-[11.5px] font-normal" style={{ color: '#1F7A4D' }}><span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55' }} />betalt</span>}
+            </span>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
 
 function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, replay, zoom = false }) {
-  /* Direkte-modus: eierportalen på mobil står på veggen (Veggmockup). */
-  if (direkte) return <Veggmockup hjemme={hjemme} smal={smal} k={fort?.puls} adresse={adresse} />;
+  /* Direkte-modus: boligkortet står på veggen (Veggkort). */
+  if (direkte) return <Veggkort hjemme={hjemme} smal={smal} k={fort?.puls} adresse={adresse} />;
   /* (Teksten under gjelder Street View-flyten.) Én setning som står fra første bilde og aldri skifter, én linje under, en hårlinje
      og den stille meta-linjen (adresse · klokke · status). Det eneste som beveger seg er klokken, som følger samtalen
      på telefonen. Mindre og mer dempet enn en overskrift — veggen skal ikke konkurrere med ham og telefonen.
