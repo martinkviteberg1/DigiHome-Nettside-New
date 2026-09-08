@@ -229,28 +229,6 @@ function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5
   );
 }
 
-/* Undertekst — som i en dokumentar: én liten presis linje nederst til høyre i rammen (sted · tid), og fem kapittelstreker
-   som fylles ett hakk per slag i samtalen. Ingen budskap på veggen; bildet får tid og sted, ikke ord. */
-function Undertekst({ hjemme, smal, k, adresse }) {
-  const i = k === null || k === undefined ? -1 : Math.min(k, STROM.length - 1);
-  const kl = STROM[Math.max(0, i)].kl;
-  const meta = 'rgba(21,19,15,0.62)';
-  return (
-    <div className="absolute z-[4]" style={{ right: smal ? 14 : 28, bottom: smal ? 14 : 22, opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(6px)', transition: `opacity 900ms ${EASE} ${hjemme ? 700 : 0}ms, transform 900ms ${EASE} ${hjemme ? 700 : 0}ms` }} aria-hidden={!hjemme} data-testid="v4-undertekst">
-      <p className="flex items-center justify-end gap-x-2 whitespace-nowrap tabular-nums" style={{ fontSize: smal ? 11 : 11.5, letterSpacing: '0.01em', color: meta }}>
-        <span>{adresse}, Bergen</span>
-        <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.22)' }}>·</span>
-        <span>torsdag <span key={kl} className="inline-block animate-in fade-in-0 duration-700">{kl}</span></span>
-      </p>
-      <div className="mt-2 flex justify-end gap-[5px]" aria-hidden="true">
-        {STROM.map((s, q) => (
-          <span key={s.id} className="block h-[2px] w-[14px] rounded-full" style={{ background: q <= i ? 'rgba(21,19,15,0.66)' : 'rgba(21,19,15,0.16)', transition: `background 700ms ${EASE}` }} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* Midlertidig scene til footagen finnes. 'stue' = hjemme hos eieren (nærmest filmkonseptet). 'bygg' = boligen. */
 const BILDER = {
   stue: { src: '/v4/stue-2000.webp', srcSet: '/v4/stue-1200.webp 1200w, /v4/stue-2000.webp 2000w', smal: '/v4/stue-1200.webp', pos: '50% 66%', posSmal: '40% 50%' },
@@ -530,9 +508,52 @@ function useFortelling(aktiv, redusert) {
   return { k, vis, puls };
 }
 
+
+/* Veggen: ÉN typografisk blokk i lyset fra vinduet — en liten meta-linje (sted · tid · kapittelstreker) og ett statement
+   som hører til bildet, ikke til nettsiden: «Kvelden er din.» Venstrejustert der veggen begynner, aldri sentrert. Toner
+   inn én gang når rommet står, og står stille — det eneste som lever er klokken og strekene, som følger samtalen.
+   Smal skjerm: samme blokk nederst i rammen over en myk gradient (veggen er beskåret bort der). */
+function Veggstatement({ hjemme, smal, k, adresse }) {
+  const i = k === null || k === undefined ? -1 : Math.min(k, STROM.length - 1);
+  const kl = STROM[Math.max(0, i)].kl;
+  const ord = ['Kvelden', 'er', 'din'];
+  const meta = 'rgba(21,19,15,0.56)';
+  const T0 = 700;
+  return (
+    <div
+      className={smal ? 'absolute inset-x-0 bottom-0 px-5 pb-5 pt-20' : 'absolute'}
+      style={{
+        ...(smal ? { background: 'linear-gradient(180deg, rgba(243,241,236,0) 0%, rgba(243,241,236,0.86) 34%, rgba(243,241,236,0.97) 100%)' } : { left: 'max(61%, calc(38% + 208px))', right: '5%', top: '27%' }),
+        opacity: hjemme ? 1 : 0,
+        transition: `opacity 700ms ${EASE} ${hjemme ? T0 : 0}ms`,
+      }}
+      aria-hidden={!hjemme}
+      data-testid="v4-vegg"
+    >
+      <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 whitespace-nowrap tabular-nums" style={{ fontSize: smal ? 11 : 11.5, letterSpacing: '0.01em', color: meta, opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(6px)', transition: `opacity 900ms ${EASE} ${hjemme ? T0 + 100 : 0}ms, transform 900ms ${EASE} ${hjemme ? T0 + 100 : 0}ms` }} data-testid="v4-vegg-meta">
+        <span>{adresse}, Bergen</span>
+        <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.22)' }}>·</span>
+        <span>torsdag <span key={kl} className="inline-block animate-in fade-in-0 duration-700">{kl}</span></span>
+        <span className="ml-1.5 inline-flex items-center gap-[4px]" aria-hidden="true">
+          {STROM.map((st, q) => (
+            <span key={st.id} className="block h-[2px] w-[12px] rounded-full" style={{ background: q <= i ? 'rgba(21,19,15,0.62)' : 'rgba(21,19,15,0.15)', transition: `background 700ms ${EASE}` }} />
+          ))}
+        </span>
+      </p>
+      <h3 className={smal ? 'mt-2.5' : 'mt-4'} style={{ ...display, fontSize: smal ? 34 : 'clamp(48px, 5vw, 96px)', lineHeight: 0.96, letterSpacing: '-0.045em', color: 'rgba(21,19,15,0.88)' }} data-testid="v4-vegg-statement">
+        {ord.map((o, j) => (
+          <span key={o} className="inline-block" style={{ marginRight: j < ord.length - 1 ? '0.22em' : 0, ...(hjemme ? { animation: `v4-ord-fade 1300ms ${EASE} ${T0 + 260 + j * 110}ms both`, willChange: 'transform, opacity, filter' } : { opacity: 0 }) }}>
+            {o}{j === ord.length - 1 ? <span style={{ color: T.lilla, marginLeft: '-0.02em' }}>.</span> : null}
+          </span>
+        ))}
+      </h3>
+    </div>
+  );
+}
+
 function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, replay, zoom = false }) {
-  /* Direkte-modus: ingenting på veggen. Bare undertekst i hjørnet (sted · tid · kapitler). */
-  if (direkte) return <Undertekst hjemme={hjemme} smal={smal} k={fort?.puls} adresse={adresse} />;
+  /* Direkte-modus: én blokk på veggen — meta-linje + «Kvelden er din.» (Veggstatement). */
+  if (direkte) return <Veggstatement hjemme={hjemme} smal={smal} k={fort?.puls} adresse={adresse} />;
   /* (Teksten under gjelder Street View-flyten.) Én setning som står fra første bilde og aldri skifter, én linje under, en hårlinje
      og den stille meta-linjen (adresse · klokke · status). Det eneste som beveger seg er klokken, som følger samtalen
      på telefonen. Mindre og mer dempet enn en overskrift — veggen skal ikke konkurrere med ham og telefonen.
