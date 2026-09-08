@@ -1462,3 +1462,11 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
     gjennom to rader, din rad («Du leste oppsummeringen») ligger fast. Felles slag `useTakt` (3,6 s), bare mens seksjonen sees.
   · Stage-form ≥ 1100 px rad-bredde: ett åpent panel (flex-basis-animasjon i px, innhold på faste bredder → ingen reflow), to rygger; auto-
     skift 8 s m/ lilla `Fremdrift`-linje, hover åpner, pause mens pekeren hviler på stagen. < 1100 px: stablede kolonner (md: 2 kol).
+- Spor-seksjonen v4 (bruker: «rotete, uoversiktlig, alt for mye som skjer» → «behold tre kolonner, gjør det verdensklasse»): radikal
+  reduksjon. Fem ting per kolonne: HVEM (display, menyens ord) · løftet · ETT tegn · én setning · handling. Tegnene er flisen (én bolig) i tre
+  utsnitt: 01 én flis m/ hjørnemerke lilla punkt → hake (du godkjente); 02 42 fliser som fylles (husleie inn); 03 én flis m/ DigiHome-merke,
+  haken kommer selv. Ingen tekst i tegnene, ingen bokser; subgrid på lg holder radene på linje. Stage- og register-variantene forkastet.
+- Annonsefilmens åpning v3 «Adressen er overskriften»: ingen felt-boks. Storskrift (84 px display, `Storskrift`) midt i hele rammen m/ markør,
+  dempet «Adressen din», hårlinje som vokser med teksten, forslag i 17 px under. VELG → «5015 Bergen» under. FUNNET → blokken morfer (transform
+  scale/translate) til boligarkets hode (`Arkhode`, 22 px) mens tekstspalten (skjult til nå) toner inn med akt 0 «Én adresse. Resten finner
+  systemet.»; fasade + fakta som før. Mobil: samme, 40 px, tekstblokk i Vokse fra FUNNET.

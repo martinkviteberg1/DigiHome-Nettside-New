@@ -7990,3 +7990,14 @@ frontend:
         -working: "NA"
         -agent: "main"
         -comment: "Skjermbilder 390/768/1024/1920 uten konsollfeil; tab-bytte laster chunks OK; preload-tellinger verifisert i rå HTML. Ikke brukergodkjent; frontend-agent ikke kjørt."
+  - task: "Spor-seksjon v4 (tre rolige kolonner m/ fliser-tegn, subgrid) + annonsefilm åpning v3 (storskrift → arkhode-morf, tekstspalte fra FUNNET)"
+    implemented: true
+    working: "NA"
+    file: "/app/components/forside/v4/SporSeksjon.js, /app/components/forside/v4/produkt/AnnonseFilm.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Skjermbilder 1920 + 390 (film-faser 0→7, spor-slag), ingen overflow/konsollfeil. Ikke brukergodkjent."
