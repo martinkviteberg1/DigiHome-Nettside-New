@@ -56,23 +56,19 @@ const HJEM_FOKUS_SMAL_X = 0.30;   // = .dh-hero-hjem i globals.css (object-posit
    tones inn. Rammen (poster + video) skaleres derfor litt opp om et punkt i bunnen (origo 30 % 100 %, se
    .dh-hero-hjem-ramme): bunnen står, han vokser oppover og kommer opp over toningen. = CSS-verdien. */
 const HJEM_ZOOM_SMAL = 1.26;
-/* Rekkefølgen følger veggen: Annonse → Kontrakt → Økonomi → Drift. Ingen beløp, ingen «forfaller». */
-/* Fire hendelser i takt med veggen. To av dem er små samtaler: eieren spør systemet, og Emma melder fra og får svar —
-   `chat` = bobler som kommer én og én (fra: 'deg' = eieren, 'dh' = DigiHome svarer, 'emma' = leietakeren). */
+/* Samtalen — fem slag. To av dem er små samtaler: eieren spør systemet, og Emma melder fra og får svar
+   (`fra`: 'deg' = eieren, 'dh' = DigiHome svarer, 'emma' = leietakeren). `ms` = hvor lenge slaget står før neste;
+   `kl` = klokken i den stille linjen under samtalen. Siste slag er kveldsoppsummeringen — den bærer poenget
+   («Én beslutning var din») og blir stående. {adresse} byttes ut med scenens adresse. */
 const STROM = [
-  /* Veggen: «Ute på FINN før lunsj. Du tok fem bilder i morges …» — telefonen: bildene går, annonsen kommer */
-  { id: 'visning', chat: [{ fra: 'deg', bilder: ['/v4/annonse/kjokken-600.webp', '/v4/annonse/soverom-600.webp', '/v4/annonse/kjokken-bar-600.webp'], t: '5 bilder', kvittering: 'Levert 08:52' }, { fra: 'dh', t: 'Annonsen er ute på FINN. Visning lørdag 12:00 — 4 påmeldt.', ikon: 'prikk' }] },
-  /* «Emma har signert. Kontrakten med BankID, depositumet på konto, nøklene klare til lørdag.» */
-  { id: 'kontrakt', chat: [{ fra: 'dh', t: 'Emma signerte leiekontrakten med BankID.', ikon: 'hake' }, { fra: 'dh', t: 'Depositumet står på konto. Nøkler lørdag 12:00.' }, { fra: 'deg', t: '👍', kvittering: 'Lest' }] },
-  /* «Husleien er på konto. 14 500 kr kom den første …» */
-  { id: 'regnskap', chat: [{ fra: 'deg', t: 'Har Emma betalt?', kvittering: 'Lest 08:12' }, { fra: 'dh', t: 'Ja — 14 500 kr kom 08:12. Bokført.' }] },
-  /* «Varmtvannet er tilbake. Emma sa fra … du sa bare ja til prisen.» */
-  { id: 'emma', bilde: '/v4/annonse/leietaker-emma.webp', chat: [{ fra: 'emma', t: 'Hei! Varmtvannet er borte 😕' }, { fra: 'dh', t: 'Rørlegger i dag 14:00 · 2 400 kr. Godkjenner du?' }, { fra: 'deg', t: 'Ja, kjør på', kvittering: 'Lest 10:04' }, { fra: 'emma', t: 'Varmt vann igjen — tusen takk!' }] },
-  /* «Én beslutning var din.» */
-  { id: 'kveld', chat: [{ fra: 'dh', t: 'Alt i orden på Nygårdsgaten 5. Ingenting venter på deg — god kveld.', ikon: 'hake' }] },
+  { id: 'visning', kl: '20:41', ms: 4800, chat: [{ fra: 'deg', bilder: ['/v4/annonse/kjokken-600.webp', '/v4/annonse/soverom-600.webp', '/v4/annonse/kjokken-bar-600.webp'], t: '5 bilder', kvittering: 'Levert 08:52' }, { fra: 'dh', t: 'Annonsen er ute på FINN. Visning lørdag 12:00 — 4 påmeldt.', ikon: 'prikk' }] },
+  { id: 'kontrakt', kl: '20:42', ms: 5400, chat: [{ fra: 'dh', t: 'Emma signerte leiekontrakten med BankID.', ikon: 'hake' }, { fra: 'dh', t: 'Depositumet står på konto. Nøkler lørdag 12:00.' }, { fra: 'deg', t: '👍', kvittering: 'Lest' }] },
+  { id: 'regnskap', kl: '20:43', ms: 4600, chat: [{ fra: 'deg', t: 'Har Emma betalt?', kvittering: 'Lest 08:12' }, { fra: 'dh', t: 'Ja — 14 500 kr kom 08:12. Bokført.' }] },
+  { id: 'emma', kl: '20:44', ms: 6600, bilde: '/v4/annonse/leietaker-emma.webp', chat: [{ fra: 'emma', t: 'Hei! Varmtvannet er borte 😕' }, { fra: 'dh', t: 'Rørlegger i dag 14:00 · 2 400 kr. Godkjenner du?' }, { fra: 'deg', t: 'Ja, kjør på', kvittering: 'Lest 10:04' }, { fra: 'emma', t: 'Varmt vann igjen — tusen takk!' }] },
+  { id: 'kveld', kl: '20:45', ms: 0, slutt: true, chat: [{ fra: 'dh', t: 'Alt i orden på {adresse}. Én beslutning var din i dag — rørleggerens pris. God kveld.', ikon: 'hake' }] },
 ];
 const STROM_START = 1500; const STROM_TAKT = 3000; const STROM_ETTER = 700;
-const STROM_TID = ['nå', '3 min', '9 min', '14 min'];
+const BOBLE_TAKT = 1050;   // ms mellom boblene i ett slag
 
 function StromIkon({ m }) {
   if (m.bilde) {
@@ -83,7 +79,7 @@ function StromIkon({ m }) {
   return <span className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(212,150,255,0.24)' }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: T.lilla }} /></span>;
 }
 
-function Telefonstrom({ hjemme, redusert, smal, puls }) {
+function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5' }) {
   const ref = useRef(null);
   const [maal, setMaal] = useState({ w: 0, h: 0 });
   useEffect(() => {
@@ -94,18 +90,18 @@ function Telefonstrom({ hjemme, redusert, smal, puls }) {
     ro?.observe(el);
     return () => ro?.disconnect();
   }, []);
-  /* Hendelsene følger veggfortellingen: `puls` øker én gang per beat, og hendelsen kommer opp av telefonen litt
-     etter at veggen har sagt det (STROM_ETTER). Uten puls (Street View-flyten) går strømmen i egen takt. */
+  /* Slagene følger klokken i useFortelling: `puls` øker én gang per slag, og samtalen kommer opp på veggen litt
+     etter (STROM_ETTER). Uten puls (Street View-flyten) går strømmen i egen takt. */
   const [n, setN] = useState(-1);
   useEffect(() => {
     if (!hjemme || redusert) { setN(-1); return undefined; }
-    if (puls === null) return undefined;               // synkronisert, men veggen har ikke sagt noe enda (eller siste beat)
+    if (puls === null) return undefined;               // synkronisert, men klokken har ikke startet enda
     if (puls !== undefined) {
       const t = window.setTimeout(() => setN(puls), STROM_ETTER);
       return () => window.clearTimeout(t);
     }
     let id = 0;
-    const t = window.setTimeout(() => { setN(0); id = window.setInterval(() => setN((k) => k + 1), STROM_TAKT); }, STROM_START);
+    const t = window.setTimeout(() => { setN(0); id = window.setInterval(() => setN((k) => Math.min(k + 1, STROM.length - 1)), STROM_TAKT); }, STROM_START);
     return () => { window.clearTimeout(t); if (id) window.clearInterval(id); };
   }, [hjemme, redusert, puls]);
 
@@ -118,70 +114,85 @@ function Telefonstrom({ hjemme, redusert, smal, puls }) {
   /* Smal: rammen er skalert HJEM_ZOOM_SMAL om (30 %, 100 %) — punktet følger med */
   if (smal) { px = HJEM_FOKUS_SMAL_X + (px - HJEM_FOKUS_SMAL_X) * HJEM_ZOOM_SMAL; py = 1 - (1 - py) * HJEM_ZOOM_SMAL; }
   const X = px * maal.w; const Y = py * maal.h;
-  /* Flatens bredde følger scenen: på mellomstore skjermer (nettbrett, 640–1000 px scene) smalner den (196–252 px) så
-     den aldri går inn i veggteksten, som starter ved max(61 %, 38 % + 208 px) — se Veggfortelling. */
+  /* Desktop: samtalen står ute på den lyse veggen til høyre for ham — der det er plass, i øyehøyde. Kolonnen er
+     ~400 px, sentrert på ~78 % av scenen og aldri lenger til venstre enn 58 %. Bunnen (der boblene vokser opp fra)
+     ligger på 60 % av høyden — i flukt med telefonen, så linjen går svakt oppover mot veggen; nyeste boble nederst. Smal skjerm: som før, oppe til høyre for ham. */
   const trang = !smal && maal.w < 1010;
-  const B = smal ? 212 : Math.max(196, Math.min(252, Math.round(maal.w * 0.246 - 12)));
-  /* Flaten står opp og til høyre for skjermen — over skulderen, aldri over ansiktet. Bunnen bindes til skjermen.
-     På smal skjerm klemmes den inn så den aldri går ut av scenens høyrekant. */
-  const fx = Math.min(X + (smal || trang ? 16 : Math.round(maal.w * 0.034)), smal ? Math.max(0, maal.w - B - 12) : Infinity); const fy = Y - (smal || trang ? 26 : Math.round(maal.h * 0.042));
+  const B = smal ? 212 : Math.round(Math.min(400, maal.w * 0.30));
+  const fx = smal ? Math.min(X + 16, Math.max(0, maal.w - B - 12)) : Math.max(Math.round(maal.w * 0.58), Math.round(maal.w * 0.78 - B / 2));
+  const fy = smal ? Y - 26 : Math.round(maal.h * 0.60);
   const inne = n >= 0;
-  const rader = inne ? [n, n - 1, n - 2, n - 3].filter((k) => k >= 0) : [];
+  const beat = inne ? STROM[Math.min(n, STROM.length - 1)] : null;
+  /* Størrelser: på veggen er det plass til å lese — 15 px tekst, 72 px bilder. Nettbrett litt mindre. Smal som før. */
+  const fs = smal ? 13 : trang ? 13.5 : 15;
+  const bildePx = smal ? 52 : trang ? 58 : 72;
+  const avatarPx = smal ? 22 : 26;
+  const blekk = 'rgba(21,19,15,0.92)';
 
   return (
     <div ref={ref} aria-hidden="true" className="pointer-events-none absolute inset-0 z-[3] overflow-hidden" data-testid="v4-telefonstrom" data-n={n}>
       {maal.w > 0 && hjemme && !redusert && (
         <>
-          {/* Hårlinjen fra skjermen opp til samtalens nedre venstre hjørne — boblene hører til telefonen */}
-          <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${maal.w} ${maal.h}`} preserveAspectRatio="none" style={{ opacity: inne ? 1 : 0, transition: `opacity 600ms ${EASE} 500ms` }}>
-            <line x1={X + 4} y1={Y - 2} x2={fx + 14} y2={fy + 1} stroke="rgba(251,250,248,0.55)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          {/* Hårlinjen fra skjermen ut til samtalens nedre venstre hjørne — det som står på veggen, kommer fra telefonen.
+              Én piksel, lys ved telefonen (mørk skjerm) og blekk ute på veggen (lys flate). Ingen pilspiss. */}
+          <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${maal.w} ${maal.h}`} preserveAspectRatio="none" style={{ opacity: inne ? 1 : 0, transition: `opacity 700ms ${EASE} 400ms` }}>
+            <defs>
+              <linearGradient id="v4-strek" gradientUnits="userSpaceOnUse" x1={X + 4} y1={Y - 2} x2={fx - 2} y2={fy + 1}>
+                <stop offset="0" stopColor="rgba(251,250,248,0.75)" />
+                <stop offset="0.45" stopColor="rgba(120,112,100,0.45)" />
+                <stop offset="1" stopColor="rgba(21,19,15,0.32)" />
+              </linearGradient>
+            </defs>
+            <line x1={X + 4} y1={Y - 2} x2={fx - 2} y2={fy + 1} stroke="url(#v4-strek)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
             <circle cx={X + 4} cy={Y - 2} r="2" fill="rgba(251,250,248,0.95)" />
+            <circle cx={fx - 2} cy={fy + 1} r="1.5" fill="rgba(21,19,15,0.35)" />
           </svg>
-          {/* Samtalen: frittstående bobler (ingen boks, ingen hode) som kommer én og én over telefonen — Emma til venstre
-              med bilde, eieren til høyre i lilla, DigiHome svarer i blekk. Skriveindikator (···) før hvert svar. Forrige
-              beats bobler glir opp og tones bort. Ingen glød, ingen blink. */}
+          {/* Samtalen: frittstående bobler (ingen boks, ingen skjerm) som kommer én og én — Emma til venstre med bilde,
+              eieren til høyre i lilla, DigiHome svarer i blekk. Skriveindikator (···) før hvert svar. Forrige slags
+              bobler glir opp og tones bort. Ingen glød, ingen blink. Siste slag blir stående. */}
           <div className="absolute flex flex-col justify-end" style={{ left: fx, bottom: maal.h - fy, width: B, opacity: inne ? 1 : 0, transition: `opacity 500ms ${EASE}` }} data-testid="v4-strom-flate">
-            {[n - 1, n].filter((k) => k >= 0).map((k) => {
-              const m = STROM[k % STROM.length];
+            {[n - 1, n].filter((k) => k >= 0 && k < STROM.length).map((k) => {
+              const m = STROM[k];
               const ny = k === n;
               const bobler = m.chat || [{ fra: 'dh', t: m.t, u: m.u, ikon: m.ikon }];
               return (
-                <div key={k} className="flex w-full flex-col gap-1.5" style={{ transformOrigin: '0% 100%', animation: ny ? 'none' : `v4-boble-ut 560ms cubic-bezier(0.4, 0, 0.6, 1) both`, position: ny ? 'relative' : 'absolute', bottom: ny ? undefined : 0, left: 0, willChange: 'transform, opacity' }} data-testid={`v4-strom-${m.id}`} aria-hidden={!ny}>
+                <div key={k} className="flex w-full flex-col gap-2" style={{ transformOrigin: '0% 100%', animation: ny ? 'none' : `v4-boble-ut 560ms cubic-bezier(0.4, 0, 0.6, 1) both`, position: ny ? 'relative' : 'absolute', bottom: ny ? undefined : 0, left: 0, willChange: 'transform, opacity' }} data-testid={`v4-strom-${m.id}`} aria-hidden={!ny}>
                   {bobler.map((c, j) => {
                     const hoyre = c.fra !== 'emma';
                     const dh = c.fra === 'dh';
-                    const t0 = ny ? 200 + j * 950 : 0;                     // når boblen kommer
+                    const t0 = ny ? 200 + j * BOBLE_TAKT : 0;               // når boblen kommer
                     const svar = dh || (c.fra === 'emma' && j > 0);          // svar får skriveindikator først
+                    const tekst = String(c.t || '').replace('{adresse}', adresse);
                     return (
-                      <div key={j} className={`flex w-full items-end gap-1.5 ${hoyre ? 'justify-end' : 'justify-start'}`}>
+                      <div key={j} className={`flex w-full items-end gap-2 ${hoyre ? 'justify-end' : 'justify-start'}`}>
                         {c.fra === 'emma' && (
                           /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={m.bilde || '/v4/annonse/leietaker-emma.webp'} alt="" width={22} height={22} className="h-[22px] w-[22px] shrink-0 rounded-full object-cover" style={{ boxShadow: '0 0 0 1.5px rgba(251,250,248,0.9)', opacity: 0, animation: `v4-chat-inn 420ms ${EASE} ${t0}ms both` }} />
+                          <img src={m.bilde || '/v4/annonse/leietaker-emma.webp'} alt="" width={avatarPx} height={avatarPx} className="shrink-0 rounded-full object-cover" style={{ width: avatarPx, height: avatarPx, boxShadow: '0 0 0 1.5px rgba(251,250,248,0.9)', opacity: 0, animation: `v4-chat-inn 420ms ${EASE} ${t0}ms both` }} />
                         )}
                         <span className="relative max-w-[86%]">
-                          {/* Skriveindikatoren: kommer 700 ms før svaret, går idet svaret kommer */}
+                          {/* Skriveindikatoren: kommer 780 ms før svaret, går idet svaret kommer */}
                           {ny && svar && (
-                            <span className={`absolute bottom-0 inline-flex h-[30px] items-center gap-[3px] px-3 ${hoyre ? 'right-0' : 'left-0'}`} style={{ borderRadius: hoyre ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: dh ? T.ink : 'rgba(251,250,248,0.96)', opacity: 0, animation: `v4-skriver 760ms linear ${Math.max(0, t0 - 780)}ms both` }}>
+                            <span className={`absolute bottom-0 inline-flex items-center gap-[3px] px-3 ${hoyre ? 'right-0' : 'left-0'}`} style={{ height: smal ? 30 : 34, borderRadius: hoyre ? '18px 18px 5px 18px' : '18px 18px 18px 5px', background: dh ? T.ink : 'rgba(251,250,248,0.96)', opacity: 0, animation: `v4-skriver 760ms linear ${Math.max(0, t0 - 780)}ms both` }}>
                               {[0, 1, 2].map((d) => <span key={d} className="block h-[5px] w-[5px] rounded-full" style={{ background: dh ? 'rgba(244,241,234,0.7)' : 'rgba(21,19,15,0.4)', animation: `v4-prikk 900ms ease-in-out ${d * 150}ms infinite` }} />)}
                             </span>
                           )}
                           {c.bilder ? (
-                            /* Bildene eieren sendte: tre små, kommer én og én */
-                            <span className="flex gap-1 rounded-[16px] p-1" style={{ borderRadius: '16px 16px 4px 16px', background: T.lilla, boxShadow: '0 14px 34px -18px rgba(0,0,0,0.45)', opacity: 0, animation: `v4-chat-inn 480ms ${EASE} ${t0}ms both` }}>
+                            /* Bildene eieren sendte: tre, kommer én og én */
+                            <span className="flex gap-1.5 p-1.5" style={{ borderRadius: '18px 18px 5px 18px', background: T.lilla, boxShadow: '0 16px 40px -20px rgba(0,0,0,0.45)', opacity: 0, animation: `v4-chat-inn 480ms ${EASE} ${t0}ms both` }}>
                               {c.bilder.map((b, q) => (
                                 /* eslint-disable-next-line @next/next/no-img-element */
-                                <img key={b} src={b} alt="" width={52} height={52} className="h-[52px] w-[52px] rounded-[12px] object-cover" style={{ opacity: 0, animation: `v4-chat-inn 420ms ${EASE} ${t0 + 180 + q * 160}ms both` }} />
+                                <img key={b} src={b} alt="" width={bildePx} height={bildePx} className="rounded-[13px] object-cover" style={{ width: bildePx, height: bildePx, opacity: 0, animation: `v4-chat-inn 420ms ${EASE} ${t0 + 180 + q * 160}ms both` }} />
                               ))}
                             </span>
                           ) : (
-                          <span className="block px-3 py-[7px] text-[12.5px] leading-[1.35]" style={{ borderRadius: hoyre ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: dh ? T.ink : c.fra === 'deg' ? T.lilla : 'rgba(251,250,248,0.96)', color: dh ? '#F4F1EA' : T.ink, boxShadow: dh ? '0 14px 34px -18px rgba(0,0,0,0.6)' : '0 14px 34px -18px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.6)', transformOrigin: hoyre ? '100% 100%' : '0% 100%', opacity: 0, animation: `v4-chat-inn 480ms ${EASE} ${t0}ms both`, willChange: 'transform, opacity' }}>
+                          <span className="block" style={{ padding: smal ? '7px 12px' : '9px 14px', fontSize: fs, lineHeight: 1.38, borderRadius: hoyre ? '18px 18px 5px 18px' : '18px 18px 18px 5px', background: dh ? T.ink : c.fra === 'deg' ? T.lilla : 'rgba(251,250,248,0.96)', color: dh ? '#F4F1EA' : T.ink, boxShadow: dh ? '0 16px 40px -20px rgba(0,0,0,0.55)' : '0 16px 40px -20px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.6)', transformOrigin: hoyre ? '100% 100%' : '0% 100%', opacity: 0, animation: `v4-chat-inn 480ms ${EASE} ${t0}ms both`, willChange: 'transform, opacity' }}>
                             {c.ikon && <span className="mr-1.5 inline-block h-[6px] w-[6px] rounded-full align-middle" style={{ background: c.ikon === 'hake' ? '#5FD39A' : T.lilla }} />}
-                            {c.t}{c.u ? <span className="block text-[11px]" style={{ color: 'rgba(244,241,234,0.62)' }}>{c.u}</span> : null}
+                            {tekst}{c.u ? <span className="block text-[11px]" style={{ color: 'rgba(244,241,234,0.62)' }}>{c.u}</span> : null}
                           </span>
                           )}
                           {/* Kvittering under eierens bobler — «Levert», så «Lest» */}
                           {c.kvittering && ny && (
-                            <span className="block pr-1 pt-[3px] text-right text-[10px]" style={{ color: 'rgba(251,250,248,0.75)', textShadow: '0 1px 6px rgba(0,0,0,0.4)', opacity: 0, animation: `v4-chat-inn 360ms ${EASE} ${t0 + 620}ms both` }}>{c.kvittering}</span>
+                            <span className="block pr-1 pt-[3px] text-right" style={{ fontSize: smal ? 10 : 11, color: smal ? 'rgba(251,250,248,0.75)' : 'rgba(21,19,15,0.5)', textShadow: smal ? '0 1px 6px rgba(0,0,0,0.4)' : 'none', opacity: 0, animation: `v4-chat-inn 360ms ${EASE} ${t0 + 620}ms both` }}>{c.kvittering}</span>
                           )}
                         </span>
                       </div>
@@ -191,6 +202,23 @@ function Telefonstrom({ hjemme, redusert, smal, puls }) {
               );
             })}
           </div>
+          {/* Den stille linjen under samtalen (kun desktop): adresse · klokke · status. Står fra første bilde og endrer
+              seg bare med klokken. En hårlinje over, i kolonnens bredde — hyllen samtalen står på. */}
+          {!smal && (
+            <div className="absolute" style={{ left: fx, top: fy + 18, width: B, opacity: 1, transition: `opacity 700ms ${EASE} 300ms` }} data-testid="v4-vegg-status">
+              <div aria-hidden="true" className="h-px" style={{ background: 'rgba(21,19,15,0.14)', transform: 'scaleX(1)', transformOrigin: '0 50%', transition: `transform 1200ms ${EASE} 200ms` }} />
+              <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 whitespace-nowrap" style={{ fontSize: trang ? 12.5 : 13.5, color: 'rgba(21,19,15,0.55)' }}>
+                <span>{adresse}</span>
+                <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.2)' }}>·</span>
+                <span className="tabular-nums">torsdag <span key={beat?.kl || 'x'} className="inline-block animate-in fade-in-0 duration-500">{beat?.kl || STROM[0].kl}</span></span>
+                <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.2)' }}>·</span>
+                <span className="inline-flex items-center gap-2">
+                  <span aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#1F9D55', animation: 'v4-puls-dot 3200ms ease-in-out 1400ms infinite' }} />
+                  Alt i orden
+                </span>
+              </p>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -442,21 +470,8 @@ function Virkelighet({ film, bilde, smal, kjorer, ferdig, redusert, egen, fase, 
    «Visning booket» opp fra telefonen hans. Én koreografi, to flater.
    Kun opacity/transform/filter på små tekstelementer. Faste minimumshøyder — ingenting hopper.
 --------------------------------------------------------------------------- */
-/* Kveldens tilbakeblikk — det som skjedde i dag mens han gjorde noe annet. Fortid, konkret, kort. Klokken tikker. */
-/* Veggen forteller dagen slik en venn ville fortalt den: hele setninger, ett faktum om gangen, ingen slagord. */
-const FORTELLING = [
-  { id: 'annonse', ord: ['Ute', 'på', 'FINN', 'før', 'lunsj.'], u: 'Du tok fem bilder i morges. Tekst, pris og visningstider var på plass før du hadde spist.', ms: 4300, kl: '20:41' },
-  { id: 'kontrakt', ord: ['Emma', 'har', 'signert.'], u: 'Kontrakten med BankID, depositumet på konto, nøklene klare til lørdag. Ingen utskrift, ingen møte.', ms: 4300, kl: '20:42' },
-  { id: 'okonomi', ord: ['Husleien', 'er', 'på', 'konto.'], u: '14 500 kr kom den første, som avtalt. Bokført, og klart til regnskapsføreren.', ms: 4300, kl: '20:43' },
-  { id: 'drift', ord: ['Varmtvannet', 'er', 'tilbake.'], u: 'Emma sa fra i appen klokka ti. Rørleggeren var ferdig før tre — du sa bare ja til prisen.', ms: 5400, kl: '20:44' },
-  { id: 'kveld', ord: ['Én', 'beslutning', 'var', 'din.'], u: 'Rørleggerens pris. Alt annet gikk av seg selv — og kvelden er din.', ms: 7400, slutt: true, kl: '20:45' },
-];
-const REGISTER = [
-  { id: 'annonse', t: 'Annonse' },
-  { id: 'kontrakt', t: 'Kontrakt' },
-  { id: 'okonomi', t: 'Økonomi' },
-  { id: 'drift', t: 'Drift' },
-];
+/* Historien fortelles i samtalen på veggen (STROM) — veggen har ingen egne overskrifter lenger. Klokken under
+   (useFortelling) driver slagene: ett slag om gangen, en liten pause mellom, og så HVILE på siste bilde. */
 const FORTELLING_T0 = 1500;   // rommet må komme opp av mørket før teksten begynner (ikke-direkte)
 const FORTELLING_T0_DIREKTE = 140; // direkte: scenen står alt — teksten skal være der før du har rukket å scrolle
 const FORTELLING_PAUSE = 640; // det gamle tones rolig ut (560 ms), et lite pust, så tones det nye inn — filmatisk, ikke klipp
@@ -466,42 +481,41 @@ const FORTELLING_PAUSE = 640; // det gamle tones rolig ut (560 ms), et lite pust
 function useFortelling(aktiv, redusert) {
   const [k, setK] = useState(0);
   const [vis, setVis] = useState(false);
-  const [runde, setRunde] = useState(0);
   const startet = useRef(false);
+  const SISTE = STROM.length - 1;
   useEffect(() => {
-    if (!aktiv) { startet.current = false; setK(0); setVis(false); setRunde(0); return undefined; }
-    if (redusert) { setK(FORTELLING.length - 1); setVis(true); return undefined; }
+    if (!aktiv) { startet.current = false; setK(0); setVis(false); return undefined; }
+    if (redusert) { setK(SISTE); setVis(true); return undefined; }
     let t;
     if (vis) {
-      t = window.setTimeout(() => setVis(false), FORTELLING[k].ms);
+      if (k >= SISTE) return undefined;                 // siste bilde: hvil — filmen er ferdig fortalt
+      t = window.setTimeout(() => setVis(false), STROM[k].ms);
     } else {
       t = window.setTimeout(() => {
-        if (startet.current) {
-          if (k === FORTELLING.length - 1) setRunde((r) => r + 1);
-          setK((kk) => (kk + 1) % FORTELLING.length);
-        }
+        if (startet.current) setK((kk) => Math.min(kk + 1, SISTE));
         startet.current = true;
         setVis(true);
       }, startet.current ? FORTELLING_PAUSE : FORTELLING_T0_DIREKTE);
     }
     return () => window.clearTimeout(t);
-  }, [aktiv, redusert, vis, k]);
-  /* Pulsen til telefonen: én per beat i de fire første — telefonen får hendelsen litt etter at veggen har sagt det */
-  const puls = aktiv && !redusert && startet.current ? runde * FORTELLING.length + k : null;
-  return { k, vis, runde, puls };
+  }, [aktiv, redusert, vis, k, SISTE]);
+  /* Pulsen til samtalen: én per slag — boblene kommer opp på veggen litt etter at klokken har slått */
+  const puls = aktiv && !redusert && startet.current ? k : null;
+  return { k, vis, puls };
 }
 
 function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, replay, zoom = false }) {
-  const { k, vis } = fort;
-  /* Uten direkte-modus (din adresse → Street View) står veggen som før: én setning, én linje, feltet. */
-  const beat = direkte ? FORTELLING[k] : { id: 'auto', ord: ['Utleie', 'på', 'autopilot'], u: 'Én godkjenning. Resten skjedde mens du gikk hjem.', slutt: true };
-  const inne = direkte ? hjemme && vis : hjemme;
+  /* Direkte-modus: veggen er samtalens lerret (Telefonstrom) — ingen overskrifter, ingen tall. */
+  if (direkte) return null;
+  /* Street View-flyten (din adresse → din bolig): én setning, én linje, feltet — som før. */
+  const beat = { id: 'auto', ord: ['Utleie', 'på', 'autopilot'], u: 'Én godkjenning. Resten skjedde mens du gikk hjem.', slutt: true };
+  const inne = hjemme;
   const T0 = direkte ? 0 : FORTELLING_T0;
   const fastT0 = direkte ? FORTELLING_T0_DIREKTE + 160 : FORTELLING_T0;
   const fast = (i) => ({ opacity: hjemme ? 1 : 0, transform: hjemme ? 'none' : 'translateY(12px)', transition: `opacity 900ms ${EASE} ${hjemme ? fastT0 + i * 130 : 0}ms, transform 900ms ${EASE} ${hjemme ? fastT0 + i * 130 : 0}ms` });
   /* Ordene monteres på nytt per beat (key) — derfor keyframes, ikke transitions: inn (blur, nedenfra) når de står,
      ut (opp, blur) når beatet er over. Før rommet er oppe: bare skjult. */
-  const ut = direkte && hjemme && !vis;
+  const ut = false;
   /* Direkte: filmatisk. Hvert ord tones inn fra en svak uskarphet og et lite løft (1300 ms expo, 90 ms mellom
      ordene); ut: ordene tones rolig bort oppover (560 ms, 30 ms stagger) FØR det nye kommer (FORTELLING_PAUSE).
      Ingen maske, ingen harde kanter. Under 640 px kjøres samme keyframes uten blur (globals.css). */
@@ -811,7 +825,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom =
         <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.38) 0%, rgba(21,18,15,0.14) 40%, rgba(21,18,15,0.02) 62%, rgba(21,18,15,0.24) 100%)', opacity: inne ? 1 : 0, transition: `opacity ${hjemme ? 900 : 1400}ms ${EASE}` }} />
 
         {/* Det som skjer i appen mens han sitter der — kort som kommer opp av telefonen */}
-        <Telefonstrom hjemme={hjemme} redusert={redusert} smal={smal} puls={direkte ? fort.puls : undefined} />
+        <Telefonstrom hjemme={hjemme} redusert={redusert} smal={smal} puls={direkte ? fort.puls : undefined} adresse={adresse} />
 
         {/* ── Veggen: han hjemme. Fortellingen om hva DigiHome er står rett på den lyse veggen — ingen boks. ── */}
         <Veggfortelling hjemme={hjemme} direkte={direkte} smal={smal} fort={fort} adresse={adresse} vist={vist} hvem={hvem} replay={replay} zoom={zoom} />
