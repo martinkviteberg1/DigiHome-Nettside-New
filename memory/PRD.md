@@ -1496,3 +1496,9 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   grenser, historikk, BankID – hvert m/ ett produkteksempel; erstatter den lille Kontroll-listen i ModulSeksjon), hero-ingress om selskaper/
   roller/grenser/logg, «Hvor stor er porteføljen?», to nye FAQ (sikkerhet/tilganger, start med ett selskap), steg 2–3 presisert, produktfilmene
   utsatt (Utsatt + dynamic). Rekkefølge: Hero → Tillit → Struktur → Film → Én dag/Tre roller → Moduler → Kontroll → Steg → FAQ → Avslutning.
+- «Meny på meny» løst (bruker: hva om navbaren blir hamburger når kapittelbaren festes?): valgt variant = kapitlene flytter INN i
+  hovednavbaren. `kapittelbar.js` (liten ekstern kilde, useSyncExternalStore): ProduktSeksjon publiserer {tabs, aktiv, frem, kapitler,
+  velg} når festet (ramme-variant) og tar dem ned ellers; NavV4 bytter menylenkene ut med `NavKapitler` (sentrert absolutt på lg, midtfelt
+  på mobil, spor m/ fremdrift), viser hamburger også på desktop (menyarket, maks 720 px) og skjuler «Logg inn» i linja. Seksjonens egen bar
+  tones ut når festet (plassen beholdes). `bytt` fra festet: scroller produktflaten inn rett under navbaren (forblir festet). Under 420 px:
+  bare merke-ikonet.

@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Layers } from 'lucide-react';
+import { settKapittelbar } from '../kapittelbar';
 import { EASE, T, display, useSynlig } from '../motion';
 import AnnonseFilm from './AnnonseFilm';
 
@@ -219,18 +220,21 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
     return () => { ro?.disconnect(); window.removeEventListener('resize', maal); };
   }, [aktiv, full]);
 
-  /* Tabbytte fra festet rad: hold blikket der raden er — scroll produktet inn rett under den. */
+  /* Tabbytte fra festet rad (kapitlene står i navbaren): hold blikket der — scroll produktflaten inn rett under
+     navbaren, så det nye kapittelet vises og baren blir stående festet (vakten forblir over nav-linja). */
   const bytt = (id) => {
     setAktiv(id);
-    if (festet && ref.current) {
+    if (festet && (sceneRef.current || ref.current)) {
       const navH = window.innerWidth >= 1024 ? 64 : 72;
-      const topp = ref.current.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({ top: topp - navH + 40, behavior: 'smooth' });
+      const el = sceneRef.current || ref.current;
+      const topp = el.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: Math.round(topp - navH - 16), behavior: 'smooth' });
     }
   };
 
   /* Kapitlene spiller videre av seg selv (Annonse → Kontrakt → Drift) til brukeren velger en tab. Tab-markøren glir. */
   const KAPITLER = TABS.filter((t) => t.klar).map((t) => t.id);
+
   /* Siste kapittel (Økonomi) går tilbake til første — livssyklusen er en sirkel */
   const nesteId = KAPITLER[(KAPITLER.indexOf(aktiv) + 1) % KAPITLER.length] || null;
   const nesteNavn = nesteId ? TABS.find((t) => t.id === nesteId).navn : null;
@@ -242,8 +246,18 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
   const [bytter, setBytter] = useState(false);       // kapittelbytte: det gamle tones ut før det nye monteres
   /* Kapittel-fremdrift i den aktive tab-pillen (tynn linje som fylles i takt med filmen) */
   const [frem, setFrem] = useState({ andel: 0, ms: 0 });
+
   const onFremdrift = useCallback((f) => setFrem(f), []);
   useEffect(() => { setFrem({ andel: 0, ms: 0 }); }, [aktiv]);
+  /* Festet → kapitlene flytter inn i hovednavbaren (én linje, ikke «meny på meny»). Publiseres hver gang
+     kapittel/fremdrift endres mens vi er festet; fjernes når vi ikke er det eller seksjonen avmonteres. */
+  useEffect(() => {
+    if (full || !festet) { settKapittelbar(null); return undefined; }
+    settKapittelbar({ tabs: TABS.map((t) => ({ id: t.id, navn: t.navn, klar: t.klar })), aktiv, frem, kapitler: KAPITLER, velg: (id) => { if (TABS.find((t) => t.id === id)?.klar) bytt(id); } });
+    return () => settKapittelbar(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [full, festet, aktiv, frem]);
+
   const videre = () => {
     if (!nesteId || !filmSynlig) return false;        // bare når produktflaten faktisk er i bildet — ellers looper filmen
     setBytter(true);
@@ -336,13 +350,11 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
             glidende markør — bare typografi og linjer. Klistres under navigasjonen når man skroller i seksjonen og får
             da en rolig plate bak seg. På mobil: fire like kolonner over hele bredden, 44 px trykkflate. */}
         <div className={`sticky top-[72px] z-30 flex lg:top-[64px] ${venstre ? 'justify-start' : 'justify-center'}`} data-testid="v4-tabs-sticky" data-festet={festet ? '1' : '0'}>
+          {/* Festet: baren tones ut her og lever i navbaren i stedet (plassen beholdes, så ingenting hopper) */}
           <div
-            className="w-full max-w-[640px] rounded-[14px] transition-[background-color,box-shadow,padding] duration-300 sm:w-auto sm:min-w-[560px]"
-            style={{
-              background: festet ? tema.pilleFestet : 'transparent',
-              boxShadow: festet ? `inset 0 0 0 1px ${tema.pilleKant}, 0 14px 36px -20px rgba(0,0,0,0.45)` : 'none',
-              padding: festet ? '6px 10px' : '0',
-            }}
+            className="w-full max-w-[640px] sm:w-auto sm:min-w-[560px]"
+            style={{ opacity: festet ? 0 : 1, transform: festet ? 'translateY(-6px)' : 'none', transition: `opacity 220ms ${EASE}, transform 300ms ${EASE}`, pointerEvents: festet ? 'none' : 'auto' }}
+            aria-hidden={festet}
           >
             <div ref={listeRef} role="tablist" aria-label="Kapitler" className="grid gap-1.5 sm:flex sm:gap-2" style={{ gridTemplateColumns: `repeat(${TABS.length}, minmax(0, 1fr))` }} data-testid="v4-tabs" data-variant="kapittelbar">
               {TABS.map((t, i) => {
