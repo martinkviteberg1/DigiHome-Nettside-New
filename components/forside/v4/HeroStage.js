@@ -547,7 +547,7 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
 
 /* zoom: scenen ligger i HeroZoom (sticky, fullskjerm) og beskjæres med clip-path fra kort til hele flaten —
    verdiene kommer som CSS-variabler (--dh-ix/--dh-iy/--dh-r) fra rammen rundt. Kun lg+. */
-export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom = false, utenVegg = false, speil = false }) {
+export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom = false, utenVegg = false, speil = false, utenPil = false }) {
   const ref = useRef(null);
   const figRef = useRef(null);
   const smal = useSmal();
@@ -775,7 +775,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom =
         <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.38) 0%, rgba(21,18,15,0.14) 40%, rgba(21,18,15,0.02) 62%, rgba(21,18,15,0.24) 100%)', opacity: inne ? 1 : 0, transition: `opacity ${hjemme ? 900 : 1400}ms ${EASE}` }} />
 
         {/* Det som skjer i appen mens han sitter der — kort som kommer opp av telefonen */}
-        <Telefonstrom hjemme={hjemme} redusert={redusert} smal={smal} puls={direkte ? fort.puls : undefined} adresse={adresse} direkte={direkte} onApnet={onApnet} speil={speil} />
+        <Telefonstrom hjemme={hjemme} redusert={redusert} smal={smal} puls={direkte ? fort.puls : undefined} adresse={adresse} direkte={direkte} onApnet={onApnet} speil={speil} pil={!utenPil} />
 
         {/* ── Veggen: han hjemme. Fortellingen om hva DigiHome er står rett på den lyse veggen — ingen boks. ──
             utenVegg: coveren i investordecket gjenbruker scenen, men uten kart/adressekort — bare video + samtale. */}

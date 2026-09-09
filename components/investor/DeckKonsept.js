@@ -1014,6 +1014,11 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-strom { stroke-dasharray: 6 8; animation: deck-strom 1.6s linear infinite; }
         @keyframes deck-nikk { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
         .deck-nikk { animation: deck-nikk 1.6s ${EASE} infinite; }
+        /* Toppverktøyene (PDF, Del, planvalg): rene, skjult i ro — de svever inn først når du hovrer over dem øverst
+           til høyre (eller tab-fokuserer). På berøring (ingen hover) står de alltid fremme. */
+        .deck-verktoy { opacity: 0; transform: translateY(-8px); transition: opacity 460ms ${EASE}, transform 460ms ${EASE}; pointer-events: none; }
+        .deck-topp-group:hover .deck-verktoy, .deck-topp-group:focus-within .deck-verktoy { opacity: 1; transform: none; pointer-events: auto; }
+        @media (hover: none) { .deck-verktoy { opacity: 1; transform: none; pointer-events: auto; } }
         /* Coveren: merkets signaturbilde (eieren hjemme om kvelden), speilet så han står til høyre for teksten.
            Et knapt merkbart, langsomt skyv innover mens kapitlet er aktivt — kino, ikke slideshow. */
         .deck-cover-foto { transform: scaleX(-1) scale(1.02); transform-origin: 50% 50%; transition: transform 16s linear; filter: saturate(0.92); }
@@ -1037,7 +1042,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           <List className="h-3.5 w-3.5" /> <span className="tabular-nums">{String(side + 1).padStart(2, '0')}</span><span style={{ opacity: 0.5 }}>/ {sider.length}</span><span className="hidden sm:inline"> · {KAPITLER[side].navn}</span>
         </button>
         {!ekstern && data.presenter ? (
-          <div className="pointer-events-auto flex items-center gap-2" data-testid="deck-presenter-valg">
+          <div className="deck-topp-group pointer-events-auto flex items-center" data-testid="deck-presenter-valg">
+            <div className="deck-verktoy flex items-center gap-2">
             {data.planer?.length > 1 ? (
               <select value={plan.id} onChange={(e) => byttPlan('plan', e.target.value)} className="hidden h-9 max-w-[200px] rounded-full px-3 text-[12.5px] transition-colors duration-500 sm:block" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)', color: morkSide ? T.offwhite : T.ink }} data-testid="deck-planvalg" title="Digihome AS-plan">
                 {data.planer.map((p) => <option key={p.id} value={p.id} style={{ color: T.ink }}>DH · {p.navn}{p.investorSynlig ? '' : ' (ikke delt)'}</option>)}
@@ -1048,10 +1054,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
                 {data.techPlaner.map((p) => <option key={p.id} value={p.id} style={{ color: T.ink }}>Tech · {p.navn}{p.investorSynlig ? '' : ' (ikke delt)'}</option>)}
               </select>
             ) : null}
-            <button onClick={() => setVisNotater((v) => !v)} title="Notater (N)" className="hidden h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium transition-colors duration-500 lg:flex" style={{ background: visNotater ? (morkSide ? T.offwhite : T.ink) : (morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)'), color: visNotater ? (morkSide ? T.ink : T.offwhite) : (morkSide ? T.offwhite : T.ink) }} data-testid="deck-notater"><StickyNote className="h-3.5 w-3.5" /> Notater</button>
             {preset !== 'plan' ? <button onClick={nullstill} className="flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium" style={{ background: morkSide ? 'rgba(212,150,255,0.18)' : 'rgba(122,63,168,0.12)', color: morkSide ? T.lilla : LILLA_M }} data-testid="deck-nullstill"><RotateCcw className="h-3.5 w-3.5" /><span className="hidden sm:inline">Tilbake til planen</span><span className="sm:hidden">Planen</span></button> : null}
             <button onClick={lastNed} className="flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium transition-colors duration-500" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)', color: morkSide ? T.offwhite : T.ink }} data-testid="deck-lastned"><Download className="h-3.5 w-3.5" /><span className="hidden sm:inline">PDF</span></button>
             <button onClick={() => setVisDeling(true)} className="flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-medium transition-colors duration-500" style={{ background: morkSide ? T.offwhite : T.ink, color: morkSide ? T.ink : T.offwhite }} data-testid="deck-del"><Share2 className="h-3.5 w-3.5" /> Del</button>
+            </div>
           </div>
         ) : null}
       </div>
@@ -1095,15 +1101,16 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           ikke kart. Løftet står til venstre. Ingen innholdsfortegnelse. Resten av decket er lyst — coveren er sceneteppet. */}
       <Side id="forside" pos={pos('forside')} aktiv={er('forside')} morkt bred>
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden" data-testid="deck-cover-bak">
-          {/* Selve forsidescenen, uendret — video-loopen med pushvarselet som åpner appen og chat-boblene. Uten kart/adressekort. */}
+          {/* Selve forsidescenen, uendret — video-loopen med pushvarselet som åpner appen og chat-boblene. Uten kart/adressekort, uten «pil»/lystråd. */}
           <div className="deck-cover-scene absolute inset-0 flex items-center" data-testid="deck-cover-scene">
-            <div className="w-full"><HeroStage eiendom={null} bilde="stue" film={HERO_FILM} utenVegg speil /></div>
+            <div className="w-full"><HeroStage eiendom={null} bilde="stue" film={HERO_FILM} utenVegg speil utenPil /></div>
           </div>
-          {/* Sløret lys: mørkt der teksten står (venstre/bunn), åpent mot ham og boblene (høyre) */}
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(20,17,14,0.95) 0%, rgba(20,17,14,0.88) 24%, rgba(20,17,14,0.52) 48%, rgba(20,17,14,0.16) 72%, rgba(20,17,14,0.08) 100%)' }} />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(20,17,14,0.42) 0%, rgba(20,17,14,0) 24%, rgba(20,17,14,0.06) 68%, rgba(20,17,14,0.60) 100%)' }} />
-          {/* Et varmt lilla åndedrag øverst til høyre — merkets farge i rommet */}
-          <div className="absolute" style={{ right: '-8%', top: '-24%', width: '58%', height: '86%', background: 'radial-gradient(circle, rgba(212,150,255,0.13) 0%, rgba(212,150,255,0.045) 40%, rgba(212,150,255,0) 66%)' }} />
+          {/* Kino-scrim: dyp ro til venstre der løftet står, klarner rolig mot ham til høyre — ingen grøt i midten. */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(17,14,11,0.97) 0%, rgba(17,14,11,0.9) 20%, rgba(17,14,11,0.58) 42%, rgba(17,14,11,0.2) 62%, rgba(17,14,11,0.04) 82%, rgba(17,14,11,0) 100%)' }} />
+          {/* Topp for kontrollene, bunn for nøkkeltallene — begge svært mykt, aldri en hard kant. */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(17,14,11,0.5) 0%, rgba(17,14,11,0) 15%, rgba(17,14,11,0) 60%, rgba(17,14,11,0.34) 82%, rgba(17,14,11,0.72) 100%)' }} />
+          {/* Et varmt lilla åndedrag bak ham — merkets farge i rommet, nedtonet. */}
+          <div className="absolute" style={{ right: '-6%', top: '-20%', width: '54%', height: '82%', background: 'radial-gradient(circle, rgba(212,150,255,0.1) 0%, rgba(212,150,255,0.03) 44%, rgba(212,150,255,0) 70%)' }} />
         </div>
 
         <div className="relative max-w-[720px]">
