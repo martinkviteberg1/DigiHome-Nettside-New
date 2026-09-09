@@ -651,7 +651,7 @@ function FragStage({ domener, core, height, kompakt = false }) {
     <div className="relative w-full" style={{ height }} data-testid="deck-fragment">
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none">
         {domener.map((d) => (
-          <path key={d.navn} d={bane(d)} stroke="rgba(21,19,15,0.22)" strokeWidth="1.4" strokeDasharray="2 5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+          <path key={d.navn} className="deck-frag-trad" d={bane(d)} stroke="rgba(21,19,15,0.24)" strokeWidth="1.4" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         ))}
       </svg>
       {/* Verktøy-brikker — hvert driftsområde i sitt eget frakoblede verktøy */}
@@ -669,8 +669,11 @@ function FragStage({ domener, core, height, kompakt = false }) {
       {/* Navet i dag: DU — mennesket som må koble alt sammen for hånd (motstykket til AI-kjernen på Løsningen) */}
       <div className="deck-inn absolute" style={{ '--i': 4, left: `${core.x}%`, top: `${core.y}%`, transform: 'translate(-50%,-50%)' }}>
         <div className="flex flex-col items-center text-center">
-          <div className="relative flex items-center justify-center rounded-full" style={{ height: kjerne, width: kjerne, border: '2px dashed rgba(21,19,15,0.26)', background: 'radial-gradient(circle at 50% 40%, rgba(179,38,30,0.09), rgba(21,19,15,0) 72%)' }}>
-            <User style={{ height: kompakt ? 28 : 36, width: kompakt ? 28 : 36, color: 'rgba(21,19,15,0.55)' }} strokeWidth={1.5} />
+          <div className="relative flex items-center justify-center">
+            <span aria-hidden="true" className="deck-frag-puls absolute rounded-full" style={{ height: kjerne * 1.55, width: kjerne * 1.55, background: 'radial-gradient(circle, rgba(179,38,30,0.15) 0%, rgba(179,38,30,0.04) 45%, rgba(179,38,30,0) 70%)' }} />
+            <div className="relative flex items-center justify-center rounded-full" style={{ height: kjerne, width: kjerne, border: '2px dashed rgba(21,19,15,0.26)', background: 'radial-gradient(circle at 50% 40%, rgba(179,38,30,0.08), rgba(21,19,15,0) 72%)' }}>
+              <User style={{ height: kompakt ? 28 : 36, width: kompakt ? 28 : 36, color: 'rgba(21,19,15,0.55)' }} strokeWidth={1.5} />
+            </div>
           </div>
           <p className="mt-4 text-[15.5px] font-semibold" style={{ color: T.ink }}>Du er systemet</p>
           <p className="mt-0.5 text-[12.5px]" style={{ color: SVAK, maxWidth: '24ch' }}>alt kobles sammen for hånd</p>
@@ -694,8 +697,8 @@ function FragmentKjerne() {
   ];
   return (
     <div className="deck-inn w-full" style={{ '--i': 2 }}>
-      <div className="hidden sm:block"><FragStage domener={desktop} core={{ x: 50, y: 74 }} height={460} /></div>
-      <div className="sm:hidden"><FragStage domener={mobil} core={{ x: 50, y: 80 }} height={420} kompakt /></div>
+      <div className="hidden sm:block"><FragStage domener={desktop} core={{ x: 50, y: 71 }} height={540} /></div>
+      <div className="sm:hidden"><FragStage domener={mobil} core={{ x: 50, y: 79 }} height={440} kompakt /></div>
     </div>
   );
 }
@@ -1274,6 +1277,13 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-side[data-aktiv="1"] .deck-los-gloed { animation: deck-los-gloed 3.4s ${EASE} infinite; }
         @keyframes deck-los-gloed { 0%,100% { opacity: .5; transform: scale(1); } 50% { opacity: .85; transform: scale(1.14); } }
 
+        /* Hvorfor: manuelt arbeid «marsjerer» langs de stiplede trådene inn til «Du» — og navet pulserer slitent. Kun når sliden er aktiv. */
+        .deck-frag-trad { stroke-dasharray: 2 5; }
+        .deck-side[data-aktiv="1"] .deck-frag-trad { animation: deck-frag-trad 2.2s linear infinite; }
+        @keyframes deck-frag-trad { to { stroke-dashoffset: -14; } }
+        .deck-side[data-aktiv="1"] .deck-frag-puls { animation: deck-frag-puls 3.8s ${EASE} infinite; }
+        @keyframes deck-frag-puls { 0%,100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
+
         .deck-side .deck-linje { --l: 0; transition: transform 700ms ${EASE} 500ms; }
         .deck-side[data-aktiv="1"] .deck-linje { --l: 1; }
         .deck-ord { display: inline-block; opacity: 0; transform: translateY(0.35em); transition: opacity 700ms ${EASE}, transform 700ms ${EASE}; transition-delay: calc(var(--o, 0) * 70ms + 260ms); }
@@ -1465,9 +1475,9 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </Side>
 
-      {/* 02 · Hvorfor — PROBLEMET, i DigiHome-stil og som motstykke til «Utleie på autopilot». Venstre: headline «I dag
-          er du systemet» + hva som gjøres for hånd + kostnaden for eiendomsselskaper. Høyre: varmt bolig-foto med ett
-          elegant «Autopilot AV»-overlay. Nydelig og rolig — ingen busy lister eller mørke paneler. */}
+      {/* 02 · Hvorfor — PROBLEMET, motstykket til Løsningen. Venstre: «Utleie mangler et system» + kostnaden (manuell drift
+          skalerer med lønn — vist som en bemanningstrapp). Høyre: de fire driftsområdene i frakoblede verktøy, manuelle
+          tråder inn til «Du er systemet». Rolig og konkret — ingen busy lister eller mørke paneler. */}
       <Side id="hvorfor" pos={pos('hvorfor')} aktiv={er('hvorfor')} bred>
         <Kapittel nr={kap('hvorfor')} navn="Hvorfor" under="uten autopilot" />
         <Todelt className="lg:items-center" venstre={<>
@@ -1477,6 +1487,13 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: FARGE.kost }}><AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} /> Kostnaden</p>
             <p className="mt-3 text-[24px] sm:text-[30px]" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.08, color: T.ink }}>Manuell drift skalerer med lønn.</p>
             <p className="mt-3 text-[14.5px] leading-[1.55]" style={{ color: DIM, maxWidth: '42ch' }}>For eiendomsselskaper øker bemanningsbehovet i takt med porteføljen. Hver enhet legger på manuelle timer som belaster marginen.</p>
+            {/* Bemanningstrappen — kostnaden gjort synlig: flere enheter → flere manuelle timer → flere folk */}
+            <div className="mt-5 flex items-end gap-[6px]" data-testid="deck-kost-trapp">
+              {[12, 18, 26, 36, 48, 62].map((h, i) => (
+                <span key={h} aria-hidden="true" className="deck-inn w-[9px] rounded-t-[3px]" style={{ '--i': 6 + i * 0.3, height: h, background: i < 2 ? 'rgba(21,19,15,0.16)' : i < 4 ? 'rgba(179,38,30,0.38)' : FARGE.kost }} />
+              ))}
+              <span className="ml-3 text-[11.5px] leading-[1.3]" style={{ color: SVAK }}>flere enheter →<br />flere folk på lønn</span>
+            </div>
           </Inn>
         </>}>
           <FragmentKjerne />
