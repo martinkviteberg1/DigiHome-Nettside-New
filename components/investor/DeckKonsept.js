@@ -548,9 +548,10 @@ function OrgKart({ aarsverkStart, aarsverkSlutt, utviklingPerMnd, enheterPerAars
 }
 
 /* ══════════════════════════ Fragmenteringen (slide 02 · problemet) ══════════════════════════ */
-/* Verktøyene og oppgavene en utleier sjonglerer — som løftede kort i en vifte, med dybde og små skjeve vinkler:
-   «en bunke som aldri legger seg på linje». To skalaer med tydelige tall-ankere (10 / 5). Ingenting snakker sammen.
-   Statisk komposisjon + én rolig, staggeret entré (deck-inn). Ingen evig animasjon (ytelse). */
+/* «Før → etter»-buen: dette er den visuelle MOTSETNINGEN til Konseptet (04). Der er stegene bundet av én ren,
+   sammenhengende linje; her er verktøyene rolige, ensartede noder bundet av korte STIPLEDE «rekk» som aldri når
+   frem — og med små høydeforskjeller så linjen aldri lander. Budskapet er frakoblingen, ikke rotet: «ingenting
+   snakker sammen». To skalaer med tall-ankere (10 / 5). Statisk + én rolig staggeret entré. Ingen evig animasjon. */
 const FRAG_KLYNGER = [
   { ikon: Home, label: 'Den private huseieren', tall: '10', enhet: 'verktøy · én innboks', kort: [
     { i: Megaphone, t: 'Annonse' }, { i: Calendar, t: 'Visning' }, { i: ShieldCheck, t: 'Kredittsjekk' }, { i: FileText, t: 'Kontrakt' }, { i: Lock, t: 'Depositum' }, { i: Coins, t: 'Husleie' },
@@ -559,29 +560,31 @@ const FRAG_KLYNGER = [
     { i: Users, t: 'Leietakere' }, { i: CreditCard, t: 'Betaling' }, { i: Wrench, t: 'Saker' }, { i: FileText, t: 'Kontrakter' }, { i: Table2, t: 'Regneark' },
   ] },
 ];
-const KORT_ROT = [-4, 3, -2.5, 3.5, -3, 2.5];
+const KORT_JITTER = [0, 7, -5, 5, -4, 6, -6, 4];
 function Fragmentering() {
+  const traad = { backgroundImage: 'repeating-linear-gradient(90deg, rgba(21,19,15,0.3) 0 4px, transparent 4px 9px)' };
   return (
-    <div className="deck-fragment relative">
+    <div className="relative" data-testid="deck-fragment">
       {FRAG_KLYNGER.map((k, ki) => {
         const Ikon = k.ikon;
         return (
-          <div key={k.label} className={ki ? 'mt-9 border-t pt-9 sm:mt-11 sm:pt-11' : ''} style={{ borderColor: HAIR }}>
-            <div className="grid gap-6 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-center sm:gap-9">
+          <div key={k.label} className={ki ? 'mt-8 border-t pt-8 sm:mt-10 sm:pt-10' : ''} style={{ borderColor: HAIR }}>
+            <div className="grid gap-6 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center sm:gap-9">
               <Inn i={3 + ki * 1.3}>
                 <p className="flex items-center gap-2 whitespace-nowrap text-[12.5px] font-medium" style={{ color: LILLA_M }}><Ikon className="h-4 w-4" strokeWidth={1.8} />{k.label}</p>
-                <p className="mt-2" style={{ ...display, fontSize: 52, letterSpacing: '-0.045em', lineHeight: 1, color: T.ink }}>{k.tall}</p>
+                <p className="mt-2" style={{ ...display, fontSize: 56, letterSpacing: '-0.045em', lineHeight: 1, color: T.ink }}>{k.tall}</p>
                 <p className="mt-2 text-[13px] leading-[1.35]" style={{ color: SVAK }}>{k.enhet}</p>
               </Inn>
-              <div className="deck-kortvifte">
+              <div className="flex flex-wrap items-center gap-y-4 py-2">
                 {k.kort.map((c, ci) => {
-                  const Ci = c.i; const rot = KORT_ROT[ci % KORT_ROT.length];
+                  const Ci = c.i; const jy = KORT_JITTER[ci % KORT_JITTER.length]; const siste = ci === k.kort.length - 1;
                   return (
-                    <span key={c.t} className="deck-inn deck-kort-hylster" style={{ '--i': 4 + ki * 1.3 + ci * 0.4, zIndex: ci + 1 }}>
-                      <span className="deck-kort" style={{ '--rot': `${rot}deg` }}>
-                        <span className="deck-kort-ikon"><Ci className="h-4 w-4" strokeWidth={1.8} /></span>
-                        <span className="text-[13px] font-medium whitespace-nowrap" style={{ color: T.ink }}>{c.t}</span>
+                    <span key={c.t} className="deck-inn flex items-center" style={{ '--i': 4 + ki * 1.3 + ci * 0.35 }}>
+                      <span className="flex items-center gap-2 rounded-[13px] px-3 py-2" style={{ transform: `translateY(${jy}px)`, background: '#fff', boxShadow: `inset 0 0 0 1px ${HAIR}, 0 7px 18px rgba(21,19,15,0.055)` }}>
+                        <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[8px]" style={{ background: 'rgba(122,63,168,0.08)', color: LILLA_M }}><Ci className="h-3.5 w-3.5" strokeWidth={1.8} /></span>
+                        <span className="whitespace-nowrap text-[13px] font-medium" style={{ color: T.ink }}>{c.t}</span>
                       </span>
+                      {!siste ? <span aria-hidden="true" className="mx-[7px] h-px w-[22px] flex-none" style={{ ...traad, transform: `translateY(${jy}px)` }} /> : null}
                     </span>
                   );
                 })}
@@ -590,7 +593,7 @@ function Fragmentering() {
           </div>
         );
       })}
-      <Inn i={7} className="mt-9 sm:mt-11"><p className="text-[14.5px]" style={{ color: SVAK }}>Alt gjøres for hånd — og <span style={{ color: T.ink, fontWeight: 500 }}>ingenting snakker sammen.</span></p></Inn>
+      <Inn i={7} className="mt-8 sm:mt-10"><p className="text-[14.5px]" style={{ color: SVAK }}>Alt gjøres for hånd — og <span style={{ color: T.ink, fontWeight: 500 }}>ingenting snakker sammen.</span></p></Inn>
     </div>
   );
 }
