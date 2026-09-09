@@ -1606,3 +1606,12 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - Bruker bekreftet at sidebånd-fiksen er «verdensklasse». Ba om litt mer høyde.
 - `LosningFilm.js` FilmSkala: luft-gap i skala-formelen 36px → 12px og tak 1.35 → 1.42. Siden filmen skaleres med transform (utenfor layout-flyt) gir dette høyere film UTEN scroll.
 - Verifisert desktop 1920x800: k 0.744 → 0.780 (scene h 491 → 515), sideOverflowY=0, docOverflowY=0, bredde uendret (x=180 w=1560, ingen bånd). Mer uttalt effekt på høye skjermer.
+
+## Oppdatering 9. sep 2026 (12) — «Markedet» (04) løftet til VERDENSKLASSE
+- Bruker: «kan du nå løfte denne til VERDENSKLASSE, tenk på alt» (Markedet-sliden).
+- `DeckKonsept.js`: bygget om til redaksjonell 5/7-split. VENSTRE = fortelling: H2 «Hver fjerde husholdning leier.» + stram ingress + punchline-callout med lilla keyline «Markedet er ikke spørsmålet. / Tempoet på kundeanskaffelse er.» + to segment-rader (Private eiere / Profesjonelle og forvaltere) med Målgruppe-tags. HØYRE = skalaen som BEVIS: ny `Markedsfelt` (42×16 prikker = hele leiemarkedet; 1 
+## Oppdatering 9. sep 2026 (12) — «Markedet» (04) løftet til VERDENSKLASSE
+- Bruker: «kan du nå løfte denne til VERDENSKLASSE, tenk på alt» (Markedet-sliden).
+- DeckKonsept.js: bygget om til redaksjonell 5/7-split. VENSTRE = fortelling: H2 «Hver fjerde husholdning leier.» + stram ingress + punchline-callout med lilla keyline «Markedet er ikke spørsmålet. / Tempoet på kundeanskaffelse er.» + to segment-rader (Private eiere / Profesjonelle og forvaltere) med Målgruppe-tags. HØYRE = skalaen som BEVIS: ny Markedsfelt (42x16 prikker; 1 prosent = 5 700 lyser lilla med myk glød; planen = én ringet, pulserende prikk ca 0,07 prosent) + 3-talls legende (Markedet ~570 000 / 1 prosent / Planen) + Bergen-linje + SSB-kilde.
+- Ny komponent Markedsfelt + MarkedLegende; CSS .deck-mkt-glow (gjenbruker deck-los-gloed) + .deck-mkt-ring + keyframes deck-mkt-ring; lagt til i reduced-motion-reset. Gamle Punktfelt nå ubrukt (beholdt, ufarlig).
+- Verifisert: kompilerer rent; desktop 1920 overflowY=0, balansert; mobil 390 stabler uten overflow (legende nå grid-cols-1 sm:grid-cols-3). IKKE brukerbekreftet.

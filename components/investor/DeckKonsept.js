@@ -134,6 +134,60 @@ function Punktfelt({ enheterPlan = 0, marked = 570000, kol = 36, rader = 10, mor
     </svg>
   );
 }
+/* Markedsfelt — markedets skala som ett felt: hver prikk ≈ 850 husholdninger. De lilla er 1 % (5 700 enheter);
+   den ringede, glødende prikken er planen (≈0,07 %). En myk lilla glød løfter 1 %-klyngen. Radene tones inn i takt
+   når kapitlet er aktivt (.deck-inn). Poenget leses på et blunk: ambisjonen er en brøkdel av markedet. */
+function Markedsfelt({ enheterPlan = 0, marked = 570000, kol = 42, rader = 16 }) {
+  const n = kol * rader; const perPunkt = marked / n;
+  const enProsent = Math.max(1, Math.round((marked / 100) / perPunkt));
+  const planAndel = Math.min(1, Math.max(0.22, enheterPlan / perPunkt));
+  const steg = 13; const r = 3.0; const W = kol * steg; const H = rader * steg;
+  const cx = (enProsent * steg) / 2; const cy = steg * 0.5;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full overflow-visible" role="img" aria-label={`${nb(marked)} husholdninger leier; planen er ca. ${nb(enheterPlan)} enheter (~0,07 %), 1 % er 5 700 enheter`} data-testid="deck-markedsfelt">
+      <defs>
+        <radialGradient id="mkt-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(139,92,246,0.34)" />
+          <stop offset="55%" stopColor="rgba(139,92,246,0.08)" />
+          <stop offset="100%" stopColor="rgba(139,92,246,0)" />
+        </radialGradient>
+      </defs>
+      <ellipse className="deck-mkt-glow" cx={cx} cy={cy} rx={(enProsent + 3.5) * steg / 2} ry={steg * 2.6} fill="url(#mkt-glow)" />
+      {Array.from({ length: rader }, (_, ri) => (
+        <g key={ri} className="deck-inn" style={{ '--i': 2 + ri * 0.42 }}>
+          {Array.from({ length: kol }, (_, ci) => {
+            const idx = ri * kol + ci; const erProsent = idx < enProsent; const erPlan = idx === enProsent;
+            const x = ci * steg + steg / 2; const y = ri * steg + steg / 2;
+            if (erPlan) {
+              return (
+                <g key={ci} data-testid="deck-mkt-plan">
+                  <circle className="deck-mkt-ring" cx={x} cy={y} r={r * 2.3} fill="none" stroke={LILLA_M} strokeWidth="0.7" strokeDasharray="1.5 1.3" />
+                  <circle cx={x} cy={y} r={Math.max(1.2, r * Math.sqrt(planAndel))} fill={LILLA_M} />
+                </g>
+              );
+            }
+            return <circle key={ci} cx={x} cy={y} r={erProsent ? r * 1.08 : r * 0.9} fill={erProsent ? LILLA_M : 'rgba(21,19,15,0.11)'} opacity={erProsent ? 1 : 0.9} />;
+          })}
+        </g>
+      ))}
+    </svg>
+  );
+}
+/* Ett ledd i markeds-legenden: fargeprikk (eller ring for planen), etikett, stort tall og en dempet linje. */
+function MarkedLegende({ sw, ring = false, over, v, u, fremhev = false }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        {ring
+          ? <span aria-hidden="true" className="relative flex h-3 w-3 items-center justify-center rounded-full" style={{ boxShadow: `inset 0 0 0 1px ${LILLA_M}` }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: LILLA_M }} /></span>
+          : <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ background: sw }} />}
+        <span className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: fremhev ? LILLA_M : SVAK }}>{over}</span>
+      </div>
+      <p className="mt-2 text-[23px] sm:text-[26px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.ink }}>{v}</p>
+      <p className="mt-1.5 text-[12.5px] leading-[1.4]" style={{ color: SVAK }}>{u}</p>
+    </div>
+  );
+}
 /* Bane: akkumulert kontantstrøm (etter skatt) som «rullebane» — bunnen markeres, kapitalen som hentes vises som bånd. */
 function Bane({ serie, kapital, bunnIdx, startYm, N, aktiv = true, hoyde = 220, bredde = 1000 }) {
   const mål = useMemo(() => Array.from({ length: N }, (_, i) => (aktiv ? (serie[i] || 0) : 0)), [serie, N, aktiv]);
@@ -1315,6 +1369,12 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-frag-trad { stroke-dasharray: 2 5; }
         .deck-side[data-aktiv="1"] .deck-frag-puls { animation: deck-frag-puls 3.8s ${EASE} infinite; }
         @keyframes deck-frag-puls { 0%,100% { opacity: .5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
+        /* Markedsfelt: myk glød bak 1 %-klyngen + pust i planringen */
+        .deck-mkt-glow { opacity: .7; transform-box: fill-box; transform-origin: center; }
+        .deck-side[data-aktiv="1"] .deck-mkt-glow { animation: deck-los-gloed 4.4s ${EASE} infinite; }
+        .deck-mkt-ring { transform-box: fill-box; transform-origin: center; }
+        .deck-side[data-aktiv="1"] .deck-mkt-ring { animation: deck-mkt-ring 3.2s ${EASE} infinite; }
+        @keyframes deck-mkt-ring { 0%,100% { opacity: .9; } 50% { opacity: .32; } }
 
         .deck-side .deck-linje { --l: 0; transition: transform 700ms ${EASE} 500ms; }
         .deck-side[data-aktiv="1"] .deck-linje { --l: 1; }
@@ -1386,7 +1446,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-side[data-aktiv="1"] .deck-cover-strek { transform: scaleX(1); }
         /* Coverens scene: forsidens HeroStage, men som sceneteppe — kant til kant, uten kortets radius/skygge/høydetak. */
         .deck-cover-scene .dh-hero-scene { max-height: none !important; border-radius: 0 !important; box-shadow: none !important; }
-        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed { animation: none !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
+        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring { animation: none !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
         @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
 
@@ -1543,26 +1603,49 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       {/* 03 · Markedet — stort, fragmentert, privat */}
       <Side id="marked" pos={pos('marked')} aktiv={er('marked')} bred>
         <Kapittel nr={kap('marked')} navn="Markedet" under="stort nok til å ikke være spørsmålet" />
-        <Todelt venstre={<>
-          <Inn i={1}><H2 maks="13ch">Hver fjerde husholdning leier.</H2></Inn>
-          <Ingress>Stort, privat og fragmentert – og nesten ingen utleier har et system. Planen begrenses ikke av markedet, men av tempoet på kundeanskaffelse.</Ingress>
-          <Inn i={3} className="mt-8 border-t pt-6" style={{ borderColor: HAIR }}>
-            <Punktfelt enheterPlan={Math.round(mF.enheter[N - 1] || 0)} maxH={230} />
-            <div className="mt-5 flex flex-wrap items-baseline gap-x-6 gap-y-2">
-              <Fakta v={`${nb((Math.round(mF.enheter[N - 1] || 0) / 570000) * 100, 2)} %`} u={`av leiemarkedet ved ${mndLabel(plan.startYm, N - 1, false)} – den lille prikken`} />
-              <Fakta v="1 %" u={`= ${nb(5700)} enheter, ${nb(Math.round(5700 / Math.max(1, Math.round(mF.enheter[N - 1] || 1))))}× planen – de lilla`} />
+        <div className="mt-2 grid gap-10 lg:grid-cols-12 lg:gap-16">
+          {/* Venstre: fortellingen + de to segmentene */}
+          <div className="lg:col-span-5">
+            <Inn i={1}><H2 maks="13ch">Hver fjerde husholdning leier.</H2></Inn>
+            <Ingress i={2} maks="40ch">Stort, privat og fragmentert. Nesten ingen utleier har et system i dag.</Ingress>
+            <Inn i={3} className="mt-8">
+              <div className="relative pl-5">
+                <span aria-hidden="true" className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full" style={{ background: `linear-gradient(180deg, ${LILLA_M}, rgba(122,63,168,0.14))` }} />
+                <p className="text-[20px] leading-[1.32] sm:text-[23px]" style={{ ...display, letterSpacing: '-0.02em', color: T.ink }}>Markedet er ikke spørsmålet.<br /><span style={{ color: LILLA_M }}>Tempoet på kundeanskaffelse er.</span></p>
+              </div>
+            </Inn>
+            <div className="mt-9 border-t" style={{ borderColor: HAIR }}>
+              {[['Private eiere', 'Én til noen få enheter — uten system, uten forvalter, med fullt juridisk ansvar.', 'Selvbetjening og forvaltning'], ['Profesjonelle og forvaltere', 'Lokalt og manuelt: mange små aktører, regneark og e-post. Ingen har bygget både programvaren og driften.', 'Eiendomsselskaper og forvaltere']].map(([t, u, tag], i) => (
+                <Inn key={t} i={4 + i} className="border-b py-4" style={{ borderColor: HAIR }}>
+                  <div className="flex items-baseline justify-between gap-4">
+                    <p className="text-[16px] font-medium tracking-[-0.01em]" style={{ color: T.ink }}>{t}</p>
+                    <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: LILLA_M }}>Målgruppe {i + 1}</p>
+                  </div>
+                  <p className="mt-1.5 text-[13.5px] leading-[1.55]" style={{ color: DIM }}>{u}</p>
+                  <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.08em]" style={{ color: SVAK }}>{tag}</p>
+                </Inn>
+              ))}
             </div>
-          </Inn>
-        </>}>
-          <div className="grid gap-10 sm:grid-cols-3">
-            <Kolonne i={2} over="Norge" tittel="≈ 570 000" tekst="husholdninger leier boligen sin – om lag 23 % av alle husholdninger." fot={<p className="mt-4 text-[11.5px] font-medium uppercase tracking-[0.08em]" style={{ color: SVAK }}>SSB, boforhold (avrundet)</p>} />
-            <Kolonne i={3} over="Målgruppe 1" tittel="Private" tekst="De fleste utleieboliger eies av privatpersoner med én til noen få enheter – uten system, uten forvalter, med fullt juridisk ansvar." fot={<p className="mt-4 text-[11.5px] font-medium uppercase tracking-[0.08em]" style={{ color: LILLA_M }}>Selvbetjening og forvaltning</p>} />
-            <Kolonne i={4} over="Målgruppe 2" tittel="Fragmentert" tekst="Profesjonell forvaltning er lokal og manuell: mange små aktører, regneark og e-post. Ingen har bygget både programvaren og driften." fot={<p className="mt-4 text-[11.5px] font-medium uppercase tracking-[0.08em]" style={{ color: LILLA_M }}>Eiendomsselskaper og forvaltere</p>} />
           </div>
-          <Inn i={5} className="mt-10 border-t pt-5" style={{ borderColor: HAIR }}>
-            <p className="max-w-[60ch] text-[14.5px] leading-[1.55]" style={{ color: DIM }}>Vi starter i Bergen og 60 km rundt – stort nok for planen, lite nok til å eie kvaliteten. Programvaren har ingen geografi.</p>
-          </Inn>
-        </Todelt>
+          {/* Høyre: skalaen som bevis — markedet mot ambisjonen */}
+          <div className="lg:col-span-7">
+            <Inn i={2} className="lg:pt-1.5">
+              <div className="flex items-baseline justify-between gap-4">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ color: SVAK }}>Norges leiemarked</p>
+                <p className="text-[12px]" style={{ color: SVAK }}>hver prikk ≈ 850 husholdninger</p>
+              </div>
+              <div className="mt-4"><Markedsfelt enheterPlan={Math.round(mF.enheter[N - 1] || 0)} /></div>
+              <div className="mt-7 grid grid-cols-1 gap-5 border-t pt-6 sm:grid-cols-3 sm:gap-6" style={{ borderColor: HAIR }}>
+                <MarkedLegende sw="rgba(21,19,15,0.16)" over="Markedet" v="≈ 570 000" u="husholdninger · 23 % av alle" />
+                <MarkedLegende sw={LILLA_M} fremhev over="1 % av markedet" v={`${nb(5700)}`} u={`enheter · ${nb(Math.round(5700 / Math.max(1, Math.round(mF.enheter[N - 1] || 1))))}× planen`} />
+                <MarkedLegende ring fremhev over="Planen" v={`${nb((Math.round(mF.enheter[N - 1] || 0) / 570000) * 100, 2)} %`} u={`≈ ${nb(Math.round(mF.enheter[N - 1] || 0))} enheter · ${mndLabel(plan.startYm, N - 1, false)}`} />
+              </div>
+              <Inn i={5}>
+                <p className="mt-6 max-w-[62ch] text-[13.5px] leading-[1.6]" style={{ color: DIM }}>Vi starter i Bergen og 60 km rundt — stort nok for planen, lite nok til å eie kvaliteten. Programvaren har ingen geografi. <span style={{ color: SVAK }}>SSB, boforhold (avrundet).</span></p>
+              </Inn>
+            </Inn>
+          </div>
+        </div>
       </Side>
 
       {/* 04 · Konseptet — forsidens levende scene */}
