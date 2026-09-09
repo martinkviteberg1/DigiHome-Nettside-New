@@ -18,10 +18,11 @@
      kapittel. Fremdriftslinje øverst, kapittelvelger, #hash for dyplenke. Print = PDF.
    ───────────────────────────────────────────────────────────────────────────── */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUp, Download, Lock, RotateCcw, Send, Check, Megaphone, Home, Building2, Link2, Menu, X, Share2, Copy, Trash2, Eye, KeyRound, Ban, ChevronDown, Calendar, ShieldCheck, FileText, Coins, Users, CreditCard, Wrench, Table2, AlertTriangle } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUp, Download, Lock, RotateCcw, Send, Check, Megaphone, Home, Building2, Link2, Menu, X, Share2, Copy, Trash2, Eye, KeyRound, Ban, ChevronDown, Calendar, ShieldCheck, FileText, Coins, Users, CreditCard, Wrench, Table2, AlertTriangle, Sparkles } from 'lucide-react';
 import { T, display, EASE, DIM, SVAK, HAIR } from '@/components/forside/v4/tokens';
 import HeroScene from '@/components/forside/v4/HeroScene';
 import HeroStage, { FILM as HERO_FILM } from '@/components/forside/v4/HeroStage';
+import LosningFilm from '@/components/investor/LosningFilm';
 import {
   beregnInvestorModell, beregnTech, beregnKonsernSammenstilling, rensModellDrivere, rensTechDrivere, rensTechFakta, skalerVekst,
 } from '@/lib/budsjett-modell';
@@ -547,56 +548,111 @@ function OrgKart({ aarsverkStart, aarsverkSlutt, utviklingPerMnd, enheterPerAars
   );
 }
 
-/* ══════════════════════════ Fragmenteringen (slide 02 · problemet) ══════════════════════════ */
-/* «Før → etter»-buen: dette er den visuelle MOTSETNINGEN til Konseptet (04). Der er stegene bundet av én ren,
-   sammenhengende linje; her er verktøyene rolige, ensartede noder bundet av korte STIPLEDE «rekk» som aldri når
-   frem — og med små høydeforskjeller så linjen aldri lander. Budskapet er frakoblingen, ikke rotet: «ingenting
-   snakker sammen». To skalaer med tall-ankere (10 / 5). Statisk + én rolig staggeret entré. Ingen evig animasjon. */
-const FRAG_KLYNGER = [
-  { ikon: Home, label: 'Den private huseieren', tall: '10', enhet: 'verktøy · én innboks', kort: [
-    { i: Megaphone, t: 'Annonse' }, { i: Calendar, t: 'Visning' }, { i: ShieldCheck, t: 'Kredittsjekk' }, { i: FileText, t: 'Kontrakt' }, { i: Lock, t: 'Depositum' }, { i: Coins, t: 'Husleie' },
-  ] },
-  { ikon: Building2, label: 'Eiendomsselskapet', tall: '5', enhet: 'systemer · ingen oversikt', kort: [
-    { i: Users, t: 'Leietakere' }, { i: CreditCard, t: 'Betaling' }, { i: Wrench, t: 'Saker' }, { i: FileText, t: 'Kontrakter' }, { i: Table2, t: 'Regneark' },
-  ] },
-];
-const KORT_JITTER = [0, 7, -5, 5, -4, 6, -6, 4];
-function Fragmentering() {
-  const traad = { backgroundImage: 'repeating-linear-gradient(90deg, rgba(21,19,15,0.3) 0 4px, transparent 4px 9px)' };
+/* ══════════════════════════ Slide 02 · problemet (DigiHome-stil) ══════════════════════════ */
+/* Bygget som motstykket til «Utleie på autopilot»: ett varmt, kinematisk bolig-foto med ett rolig, elegant overlay —
+   Autopilot står AV, alt gjøres for hånd. Ingen busy kort/lister eller mørke paneler; nydelig foto, ett glass-kort,
+   deckets lilla-signatur. Detaljene (begge segmenter, AI, kostnaden) bæres i teksten til venstre. Rolig entré. */
+function ManueltIDag() {
+  const jobber = ['Annonse', 'Kontrakt', 'Husleie', 'Drift'];
   return (
-    <div className="relative" data-testid="deck-fragment">
-      {FRAG_KLYNGER.map((k, ki) => {
-        const Ikon = k.ikon;
-        return (
-          <div key={k.label} className={ki ? 'mt-8 border-t pt-8 sm:mt-10 sm:pt-10' : ''} style={{ borderColor: HAIR }}>
-            <div className="grid gap-6 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center sm:gap-9">
-              <Inn i={3 + ki * 1.3}>
-                <p className="flex items-center gap-2 whitespace-nowrap text-[12.5px] font-medium" style={{ color: LILLA_M }}><Ikon className="h-4 w-4" strokeWidth={1.8} />{k.label}</p>
-                <p className="mt-2" style={{ ...display, fontSize: 56, letterSpacing: '-0.045em', lineHeight: 1, color: T.ink }}>{k.tall}</p>
-                <p className="mt-2 text-[13px] leading-[1.35]" style={{ color: SVAK }}>{k.enhet}</p>
-              </Inn>
-              <div className="flex flex-wrap items-center gap-y-4 py-2">
-                {k.kort.map((c, ci) => {
-                  const Ci = c.i; const jy = KORT_JITTER[ci % KORT_JITTER.length]; const siste = ci === k.kort.length - 1;
-                  return (
-                    <span key={c.t} className="deck-inn flex items-center" style={{ '--i': 4 + ki * 1.3 + ci * 0.35 }}>
-                      <span className="flex items-center gap-2 rounded-[13px] px-3 py-2" style={{ transform: `translateY(${jy}px)`, background: '#fff', boxShadow: `inset 0 0 0 1px ${HAIR}, 0 7px 18px rgba(21,19,15,0.055)` }}>
-                        <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[8px]" style={{ background: 'rgba(122,63,168,0.08)', color: LILLA_M }}><Ci className="h-3.5 w-3.5" strokeWidth={1.8} /></span>
-                        <span className="whitespace-nowrap text-[13px] font-medium" style={{ color: T.ink }}>{c.t}</span>
-                      </span>
-                      {!siste ? <span aria-hidden="true" className="mx-[7px] h-px w-[22px] flex-none" style={{ ...traad, transform: `translateY(${jy}px)` }} /> : null}
-                    </span>
-                  );
-                })}
-              </div>
+    <div className="deck-inn relative overflow-hidden rounded-[26px]" style={{ '--i': 2, boxShadow: '0 46px 90px rgba(21,19,15,0.22), inset 0 0 0 1px rgba(21,19,15,0.06)' }}>
+      <img src="/v4/stue-2000.webp" alt="En bolig som leies ut" className="deck-hv-foto h-[360px] w-full object-cover sm:h-[460px] lg:h-[512px]" style={{ filter: 'saturate(0.92) contrast(1.02)' }} />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,19,15,0.16) 0%, rgba(21,19,15,0) 28%, rgba(21,19,15,0) 50%, rgba(21,19,15,0.44) 100%)' }} />
+      <div className="absolute left-5 top-5 sm:left-6 sm:top-6">
+        <span className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ background: 'rgba(243,241,236,0.86)', color: SVAK, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: LILLA_M }} />Slik er det i dag</span>
+      </div>
+      <div className="deck-inn absolute inset-x-5 bottom-5 sm:inset-x-6 sm:bottom-6" style={{ '--i': 4 }}>
+        <div className="rounded-[20px] p-5 sm:p-6" style={{ background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', boxShadow: '0 22px 50px rgba(21,19,15,0.22)' }}>
+          <div className="flex items-center gap-4">
+            <span className="deck-hv-spor relative inline-flex h-8 w-[54px] flex-none items-center rounded-full" style={{ background: 'rgba(21,19,15,0.16)' }}>
+              <span className="deck-hv-knob absolute left-1 top-1 h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 1px 4px rgba(21,19,15,0.28)' }} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-2 text-[18px] font-semibold" style={{ color: T.ink }}>Autopilot <span className="rounded-md px-1.5 py-0.5 text-[11px] font-bold tracking-wide" style={{ background: 'rgba(200,60,45,0.12)', color: FARGE.kost }}>AV</span></p>
+              <p className="mt-0.5 text-[13.5px]" style={{ color: SVAK }}>Hele driften håndteres manuelt – i hvert sitt system.</p>
             </div>
           </div>
-        );
-      })}
-      <Inn i={7} className="mt-8 sm:mt-10"><p className="text-[14.5px]" style={{ color: SVAK }}>Alt gjøres for hånd — og <span style={{ color: T.ink, fontWeight: 500 }}>ingenting snakker sammen.</span></p></Inn>
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4" style={{ borderColor: HAIR }}>
+            {jobber.map((j) => (<span key={j} className="rounded-full px-3 py-1 text-[12px] font-medium" style={{ background: T.flate, color: DIM }}>{j}</span>))}
+            <span className="text-[12px]" style={{ color: SVAK }}>… manuelt</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
+
+function KjerneStage({ domener, core, height, chipMobil = false, variant = 'losning' }) {
+  const problem = variant === 'problem';
+  const bane = (d, t = 1) => { const ex = d.x + (core.x - d.x) * t; const ey = d.y + (core.y - d.y) * t; return `M ${d.x} ${d.y} C ${d.x} ${(d.y + ey) / 2}, ${ex} ${(d.y + ey) / 2}, ${ex} ${ey}`; };
+  const kjerne = chipMobil ? 88 : 108;
+  return (
+    <div className="relative w-full" style={{ height }} data-testid={problem ? 'deck-fragment' : 'deck-losning-kjerne'}>
+      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none">
+        {domener.map((d, i) => (problem ? (
+          <path key={d.navn} d={bane(d, 0.74)} stroke="rgba(21,19,15,0.30)" strokeWidth="1.5" strokeDasharray="3 5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        ) : (
+          <g key={d.navn}>
+            <path d={bane(d)} stroke="rgba(122,63,168,0.22)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+            <path className="deck-los-stream" d={bane(d)} stroke={LILLA_M} strokeWidth="1.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" style={{ animationDelay: `${i * 0.18}s` }} />
+          </g>
+        )))}
+      </svg>
+      {domener.map((d) => (
+        <div key={d.navn} className="deck-inn absolute" style={{ '--i': 3, left: `${d.x}%`, top: `${d.y}%`, transform: 'translate(-50%,-50%)' }}>
+          <span className={`flex items-center gap-2 whitespace-nowrap rounded-full bg-white font-medium ${chipMobil ? 'px-3 py-2 text-[12px]' : 'px-4 py-2.5 text-[13.5px]'}`} style={{ color: problem ? DIM : T.ink, boxShadow: `inset 0 0 0 1px ${HAIR}, 0 10px 24px rgba(21,19,15,0.07)` }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: problem ? 'rgba(21,19,15,0.32)' : LILLA_M }} />{d.navn}</span>
+        </div>
+      ))}
+      <div className="deck-inn absolute" style={{ '--i': 4, left: `${core.x}%`, top: `${core.y}%`, transform: 'translate(-50%,-50%)' }}>
+        {problem ? (
+          <div className="relative flex flex-col items-center">
+            <div className="flex items-center justify-center rounded-full" style={{ height: kjerne, width: kjerne, border: '2px dashed rgba(21,19,15,0.24)', background: 'radial-gradient(circle, rgba(21,19,15,0.05) 0%, rgba(21,19,15,0) 72%)' }}>
+              <Ban style={{ height: chipMobil ? 26 : 32, width: chipMobil ? 26 : 32, color: 'rgba(21,19,15,0.30)' }} strokeWidth={1.5} />
+            </div>
+            <p className="relative mt-4 text-[14px] font-semibold" style={{ color: T.ink }}>Intet system</p>
+            <p className="relative text-[12px]" style={{ color: SVAK }}>alt gjøres for hånd</p>
+          </div>
+        ) : (
+        <div className="relative flex flex-col items-center">
+          <div className="deck-los-gloed pointer-events-none absolute -inset-8 rounded-full" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.42) 0%, rgba(139,92,246,0) 70%)' }} />
+          <div className="relative flex items-center justify-center rounded-full" style={{ height: kjerne, width: kjerne, background: 'radial-gradient(circle at 34% 28%, #a878e6 0%, #7A3FA8 72%)', boxShadow: '0 22px 54px rgba(122,63,168,0.45), inset 0 1px 0 rgba(255,255,255,0.4)' }}>
+            <Sparkles className={chipMobil ? 'h-8 w-8 text-white' : 'h-10 w-10 text-white'} strokeWidth={1.6} />
+          </div>
+          <p className="relative mt-4 text-[14px] font-semibold" style={{ color: T.ink }}>DigiHome AI</p>
+          <p className="relative text-[12px]" style={{ color: SVAK }}>driver hele driften automatisk</p>
+        </div>
+        )}
+      </div>
+    </div>
+  );
+}
+/* ══════════════════════════ Slide 03 · løsningen (DigiHome-stil) ══════════════════════════ */
+/* «AI-motoren» — sitt helt egne konsept (ikke foto+toggle). De fire driftsområdene strømmer inn i én glødende,
+   pulserende DigiHome AI-kjerne (lys som flyter langs linjene). Viser «ett AI-drevet system som driver alt», og er
+   den visuelle motsetningen til fragmenteringen på Hvorfor. Bue-inn på desktop, kompakt ring på mobil. */
+function LosningKjerne() {
+  const desktop = [{ navn: 'Leietakere', x: 13, y: 17 }, { navn: 'Kontrakter', x: 38, y: 10 }, { navn: 'Husleie', x: 62, y: 10 }, { navn: 'Drift', x: 87, y: 17 }];
+  const mobil = [{ navn: 'Leietakere', x: 50, y: 8 }, { navn: 'Kontrakter', x: 17, y: 37 }, { navn: 'Husleie', x: 83, y: 37 }, { navn: 'Drift', x: 50, y: 86 }];
+  return (
+    <div className="deck-inn w-full" style={{ '--i': 2 }}>
+      <div className="hidden sm:block"><KjerneStage domener={desktop} core={{ x: 50, y: 72 }} height={460} /></div>
+      <div className="sm:hidden"><KjerneStage domener={mobil} core={{ x: 50, y: 47 }} height={380} chipMobil /></div>
+    </div>
+  );
+}
+/* Slide 02 · problemet — SAMME visuelle språk som Løsningen, men motsatt: driftsområdene strømmer mot et TOMT,
+   stiplet «Intet system» (brutte grå linjer som aldri når frem). Parret med «Utleie mangler et system». */
+function FragmentKjerne() {
+  const desktop = [{ navn: 'Leietakere', x: 13, y: 17 }, { navn: 'Kontrakter', x: 38, y: 10 }, { navn: 'Husleie', x: 62, y: 10 }, { navn: 'Drift', x: 87, y: 17 }];
+  const mobil = [{ navn: 'Leietakere', x: 50, y: 8 }, { navn: 'Kontrakter', x: 17, y: 37 }, { navn: 'Husleie', x: 83, y: 37 }, { navn: 'Drift', x: 50, y: 86 }];
+  return (
+    <div className="deck-inn w-full" style={{ '--i': 2 }}>
+      <div className="hidden sm:block"><KjerneStage variant="problem" domener={desktop} core={{ x: 50, y: 72 }} height={460} /></div>
+      <div className="sm:hidden"><KjerneStage variant="problem" domener={mobil} core={{ x: 50, y: 47 }} height={380} chipMobil /></div>
+    </div>
+  );
+}
+
 
 
 /* ══════════════════════════ DigiHome-merket (offisiell logo) ══════════════════════════ */
@@ -619,6 +675,7 @@ function DhIkon({ px = 88, className = '', style, animer = false }) {
 const KAPITLER = [
   { id: 'forside', navn: 'DigiHome' },
   { id: 'hvorfor', navn: 'Hvorfor' },
+  { id: 'losning', navn: 'Løsningen' },
   { id: 'marked', navn: 'Markedet' },
   { id: 'konsept', navn: 'Konseptet' },
   { id: 'hvem', navn: 'For hvem' },
@@ -638,6 +695,7 @@ const KAPITLER = [
 const NOTATER = {
   forside: 'Åpne rolig. Én setning: vi fjerner jobben med å leie ut – med programvare, og med mennesker som bruker den samme programvaren.',
   hvorfor: 'Smerten er kjent for alle i rommet som har leid ut. Ikke tall her – gjenkjennelse.',
+  losning: 'Svaret på forrige slide: ett AI-drevet system tar over hele driften. «Autopilot AV» blir «Autopilot PÅ». Høyt nivå her – detaljene kommer i Konseptet.',
   konsept: 'La scenen spille. Pek på at eieren bare trykker én gang – resten skjer.',
   hvem: 'To kundegrupper, samme system. Den private eieren velger selv eller forvalter; eiendomsselskapet får hele porteføljen på én plattform – per enhet.',
   struktur: 'Poenget: forvaltningen er Techs største kunde i dag, og et salgsapparat for plattformen i morgen. Lisensen telles én gang i konsernet.',
@@ -1151,6 +1209,24 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .dh-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: ${T.ink}; border: 3px solid ${T.offwhite}; cursor: pointer; }
         .deck-side .deck-inn { opacity: 0; transform: translateY(22px); transition: opacity 800ms ${EASE}, transform 800ms ${EASE}; transition-delay: calc(var(--i, 0) * 90ms + 120ms); }
         .deck-side[data-aktiv="1"] .deck-inn { opacity: 1; transform: none; }
+        /* Slide 02 · «Autopilot AV» — kul, subtil bevegelse (kun på aktiv slide, av hensyn til ytelse):
+           toggelen prøver å slå seg PÅ og faller tilbake til AV, og fotoet får en langsom kinematisk zoom. */
+        .deck-hv-foto { transform: scale(1); will-change: transform; }
+        .deck-side[data-aktiv="1"] .deck-hv-foto { animation: deck-hv-foto 15s ${EASE} forwards; }
+        @keyframes deck-hv-foto { from { transform: scale(1); } to { transform: scale(1.065); } }
+        .deck-side[data-aktiv="1"] .deck-hv-knob { animation: deck-hv-knob 4.8s ${EASE} 900ms infinite; }
+        @keyframes deck-hv-knob { 0%,55% { transform: translateX(0); } 72% { transform: translateX(22px); } 80% { transform: translateX(19px); } 92%,100% { transform: translateX(0); } }
+        .deck-side[data-aktiv="1"] .deck-hv-spor { animation: deck-hv-spor 4.8s ${EASE} 900ms infinite; }
+        @keyframes deck-hv-spor { 0%,55% { background-color: rgba(21,19,15,0.16); } 72% { background-color: rgba(139,92,246,0.5); } 80% { background-color: rgba(139,92,246,0.4); } 92%,100% { background-color: rgba(21,19,15,0.16); } }
+        /* Slide 03 · «AI-motoren» — driftsområdene strømmer inn i én glødende AI-kjerne. Lys flyter langs linjene, og
+           kjernen pulserer rolig. Kun på aktiv slide (ytelse). */
+        .deck-los-stream { stroke-dasharray: 4 8; }
+        .deck-side[data-aktiv="1"] .deck-los-stream { animation: deck-los-stream 1s linear infinite; }
+        @keyframes deck-los-stream { to { stroke-dashoffset: -12; } }
+        .deck-los-gloed { will-change: transform, opacity; }
+        .deck-side[data-aktiv="1"] .deck-los-gloed { animation: deck-los-gloed 3.4s ${EASE} infinite; }
+        @keyframes deck-los-gloed { 0%,100% { opacity: .5; transform: scale(1); } 50% { opacity: .85; transform: scale(1.14); } }
+
         .deck-side .deck-linje { --l: 0; transition: transform 700ms ${EASE} 500ms; }
         .deck-side[data-aktiv="1"] .deck-linje { --l: 1; }
         .deck-ord { display: inline-block; opacity: 0; transform: translateY(0.35em); transition: opacity 700ms ${EASE}, transform 700ms ${EASE}; transition-delay: calc(var(--o, 0) * 70ms + 260ms); }
@@ -1221,7 +1297,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-side[data-aktiv="1"] .deck-cover-strek { transform: scaleX(1); }
         /* Coverens scene: forsidens HeroStage, men som sceneteppe — kant til kant, uten kortets radius/skygge/høydetak. */
         .deck-cover-scene .dh-hero-scene { max-height: none !important; border-radius: 0 !important; box-shadow: none !important; }
-        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk { animation: none; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
+        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed { animation: none !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
         @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
 
@@ -1352,23 +1428,42 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </Side>
 
-      {/* 02 · Hvorfor — PROBLEMET. Lys flate, redaksjonell ro. Levende «fragmentering»: verktøyene/oppgavene ligger
-          spredt og ujevnt — to skalaer, ingenting snakker sammen. Innsatsen (kostnaden ved én feil) lander til venstre.
-          Ingen bokser — hårlinjer, luft og én rolig entré. */}
+      {/* 02 · Hvorfor — PROBLEMET, i DigiHome-stil og som motstykke til «Utleie på autopilot». Venstre: headline «I dag
+          er du systemet» + hva som gjøres for hånd + kostnaden for eiendomsselskaper. Høyre: varmt bolig-foto med ett
+          elegant «Autopilot AV»-overlay. Nydelig og rolig — ingen busy lister eller mørke paneler. */}
       <Side id="hvorfor" pos={pos('hvorfor')} aktiv={er('hvorfor')} bred>
-        <Kapittel nr={kap('hvorfor')} navn="Hvorfor" under="jobben ingen ba om" />
+        <Kapittel nr={kap('hvorfor')} navn="Hvorfor" under="uten autopilot" />
         <Todelt className="lg:items-center" venstre={<>
-          <Inn i={1}><H2 maks="13ch">Å leie ut er en jobb ingen ba om.</H2></Inn>
-          <Ingress maks="34ch">To skalaer, samme jobb. Den private gjør den på kvelden, selskapet i regneark — og ingen har ett system som gjør den for dem.</Ingress>
+          <Inn i={1}><H2 maks="16ch">Utleie mangler et system.</H2></Inn>
+          <Ingress maks="42ch">Annonsering, kontrakter, husleie og drift håndteres manuelt i frakoblede verktøy – for både privatpersoner og eiendomsselskaper. Ingen løsning automatiserer driften med AI.</Ingress>
           <Inn i={5} className="mt-9 border-l-2 pl-5" style={{ borderColor: FARGE.kost }}>
-            <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: FARGE.kost }}><AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} /> Innsatsen</p>
-            <p className="mt-3 text-[24px] sm:text-[30px]" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.08, color: T.ink }}>Én feil koster mer enn et års honorar.</p>
-            <p className="mt-3 text-[14.5px] leading-[1.55]" style={{ color: DIM, maxWidth: '40ch' }}>Husleieloven regulerer alt fra depositum til oppsigelse. En glemt frist eller feil kontrakt er dyrere enn hjelpen.</p>
+            <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: FARGE.kost }}><AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} /> Kostnaden</p>
+            <p className="mt-3 text-[24px] sm:text-[30px]" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.08, color: T.ink }}>Manuell drift skalerer med lønn.</p>
+            <p className="mt-3 text-[14.5px] leading-[1.55]" style={{ color: DIM, maxWidth: '42ch' }}>For eiendomsselskaper øker bemanningsbehovet i takt med porteføljen. Hver enhet legger på manuelle timer som belaster marginen.</p>
           </Inn>
         </>}>
-          <Fragmentering />
+          <FragmentKjerne />
         </Todelt>
       </Side>
+
+      {/* 03 · Løsningen — svaret på «Utleie mangler et system». Venstre: investor-tekst (ett AI-drevet system,
+          gevinsten skalerer uten bemanning). Høyre: forsidens produkt i den nydelige hvite rammen (Annonse →
+          Kontrakt → Drift → Økonomi), styrt av decket (spiller kun når sliden er fremme — ytelse). */}
+      <Side id="losning" pos={pos('losning')} aktiv={er('losning')} bred>
+        <Kapittel nr={kap('losning')} navn="Løsningen" under="med autopilot" />
+        <Todelt bredHoyre className="lg:items-center" venstre={<>
+          <Inn i={1}><H2 maks="15ch">Boligdrift på autopilot.</H2></Inn>
+          <Ingress maks="40ch">DigiHome samler hele driften i ett AI-drevet system. Annonsering, kontrakter, husleie og vedlikehold skjer automatisk – eieren godkjenner kun det som betyr noe.</Ingress>
+          <Inn i={5} className="mt-9 border-l-2 pl-5" style={{ borderColor: LILLA_M }}>
+            <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: LILLA_M }}><Sparkles className="h-3.5 w-3.5" strokeWidth={2} /> Gevinsten</p>
+            <p className="mt-3 text-[24px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.08, color: T.ink }}>Drift som skalerer uten bemanning.</p>
+            <p className="mt-3 text-[14.5px] leading-[1.55]" style={{ color: DIM, maxWidth: '38ch' }}>Systemet håndterer tusen enheter like enkelt som én. Marginen følger porteføljen – ikke lønnskostnadene.</p>
+          </Inn>
+        </>}>
+          <Inn i={2}><LosningFilm aktiv={er('losning')} /></Inn>
+        </Todelt>
+      </Side>
+
 
       {/* 03 · Markedet — stort, fragmentert, privat */}
       <Side id="marked" pos={pos('marked')} aktiv={er('marked')} bred>
