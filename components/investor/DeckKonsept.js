@@ -1956,8 +1956,9 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       {/* 07 · Unit economics (mørk) */}
       <Side id="unit" pos={pos('unit')} morkt aktiv={er('unit')} bred>
         <Kapittel morkt nr={kap('unit')} navn="Unit economics" under="per enhet · full CAC inkluderer performance-partner" />
-        <Inn i={1}><H2 morkt maks="18ch">Hver enhet betaler seg – i begge selskaper.</H2></Inn>
-        <div className="mt-10 grid gap-10 md:grid-cols-3">
+        <Inn i={1}><H2 morkt maks="16ch">Én enhet tjener seg inn — i begge selskaper.</H2></Inn>
+        <Inn i={1}><p className="mt-5 max-w-[62ch] text-[15px] leading-[1.6] sm:text-[16px]" style={{ color: LYS }}>Payback måles i <b style={{ color: T.offwhite }}>måneder, ikke år</b>. Forvaltningen står i planen; plattformkundene er ren oppside oppå den.</p></Inn>
+        <div className="mt-9 grid gap-10 md:grid-cols-3">
           <Inn i={2} className="border-t pt-5" style={{ borderColor: LYS_HAIR }}>
             <p className="flex items-center gap-2 text-[13px] font-medium" style={{ color: LYS }}><Link2 className="h-3.5 w-3.5" /> Digihome AS · forvaltet enhet <span style={{ color: T.lilla }}>· i planen</span></p>
             <div className="mt-4"><Payback aktiv={er('unit')} mnd={uF.paybackMnd} bidrag={uF.bidrag || 0} ltvCac={null} cacDeler={[{ l: 'provisjon', v: uF.provisjon || 0, f: T.offwhite }, ...(uF.partnerPerEnhet ? [{ l: 'partner', v: uF.partnerPerEnhet, f: T.lilla }] : [])]} /></div>
@@ -2000,7 +2001,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       {/* 08 · Go-to-market */}
       <Side id="gtm" pos={pos('gtm')} aktiv={er('gtm')} bred>
         <Kapittel nr={kap('gtm')} navn="Go-to-market" under="slik henter vi kundene" />
-        <Inn i={1}><H2 maks="18ch">Betalt på resultat. Forvaltningen som kanal.</H2></Inn>
+        <Inn i={1}><H2 maks="18ch">Vi kjøper ikke vekst. Vi tjener den.</H2></Inn>
+        <Inn i={1}><p className="mt-5 max-w-[64ch] text-[15px] leading-[1.6] sm:text-[16px]" style={{ color: DIM }}>Byrået betales på resultat, ikke på klikk. Forvaltningen er en kanal i seg selv: hver kunde kjenner allerede produktet, og hver enhet er en lisens. Salg til huseiere og eiendomsselskaper ligger utenfor planen — ren oppside.</p></Inn>
         <Inn i={2} className="mt-8">
           <p className="mb-3 text-[12.5px] font-medium" style={{ color: SVAK }}>S&M i perioden · {mnok((sF.sumSm || 0) + (saT?.sumSm || 0))}{saT?.cacPaybackBlended != null ? ` · blandet CAC-payback Tech ${nb(saT.cacPaybackBlended, 1)} mnd` : ''}</p>
           <AndelBar aktiv={er('gtm')} deler={smDeler} />

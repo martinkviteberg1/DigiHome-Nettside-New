@@ -1627,3 +1627,10 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - 09 → proof board: LIVE-pill med pulserende prikk, hero-panel «31 boliger under forvaltning» (lilla) + 3 support-tall (honorar/lisens/selvbetjent) som teller opp, og en fremover-bro. H2 «Vi starter ikke fra null.»
 - BUG fikset: insert_line traff feil (linjenr forskjøvet) → PortrettKort havnet inne i Person → «PortrettKort is not defined». Rettet braces (Person lukkes 617, PortrettKort module-scope). Ny CSS .deck-live-dot (+reduced-motion).
 - Verifisert: kompilerer; desktop 1920 overflowY=0 begge, ingen page-errors, 7/7 portrettbilder lastet; mobil 390 offenders=0 begge. IKKE brukerbekreftet.
+
+## Oppdatering 9. sep 2026 (15) — 10 «Unit economics» + 11 «Go-to-market» modernisert
+- Bruker: «fortsett å forbedre alt, verdensklasse på alle slides».
+- unit (10): ny H2 «Én enhet tjener seg inn — i begge selskaper.» + lead «payback i måneder, ikke år». Payback/DlRad-komponenter urørt.
+- gtm (11): ny H2 «Vi kjøper ikke vekst. Vi tjener den.» + skarp lead (byrå betalt på resultat, forvaltning som egen kanal, plattformkunder = oppside). AndelBar/Kolonne urørt.
+- BEVISST IKKE rørt (fungerende interaktive dashboards — høy risiko): plan-dh, plan-tech, konsern (LagGraf + KPI + Skru-slidere), variabel (matrise), hvaom (presets), trenger (raise/Q&A). risiko-sliden er allerede sterk. Kun ramme/tekst-løft der det ga verdi uten å røre logikk.
+- Verifisert: kompilerer; desktop overflowY=0 begge; mobil off=0 begge; ingen page-errors.
