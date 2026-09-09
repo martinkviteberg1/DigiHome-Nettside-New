@@ -801,17 +801,24 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   const startMorph = useCallback(() => {
     if (introUtRef.current) return;
     introUtRef.current = true;
-    const el = introTittelRef.current;
-    const a = el?.getBoundingClientRect();
-    const b = coverTittelRef.current?.getBoundingClientRect();
-    if (el && a && b && a.width > 0 && b.width > 0) {
-      const s = b.width / a.width;
-      const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
-      const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
-      el.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${s.toFixed(4)})`;
-    }
+    try {
+      const iOrd = introTittelRef.current ? Array.from(introTittelRef.current.querySelectorAll('.deck-intro-flip')) : [];
+      const cOrd = coverTittelRef.current ? Array.from(coverTittelRef.current.querySelectorAll('[data-ord]')) : [];
+      iOrd.forEach((el) => {
+        const oi = el.getAttribute('data-ord');
+        const mal = cOrd.find((c) => c.getAttribute('data-ord') === oi);
+        if (!mal) return;
+        const a = el.getBoundingClientRect();
+        const b = mal.getBoundingClientRect();
+        if (a.width < 1 || b.width < 1) return;
+        const s = b.width / a.width;
+        const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
+        const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
+        el.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${s.toFixed(4)})`;
+      });
+    } catch (e) { /* morph er kosmetisk — la resten kjøre uansett */ }
     setIntroUt(true);
-    window.setTimeout(() => setVisIntro(false), 1180);
+    window.setTimeout(() => setVisIntro(false), 1200);
   }, []);
   const hoppIntro = startMorph;
   useEffect(() => {
@@ -824,6 +831,22 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
     const t1 = window.setTimeout(startMorph, 2750);
     return () => window.clearTimeout(t1);
   }, [data, print, startMorph]);
+
+  /* YTELSE: kun det aktive kapitlet skal «leve». Pause videoer i alle inaktive slides (ingen bakgrunns-dekoding),
+     spill det aktive kapitlets video. (CSS pauser i tillegg alle evige animasjoner i inaktive slides.) */
+  useEffect(() => {
+    if (!data || typeof document === 'undefined') return;
+    const r = rotRef.current; if (!r) return;
+    const id = window.requestAnimationFrame(() => {
+      r.querySelectorAll('.deck-side').forEach((s) => {
+        const aktiv = s.getAttribute('data-pos') === 'aktiv';
+        s.querySelectorAll('video').forEach((v) => {
+          try { if (aktiv) { const p = v.play(); if (p && p.catch) p.catch(() => {}); } else { v.pause(); } } catch (e) { /* ignore */ }
+        });
+      });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [side, data]);
 
   const qs = useMemo(() => { const p = new URLSearchParams(); if (token) p.set('t', token); if (adminKey) p.set('key', adminKey); if (planId) p.set('plan', planId); if (techId) p.set('tech', techId); return p.toString(); }, [token, adminKey, planId, techId]);
   const hendelse = useCallback((body) => { if (!token) return; try { fetch(`/api/investor/deck/hendelse?${qs}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: true }); } catch (e) { /* stille */ } }, [qs, token]);
@@ -1117,45 +1140,46 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-verktoy { opacity: 0; transform: translateY(-8px); transition: opacity 460ms ${EASE}, transform 460ms ${EASE}; pointer-events: none; }
         .deck-topp-group:hover .deck-verktoy, .deck-topp-group:focus-within .deck-verktoy { opacity: 1; transform: none; pointer-events: auto; }
         @media (hover: none) { .deck-verktoy { opacity: 1; transform: none; pointer-events: auto; } }
-        /* ── Cinematisk intro (før forsiden) ──────────────────────────────────────────────────────────────────────
-           Lys flate. Et lilla åndedrag bak. Merket skarpstilles (uskarpt → skarpt) og samler strøkene sine; løftet
-           skrives ord for ord (uskarpt → skarpt); en strek trekkes. UTGANG = MORPH: tittelen reiser (FLIP, inline
-           transform) rett til sin plass på forsiden og skifter farge underveis; lyset toner til mørke; merket skyves
-           gjennom kamera; scenen bak trekker seg rolig tilbake. Tittelen lander → forsiden bygger seg rundt den. */
+        /* ── Cinematisk intro (før forsiden) ── blur-fri (kun opacity/transform → GPU, ingen lagg). Merket samler seg,
+           løftet skrives ord for ord PÅ ÉN LINJE. UTGANG = per-ord-MORPH: hvert ord reiser (FLIP, inline transform) til
+           sin plass på forsidens to linjer og skifter farge; lyset toner til mørke; merket skyves gjennom kamera. */
         .deck-intro { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .deck-intro[data-ut="1"] { pointer-events: none; }
-        .deck-intro-bg { position: absolute; inset: 0; background: ${T.canvas}; opacity: 1; transition: opacity 1000ms cubic-bezier(0.65, 0, 0.25, 1); }
+        .deck-intro-bg { position: absolute; inset: 0; background: ${T.canvas}; opacity: 1; transition: opacity 1050ms cubic-bezier(0.6, 0, 0.2, 1) 120ms; }
         .deck-intro[data-ut="1"] .deck-intro-bg { opacity: 0; }
-        .deck-intro-glow { position: absolute; left: 50%; top: 50%; width: 64vmin; height: 64vmin; border-radius: 50%; opacity: 0; transform: translate(-50%, -50%) scale(0.8); background: radial-gradient(circle, rgba(212,150,255,0.24) 0%, rgba(212,150,255,0.08) 42%, rgba(212,150,255,0) 70%); animation: deck-glow-inn 1700ms ${EASE} both; }
-        @keyframes deck-glow-inn { to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
-        .deck-intro[data-ut="1"] .deck-intro-glow { animation: deck-glow-ut 720ms ${EASE} both; }
-        @keyframes deck-glow-ut { to { opacity: 0; transform: translate(-50%, -50%) scale(1.35); } }
-        .deck-intro-ikon { animation: deck-ikon-inn 1150ms cubic-bezier(0.22, 1.1, 0.36, 1) both; }
-        @keyframes deck-ikon-inn { from { opacity: 0; transform: scale(0.66) translateY(12px); filter: blur(14px); } 60% { filter: blur(0); } to { opacity: 1; transform: none; filter: blur(0); } }
-        .deck-intro[data-ut="1"] .deck-intro-ikon { animation: deck-ikon-ut 920ms cubic-bezier(0.65, 0, 0.3, 1) both; }
-        @keyframes deck-ikon-ut { to { opacity: 0; transform: scale(2.4); filter: blur(16px); } }
-        .deck-intro-mark { opacity: 0; animation: deck-mark-inn 420ms ${EASE} forwards; animation-delay: calc(var(--m, 0) * 64ms + 640ms); }
+        .deck-intro-glow { position: absolute; left: 50%; top: 50%; width: 60vmin; height: 60vmin; border-radius: 50%; opacity: 0; transform: translate3d(-50%, -50%, 0) scale(0.82); background: radial-gradient(circle, rgba(212,150,255,0.22) 0%, rgba(212,150,255,0.07) 42%, rgba(212,150,255,0) 70%); animation: deck-glow-inn 1600ms ${EASE} both; }
+        @keyframes deck-glow-inn { to { opacity: 1; transform: translate3d(-50%, -50%, 0) scale(1); } }
+        .deck-intro[data-ut="1"] .deck-intro-glow { animation: deck-glow-ut 640ms ${EASE} both; }
+        @keyframes deck-glow-ut { to { opacity: 0; transform: translate3d(-50%, -50%, 0) scale(1.3); } }
+        .deck-intro-ikon { animation: deck-ikon-inn 1050ms cubic-bezier(0.22, 1.12, 0.36, 1) both; }
+        @keyframes deck-ikon-inn { from { opacity: 0; transform: scale(0.72) translateY(10px); } to { opacity: 1; transform: none; } }
+        .deck-intro[data-ut="1"] .deck-intro-ikon { animation: deck-ikon-ut 800ms cubic-bezier(0.6, 0, 0.3, 1) both; }
+        @keyframes deck-ikon-ut { to { opacity: 0; transform: scale(2.15); } }
+        .deck-intro-mark { opacity: 0; animation: deck-mark-inn 400ms ${EASE} forwards; animation-delay: calc(var(--m, 0) * 60ms + 600ms); }
         @keyframes deck-mark-inn { to { opacity: 1; } }
-        .deck-intro-tittel { transform-origin: 50% 50%; transition: transform 1140ms cubic-bezier(0.68, 0, 0.16, 1), color 720ms ${EASE} 260ms, text-shadow 720ms ${EASE} 260ms; }
+        .deck-intro-tittel { transition: color 640ms ${EASE} 220ms, text-shadow 640ms ${EASE} 220ms; }
         .deck-intro[data-ut="1"] .deck-intro-tittel { color: ${T.offwhite} !important; text-shadow: 0 2px 60px rgba(0,0,0,0.45); }
-        .deck-intro-ord { display: inline-block; opacity: 0; transform: translateY(0.36em); filter: blur(10px); animation: deck-ord-inn 920ms cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--o, 0) * 125ms + 1150ms); }
-        @keyframes deck-ord-inn { 55% { filter: blur(0); } to { opacity: 1; transform: none; filter: blur(0); } }
-        .deck-intro-strek { transform: scaleX(0); transform-origin: 50% 50%; animation: deck-strek-inn 900ms ${EASE} 1700ms both; }
+        .deck-intro-flip { display: inline-block; transform-origin: 50% 50%; transition: transform 1180ms cubic-bezier(0.66, 0, 0.16, 1); }
+        .deck-intro-ord { display: inline-block; opacity: 0; transform: translateY(0.34em); animation: deck-ord-inn 760ms cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--o, 0) * 115ms + 1050ms); }
+        @keyframes deck-ord-inn { to { opacity: 1; transform: none; } }
+        .deck-intro-strek { transform: scaleX(0); transform-origin: 50% 50%; animation: deck-strek-inn 820ms ${EASE} 1560ms both; }
         @keyframes deck-strek-inn { to { transform: scaleX(1); } }
-        .deck-intro[data-ut="1"] .deck-intro-strek { animation: deck-strek-ut 300ms ${EASE} both; }
+        .deck-intro[data-ut="1"] .deck-intro-strek { animation: deck-strek-ut 260ms ${EASE} both; }
         @keyframes deck-strek-ut { to { transform: scaleX(0); opacity: 0; } }
         @media (prefers-reduced-motion: reduce) {
-          .deck-intro-ikon, .deck-intro-mark, .deck-intro-ord, .deck-intro-strek, .deck-intro-glow { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
-          .deck-intro-glow { transform: translate(-50%, -50%) !important; }
+          .deck-intro-ikon, .deck-intro-mark, .deck-intro-ord, .deck-intro-strek, .deck-intro-glow, .deck-intro-flip { animation: none !important; opacity: 1 !important; transform: none !important; transition: none !important; }
+          .deck-intro-glow { transform: translate3d(-50%, -50%, 0) !important; }
         }
 
-        /* Intro-hold på forsiden: mens introen står, holdes forsidens innhold tilbake — tittelen (den morfer inn fra
-           introen og popper på plass idet overlegget forsvinner) og resten (bygger seg staggeret ETTER landing).
-           Scenen står litt zoomet og trekker seg rolig tilbake (kamera) fra morph-start. */
+        /* YTELSE: kun det aktive kapitlet skal «leve». Alle evige animasjoner i inaktive/skjulte slides stanses
+           (video pauses i JS). Uten dette dekoder cover-videoen og Konsept-scenen samtidig — det lagget. */
+        .deck-side:not([data-pos="aktiv"]), .deck-side:not([data-pos="aktiv"]) * { animation-play-state: paused !important; }
+
+        /* Intro-hold på forsiden: forsidens tittel og innhold holdes tilbake til morphen har landet; scenen zoomer rolig ut (kamera). */
         .deck-rot[data-intro="1"] .deck-cover-tittel, .deck-rot[data-intro="ut"] .deck-cover-tittel { opacity: 0 !important; }
         .deck-rot[data-intro="1"] .deck-side[data-aktiv="1"] .deck-inn, .deck-rot[data-intro="ut"] .deck-side[data-aktiv="1"] .deck-inn { opacity: 0; transform: translateY(22px); transition: none; }
-        .deck-cover-scene { transition: transform 1700ms cubic-bezier(0.22, 1, 0.36, 1); transform-origin: 62% 50%; }
-        .deck-rot[data-intro="1"] .deck-cover-scene { transform: scale(1.07); }
+        .deck-cover-scene { transition: transform 1600ms cubic-bezier(0.22, 1, 0.36, 1); transform-origin: 62% 50%; }
+        .deck-rot[data-intro="1"] .deck-cover-scene { transform: scale(1.06); }
         /* Coveren: merkets signaturbilde (eieren hjemme om kvelden), speilet så han står til høyre for teksten.
            Et knapt merkbart, langsomt skyv innover mens kapitlet er aktivt — kino, ikke slideshow. */
         .deck-cover-foto { transform: scaleX(-1) scale(1.02); transform-origin: 50% 50%; transition: transform 16s linear; filter: saturate(0.92); }
@@ -1176,9 +1200,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           <div className="deck-intro-glow" aria-hidden="true" />
           <div className="deck-intro-inner relative flex flex-col items-center px-6">
             <div className="deck-intro-ikon"><DhIkon px={92} animer /></div>
-            <h1 ref={introTittelRef} className="deck-intro-tittel mt-9 w-fit text-left text-[44px] sm:text-[64px] lg:text-[72px]" style={{ ...display, color: T.ink, letterSpacing: '-0.04em', lineHeight: 0.92 }}>
-              <span className="block"><span className="deck-intro-ord mr-[0.2em]" style={{ '--o': 0 }}>Utleie</span><span className="deck-intro-ord" style={{ '--o': 1 }}>på</span></span>
-              <span className="block"><span className="deck-intro-ord" style={{ '--o': 2 }}>autopilot<span className="deck-intro-punkt" style={{ color: T.lilla }}>.</span></span></span>
+            <h1 ref={introTittelRef} className="deck-intro-tittel mt-9 whitespace-nowrap text-[36px] sm:text-[60px] lg:text-[72px]" style={{ ...display, color: T.ink, letterSpacing: '-0.04em', lineHeight: 0.92 }}>
+              <span className="deck-intro-flip mr-[0.2em]" data-ord="0" style={{ '--o': 0 }}><span className="deck-intro-ord">Utleie</span></span>
+              <span className="deck-intro-flip mr-[0.2em]" data-ord="1" style={{ '--o': 1 }}><span className="deck-intro-ord">på</span></span>
+              <span className="deck-intro-flip" data-ord="2" style={{ '--o': 2 }}><span className="deck-intro-ord">autopilot<span style={{ color: T.lilla }}>.</span></span></span>
             </h1>
             <div className="deck-intro-strek mt-9 h-px w-12" style={{ background: 'rgba(21,19,15,0.22)' }} />
           </div>
@@ -1276,8 +1301,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           </Inn>
           {investor ? <Inn i={1}><p className="mt-5 text-[12.5px]" style={{ color: 'rgba(244,241,234,0.5)' }}>Utarbeidet for <span style={{ color: 'rgba(244,241,234,0.82)' }}>{investor.label}</span></p></Inn> : null}
           <h1 ref={coverTittelRef} className="deck-cover-tittel mt-7 w-fit text-[58px] sm:text-[88px] lg:text-[112px]" style={{ ...display, color: T.offwhite, letterSpacing: '-0.04em', lineHeight: 0.92, textShadow: '0 2px 60px rgba(0,0,0,0.45)' }}>
-            <span className="block"><span className="deck-ord mr-[0.2em]" style={{ '--o': 0 }}>Utleie</span><span className="deck-ord" style={{ '--o': 1 }}>på</span></span>
-            <span className="block"><span className="deck-ord" style={{ '--o': 2 }}>autopilot<span style={{ color: T.lilla }}>.</span></span></span>
+            <span className="block"><span className="deck-ord mr-[0.2em]" data-ord="0" style={{ '--o': 0 }}>Utleie</span><span className="deck-ord" data-ord="1" style={{ '--o': 1 }}>på</span></span>
+            <span className="block"><span className="deck-ord" data-ord="2" style={{ '--o': 2 }}>autopilot<span style={{ color: T.lilla }}>.</span></span></span>
           </h1>
           <Inn i={3}><p className="mt-7 max-w-[42ch] text-[16.5px] leading-[1.6] sm:text-[18.5px]" style={{ color: 'rgba(244,241,234,0.86)' }}>Programvaren som driver utleieboligen – for private huseiere og eiendomsselskaper med hele porteføljer. Og forvaltningen for dem som ikke vil gjøre jobben selv. <span style={{ color: T.offwhite }}>To selskaper, én plattform.</span></p></Inn>
           <div className="deck-inn mt-10 grid max-w-[640px] grid-cols-2 gap-x-10 gap-y-7 border-t pt-7 sm:grid-cols-4" style={{ '--i': 4, borderColor: 'rgba(244,241,234,0.16)' }} data-testid="deck-kort-fortalt">
