@@ -510,6 +510,88 @@ function Strukturdiagram({ basisT, basisF, prisHuseier }) {
   );
 }
 
+/* ══════════════════════════ Svinghjulet (Strukturen · konsept) ══════════════════════════ */
+/* Strukturens ÉN idé: et svinghjul. Forvaltningen (Digihome AS) er Techs største kunde, salgsapparat og bevis på én
+   gang. Fire steg går rundt med klokka; i navet står de to selskapene med lisensen som nettes ut i konsernet. Ringen
+   ruller svakt (respekterer reduced-motion). Desktop = hjul; mobil = vertikal nummerert loop. */
+const HJUL = [
+  { n: 1, v: 270, t: 'Vi forvalter flere boliger', u: 'Digihome AS vokser lokalt' },
+  { n: 2, v: 0, t: 'Hver bolig betaler og lærer opp plattformen', u: 'lisens, data og ekte referanser' },
+  { n: 3, v: 90, t: 'Plattformen blir bedre og billigere', u: 'kostnaden per bolig faller' },
+  { n: 4, v: 180, t: 'Salget går lettere', u: 'og inntekten gjør runden på nytt' },
+];
+function HjulNav() {
+  return (
+    <div className="flex w-[188px] flex-col items-center gap-2 text-center">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: SVAK }}>Motoren</p>
+      <span className="w-full rounded-full px-3 py-1.5 text-[12.5px] font-semibold" style={{ background: '#F6F0FB', color: LILLA_M, boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.22)' }}>Digihome Tech</span>
+      <span className="deck-hjul-lisens inline-flex items-center gap-1 text-[10px] font-medium" style={{ color: LILLA_M }}><ArrowUp className="h-3 w-3" strokeWidth={2} />lisens · nuller seg ut i konsern<ArrowDown className="h-3 w-3" strokeWidth={2} /></span>
+      <span className="w-full rounded-full px-3 py-1.5 text-[12.5px] font-semibold text-white" style={{ background: T.charcoal }}>Digihome AS</span>
+    </div>
+  );
+}
+function HjulKort({ n, t, u }) {
+  return (
+    <div className="flex items-start gap-2.5 rounded-[14px] bg-white px-3.5 py-3" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 16px 34px -18px rgba(21,19,15,0.24)` }}>
+      <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: LILLA_M }}>{n}</span>
+      <span className="text-left leading-tight">
+        <span className="block text-[13px] font-semibold" style={{ color: T.ink }}>{t}</span>
+        <span className="mt-0.5 block text-[11px] leading-snug" style={{ color: SVAK }}>{u}</span>
+      </span>
+    </div>
+  );
+}
+function Svinghjul() {
+  const R = 36;
+  const pkt = (v) => ({ x: 50 + R * Math.cos((v * Math.PI) / 180), y: 50 + R * Math.sin((v * Math.PI) / 180) });
+  const chevrons = [45, 135, 225, 315];
+  return (
+    <div data-testid="deck-svinghjul">
+      {/* Desktop: hjulet */}
+      <div className="relative mx-auto hidden aspect-square w-full max-w-[600px] sm:block">
+        <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" fill="none" aria-hidden="true">
+          {/* 1) ringen tegner seg inn når kapitlet åpnes */}
+          <circle className="deck-hjul-tegn" cx="50" cy="50" r={R} stroke="rgba(122,63,168,0.22)" strokeWidth="1.3" strokeLinecap="round" strokeDasharray="226.2" vectorEffect="non-scaling-stroke" />
+          {/* 2) stiplet ring som ruller — hjulet går */}
+          <circle className="deck-hjul-rot" cx="50" cy="50" r={R} stroke={LILLA_M} strokeWidth="1.3" strokeLinecap="round" strokeDasharray="0.6 6" vectorEffect="non-scaling-stroke" />
+          {/* retning: med klokka */}
+          {chevrons.map((a) => {
+            const p = pkt(a); const cos = Math.cos((a * Math.PI) / 180); const sin = Math.sin((a * Math.PI) / 180);
+            const rot = (Math.atan2(cos, -sin) * 180) / Math.PI;
+            return <g key={a} className="deck-hjul-chev" transform={`translate(${p.x} ${p.y}) rotate(${rot})`}><path d="M-2 -2.4 L2.2 0 L-2 2.4" fill="none" stroke={LILLA_M} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" /></g>;
+          })}
+          {/* 3) verdien som sirkulerer: en glødende prikk går rundt hjulet */}
+          <g className="deck-hjul-orbit">
+            <circle cx="50" cy={50 - R} r="3.4" fill={LILLA_M} opacity="0.18" />
+            <circle cx="50" cy={50 - R} r="1.7" fill={LILLA_M} />
+          </g>
+        </svg>
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"><div className="deck-inn flex justify-center" style={{ '--i': 13 }}><HjulNav /></div></div>
+        {HJUL.map((s) => {
+          const p = pkt(s.v);
+          return (
+            <div key={s.n} className="absolute w-[168px] -translate-x-1/2 -translate-y-1/2" style={{ left: `${p.x}%`, top: `${p.y}%` }}>
+              <div className="deck-inn" style={{ '--i': 3 + s.n * 2.2 }}><HjulKort {...s} /></div>
+            </div>
+          );
+        })}
+      </div>
+      {/* Mobil: vertikal loop */}
+      <div className="sm:hidden">
+        <div className="mb-4 flex items-center justify-center gap-2">
+          <span className="rounded-full px-3 py-1.5 text-[12px] font-semibold" style={{ background: '#F6F0FB', color: LILLA_M, boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.22)' }}>Digihome Tech</span>
+          <span className="text-[10px] font-medium" style={{ color: SVAK }}>⇄ lisens</span>
+          <span className="rounded-full px-3 py-1.5 text-[12px] font-semibold text-white" style={{ background: T.charcoal }}>Digihome AS</span>
+        </div>
+        <ol className="relative space-y-3">
+          <span aria-hidden="true" className="absolute left-[13px] top-3 bottom-3 w-px" style={{ background: 'rgba(122,63,168,0.25)' }} />
+          {HJUL.map((s) => <li key={s.n} className="relative"><HjulKort {...s} /></li>)}
+        </ol>
+      </div>
+    </div>
+  );
+}
+
 /* Organisasjonskart: styre → ledelse → to selskaper med funksjoner. Linjer tegnes når kapitlet er aktivt.
    Styret er felles for Digihome AS og Digihome Tech AS: Erik (leder), Jens-Petter, Sarah og Martin. */
 const TEAM = [
@@ -1375,6 +1457,25 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-mkt-ring { transform-box: fill-box; transform-origin: center; }
         .deck-side[data-aktiv="1"] .deck-mkt-ring { animation: deck-mkt-ring 3.2s ${EASE} infinite; }
         @keyframes deck-mkt-ring { 0%,100% { opacity: .9; } 50% { opacity: .32; } }
+        .deck-hjul-rot { transform-box: fill-box; transform-origin: center; opacity: .9; }
+        .deck-side[data-aktiv="1"] .deck-hjul-rot { animation: deck-hjul-rot 24s linear infinite; }
+        @keyframes deck-hjul-rot { to { transform: rotate(360deg); } }
+        /* Svinghjulet forteller i rekkefølge: ring tegnes → steg 1–4 med klokka → navet → verdien sirkulerer */
+        .deck-hjul-tegn { stroke-dashoffset: 226.2; }
+        .deck-side[data-aktiv="1"] .deck-hjul-tegn { animation: deck-hjul-tegn 1.5s ${EASE} .25s both; }
+        @keyframes deck-hjul-tegn { to { stroke-dashoffset: 0; } }
+        .deck-hjul-chev { opacity: 0; transition: opacity .6s ${EASE} 1.6s; }
+        .deck-side[data-aktiv="1"] .deck-hjul-chev { opacity: 1; }
+        .deck-hjul-orbit { transform-box: view-box; transform-origin: 50% 50%; opacity: 0; }
+        .deck-side[data-aktiv="1"] .deck-hjul-orbit { animation: deck-hjul-orbit 9s linear 1.8s infinite, deck-hjul-orbit-inn .8s ${EASE} 1.8s both; }
+        @keyframes deck-hjul-orbit { to { transform: rotate(360deg); } }
+        @keyframes deck-hjul-orbit-inn { to { opacity: 1; } }
+        .deck-side[data-aktiv="1"] .deck-hjul-lisens { animation: deck-hjul-lisens 2.8s ${EASE} infinite; }
+        @keyframes deck-hjul-lisens { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+        /* Spekteret (For hvem): skinnen fylles fra «du gjør det selv» → «vi gjør alt» */
+        .deck-spk-skinne { transform: scaleX(0); transform-origin: left; }
+        .deck-side[data-aktiv="1"] .deck-spk-skinne { animation: deck-spk-skinne 1.1s ${EASE} .5s both; }
+        @keyframes deck-spk-skinne { to { transform: scaleX(1); } }
 
         .deck-side .deck-linje { --l: 0; transition: transform 700ms ${EASE} 500ms; }
         .deck-side[data-aktiv="1"] .deck-linje { --l: 1; }
@@ -1446,7 +1547,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-side[data-aktiv="1"] .deck-cover-strek { transform: scaleX(1); }
         /* Coverens scene: forsidens HeroStage, men som sceneteppe — kant til kant, uten kortets radius/skygge/høydetak. */
         .deck-cover-scene .dh-hero-scene { max-height: none !important; border-radius: 0 !important; box-shadow: none !important; }
-        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring { animation: none !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
+        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring, .deck-hjul-rot, .deck-hjul-tegn, .deck-hjul-orbit, .deck-hjul-lisens, .deck-spk-knott, .deck-spk-skinne { animation: none !important; } .deck-hjul-tegn { stroke-dashoffset: 0 !important; } .deck-hjul-chev, .deck-hjul-orbit { opacity: 1 !important; } .deck-spk-skinne { transform: scaleX(1) !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
         @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
 
@@ -1650,65 +1751,110 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
 
       {/* 04 · Konseptet — forsidens levende scene */}
       <Side id="konsept" pos={pos('konsept')} aktiv={er('konsept')} bred>
-        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-14">
+        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,4.7fr)_minmax(0,7fr)] lg:gap-14">
           <div>
             <Kapittel nr={kap('konsept')} navn="Konseptet" under="slik ser en dag ut" />
-            <Inn i={1}><H2 maks="14ch">Systemet driver boligen. Eieren har siste ord.</H2></Inn>
-            <Inn i={2}><p className="mt-6 max-w-[44ch] text-[16px] leading-[1.55] sm:text-[17px]" style={{ color: DIM }}>Husleie registreres, kontrakter signeres med BankID, leietakerens spørsmål besvares fra kontrakten – og når varmtvannet svikter, finner systemet rørleggeren og ber om ett trykk.</p></Inn>
-            <Inn i={3}>
-              <ol className="relative mt-9" data-testid="deck-konsept-flyt">
-                {/* forbindelseslinjen — tre steg skjer av seg selv, det fjerde ender i ett trykk */}
-                <span aria-hidden="true" className="pointer-events-none absolute left-[19px] top-6 bottom-6 w-px" style={{ background: `linear-gradient(180deg, ${HAIR} 0%, ${HAIR} 52%, rgba(122,63,168,0.5) 100%)` }} />
-                {[[Users, 'Leietakere', 'annonse, visning, kredittsjekk', 'auto'], [FileText, 'Kontrakt og depositum', 'BankID-signering, depositumsgaranti', 'auto'], [Coins, 'Husleie', 'innkreving, purring, regulering', 'auto'], [Wrench, 'Drift', 'sak → leverandør → forslag', 'trykk']].map(([Ikon, t, u, type]) => {
-                  const siste = type === 'trykk';
-                  return (
-                    <li key={t} className="relative flex items-start gap-4 py-[14px]">
-                      <span className="relative z-10 flex h-[38px] w-[38px] flex-none items-center justify-center rounded-[12px]" style={siste ? { background: LILLA_M, color: '#fff', boxShadow: '0 12px 30px rgba(122,63,168,0.34)' } : { background: '#fff', color: LILLA_M, boxShadow: `inset 0 0 0 1px ${HAIR}, 0 6px 18px rgba(21,19,15,0.05)` }}>
-                        <Ikon className="h-[18px] w-[18px]" strokeWidth={1.8} />
-                      </span>
-                      <div className="min-w-0 flex-1 pt-1">
-                        <p className="text-[15.5px] font-medium leading-tight" style={{ color: T.ink }}>{t}</p>
-                        <p className="mt-1 text-[13px] leading-snug" style={{ color: SVAK }}>{u}</p>
-                      </div>
-                      {siste ? (
-                        <span className="mt-1 flex flex-none items-center gap-1.5 rounded-full py-1 pl-2 pr-2.5 text-[11px] font-semibold" style={{ background: 'rgba(122,63,168,0.12)', color: LILLA_M }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: LILLA_M }} /> ett trykk</span>
-                      ) : (
-                        <span className="mt-1.5 flex flex-none items-center gap-1.5 text-[11px] font-medium" style={{ color: T.gronn }}><Check className="h-3.5 w-3.5" strokeWidth={2.4} /> automatisk</span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ol>
+            <Inn i={1}><H2 maks="15ch">Systemet driver boligen. Eieren har siste ord.</H2></Inn>
+            <Inn i={2}><p className="mt-5 max-w-[42ch] text-[16px] leading-[1.55] sm:text-[17px]" style={{ color: DIM }}>Ett døgn i en utleiebolig. Husleie, kontrakt og leietakerens spørsmål ordner seg selv — helt til noe krever et menneske. Da, og bare da, venter systemet på deg.</p></Inn>
+            <Inn i={3} className="mt-7">
+              <div className="relative pl-5">
+                <span aria-hidden="true" className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full" style={{ background: `linear-gradient(180deg, ${LILLA_M}, rgba(122,63,168,0.14))` }} />
+                <p className="text-[19px] leading-[1.34] sm:text-[22px]" style={{ ...display, letterSpacing: '-0.02em', color: T.ink }}>Alt går av seg selv.<br /><span style={{ color: LILLA_M }}>Det ene som er ditt, venter på ett trykk.</span></p>
+              </div>
+            </Inn>
+            <Inn i={4} className="mt-7 border-t pt-5" style={{ borderColor: HAIR }}>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: SVAK }}>Dagens fasit</p>
+              <div className="mt-3.5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4" data-testid="deck-konsept-fasit">
+                {[['8/8', 'husleier betalt', T.gronn], ['1', 'kontrakt signert', T.gronn], ['1', 'sak løst av seg selv', T.gronn], ['1', 'beslutning — din', LILLA_M]].map(([v, u, c]) => (
+                  <div key={u}>
+                    <p className="text-[28px] sm:text-[32px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.ink }}>{v}</p>
+                    <p className="mt-2 flex items-start gap-1.5 text-[12px] leading-[1.35]" style={{ color: SVAK }}><span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: c }} />{u}</p>
+                  </div>
+                ))}
+              </div>
             </Inn>
           </div>
-          <Inn i={2} className="min-w-0"><HeroScene eiendom={null} /></Inn>
+          <Inn i={2} className="min-w-0">
+            {er('konsept') ? <HeroScene eiendom={null} /> : <div aria-hidden="true" style={{ minHeight: 460 }} />}
+          </Inn>
         </div>
       </Side>
 
       {/* 04 · For hvem — samme system, to kundegrupper (+ forvaltning som tjeneste) */}
       <Side id="hvem" pos={pos('hvem')} aktiv={er('hvem')} bred>
-        <Kapittel nr={kap('hvem')} navn="For hvem" under="samme system – fra én bolig til hele porteføljer" />
-        <Todelt bredHoyre venstre={<>
-          <Inn i={1}><H2 maks="12ch">Én plattform. Tre veier inn.</H2></Inn>
-          <Ingress>Én kodebase, én prisliste, tre inngangsdører. Det som bygges for eiendomsselskapet – roller, rapportering, volum – gjør plattformen bedre for den private, og omvendt.</Ingress>
-        </>}>
-          <div className="grid items-stretch gap-5 sm:grid-cols-3" data-testid="deck-hvem-kort">
-            <Kort i={2} ikon={Home} over="Private huseiere" tittel="Selvbetjent på plattformen" rader={['Leietakere, kontrakt med BankID, husleie og drift – styrt fra mobilen.', 'Hele Norge. Ingen binding.']}
-              fot={<div className="grid grid-cols-2 gap-4 border-t pt-5" style={{ borderColor: HAIR }}><Fakta v={prisHuseier || '—'} u="pris" /><Fakta v={nb(plEnheterIDag)} u="selvbetjente enheter i dag" /></div>} />
-            <Kort i={3} ikon={Building2} over="Eiendomsselskaper" tittel="Hele porteføljen, per enhet" rader={['Ett system for de ansatte: leietakere, betaling, saker og leverandører.', 'Roller, rapportering og API. Pris per enhet.']}
-              fot={<div className="grid grid-cols-2 gap-4 border-t pt-5" style={{ borderColor: HAIR }}><Fakta v={basisT ? `${kr(basisT.bedrift.pris)}` : '—'} u="per enhet per måned" /><Fakta v={nb(bedriftIDag)} u="selskaper i dag" /></div>} />
-            <Kort i={4} ikon={Link2} over="Forvaltning" tittel="Digihome AS gjør jobben" rader={['En fast forvalter – på den samme plattformen. Eieren følger alt live.', 'Bergen og 60 km rundt. Betaler seg fra første måned.']}
-              fot={<div className="grid grid-cols-2 gap-4 border-t pt-5" style={{ borderColor: HAIR }}><Fakta v={pct(basisF.honorarPctNye, 1)} u="av leien, inkl. mva" /><Fakta v={nb(enheterIDag)} u="enheter under forvaltning i dag" /></div>} />
+        <Kapittel nr={kap('hvem')} navn="For hvem" under="fra én leilighet til hele porteføljen" />
+        <div className="mt-2 grid gap-6 lg:grid-cols-12 lg:items-end lg:gap-12">
+          <div className="lg:col-span-7"><Inn i={1}><H2 maks="17ch">Én plattform. Du bestemmer hvor mye du gjør selv.</H2></Inn></div>
+          <div className="lg:col-span-5"><Inn i={2}><p className="text-[15px] leading-[1.6] sm:text-[16.5px]" style={{ color: DIM, maxWidth: '46ch' }}>Samme system fra første leilighet til tusen. Gjør alt selv — eller la Digihome ta jobben. Én kodebase og én prisliste under alt.</p></Inn></div>
+        </div>
+        <div className="mt-10" data-testid="deck-hvem-spekter">
+          <div className="grid gap-5 sm:grid-cols-3">
+            {[
+              { ikon: Home, over: 'Private huseiere', niva: 'Gjør det selv', tekst: 'Leietakere, kontrakt med BankID, husleie og drift — rett fra mobilen. Hele Norge, ingen binding.', pris: prisHuseier || '—', prisU: 'pris', trak: nb(plEnheterIDag), trakU: 'boliger i dag' },
+              { ikon: Building2, over: 'Eiendomsselskaper', niva: 'Drift i skala', tekst: 'Ett system for hele teamet: leietakere, betaling, saker og leverandører — med roller, rapportering og API.', pris: basisT ? `${kr(basisT.bedrift.pris)}` : '—', prisU: 'per enhet/mnd', trak: nb(bedriftIDag), trakU: 'selskaper i dag' },
+              { ikon: Link2, over: 'Forvaltning', niva: 'Vi gjør alt', tekst: 'En fast forvalter på nøyaktig samme plattform. Du følger alt live. Bergen og 60 km rundt.', pris: pct(basisF.honorarPctNye, 1), prisU: 'av leien, inkl. mva', trak: nb(enheterIDag), trakU: 'boliger i dag' },
+            ].map((s, i) => (
+              <Inn key={s.over} i={2 + i}>
+                <div className="flex h-full flex-col rounded-[18px] bg-white p-5" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 18px 40px -22px rgba(21,19,15,0.2)` }}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px]" style={{ background: '#F6F0FB', color: LILLA_M, boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.2)' }}><s.ikon className="h-[18px] w-[18px]" strokeWidth={1.8} /></span>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: SVAK }}>{s.over}</p>
+                      <p className="text-[16px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: T.ink }}>{s.niva}</p>
+                    </div>
+                  </div>
+                  <p className="mt-3.5 flex-1 text-[13px] leading-[1.55]" style={{ color: DIM }}>{s.tekst}</p>
+                  <div className="mt-4 grid grid-cols-2 gap-3 border-t pt-4" style={{ borderColor: HAIR }}><Fakta v={s.pris} u={s.prisU} /><Fakta v={s.trak} u={s.trakU} /></div>
+                </div>
+              </Inn>
+            ))}
           </div>
-        </Todelt>
+          <Inn i={5} className="mt-6">
+            <div aria-hidden="true" className="hidden grid-cols-3 sm:grid">
+              {[0, 1, 2].map((i) => <div key={i} className="flex justify-center"><span className="h-3 w-px" style={{ background: 'rgba(122,63,168,0.3)' }} /></div>)}
+            </div>
+            <div className="relative mt-1 h-[6px] w-full overflow-hidden rounded-full" style={{ background: 'rgba(122,63,168,0.12)' }}>
+              <span className="deck-spk-skinne absolute inset-0 rounded-full" style={{ background: `linear-gradient(90deg, rgba(122,63,168,0.4), ${LILLA_M})` }} />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.1em]"><span style={{ color: SVAK }}>Du gjør det selv</span><span style={{ color: LILLA_M }}>Vi gjør alt</span></div>
+          </Inn>
+          <Inn i={6} className="mt-6">
+            <div className="flex flex-col gap-3 rounded-[16px] px-6 py-4 sm:flex-row sm:items-center sm:justify-between" style={{ background: '#F6F0FB', boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.22)' }} data-testid="deck-hvem-plattform">
+              <p className="text-[13.5px] leading-snug" style={{ color: T.ink }}><span className="font-semibold" style={{ color: LILLA_M }}>Én plattform — Digihome Tech.</span> Samme kode og prisliste under alle tre.</p>
+              <div className="flex flex-wrap gap-1.5">
+                {['Roller', 'Rapportering', 'API', 'BankID', 'Regnskap'].map((c) => <span key={c} className="rounded-full px-2.5 py-1 text-[11.5px] font-medium" style={{ background: 'rgba(122,63,168,0.1)', color: LILLA_M }}>{c}</span>)}
+              </div>
+            </div>
+          </Inn>
+        </div>
       </Side>
 
       {/* 04 · Strukturen */}
       <Side id="struktur" pos={pos('struktur')} aktiv={er('struktur')} bred>
-        <Kapittel nr={kap('struktur')} navn="Strukturen" under="to juridiske enheter, én plattform" />
-        <Inn i={1}><H2 maks="20ch">Programvare skalerer. Forvaltning gir margin – og volum til programvaren.</H2></Inn>
-        <div className="mt-10"><Strukturdiagram basisT={basisT} basisF={basisF} prisHuseier={prisHuseier} /></div>
-        <Inn i={7}><p className="mt-8 max-w-[72ch] text-[14.5px] leading-[1.6]" style={{ color: DIM }}>Hver forvaltet enhet er samtidig en lisens på plattformen – forvaltningen er Techs største kunde i dag, og et salgsapparat for selvbetjening i morgen. På konsernnivå telles lisensen bare én gang.</p></Inn>
+        <Kapittel nr={kap('struktur')} navn="Strukturen" under="to selskaper som forsterker hverandre" />
+        <div className="mt-2 grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
+          <div className="lg:col-span-5">
+            <Inn i={1}><H2 maks="14ch">To selskaper. Én motor.</H2></Inn>
+            <Ingress i={2} maks="44ch">Programvaren skalerer uten grenser. Forvaltningen tjener penger allerede i dag — og er samtidig plattformens største kunde, beste selger og strengeste testpilot. Hver av dem gjør den andre sterkere.</Ingress>
+            <Inn i={3} className="mt-8">
+              <div className="relative pl-5">
+                <span aria-hidden="true" className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full" style={{ background: `linear-gradient(180deg, ${LILLA_M}, rgba(122,63,168,0.14))` }} />
+                <p className="text-[19px] leading-[1.34] sm:text-[22px]" style={{ ...display, letterSpacing: '-0.02em', color: T.ink }}>Hver bolig vi forvalter er også en lisens.<br /><span style={{ color: LILLA_M }}>Internt nuller den seg ut — marginen blir i konsernet.</span></p>
+              </div>
+            </Inn>
+            <Inn i={4} className="mt-8 grid grid-cols-2 gap-6 border-t pt-6" style={{ borderColor: HAIR }} data-testid="deck-struktur-selskaper">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: LILLA_M }}>Digihome Tech AS</p>
+                <p className="mt-2 text-[13.5px] leading-[1.55]" style={{ color: DIM }}>Programvaren. Én prisliste for alle. Vi tjener på kode — ikke på timer.</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: T.ink }}>Digihome AS</p>
+                <p className="mt-2 text-[13.5px] leading-[1.55]" style={{ color: DIM }}>Forvaltningen. Ekte drift og margin — og et forsprang ingen ren SaaS har.</p>
+              </div>
+            </Inn>
+          </div>
+          <div className="lg:col-span-7"><Inn i={2}><Svinghjul /></Inn></div>
+        </div>
       </Side>
 
       {/* 05 · Organisasjon */}
