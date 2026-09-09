@@ -18,7 +18,7 @@
      kapittel. Fremdriftslinje øverst, kapittelvelger, #hash for dyplenke. Print = PDF.
    ───────────────────────────────────────────────────────────────────────────── */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUp, Download, Lock, RotateCcw, Send, Check, Megaphone, Home, Building2, Link2, Menu, X, Share2, Copy, Trash2, Eye, KeyRound, Ban, ChevronDown } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUp, Download, Lock, RotateCcw, Send, Check, Megaphone, Home, Building2, Link2, Menu, X, Share2, Copy, Trash2, Eye, KeyRound, Ban, ChevronDown, Calendar, ShieldCheck, FileText, Coins, Users, CreditCard, Wrench, Table2, AlertTriangle } from 'lucide-react';
 import { T, display, EASE, DIM, SVAK, HAIR } from '@/components/forside/v4/tokens';
 import HeroScene from '@/components/forside/v4/HeroScene';
 import HeroStage, { FILM as HERO_FILM } from '@/components/forside/v4/HeroStage';
@@ -531,45 +531,49 @@ function OrgKart({ aarsverkStart, aarsverkSlutt, utviklingPerMnd, enheterPerAars
 }
 
 /* ══════════════════════════ Fragmenteringen (slide 02 · problemet) ══════════════════════════ */
-/* Verktøyene og oppgavene en utleier sjonglerer — som hårfine brikker som aldri legger seg på linje. To skalaer:
-   den private (mange verktøy, én innboks) og selskapet (mange systemer, ingen oversikt). Ingenting snakker sammen —
-   det ER problemet. Statisk komposisjon (svak rotasjon + forskyvning) + én rolig entré. Ingen evig animasjon (ytelse). */
+/* Verktøyene og oppgavene en utleier sjonglerer — som løftede kort i en vifte, med dybde og små skjeve vinkler:
+   «en bunke som aldri legger seg på linje». To skalaer med tydelige tall-ankere (10 / 5). Ingenting snakker sammen.
+   Statisk komposisjon + én rolig, staggeret entré (deck-inn). Ingen evig animasjon (ytelse). */
 const FRAG_KLYNGER = [
-  { ikon: Home, label: 'Den private huseieren', tall: '10', enhet: 'verktøy · én innboks', chips: ['Annonse', 'Visning', 'Kredittsjekk', 'Kontrakt', 'Depositum', 'Husleie', 'Purring', 'Regulering'] },
-  { ikon: Building2, label: 'Eiendomsselskapet', tall: '5', enhet: 'systemer · ingen oversikt', chips: ['Leietakere', 'Betaling', 'Saker', 'Kontrakter', 'Regneark', 'E-post'] },
+  { ikon: Home, label: 'Den private huseieren', tall: '10', enhet: 'verktøy · én innboks', kort: [
+    { i: Megaphone, t: 'Annonse' }, { i: Calendar, t: 'Visning' }, { i: ShieldCheck, t: 'Kredittsjekk' }, { i: FileText, t: 'Kontrakt' }, { i: Lock, t: 'Depositum' }, { i: Coins, t: 'Husleie' },
+  ] },
+  { ikon: Building2, label: 'Eiendomsselskapet', tall: '5', enhet: 'systemer · ingen oversikt', kort: [
+    { i: Users, t: 'Leietakere' }, { i: CreditCard, t: 'Betaling' }, { i: Wrench, t: 'Saker' }, { i: FileText, t: 'Kontrakter' }, { i: Table2, t: 'Regneark' },
+  ] },
 ];
-/* Ujevne, men faste posisjoner — brikkene «legger seg aldri på linje» (fragmentering gjennom komposisjon, ikke jitter). */
-const FRAG_SKEIV = [
-  { r: -2.4, y: 7 }, { r: 1.8, y: -5 }, { r: -1.1, y: 13 }, { r: 2.6, y: 1 }, { r: -2, y: -7 }, { r: 1.3, y: 9 }, { r: -1.7, y: -2 }, { r: 2.1, y: 5 },
-];
+const KORT_ROT = [-4, 3, -2.5, 3.5, -3, 2.5];
 function Fragmentering() {
   return (
-    <div className="flex flex-col">
+    <div className="deck-fragment relative">
       {FRAG_KLYNGER.map((k, ki) => {
         const Ikon = k.ikon;
         return (
-          <Inn key={k.label} i={3 + ki * 1.4} className={ki ? 'mt-8 border-t pt-8 sm:mt-10 sm:pt-10' : ''} style={{ borderColor: HAIR }}>
-            <div className="grid gap-5 sm:grid-cols-[minmax(0,196px)_1fr] sm:items-start sm:gap-8">
-              <div>
-                <p className="flex items-center gap-2 text-[12.5px] font-medium" style={{ color: LILLA_M }}><Ikon className="h-4 w-4" strokeWidth={1.8} />{k.label}</p>
-                <p className="mt-3 flex items-baseline gap-2">
-                  <span style={{ ...display, fontSize: 42, letterSpacing: '-0.04em', lineHeight: 1, color: T.ink }}>{k.tall}</span>
-                  <span className="text-[13px] leading-[1.3]" style={{ color: SVAK }}>{k.enhet}</span>
-                </p>
-              </div>
-              <div className="flex flex-wrap items-start gap-x-2.5 gap-y-3.5 pt-1">
-                {k.chips.map((c, ci) => {
-                  const s = FRAG_SKEIV[ci % FRAG_SKEIV.length];
+          <div key={k.label} className={ki ? 'mt-9 border-t pt-9 sm:mt-11 sm:pt-11' : ''} style={{ borderColor: HAIR }}>
+            <div className="grid gap-6 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-center sm:gap-9">
+              <Inn i={3 + ki * 1.3}>
+                <p className="flex items-center gap-2 whitespace-nowrap text-[12.5px] font-medium" style={{ color: LILLA_M }}><Ikon className="h-4 w-4" strokeWidth={1.8} />{k.label}</p>
+                <p className="mt-2" style={{ ...display, fontSize: 52, letterSpacing: '-0.045em', lineHeight: 1, color: T.ink }}>{k.tall}</p>
+                <p className="mt-2 text-[13px] leading-[1.35]" style={{ color: SVAK }}>{k.enhet}</p>
+              </Inn>
+              <div className="deck-kortvifte">
+                {k.kort.map((c, ci) => {
+                  const Ci = c.i; const rot = KORT_ROT[ci % KORT_ROT.length];
                   return (
-                    <span key={c} className="inline-flex items-center rounded-full px-3.5 py-1.5 text-[13px] font-medium" style={{ color: 'rgba(21,19,15,0.6)', background: 'rgba(21,19,15,0.02)', boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.12)', transform: `translateY(${s.y}px) rotate(${s.r}deg)` }}>{c}</span>
+                    <span key={c.t} className="deck-inn deck-kort-hylster" style={{ '--i': 4 + ki * 1.3 + ci * 0.4, zIndex: ci + 1 }}>
+                      <span className="deck-kort" style={{ '--rot': `${rot}deg` }}>
+                        <span className="deck-kort-ikon"><Ci className="h-4 w-4" strokeWidth={1.8} /></span>
+                        <span className="text-[13px] font-medium whitespace-nowrap" style={{ color: T.ink }}>{c.t}</span>
+                      </span>
+                    </span>
                   );
                 })}
               </div>
             </div>
-          </Inn>
+          </div>
         );
       })}
-      <Inn i={6} className="mt-8 sm:mt-10"><p className="text-[14px]" style={{ color: SVAK }}>Alt gjøres for hånd — og <span style={{ color: T.ink }}>ingenting snakker sammen.</span></p></Inn>
+      <Inn i={7} className="mt-9 sm:mt-11"><p className="text-[14.5px]" style={{ color: SVAK }}>Alt gjøres for hånd — og <span style={{ color: T.ink, fontWeight: 500 }}>ingenting snakker sammen.</span></p></Inn>
     </div>
   );
 }
@@ -1140,6 +1144,12 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-verktoy { opacity: 0; transform: translateY(-8px); transition: opacity 460ms ${EASE}, transform 460ms ${EASE}; pointer-events: none; }
         .deck-topp-group:hover .deck-verktoy, .deck-topp-group:focus-within .deck-verktoy { opacity: 1; transform: none; pointer-events: auto; }
         @media (hover: none) { .deck-verktoy { opacity: 1; transform: none; pointer-events: auto; } }
+        /* Verktøyvifta (slide 02): løftede kort med dybde, viftet med små skjeve vinkler og overlapp. Hylsteret bærer
+           entré-animasjonen (deck-inn), kortet bærer rotasjonen — så de aldri kolliderer på samme transform. */
+        .deck-kortvifte { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 6px; }
+        .deck-kort-hylster { display: inline-flex; }
+        .deck-kort { display: inline-flex; align-items: center; gap: 9px; padding: 9px 14px 9px 9px; border-radius: 15px; background: #FFFFFF; border: 1px solid rgba(21,19,15,0.06); box-shadow: 0 14px 30px -12px rgba(21,19,15,0.22), 0 2px 6px -2px rgba(21,19,15,0.08); transform: rotate(var(--rot, 0deg)); }
+        .deck-kort-ikon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; background: rgba(122,63,168,0.08); color: ${LILLA_M}; flex: none; }
         /* ── Cinematisk intro (før forsiden) ── blur-fri (kun opacity/transform → GPU, ingen lagg). Merket samler seg,
            løftet skrives ord for ord PÅ ÉN LINJE. UTGANG = per-ord-MORPH: hvert ord reiser (FLIP, inline transform) til
            sin plass på forsidens to linjer og skifter farge; lyset toner til mørke; merket skyves gjennom kamera. */
@@ -1283,7 +1293,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden" data-testid="deck-cover-bak">
           {/* Selve forsidescenen, uendret — video-loopen med pushvarselet som åpner appen og chat-boblene. Uten kart/adressekort, uten «pil»/lystråd. */}
           <div className="deck-cover-scene absolute inset-0 flex items-center" data-testid="deck-cover-scene">
-            <div className="w-full"><HeroStage eiendom={null} bilde="stue" film={HERO_FILM} utenVegg speil utenPil /></div>
+            <div className="w-full"><HeroStage eiendom={null} bilde="stue" film={HERO_FILM} utenVegg speil utenPil hold={visIntro} /></div>
           </div>
           {/* Kino-scrim: dyp ro til venstre der løftet står, klarner rolig mot ham til høyre — ingen grøt i midten. */}
           <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(17,14,11,0.97) 0%, rgba(17,14,11,0.9) 20%, rgba(17,14,11,0.58) 42%, rgba(17,14,11,0.2) 62%, rgba(17,14,11,0.04) 82%, rgba(17,14,11,0) 100%)' }} />
@@ -1324,11 +1334,11 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           Ingen bokser — hårlinjer, luft og én rolig entré. */}
       <Side id="hvorfor" pos={pos('hvorfor')} aktiv={er('hvorfor')} bred>
         <Kapittel nr={kap('hvorfor')} navn="Hvorfor" under="jobben ingen ba om" />
-        <Todelt venstre={<>
+        <Todelt className="lg:items-center" venstre={<>
           <Inn i={1}><H2 maks="13ch">Å leie ut er en jobb ingen ba om.</H2></Inn>
           <Ingress maks="34ch">To skalaer, samme jobb. Den private gjør den på kvelden, selskapet i regneark — og ingen har ett system som gjør den for dem.</Ingress>
-          <Inn i={5} className="mt-9 border-t pt-6" style={{ borderColor: HAIR }}>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: FARGE.kost }}>Innsatsen</p>
+          <Inn i={5} className="mt-9 border-l-2 pl-5" style={{ borderColor: FARGE.kost }}>
+            <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: FARGE.kost }}><AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} /> Innsatsen</p>
             <p className="mt-3 text-[24px] sm:text-[30px]" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.08, color: T.ink }}>Én feil koster mer enn et års honorar.</p>
             <p className="mt-3 text-[14.5px] leading-[1.55]" style={{ color: DIM, maxWidth: '40ch' }}>Husleieloven regulerer alt fra depositum til oppsigelse. En glemt frist eller feil kontrakt er dyrere enn hjelpen.</p>
           </Inn>

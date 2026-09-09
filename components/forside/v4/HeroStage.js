@@ -547,7 +547,7 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
 
 /* zoom: scenen ligger i HeroZoom (sticky, fullskjerm) og beskjæres med clip-path fra kort til hele flaten —
    verdiene kommer som CSS-variabler (--dh-ix/--dh-iy/--dh-r) fra rammen rundt. Kun lg+. */
-export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom = false, utenVegg = false, speil = false, utenPil = false }) {
+export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom = false, utenVegg = false, speil = false, utenPil = false, hold = false }) {
   const ref = useRef(null);
   const figRef = useRef(null);
   const smal = useSmal();
@@ -650,13 +650,14 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom =
   const [panelUte, setPanelUte] = useState(false);   // panelet har løftet seg av bildet
   const kanHjem = !!film && !egen;   // uten film (eller med din egen bolig fra Street View) blir panelet stående
   /* Direkte: scenen står fra første bilde; tekst og feed kommer inn et lite øyeblikk etter montering (så entréen
-     faktisk animerer). */
+     faktisk animerer). `hold` (investordecket): videoen står, men pushvarselet/samtalen venter til introen har landet —
+     så pushvarselet er det FØRSTE man ser, akkurat som på forsiden. */
   const [direkteInne, setDirekteInne] = useState(false);
   useEffect(() => {
-    if (!direkte) { setDirekteInne(false); return undefined; }
+    if (!direkte || hold) { setDirekteInne(false); return undefined; }
     const t = window.setTimeout(() => setDirekteInne(true), 40);
     return () => window.clearTimeout(t);
-  }, [direkte]);
+  }, [direkte, hold]);
   const hjemme = direkte ? direkteInne : hjemmeState;
   /* Appen «åpnes»: Telefonstrom spiller pushvarselet på silhuetten først, og melder opp hit når han har åpnet (onApnet).
      Da — ikke før — våkner veggen og samtalen. Ikke-direkte / redusert: åpen med en gang (ingen forspill). */
