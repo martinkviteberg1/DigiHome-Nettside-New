@@ -778,6 +778,9 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   const [visDeling, setVisDeling] = useState(false);
   const [visIntro, setVisIntro] = useState(true);   // cinematisk åpning før forsiden
   const [introUt, setIntroUt] = useState(false);
+  const introUtRef = useRef(false);
+  const introTittelRef = useRef(null);   // tittelen i introen (den som reiser)
+  const coverTittelRef = useRef(null);   // tittelen på forsiden (dit den lander)
   const [sporsmal, setSporsmal] = useState(''); const [spurt, setSpurt] = useState(false);
   const [musAktiv, setMusAktiv] = useState(true);
   const [smal, setSmal] = useState(false);
@@ -790,21 +793,37 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
     return () => mq.removeEventListener('change', oppd);
   }, []);
 
-  /* Cinematisk intro: DigiHome-merket + «Utleie på autopilot.» på lys flate, som toner ut og avdekker forsiden.
-     Én gang, kun når man åpner på forsiden. Hopp over ved print, dyplenke til annet kapittel eller redusert bevegelse.
-     Ingen evig animasjon — overlegget avmonteres helt etter utgangen (ytelse). Klikk/tast hopper over. */
-  const hoppIntro = useCallback(() => { setIntroUt(true); window.setTimeout(() => setVisIntro(false), 700); }, []);
+  /* Cinematisk intro: DigiHome-merket + «Utleie på autopilot.» på lys flate — så MORFER tittelen (FLIP: måles og reiser
+     med translate+scale) rett til sin plass på forsiden, mens lyset toner til mørke, merket «skyves gjennom» og
+     kamera trekker seg rolig tilbake i scenen. Tittelen lander → resten av forsiden bygger seg rundt den.
+     Én gang, kun når man åpner på forsiden. Hopp over ved print, dyplenke eller redusert bevegelse. Klikk/tast hopper.
+     Overlegget avmonteres helt etter landing (ingen evig kostnad). */
+  const startMorph = useCallback(() => {
+    if (introUtRef.current) return;
+    introUtRef.current = true;
+    const el = introTittelRef.current;
+    const a = el?.getBoundingClientRect();
+    const b = coverTittelRef.current?.getBoundingClientRect();
+    if (el && a && b && a.width > 0 && b.width > 0) {
+      const s = b.width / a.width;
+      const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
+      const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
+      el.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${s.toFixed(4)})`;
+    }
+    setIntroUt(true);
+    window.setTimeout(() => setVisIntro(false), 1180);
+  }, []);
+  const hoppIntro = startMorph;
   useEffect(() => {
     if (!data) return undefined;
     if (typeof window === 'undefined') return undefined;
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const hash = (window.location.hash || '').replace('#', '');
-    if (print || (hash && hash !== 'forside')) { setVisIntro(false); return undefined; }
-    if (reduce) { const t = window.setTimeout(() => setVisIntro(false), 900); return () => window.clearTimeout(t); }
-    const t1 = window.setTimeout(() => setIntroUt(true), 2650);
-    const t2 = window.setTimeout(() => setVisIntro(false), 3450);
-    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
-  }, [data, print]);
+    if (print || (hash && hash !== 'forside')) { introUtRef.current = true; setVisIntro(false); return undefined; }
+    if (reduce) { const t = window.setTimeout(() => { introUtRef.current = true; setVisIntro(false); }, 900); return () => window.clearTimeout(t); }
+    const t1 = window.setTimeout(startMorph, 2750);
+    return () => window.clearTimeout(t1);
+  }, [data, print, startMorph]);
 
   const qs = useMemo(() => { const p = new URLSearchParams(); if (token) p.set('t', token); if (adminKey) p.set('key', adminKey); if (planId) p.set('plan', planId); if (techId) p.set('tech', techId); return p.toString(); }, [token, adminKey, planId, techId]);
   const hendelse = useCallback((body) => { if (!token) return; try { fetch(`/api/investor/deck/hendelse?${qs}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: true }); } catch (e) { /* stille */ } }, [qs, token]);
@@ -1071,7 +1090,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
 
   const ekstern = Boolean(token); // delt lenke (investorrom eller ren deck-lenke): ingen admin-valg
   return (
-    <div ref={rotRef} className="deck-rot" style={{ background: morkSide ? T.charcoal : T.canvas, cursor: musAktiv ? 'auto' : 'none', transition: `background 600ms ${EASE}` }} data-testid="deck" data-side={sider[side]}>
+    <div ref={rotRef} className="deck-rot" style={{ background: morkSide ? T.charcoal : T.canvas, cursor: musAktiv ? 'auto' : 'none', transition: `background 600ms ${EASE}` }} data-testid="deck" data-side={sider[side]} data-intro={visIntro ? (introUt ? 'ut' : '1') : '0'}>
       <style>{`
         .deck-rot { position: fixed; inset: 0; overflow: hidden; overscroll-behavior: none; }
         .deck-side { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(21,19,15,0.18) transparent;
@@ -1098,20 +1117,45 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-verktoy { opacity: 0; transform: translateY(-8px); transition: opacity 460ms ${EASE}, transform 460ms ${EASE}; pointer-events: none; }
         .deck-topp-group:hover .deck-verktoy, .deck-topp-group:focus-within .deck-verktoy { opacity: 1; transform: none; pointer-events: auto; }
         @media (hover: none) { .deck-verktoy { opacity: 1; transform: none; pointer-events: auto; } }
-        /* Cinematisk intro (før forsiden): lys flate, merket samler seg, løftet skrives — så toner alt ut og avdekker forsiden. */
-        .deck-intro { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: ${T.canvas}; opacity: 1; transition: opacity 700ms ${EASE}; cursor: pointer; }
-        .deck-intro[data-ut="1"] { opacity: 0; }
-        .deck-intro-ikon { animation: deck-ikon-inn 1000ms cubic-bezier(0.22, 1.15, 0.36, 1) both; }
-        @keyframes deck-ikon-inn { from { opacity: 0; transform: scale(0.82) translateY(8px); } to { opacity: 1; transform: none; } }
-        .deck-intro-mark { opacity: 0; animation: deck-mark-inn 460ms ${EASE} forwards; animation-delay: calc(var(--m, 0) * 68ms + 560ms); }
+        /* ── Cinematisk intro (før forsiden) ──────────────────────────────────────────────────────────────────────
+           Lys flate. Et lilla åndedrag bak. Merket skarpstilles (uskarpt → skarpt) og samler strøkene sine; løftet
+           skrives ord for ord (uskarpt → skarpt); en strek trekkes. UTGANG = MORPH: tittelen reiser (FLIP, inline
+           transform) rett til sin plass på forsiden og skifter farge underveis; lyset toner til mørke; merket skyves
+           gjennom kamera; scenen bak trekker seg rolig tilbake. Tittelen lander → forsiden bygger seg rundt den. */
+        .deck-intro { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .deck-intro[data-ut="1"] { pointer-events: none; }
+        .deck-intro-bg { position: absolute; inset: 0; background: ${T.canvas}; opacity: 1; transition: opacity 1000ms cubic-bezier(0.65, 0, 0.25, 1); }
+        .deck-intro[data-ut="1"] .deck-intro-bg { opacity: 0; }
+        .deck-intro-glow { position: absolute; left: 50%; top: 50%; width: 64vmin; height: 64vmin; border-radius: 50%; opacity: 0; transform: translate(-50%, -50%) scale(0.8); background: radial-gradient(circle, rgba(212,150,255,0.24) 0%, rgba(212,150,255,0.08) 42%, rgba(212,150,255,0) 70%); animation: deck-glow-inn 1700ms ${EASE} both; }
+        @keyframes deck-glow-inn { to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+        .deck-intro[data-ut="1"] .deck-intro-glow { animation: deck-glow-ut 720ms ${EASE} both; }
+        @keyframes deck-glow-ut { to { opacity: 0; transform: translate(-50%, -50%) scale(1.35); } }
+        .deck-intro-ikon { animation: deck-ikon-inn 1150ms cubic-bezier(0.22, 1.1, 0.36, 1) both; }
+        @keyframes deck-ikon-inn { from { opacity: 0; transform: scale(0.66) translateY(12px); filter: blur(14px); } 60% { filter: blur(0); } to { opacity: 1; transform: none; filter: blur(0); } }
+        .deck-intro[data-ut="1"] .deck-intro-ikon { animation: deck-ikon-ut 920ms cubic-bezier(0.65, 0, 0.3, 1) both; }
+        @keyframes deck-ikon-ut { to { opacity: 0; transform: scale(2.4); filter: blur(16px); } }
+        .deck-intro-mark { opacity: 0; animation: deck-mark-inn 420ms ${EASE} forwards; animation-delay: calc(var(--m, 0) * 64ms + 640ms); }
         @keyframes deck-mark-inn { to { opacity: 1; } }
-        .deck-intro-ord { display: inline-block; opacity: 0; transform: translateY(0.42em); animation: deck-ord-inn 820ms ${EASE} both; animation-delay: calc(var(--o, 0) * 110ms + 1050ms); }
-        @keyframes deck-ord-inn { to { opacity: 1; transform: none; } }
-        .deck-intro-strek { transform: scaleX(0); transform-origin: 50% 50%; animation: deck-strek-inn 900ms ${EASE} 1500ms both; }
+        .deck-intro-tittel { transform-origin: 50% 50%; transition: transform 1140ms cubic-bezier(0.68, 0, 0.16, 1), color 720ms ${EASE} 260ms, text-shadow 720ms ${EASE} 260ms; }
+        .deck-intro[data-ut="1"] .deck-intro-tittel { color: ${T.offwhite} !important; text-shadow: 0 2px 60px rgba(0,0,0,0.45); }
+        .deck-intro-ord { display: inline-block; opacity: 0; transform: translateY(0.36em); filter: blur(10px); animation: deck-ord-inn 920ms cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--o, 0) * 125ms + 1150ms); }
+        @keyframes deck-ord-inn { 55% { filter: blur(0); } to { opacity: 1; transform: none; filter: blur(0); } }
+        .deck-intro-strek { transform: scaleX(0); transform-origin: 50% 50%; animation: deck-strek-inn 900ms ${EASE} 1700ms both; }
         @keyframes deck-strek-inn { to { transform: scaleX(1); } }
-        .deck-intro[data-ut="1"] .deck-intro-inner { animation: deck-intro-ut 720ms ${EASE} both; }
-        @keyframes deck-intro-ut { to { transform: scale(1.06); } }
-        @media (prefers-reduced-motion: reduce) { .deck-intro-ikon, .deck-intro-mark, .deck-intro-ord, .deck-intro-strek, .deck-intro-inner { animation: none !important; opacity: 1 !important; transform: none !important; } }
+        .deck-intro[data-ut="1"] .deck-intro-strek { animation: deck-strek-ut 300ms ${EASE} both; }
+        @keyframes deck-strek-ut { to { transform: scaleX(0); opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) {
+          .deck-intro-ikon, .deck-intro-mark, .deck-intro-ord, .deck-intro-strek, .deck-intro-glow { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
+          .deck-intro-glow { transform: translate(-50%, -50%) !important; }
+        }
+
+        /* Intro-hold på forsiden: mens introen står, holdes forsidens innhold tilbake — tittelen (den morfer inn fra
+           introen og popper på plass idet overlegget forsvinner) og resten (bygger seg staggeret ETTER landing).
+           Scenen står litt zoomet og trekker seg rolig tilbake (kamera) fra morph-start. */
+        .deck-rot[data-intro="1"] .deck-cover-tittel, .deck-rot[data-intro="ut"] .deck-cover-tittel { opacity: 0 !important; }
+        .deck-rot[data-intro="1"] .deck-side[data-aktiv="1"] .deck-inn, .deck-rot[data-intro="ut"] .deck-side[data-aktiv="1"] .deck-inn { opacity: 0; transform: translateY(22px); transition: none; }
+        .deck-cover-scene { transition: transform 1700ms cubic-bezier(0.22, 1, 0.36, 1); transform-origin: 62% 50%; }
+        .deck-rot[data-intro="1"] .deck-cover-scene { transform: scale(1.07); }
         /* Coveren: merkets signaturbilde (eieren hjemme om kvelden), speilet så han står til høyre for teksten.
            Et knapt merkbart, langsomt skyv innover mens kapitlet er aktivt — kino, ikke slideshow. */
         .deck-cover-foto { transform: scaleX(-1) scale(1.02); transform-origin: 50% 50%; transition: transform 16s linear; filter: saturate(0.92); }
@@ -1124,15 +1168,17 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
 
-      {/* Cinematisk intro: merket + løftet på lys flate, som toner ut og avdekker forsiden. Klikk hopper over. */}
+      {/* Cinematisk intro: merket + løftet på lys flate. Tittelen MORFER (FLIP) til sin plass på forsiden; lyset toner
+          til mørke; merket skyves gjennom; kamera trekker seg tilbake. Klikk hopper over. */}
       {visIntro ? (
         <div className="deck-intro deck-skjul-print" data-ut={introUt ? '1' : '0'} onClick={hoppIntro} data-testid="deck-intro">
-          <div className="deck-intro-inner flex flex-col items-center text-center px-6">
-            <div className="deck-intro-ikon"><DhIkon px={88} animer /></div>
-            <h1 className="deck-intro-tittel mt-8 text-[40px] sm:text-[64px] lg:text-[76px]" style={{ ...display, color: T.ink, letterSpacing: '-0.04em', lineHeight: 0.98 }}>
-              {['Utleie', 'på', 'autopilot'].map((o, i) => (
-                <span key={o} className={`deck-intro-ord ${i < 2 ? 'mr-[0.2em]' : ''}`} style={{ '--o': i }}>{o}{i === 2 ? <span style={{ color: T.lilla }}>.</span> : null}</span>
-              ))}
+          <div className="deck-intro-bg" aria-hidden="true" />
+          <div className="deck-intro-glow" aria-hidden="true" />
+          <div className="deck-intro-inner relative flex flex-col items-center px-6">
+            <div className="deck-intro-ikon"><DhIkon px={92} animer /></div>
+            <h1 ref={introTittelRef} className="deck-intro-tittel mt-9 w-fit text-left text-[44px] sm:text-[64px] lg:text-[72px]" style={{ ...display, color: T.ink, letterSpacing: '-0.04em', lineHeight: 0.92 }}>
+              <span className="block"><span className="deck-intro-ord mr-[0.2em]" style={{ '--o': 0 }}>Utleie</span><span className="deck-intro-ord" style={{ '--o': 1 }}>på</span></span>
+              <span className="block"><span className="deck-intro-ord" style={{ '--o': 2 }}>autopilot<span className="deck-intro-punkt" style={{ color: T.lilla }}>.</span></span></span>
             </h1>
             <div className="deck-intro-strek mt-9 h-px w-12" style={{ background: 'rgba(21,19,15,0.22)' }} />
           </div>
@@ -1229,18 +1275,19 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             <span className="text-[11px] font-medium uppercase" style={{ letterSpacing: '0.2em', color: 'rgba(244,241,234,0.55)' }}>Investordeck</span>
           </Inn>
           {investor ? <Inn i={1}><p className="mt-5 text-[12.5px]" style={{ color: 'rgba(244,241,234,0.5)' }}>Utarbeidet for <span style={{ color: 'rgba(244,241,234,0.82)' }}>{investor.label}</span></p></Inn> : null}
-          <h1 className="mt-7 max-w-[9ch] text-[58px] sm:text-[88px] lg:text-[112px]" style={{ ...display, color: T.offwhite, letterSpacing: '-0.04em', lineHeight: 0.92, textShadow: '0 2px 60px rgba(0,0,0,0.45)' }}>
-            {['Utleie', 'på', 'autopilot'].map((o, i) => <span key={o} className={`deck-ord ${i < 2 ? 'mr-[0.2em]' : ''}`} style={{ '--o': i }}>{o}{i === 2 ? <span style={{ color: T.lilla, marginLeft: '0.02em' }}>.</span> : null}</span>)}
+          <h1 ref={coverTittelRef} className="deck-cover-tittel mt-7 w-fit text-[58px] sm:text-[88px] lg:text-[112px]" style={{ ...display, color: T.offwhite, letterSpacing: '-0.04em', lineHeight: 0.92, textShadow: '0 2px 60px rgba(0,0,0,0.45)' }}>
+            <span className="block"><span className="deck-ord mr-[0.2em]" style={{ '--o': 0 }}>Utleie</span><span className="deck-ord" style={{ '--o': 1 }}>på</span></span>
+            <span className="block"><span className="deck-ord" style={{ '--o': 2 }}>autopilot<span style={{ color: T.lilla }}>.</span></span></span>
           </h1>
-          <Inn i={3}><p className="mt-7 max-w-[44ch] text-[16.5px] leading-[1.6] sm:text-[19px]" style={{ color: 'rgba(244,241,234,0.87)' }}>Programvaren som driver utleieboligen – for private huseiere og for eiendomsselskaper med hele porteføljer. Og forvaltningsselskapet som gjør jobben for dem som ikke vil. <span style={{ color: T.offwhite }}>To selskaper, én plattform.</span></p></Inn>
-          <div className="mt-10 grid max-w-[600px] grid-cols-2 gap-x-10 gap-y-6 border-t pt-7 sm:grid-cols-4" style={{ borderColor: 'rgba(244,241,234,0.16)' }} data-testid="deck-kort-fortalt">
+          <Inn i={3}><p className="mt-7 max-w-[42ch] text-[16.5px] leading-[1.6] sm:text-[18.5px]" style={{ color: 'rgba(244,241,234,0.86)' }}>Programvaren som driver utleieboligen – for private huseiere og eiendomsselskaper med hele porteføljer. Og forvaltningen for dem som ikke vil gjøre jobben selv. <span style={{ color: T.offwhite }}>To selskaper, én plattform.</span></p></Inn>
+          <div className="deck-inn mt-10 grid max-w-[640px] grid-cols-2 gap-x-10 gap-y-7 border-t pt-7 sm:grid-cols-4" style={{ '--i': 4, borderColor: 'rgba(244,241,234,0.16)' }} data-testid="deck-kort-fortalt">
             {[
-              [`${nb(enheterIDag)} → ${nb(Math.round(mF.enheter[N - 1] || 0))}`, 'enheter, i dag → ' + mndLabel(plan.startYm, N - 1, false)],
-              [mnok(kapBuffer), 'kapitalbehov' + (skattPaa ? ' etter skatt' : '') + ' + 30 % buffer'],
-              [be(sK.breakEvenIdx), 'konsernet går i pluss'],
-              [mnok(sK.arrExit), 'omsetningstakt ved periodeslutt'],
+              [`${nb(enheterIDag)} → ${nb(Math.round(mF.enheter[N - 1] || 0))}`, 'enheter · i dag → ' + mndLabel(plan.startYm, N - 1, false)],
+              [mnok(kapBuffer), 'kapitalbehov' + (skattPaa ? ' etter skatt' : '') + ' + buffer'],
+              [be(sK.breakEvenIdx), 'konsernet i pluss'],
+              [mnok(sK.arrExit), 'omsetningstakt · periodeslutt'],
             ].map(([v, u], i) => (
-              <div key={u} className="deck-inn" style={{ '--i': 4 + i * 0.6 }}><p className="text-[23px] tabular-nums sm:text-[27px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.offwhite }}>{v}</p><p className="mt-2.5 text-[12px] leading-[1.45]" style={{ color: 'rgba(244,241,234,0.6)' }}>{u}</p></div>
+              <div key={u} className="deck-inn" style={{ '--i': 4 + i * 0.6 }}><p className="text-[24px] tabular-nums sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.offwhite }}>{v}</p><p className="mt-3 text-[10.5px] font-medium uppercase leading-[1.55]" style={{ letterSpacing: '0.1em', color: 'rgba(244,241,234,0.55)' }}>{u}</p></div>
             ))}
           </div>
           <Inn i={7} className="deck-skjul-print mt-10 flex items-center gap-2.5 text-[11px] font-medium uppercase" style={{ letterSpacing: '0.16em', color: 'rgba(244,241,234,0.42)' }}>Bla videre <ChevronDown className="deck-nikk h-3.5 w-3.5" /></Inn>
