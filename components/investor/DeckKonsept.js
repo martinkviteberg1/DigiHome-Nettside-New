@@ -964,7 +964,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   const kapBuffer = Math.ceil((kapReell || 0) * 1.3 / 250000) * 250000;
   const resReell = skattPaa ? sK.resultatEtterSkatt : sK.resultat;
   const uT = mT?.unit || null; const uF = mF.cac || {};
-  const morkSide = ['unit', 'trenger'].includes(sider[side]);
+  const morkSide = ['forside', 'unit', 'trenger'].includes(sider[side]);
   const nyeSerie = mF.nyePerMndSerie || [];
   const fakserie = () => { if (!nyeSerie.length) return ''; const lo = Math.min(...nyeSerie); const hi = Math.max(...nyeSerie); return lo === hi ? `${nb(lo, 1)} nye enheter/mnd` : `${nb(lo, 1)}–${nb(hi, 1)} nye enheter/mnd`; };
   const prisHuseier = basisT ? (basisT.huseier.prisModell === 'fast' ? `${kr(basisT.huseier.pris)}/mnd` : `${nb(basisT.huseier.pris, 1)} % av leien`) : null;
@@ -1013,7 +1013,13 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-strom { stroke-dasharray: 6 8; animation: deck-strom 1.6s linear infinite; }
         @keyframes deck-nikk { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
         .deck-nikk { animation: deck-nikk 1.6s ${EASE} infinite; }
-        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk { animation: none; } .deck-side .deck-linje { --l: 1; transition: none; } }
+        /* Coveren: merkets signaturbilde (eieren hjemme om kvelden), speilet så han står til høyre for teksten.
+           Et knapt merkbart, langsomt skyv innover mens kapitlet er aktivt — kino, ikke slideshow. */
+        .deck-cover-foto { transform: scaleX(-1) scale(1.02); transform-origin: 50% 50%; transition: transform 16s linear; filter: saturate(0.92); }
+        .deck-side[data-aktiv="1"] .deck-cover-foto { transform: scaleX(-1) scale(1.08); }
+        .deck-cover-strek { transform: scaleX(0); transform-origin: 0 50%; transition: transform 1200ms ${EASE} 900ms; }
+        .deck-side[data-aktiv="1"] .deck-cover-strek { transform: scaleX(1); }
+        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk { animation: none; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
         @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
 
@@ -1081,34 +1087,51 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </div>
 
-      {/* 01 · Forside */}
-      <Side id="forside" pos={pos('forside')} aktiv={er('forside')}>
-        <div className="grid items-end gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]">
+      {/* 01 · Forside — coveren. Mørk, kinematisk: merkets signaturbilde (eieren hjemme om kvelden) bak et rolig sløret
+          lys, løftet med et varmt lilla åndedrag. Løftet avsløres ord for ord, så én tesesetning, så «kort fortalt».
+          Innholdsfortegnelsen står som i et magasin til høyre. Resten av decket er lyst — coveren er sceneteppet. */}
+      <Side id="forside" pos={pos('forside')} aktiv={er('forside')} morkt bred>
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden" data-testid="deck-cover-bak">
+          <img src="/v4/video/eier-hjemme-loop-poster.webp" alt="" className="deck-cover-foto absolute inset-0 h-full w-full object-cover" style={{ objectPosition: '38% 50%' }} decoding="async" />
+          {/* Sløret lys: mørkt der teksten står (venstre/bunn), åpent mot scenen (høyre) */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(20,17,14,0.97) 0%, rgba(20,17,14,0.92) 30%, rgba(20,17,14,0.66) 54%, rgba(20,17,14,0.32) 78%, rgba(20,17,14,0.22) 100%)' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(20,17,14,0.42) 0%, rgba(20,17,14,0) 26%, rgba(20,17,14,0.12) 70%, rgba(20,17,14,0.62) 100%)' }} />
+          {/* Et varmt lilla åndedrag øverst til høyre — merkets farge i rommet */}
+          <div className="absolute" style={{ right: '-8%', top: '-24%', width: '58%', height: '86%', background: 'radial-gradient(circle, rgba(212,150,255,0.15) 0%, rgba(212,150,255,0.05) 40%, rgba(212,150,255,0) 66%)' }} />
+        </div>
+
+        <div className="relative grid items-end gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:gap-16">
           <div>
-            <Inn i={0}><Etikett>{investor ? `Utarbeidet for ${investor.label}` : data.presenter ? 'Presenter' : 'Konfidensielt'} · {new Date().toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</Etikett></Inn>
-            <h1 className="mt-6 max-w-[11ch] text-[56px] sm:text-[84px] lg:text-[108px]" style={{ ...display, color: T.ink }}>
+            <Inn i={0} className="flex items-center gap-3">
+              <span className="text-[14px] font-semibold" style={{ ...display, letterSpacing: '-0.01em', color: T.offwhite }}>DigiHome</span>
+              <span className="deck-cover-strek h-px w-10" style={{ background: 'rgba(244,241,234,0.35)' }} />
+              <Etikett farge={LYS_SVAK}>Investordeck</Etikett>
+            </Inn>
+            <Inn i={1}><Etikett farge={LYS_SVAK} className="mt-6">{investor ? `Utarbeidet for ${investor.label}` : data.presenter ? 'Presenter' : 'Konfidensielt'} · {new Date().toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</Etikett></Inn>
+            <h1 className="mt-5 max-w-[11ch] text-[58px] sm:text-[86px] lg:text-[112px]" style={{ ...display, color: T.offwhite, letterSpacing: '-0.035em', lineHeight: 0.96, textShadow: '0 2px 40px rgba(0,0,0,0.35)' }}>
               {['Utleie', 'på', 'autopilot'].map((o, i) => <span key={o} className={`deck-ord ${i < 2 ? 'mr-[0.22em]' : ''}`} style={{ '--o': i }}>{o}{i === 2 ? <span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span> : null}</span>)}
             </h1>
-            <Inn i={3}><p className="mt-6 max-w-[52ch] text-[16px] leading-[1.5] sm:text-[18px]" style={{ color: DIM }}>DigiHome er programvaren som driver utleieboligen – for private huseiere og for eiendomsselskaper med hele porteføljer. Og forvaltningsselskapet som gjør jobben for dem som ikke vil. To selskaper, én plattform – og en plan for de neste {N} månedene som er levende: skru på den, og se hva som skjer.</p></Inn>
-            <Inn i={4} className="mt-8 grid max-w-[760px] grid-cols-2 gap-x-6 gap-y-4 border-t pt-5 sm:grid-cols-4" style={{ borderColor: HAIR }} data-testid="deck-kort-fortalt">
+            <Inn i={3}><p className="mt-7 max-w-[48ch] text-[17px] leading-[1.5] sm:text-[19px]" style={{ color: LYS }}>Programvaren som driver utleieboligen – for private huseiere og for eiendomsselskaper med hele porteføljer. Og forvaltningsselskapet som gjør jobben for dem som ikke vil. To selskaper, én plattform – og en plan for de neste {N} månedene som er levende.</p></Inn>
+            <div className="mt-10 grid max-w-[840px] grid-cols-2 gap-x-8 gap-y-6 border-t pt-6 sm:grid-cols-4" style={{ borderColor: 'rgba(244,241,234,0.18)' }} data-testid="deck-kort-fortalt">
               {[
                 [`${nb(enheterIDag)} → ${nb(Math.round(mF.enheter[N - 1] || 0))}`, 'enheter under forvaltning, i dag → ' + mndLabel(plan.startYm, N - 1, false)],
                 [mnok(kapBuffer), 'henter vi – dekker kapitalbehovet' + (skattPaa ? ' etter skatt' : '') + ' med 30 % buffer'],
                 [be(sK.breakEvenIdx), 'konsernet går i pluss'],
                 [mnok(sK.arrExit), 'årlig omsetningstakt ved slutten av perioden'],
-              ].map(([v, u]) => (
-                <div key={u}><p className="text-[22px] sm:text-[26px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.ink }}>{v}</p><p className="mt-1.5 text-[12px] leading-[1.4]" style={{ color: SVAK }}>{u}</p></div>
+              ].map(([v, u], i) => (
+                <div key={u} className="deck-inn" style={{ '--i': 4 + i * 0.6 }}><p className="text-[24px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.offwhite }}>{v}</p><p className="mt-2 text-[12px] leading-[1.4]" style={{ color: LYS_SVAK }}>{u}</p></div>
               ))}
-            </Inn>
+            </div>
+            <Inn i={7} className="deck-skjul-print mt-10 flex items-center gap-2 text-[12px] font-medium" style={{ color: LYS_SVAK }}>Bla, eller bruk piltastene <ChevronDown className="deck-nikk h-3.5 w-3.5" /></Inn>
           </div>
-          <Inn i={4} className="deck-skjul-print hidden lg:block">
-            <p className="text-[12px] font-medium" style={{ color: SVAK }}>Innhold</p>
-            <ol className="mt-2 border-t" style={{ borderColor: HAIR }}>
+          <Inn i={5} className="deck-skjul-print hidden lg:block">
+            <p className="text-[12px] font-medium" style={{ color: LYS_SVAK }}>Innhold</p>
+            <ol className="mt-2 border-t" style={{ borderColor: 'rgba(244,241,234,0.16)' }}>
               {KAPITLER.slice(1).map((c, i) => (
-                <li key={c.id}><button onClick={() => gaaTil(i + 1)} className="group flex w-full items-baseline gap-3 border-b py-[5px] text-left text-[13px] transition-colors hover:text-[#7A3FA8]" style={{ borderColor: HAIR, color: T.ink }}><span className="w-6 text-[11.5px] tabular-nums" style={{ color: LILLA_M }}>{String(i + 2).padStart(2, '0')}</span>{c.navn}<ArrowRight className="ml-auto h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" /></button></li>
+                <li key={c.id}><button onClick={() => gaaTil(i + 1)} className="group flex w-full items-baseline gap-3 border-b py-[5px] text-left text-[13px] transition-colors hover:text-[#D496FF]" style={{ borderColor: 'rgba(244,241,234,0.12)', color: T.offwhite }}><span className="w-6 text-[11.5px] tabular-nums" style={{ color: T.lilla }}>{String(i + 2).padStart(2, '0')}</span>{c.navn}<ArrowRight className="ml-auto h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" /></button></li>
               ))}
             </ol>
-            <p className="mt-3 text-[11.5px]" style={{ color: SVAK }}>{plan.navn}{techPlan ? ` · ${techPlan.navn}` : ''} · piltaster eller bla</p>
+            <p className="mt-3 text-[11.5px]" style={{ color: LYS_SVAK }}>{plan.navn}{techPlan ? ` · ${techPlan.navn}` : ''}</p>
           </Inn>
         </div>
       </Side>
