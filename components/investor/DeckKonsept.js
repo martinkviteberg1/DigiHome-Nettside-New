@@ -1168,7 +1168,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   const kapBuffer = Math.ceil((kapReell || 0) * 1.3 / 250000) * 250000;
   const resReell = skattPaa ? sK.resultatEtterSkatt : sK.resultat;
   const uT = mT?.unit || null; const uF = mF.cac || {};
-  const morkSide = ['forside', 'unit', 'trenger'].includes(sider[side]);
+  const morkSide = ['forside', 'losning', 'unit', 'trenger'].includes(sider[side]);
   const nyeSerie = mF.nyePerMndSerie || [];
   const fakserie = () => { if (!nyeSerie.length) return ''; const lo = Math.min(...nyeSerie); const hi = Math.max(...nyeSerie); return lo === hi ? `${nb(lo, 1)} nye enheter/mnd` : `${nb(lo, 1)}–${nb(hi, 1)} nye enheter/mnd`; };
   const prisHuseier = basisT ? (basisT.huseier.prisModell === 'fast' ? `${kr(basisT.huseier.pris)}/mnd` : `${nb(basisT.huseier.pris, 1)} % av leien`) : null;
@@ -1446,22 +1446,13 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </Todelt>
       </Side>
 
-      {/* 03 · Løsningen — svaret på «Utleie mangler et system». Venstre: investor-tekst (ett AI-drevet system,
-          gevinsten skalerer uten bemanning). Høyre: forsidens produkt i den nydelige hvite rammen (Annonse →
-          Kontrakt → Drift → Økonomi), styrt av decket (spiller kun når sliden er fremme — ytelse). */}
-      <Side id="losning" pos={pos('losning')} aktiv={er('losning')} bred>
-        <Kapittel nr={kap('losning')} navn="Løsningen" under="med autopilot" />
-        <Todelt bredHoyre className="lg:items-center" venstre={<>
-          <Inn i={1}><H2 maks="15ch">Boligdrift på autopilot.</H2></Inn>
-          <Ingress maks="40ch">DigiHome samler hele driften i ett AI-drevet system. Annonsering, kontrakter, husleie og vedlikehold skjer automatisk – eieren godkjenner kun det som betyr noe.</Ingress>
-          <Inn i={5} className="mt-9 border-l-2 pl-5" style={{ borderColor: LILLA_M }}>
-            <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: LILLA_M }}><Sparkles className="h-3.5 w-3.5" strokeWidth={2} /> Gevinsten</p>
-            <p className="mt-3 text-[24px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.08, color: T.ink }}>Drift som skalerer uten bemanning.</p>
-            <p className="mt-3 text-[14.5px] leading-[1.55]" style={{ color: DIM, maxWidth: '38ch' }}>Systemet håndterer tusen enheter like enkelt som én. Marginen følger porteføljen – ikke lønnskostnadene.</p>
-          </Inn>
-        </>}>
-          <Inn i={2}><LosningFilm aktiv={er('losning')} /></Inn>
-        </Todelt>
+      {/* 03 · Løsningen — produktet som en NYDELIG EDITORIAL full-bleed bakgrunn (forsidens kino-filmer: foto +
+          editorial tittel), ikke et kort. Stegene (Annonse→Kontrakt→Drift→Økonomi) spiller som bevis, styrt av
+          decket (spiller kun når sliden er fremme — ytelse). LosningFilm eier hele det full-bleed oppsettet. */}
+      <Side id="losning" pos={pos('losning')} aktiv={er('losning')} morkt bred>
+        <div className="absolute inset-0" data-testid="deck-losning-scene">
+          <LosningFilm aktiv={er('losning')} nr={kap('losning')} />
+        </div>
       </Side>
 
 

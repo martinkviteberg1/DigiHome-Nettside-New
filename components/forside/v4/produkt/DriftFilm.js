@@ -476,13 +476,13 @@ function Kompakt({ fase, ov, onAkt, neste }) {
   );
 }
 
-export default function DriftFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, onFremdrift, neste = null, full = false }) {
+export default function DriftFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, onFremdrift, neste = null, full = false, staaende = false }) {
   const { fase, ov, morkt, bred, hopp } = useFilm({ synlig, spiller, AUTO, SISTE, START: F.START, HVILE: F.GODKJENT, onFerdig, onFremdrift });
   const [startet, setStartet] = useState(false);
   useEffect(() => { if (spiller && !startet) setStartet(true); }, [spiller, startet]);
   const tilAkt = (i) => { setStartet(true); hopp(AKTER[i].fra); };
   const felles = { fase, ov, onAkt: tilAkt, neste };
   return (
-    <Ramme synlig={synlig} tema={tema} ov={ov} morkt={morkt} bred={bred} fase={fase} testid="v4-drift-scene" full={full} desktop={<Desktop {...felles} startet={startet} />} kompakt={<Kompakt {...felles} />} />
+    <Ramme synlig={synlig} tema={tema} ov={ov} morkt={morkt} bred={staaende ? false : bred} fase={fase} testid="v4-drift-scene" full={full} desktop={<Desktop {...felles} startet={startet} />} kompakt={<Kompakt {...felles} />} />
   );
 }

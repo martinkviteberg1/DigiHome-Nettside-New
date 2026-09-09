@@ -1611,7 +1611,7 @@ function Kompakt({ fase, ov, onAkt, onHold, neste, startet }) {
 /* `onFerdig` — kalles når sluttbildet har stått ferdig. Returnerer den true, tar forelderen over (neste kapittel);
    ellers looper filmen. `neste` = navnet på neste kapittel (vises i broen). */
 /* `synlig` = seksjonen er i bildet (inngang). `spiller` = produktflaten er i bildet — klokken går bare da. */
-export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, onFremdrift, neste = null, full = false, tittel = null, ingress = null }) {
+export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, onFremdrift, neste = null, full = false, tittel = null, ingress = null, staaende = false }) {
   const [fase, setFase] = useState(F.START);
   const [startet, setStartet] = useState(false);
   const [ov, setOv] = useState(false);
@@ -1669,16 +1669,17 @@ export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', o
     return <Ramme synlig={synlig} tema={tema} ov={ov} morkt={morkt} bred={bred} fase={fase} testid="v4-annonse-scene" full ekstra={{ 'data-holdt': holdt ? '1' : '0' }} desktop={<Desktop {...felles} />} kompakt={<Kompakt {...felles} />} />;
   }
 
+  const bredE = staaende ? false : bred;   // staaende: tving stående (kompakt) layout uansett skjerm
   return (
-    <div className="relative mx-auto w-full max-w-[min(1400px,86vw)]" data-testid="v4-annonse-scene" data-fase={fase} data-holdt={holdt ? '1' : '0'}>
+    <div className={`relative mx-auto w-full ${staaende ? 'max-w-[440px]' : 'max-w-[min(1400px,86vw)]'}`} data-testid="v4-annonse-scene" data-fase={fase} data-holdt={holdt ? '1' : '0'}>
       <FilmStil />
-      {bred !== false && (
-        <div className={`overflow-hidden rounded-[18px] ${bred === null ? 'hidden lg:block' : ''}`} style={{ boxShadow: skygge, background: PAPIR, ...inn }}>
+      {bredE !== false && (
+        <div className={`overflow-hidden rounded-[18px] ${bredE === null ? 'hidden lg:block' : ''}`} style={{ boxShadow: skygge, background: PAPIR, ...inn }}>
           <div style={blend}><Desktop {...felles} /></div>
         </div>
       )}
-      {bred !== true && (
-        <div className={`mx-auto w-full max-w-[440px] overflow-hidden rounded-[18px] ${bred === null ? 'lg:hidden' : ''}`} style={{ boxShadow: skygge, background: PAPIR, ...inn }}>
+      {bredE !== true && (
+        <div className={`mx-auto w-full max-w-[440px] overflow-hidden rounded-[18px] ${bredE === null ? 'lg:hidden' : ''}`} style={{ boxShadow: skygge, background: PAPIR, ...inn }}>
           <div style={blend}><Kompakt {...felles} /></div>
         </div>
       )}

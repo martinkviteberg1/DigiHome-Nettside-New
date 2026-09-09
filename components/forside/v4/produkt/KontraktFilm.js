@@ -524,11 +524,11 @@ function Kompakt({ fase, ov, onAkt, neste }) {
   );
 }
 
-export default function KontraktFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, onFremdrift, neste = null, full = false }) {
+export default function KontraktFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, onFremdrift, neste = null, full = false, staaende = false }) {
   const { fase, ov, morkt, bred, hopp } = useFilm({ synlig, spiller, AUTO, SISTE, START: F.START, HVILE: F.SIGN2, onFerdig, onFremdrift });
   const tilAkt = (i) => hopp(AKTER[i].fra);
   const felles = { fase, ov, onAkt: tilAkt, neste };
   return (
-    <Ramme synlig={synlig} tema={tema} ov={ov} morkt={morkt} bred={bred} fase={fase} testid="v4-kontrakt-scene" full={full} desktop={<Desktop {...felles} />} kompakt={<Kompakt {...felles} />} />
+    <Ramme synlig={synlig} tema={tema} ov={ov} morkt={morkt} bred={staaende ? false : bred} fase={fase} testid="v4-kontrakt-scene" full={full} desktop={<Desktop {...felles} />} kompakt={<Kompakt {...felles} />} />
   );
 }
