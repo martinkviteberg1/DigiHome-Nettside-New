@@ -1596,3 +1596,13 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - Deck-styrt: `synlig`/`spiller` = aktiv; reset til 'annonse' når sliden ikke er fremme; `onFerdig` → true = vi bytter kapittel (sirkel).
 - **Dead-ends (ikke gjenta):** egenbygd rekonstruksjon av animasjonen; stor sentrert tese+ingress+steglinje over filmen; transparent uten fit (scroll); inline `transform` som overstyrte Tailwind translate (film skled til høyre — fikset).
 - Agent-testet desktop 1920×1080 (annonse + drift; overflow 0, k=1.0). Bruker: «bedre … fortsett å løfte layout til neste nivå» → deretter «løft alt til verdensklasse» (= hele decket).
+
+## Oppdatering 9. sep 2026 (10) — «Løsningen» (03): FIKSET synlig «ramme på siden» (hvite sidebånd)
+- Bruker: «jeg ser det fortsatt hos meg» / «du ser jo fortsatt den rammen på siden av animasjonen». Rot-årsak funnet med DOM-måling: scene-boksen (skygge + rounded-24) var 1560 px bred, men filmen (v4-*-scene) bare 1042 px (=`max-w-[min(1400px,86vw)]` skalert med k=0.744), sentrert → ~259 px tomme canvas-bånd på HVER side, innrammet av scenens skygge = «rammen på siden».
+- Uncap-overstyringen traff feil selektor (`[data-testid$="-ramme"]`) — de ekte film-rammene ender på `-scene` (v4-annonse/kontrakt/drift/okonomi-scene). Fikset i `components/investor/LosningFilm.js`: overstyring nå `@media (min-width:1024px) { [data-testid="deck-losning-film"] [data-testid$="-scene"] { max-width:none!important; width:100%!important } }` → filmen fyller hele den skalerte flaten. Fjernet også en gjenværende lilla radial-glød som ga svake rosa flekker i båndene.
+- Verifisert (DOM-måling + skjermbilde): desktop 1920 → scene, v4-annonse-scene og v4-kart alle x=180 w=1560 (ingen bånd); Økonomi-kapitlet fyller også (x=180 w=1560). Mobil 390 → filmen beholder naturlig kort (x=27 w=335, IKKE strukket). IKKE brukerbekreftet ennå (venter på brukerens «hos meg»-sjekk).
+
+## Oppdatering 9. sep 2026 (11) — «Løsningen» (03): filmen litt høyere (bruker: «pittelitt høyere»)
+- Bruker bekreftet at sidebånd-fiksen er «verdensklasse». Ba om litt mer høyde.
+- `LosningFilm.js` FilmSkala: luft-gap i skala-formelen 36px → 12px og tak 1.35 → 1.42. Siden filmen skaleres med transform (utenfor layout-flyt) gir dette høyere film UTEN scroll.
+- Verifisert desktop 1920x800: k 0.744 → 0.780 (scene h 491 → 515), sideOverflowY=0, docOverflowY=0, bredde uendret (x=180 w=1560, ingen bånd). Mer uttalt effekt på høye skjermer.

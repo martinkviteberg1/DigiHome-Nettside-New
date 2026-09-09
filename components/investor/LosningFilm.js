@@ -52,8 +52,8 @@ function FilmSkala({ skaler, children }) {
     return () => { ro?.disconnect(); window.removeEventListener('resize', m); };
   }, [skaler]);
   if (!skaler) return <div className="relative mt-6 w-full">{children}</div>;
-  // Fyll rommet: filmen skalerer til å fylle nesten hele resten av høyden (kan gå over 1×), med bare litt luft til tidslinjen.
-  const k = box.h ? Math.min(1.35, Math.max(0.3, (box.h - 36) / H_FILM)) : 1;
+  // Fyll rommet: filmen skalerer til å fylle nesten hele resten av høyden (kan gå over 1×), med et lite pust til tidslinjen.
+  const k = box.h ? Math.min(1.42, Math.max(0.3, (box.h - 12) / H_FILM)) : 1;
   const w = box.w && k ? box.w / k : null;
   return (
     <div ref={ref} className="relative mx-auto w-full max-w-[1560px] grow" data-testid="deck-losning-skala" data-k={k.toFixed(3)}>
@@ -105,17 +105,12 @@ export default function LosningFilm({ aktiv = false, nr = 3 }) {
   const felles = { synlig: aktiv, spiller: aktiv, tema: 'lys', naken: true, neste: null, onFerdig: videre, onFremdrift };
 
   const scene = (
-    <>
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-1/2 h-[160%] w-[130%] -translate-x-1/2 -translate-y-1/2" style={{ background: 'radial-gradient(closest-side, rgba(139,92,246,0.10), rgba(139,92,246,0.03) 55%, rgba(139,92,246,0) 78%)' }} />
-      </div>
-      <div key={kap} className="relative h-full overflow-hidden rounded-[24px]" style={{ opacity: bytter ? 0 : 1, transition: 'opacity 340ms ease', boxShadow: '0 44px 96px -48px rgba(21,19,15,0.34), 0 14px 34px -22px rgba(21,19,15,0.16)' }} data-testid="deck-losning-scene">
-        {kap === 'annonse' && <AnnonseFilm {...felles} />}
-        {kap === 'kontrakt' && <KontraktFilm {...felles} />}
-        {kap === 'drift' && <DriftFilm {...felles} />}
-        {kap === 'okonomi' && <OkonomiFilm {...felles} />}
-      </div>
-    </>
+    <div key={kap} className="relative h-full overflow-hidden rounded-[24px]" style={{ opacity: bytter ? 0 : 1, transition: 'opacity 340ms ease', boxShadow: '0 44px 96px -48px rgba(21,19,15,0.34), 0 14px 34px -22px rgba(21,19,15,0.16)' }} data-testid="deck-losning-scene">
+      {kap === 'annonse' && <AnnonseFilm {...felles} />}
+      {kap === 'kontrakt' && <KontraktFilm {...felles} />}
+      {kap === 'drift' && <DriftFilm {...felles} />}
+      {kap === 'okonomi' && <OkonomiFilm {...felles} />}
+    </div>
   );
 
   return (
@@ -125,9 +120,10 @@ export default function LosningFilm({ aktiv = false, nr = 3 }) {
       data-testid="deck-losning-film"
       data-kapittel={kap}
     >
-      {/* Forsidens Ramme kapper filmen til max-w min(1400px, 86vw). Inne i decket skal filmen fylle den skalerte flaten
-          nøyaktig (ellers blir skyggeflaten bredere enn kartet → synlige bånd). Scoped til denne sliden. */}
-      <style>{`[data-testid="deck-losning-film"] [data-testid$="-ramme"] { max-width: none !important; }`}</style>
+      {/* Forsidens film-rammer (v4-*-scene) kappes til max-w min(1400px, 86vw). Inne i decket skal filmen fylle den
+          skalerte flaten NØYAKTIG — ellers blir skygge-/hjørneflaten bredere enn kartet → synlige «rammebånd» på
+          sidene. Vi opphever derfor bredde-kappingen på alle fire kapittel-rammene. Scoped til denne sliden. */}
+      <style>{`@media (min-width: 1024px) { [data-testid="deck-losning-film"] [data-testid$="-scene"] { max-width: none !important; width: 100% !important; } }`}</style>
 
       {/* Filmen står som en rammeløs, «svevende» flate med myke hjørner og en myk skygge — skarp som på forsiden,
           tydelig adskilt fra tidslinjen (ikke «klistret»), uten hvit kant/ramme. */}
