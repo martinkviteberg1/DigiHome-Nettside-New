@@ -530,6 +530,67 @@ function OrgKart({ aarsverkStart, aarsverkSlutt, utviklingPerMnd, enheterPerAars
   );
 }
 
+/* ══════════════════════════ Fragmenteringen (slide 02 · problemet) ══════════════════════════ */
+/* Verktøyene og oppgavene en utleier sjonglerer — som hårfine brikker som aldri legger seg på linje. To skalaer:
+   den private (mange verktøy, én innboks) og selskapet (mange systemer, ingen oversikt). Ingenting snakker sammen —
+   det ER problemet. Statisk komposisjon (svak rotasjon + forskyvning) + én rolig entré. Ingen evig animasjon (ytelse). */
+const FRAG_KLYNGER = [
+  { ikon: Home, label: 'Den private huseieren', tall: '10', enhet: 'verktøy · én innboks', chips: ['Annonse', 'Visning', 'Kredittsjekk', 'Kontrakt', 'Depositum', 'Husleie', 'Purring', 'Regulering'] },
+  { ikon: Building2, label: 'Eiendomsselskapet', tall: '5', enhet: 'systemer · ingen oversikt', chips: ['Leietakere', 'Betaling', 'Saker', 'Kontrakter', 'Regneark', 'E-post'] },
+];
+/* Ujevne, men faste posisjoner — brikkene «legger seg aldri på linje» (fragmentering gjennom komposisjon, ikke jitter). */
+const FRAG_SKEIV = [
+  { r: -2.4, y: 7 }, { r: 1.8, y: -5 }, { r: -1.1, y: 13 }, { r: 2.6, y: 1 }, { r: -2, y: -7 }, { r: 1.3, y: 9 }, { r: -1.7, y: -2 }, { r: 2.1, y: 5 },
+];
+function Fragmentering() {
+  return (
+    <div className="flex flex-col">
+      {FRAG_KLYNGER.map((k, ki) => {
+        const Ikon = k.ikon;
+        return (
+          <Inn key={k.label} i={3 + ki * 1.4} className={ki ? 'mt-8 border-t pt-8 sm:mt-10 sm:pt-10' : ''} style={{ borderColor: HAIR }}>
+            <div className="grid gap-5 sm:grid-cols-[minmax(0,196px)_1fr] sm:items-start sm:gap-8">
+              <div>
+                <p className="flex items-center gap-2 text-[12.5px] font-medium" style={{ color: LILLA_M }}><Ikon className="h-4 w-4" strokeWidth={1.8} />{k.label}</p>
+                <p className="mt-3 flex items-baseline gap-2">
+                  <span style={{ ...display, fontSize: 42, letterSpacing: '-0.04em', lineHeight: 1, color: T.ink }}>{k.tall}</span>
+                  <span className="text-[13px] leading-[1.3]" style={{ color: SVAK }}>{k.enhet}</span>
+                </p>
+              </div>
+              <div className="flex flex-wrap items-start gap-x-2.5 gap-y-3.5 pt-1">
+                {k.chips.map((c, ci) => {
+                  const s = FRAG_SKEIV[ci % FRAG_SKEIV.length];
+                  return (
+                    <span key={c} className="inline-flex items-center rounded-full px-3.5 py-1.5 text-[13px] font-medium" style={{ color: 'rgba(21,19,15,0.6)', background: 'rgba(21,19,15,0.02)', boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.12)', transform: `translateY(${s.y}px) rotate(${s.r}deg)` }}>{c}</span>
+                  );
+                })}
+              </div>
+            </div>
+          </Inn>
+        );
+      })}
+      <Inn i={6} className="mt-8 sm:mt-10"><p className="text-[14px]" style={{ color: SVAK }}>Alt gjøres for hånd — og <span style={{ color: T.ink }}>ingenting snakker sammen.</span></p></Inn>
+    </div>
+  );
+}
+
+
+/* ══════════════════════════ DigiHome-merket (offisiell logo) ══════════════════════════ */
+/* Lilla squircle med de åtte strøkene — brukt i den cinematiske introen. Strøkene toner inn ett og ett (kun opacity,
+   så SVG-matrisen på hver rect beholdes). */
+const DH_STROK = [[45.0359, 36.7341], [42.5159, 51.0244], [47.5559, 22.4436], [18.6284, 36.7341], [29.3123, 51.0244], [34.3521, 22.4436], [16.1084, 51.0244], [21.1484, 22.4436]];
+function DhIkon({ px = 88, className = '', style, animer = false }) {
+  return (
+    <svg width={px} height={px} viewBox="0 0 60 60" fill="none" aria-hidden="true" className={className} style={style}>
+      <rect width="60" height="60" rx="12" fill="#D298FF" />
+      {DH_STROK.map(([x, y], i) => (
+        <rect key={`${x}-${y}`} className={animer ? 'deck-intro-mark' : undefined} width="6.60155" height="14.5107" transform={`matrix(-1 0 0.173648 -0.984808 ${x} ${y})`} fill="#1F1F1F" style={animer ? { '--m': i } : undefined} />
+      ))}
+    </svg>
+  );
+}
+
+
 /* ══════════════════════════ Innhold ══════════════════════════ */
 const KAPITLER = [
   { id: 'forside', navn: 'DigiHome' },
@@ -715,6 +776,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   const [visKapitler, setVisKapitler] = useState(false);
   const [visNotater, setVisNotater] = useState(false);
   const [visDeling, setVisDeling] = useState(false);
+  const [visIntro, setVisIntro] = useState(true);   // cinematisk åpning før forsiden
+  const [introUt, setIntroUt] = useState(false);
   const [sporsmal, setSporsmal] = useState(''); const [spurt, setSpurt] = useState(false);
   const [musAktiv, setMusAktiv] = useState(true);
   const [smal, setSmal] = useState(false);
@@ -726,6 +789,22 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
     oppd(); mq.addEventListener('change', oppd);
     return () => mq.removeEventListener('change', oppd);
   }, []);
+
+  /* Cinematisk intro: DigiHome-merket + «Utleie på autopilot.» på lys flate, som toner ut og avdekker forsiden.
+     Én gang, kun når man åpner på forsiden. Hopp over ved print, dyplenke til annet kapittel eller redusert bevegelse.
+     Ingen evig animasjon — overlegget avmonteres helt etter utgangen (ytelse). Klikk/tast hopper over. */
+  const hoppIntro = useCallback(() => { setIntroUt(true); window.setTimeout(() => setVisIntro(false), 700); }, []);
+  useEffect(() => {
+    if (!data) return undefined;
+    if (typeof window === 'undefined') return undefined;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const hash = (window.location.hash || '').replace('#', '');
+    if (print || (hash && hash !== 'forside')) { setVisIntro(false); return undefined; }
+    if (reduce) { const t = window.setTimeout(() => setVisIntro(false), 900); return () => window.clearTimeout(t); }
+    const t1 = window.setTimeout(() => setIntroUt(true), 2650);
+    const t2 = window.setTimeout(() => setVisIntro(false), 3450);
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+  }, [data, print]);
 
   const qs = useMemo(() => { const p = new URLSearchParams(); if (token) p.set('t', token); if (adminKey) p.set('key', adminKey); if (planId) p.set('plan', planId); if (techId) p.set('tech', techId); return p.toString(); }, [token, adminKey, planId, techId]);
   const hendelse = useCallback((body) => { if (!token) return; try { fetch(`/api/investor/deck/hendelse?${qs}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: true }); } catch (e) { /* stille */ } }, [qs, token]);
@@ -1019,6 +1098,20 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-verktoy { opacity: 0; transform: translateY(-8px); transition: opacity 460ms ${EASE}, transform 460ms ${EASE}; pointer-events: none; }
         .deck-topp-group:hover .deck-verktoy, .deck-topp-group:focus-within .deck-verktoy { opacity: 1; transform: none; pointer-events: auto; }
         @media (hover: none) { .deck-verktoy { opacity: 1; transform: none; pointer-events: auto; } }
+        /* Cinematisk intro (før forsiden): lys flate, merket samler seg, løftet skrives — så toner alt ut og avdekker forsiden. */
+        .deck-intro { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: ${T.canvas}; opacity: 1; transition: opacity 700ms ${EASE}; cursor: pointer; }
+        .deck-intro[data-ut="1"] { opacity: 0; }
+        .deck-intro-ikon { animation: deck-ikon-inn 1000ms cubic-bezier(0.22, 1.15, 0.36, 1) both; }
+        @keyframes deck-ikon-inn { from { opacity: 0; transform: scale(0.82) translateY(8px); } to { opacity: 1; transform: none; } }
+        .deck-intro-mark { opacity: 0; animation: deck-mark-inn 460ms ${EASE} forwards; animation-delay: calc(var(--m, 0) * 68ms + 560ms); }
+        @keyframes deck-mark-inn { to { opacity: 1; } }
+        .deck-intro-ord { display: inline-block; opacity: 0; transform: translateY(0.42em); animation: deck-ord-inn 820ms ${EASE} both; animation-delay: calc(var(--o, 0) * 110ms + 1050ms); }
+        @keyframes deck-ord-inn { to { opacity: 1; transform: none; } }
+        .deck-intro-strek { transform: scaleX(0); transform-origin: 50% 50%; animation: deck-strek-inn 900ms ${EASE} 1500ms both; }
+        @keyframes deck-strek-inn { to { transform: scaleX(1); } }
+        .deck-intro[data-ut="1"] .deck-intro-inner { animation: deck-intro-ut 720ms ${EASE} both; }
+        @keyframes deck-intro-ut { to { transform: scale(1.06); } }
+        @media (prefers-reduced-motion: reduce) { .deck-intro-ikon, .deck-intro-mark, .deck-intro-ord, .deck-intro-strek, .deck-intro-inner { animation: none !important; opacity: 1 !important; transform: none !important; } }
         /* Coveren: merkets signaturbilde (eieren hjemme om kvelden), speilet så han står til høyre for teksten.
            Et knapt merkbart, langsomt skyv innover mens kapitlet er aktivt — kino, ikke slideshow. */
         .deck-cover-foto { transform: scaleX(-1) scale(1.02); transform-origin: 50% 50%; transition: transform 16s linear; filter: saturate(0.92); }
@@ -1030,6 +1123,22 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk { animation: none; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
         @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
+
+      {/* Cinematisk intro: merket + løftet på lys flate, som toner ut og avdekker forsiden. Klikk hopper over. */}
+      {visIntro ? (
+        <div className="deck-intro deck-skjul-print" data-ut={introUt ? '1' : '0'} onClick={hoppIntro} data-testid="deck-intro">
+          <div className="deck-intro-inner flex flex-col items-center text-center px-6">
+            <div className="deck-intro-ikon"><DhIkon px={88} animer /></div>
+            <h1 className="deck-intro-tittel mt-8 text-[40px] sm:text-[64px] lg:text-[76px]" style={{ ...display, color: T.ink, letterSpacing: '-0.04em', lineHeight: 0.98 }}>
+              {['Utleie', 'på', 'autopilot'].map((o, i) => (
+                <span key={o} className={`deck-intro-ord ${i < 2 ? 'mr-[0.2em]' : ''}`} style={{ '--o': i }}>{o}{i === 2 ? <span style={{ color: T.lilla }}>.</span> : null}</span>
+              ))}
+            </h1>
+            <div className="deck-intro-strek mt-9 h-px w-12" style={{ background: 'rgba(21,19,15,0.22)' }} />
+          </div>
+        </div>
+      ) : null}
+
 
       {/* Fremdriftslinje */}
       <div className="deck-skjul-print pointer-events-none fixed inset-x-0 top-0 z-30 h-[3px]" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.07)' }}>
@@ -1138,23 +1247,21 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </Side>
 
-      {/* 02 · Hvorfor — samme smerte, to skalaer */}
+      {/* 02 · Hvorfor — PROBLEMET. Lys flate, redaksjonell ro. Levende «fragmentering»: verktøyene/oppgavene ligger
+          spredt og ujevnt — to skalaer, ingenting snakker sammen. Innsatsen (kostnaden ved én feil) lander til venstre.
+          Ingen bokser — hårlinjer, luft og én rolig entré. */}
       <Side id="hvorfor" pos={pos('hvorfor')} aktiv={er('hvorfor')} bred>
-        <Kapittel nr={kap('hvorfor')} navn="Hvorfor" under="jobben ingen ba om – i to skalaer" />
+        <Kapittel nr={kap('hvorfor')} navn="Hvorfor" under="jobben ingen ba om" />
         <Todelt venstre={<>
-          <Inn i={1}><H2 maks="14ch">Å leie ut er en jobb ingen ba om.</H2></Inn>
-          <Ingress>Den private gjør den på kvelden, med ti verktøy og én innboks. Selskapet gjør den i regneark, med fem systemer og ingen oversikt. DigiHome tar jobben for begge: programvaren gjør den – for én bolig eller for tusen – eller en forvalter gjør den for deg, på den samme programvaren. Eieren har alltid siste ord.</Ingress>
+          <Inn i={1}><H2 maks="13ch">Å leie ut er en jobb ingen ba om.</H2></Inn>
+          <Ingress maks="34ch">To skalaer, samme jobb. Den private gjør den på kvelden, selskapet i regneark — og ingen har ett system som gjør den for dem.</Ingress>
+          <Inn i={5} className="mt-9 border-t pt-6" style={{ borderColor: HAIR }}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: FARGE.kost }}>Innsatsen</p>
+            <p className="mt-3 text-[24px] sm:text-[30px]" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.08, color: T.ink }}>Én feil koster mer enn et års honorar.</p>
+            <p className="mt-3 text-[14.5px] leading-[1.55]" style={{ color: DIM, maxWidth: '40ch' }}>Husleieloven regulerer alt fra depositum til oppsigelse. En glemt frist eller feil kontrakt er dyrere enn hjelpen.</p>
+          </Inn>
         </>}>
-          <div className="grid gap-10 sm:grid-cols-2">
-            <Kolonne i={3} ikon={Home} over="Den private huseieren" tittel="Én bolig – eller noen få" rader={[
-              ['Ti verktøy og én innboks', 'Annonse, visning, kredittsjekk, kontrakt, depositum, husleie, purring, regulering. Alt manuelt – og alt på fritiden.'],
-              ['Én feil koster mer enn et års honorar', 'Husleieloven regulerer alt fra depositum til oppsigelse. En feil kontrakt eller en glemt frist er dyrere enn hjelpen.'],
-            ]} />
-            <Kolonne i={4} ikon={Building2} over="Eiendomsselskapet" tittel="Porteføljer med mange enheter" rader={[
-              ['Fem systemer, ingen oversikt', 'Leietakere ett sted, betaling et annet, saker på e-post og kontrakter i mapper. Ingen ser porteføljen i sanntid.'],
-              ['Folk gjør det maskiner bør gjøre', 'Purring, visninger og leverandøroppfølging spiser dagene – arbeid som kan gå av seg selv, per enhet, i ett system.'],
-            ]} />
-          </div>
+          <Fragmentering />
         </Todelt>
       </Side>
 
