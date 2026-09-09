@@ -90,7 +90,7 @@ export function Kapittelpille({ tabs, aktiv, frem, kapitler, velg, tema = 'lys',
             data-testid={`${testid}-${t.id}`}
           >
             <span className="relative flex items-baseline gap-1.5 whitespace-nowrap">
-              {!kompakt && <span className="hidden text-[10.5px] tabular-nums lg:inline" style={{ color: er ? T.lilla : f.indeks, transition: `color 300ms ${EASE}` }}>0{i + 1}</span>}
+              {!kompakt && <span className="hidden text-[10.5px] tabular-nums lg:inline" style={{ color: er ? f.aktivTekst : f.indeks, transition: `color 300ms ${EASE}` }}>0{i + 1}</span>}
               <span className="truncate">{t.navn}</span>
             </span>
           </button>

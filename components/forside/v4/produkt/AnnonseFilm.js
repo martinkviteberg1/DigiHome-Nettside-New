@@ -1415,7 +1415,7 @@ function Desktop({ fase, ov, onAkt, onHold, neste, startet, tittel, ingress }) {
       {L && (
         /* Tekstspalten kommer først når boligen er funnet — da «lander» hele grid-et i ett slag (storskriften glir til
            arkets hode, fasaden og faktaene kommer, spalten toner inn til venstre) */
-        <div style={{ opacity: fase >= F.FUNNET ? 1 : 0, transition: `opacity ${bt(700, fase >= F.FUNNET ? 320 : 0)}` }} aria-hidden={fase < F.FUNNET}>
+        <div style={{ opacity: fase >= F.FUNNET ? 1 : 0, transition: `opacity ${bt(700, fase >= F.FUNNET ? 320 : 0)}` }} aria-hidden={fase < F.FUNNET} inert={fase < F.FUNNET ? '' : undefined}>
           <Tekstspalte fase={fase} L={L} ov={ov} onAkt={onAkt} knapper={knapper} neste={neste} />
           <KortLag fase={fase} L={L} ov={ov} />
           <Romlapper fase={fase} L={L} ov={ov} />

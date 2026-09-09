@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 import ForsideV4 from '@/components/forside/v4/ForsideV4';
 import { FILM } from '@/components/forside/v4/heroFilm';
 import { ogUrl } from '@/lib/og-url';
@@ -40,37 +39,24 @@ export const metadata = {
 // spor (privat / eiendomsselskap / forvaltning) → leietaker → alt samlet →
 // FAQ → finale. Dybden per målgruppe bor på /privat, /bedrift, /forvaltning.
 //
-// Hero-variant: 'stage' (sentrert setning + én scene med film) er standard.
-// 'side' (to kolonner) er alternativ 2 — cookie dh_hero settes av den diskrete
-// veksleren nederst til venstre. ?bilde=bygg|stue bytter scenebilde i 'stage'.
+// Én hero: 'stage' (sentrert setning + én scene med film). Produktseksjonen
+// bruker standardanimasjonen ('ramme').
 // ---------------------------------------------------------------------------
-export default function ForsidePage({ searchParams }) {
-  const valg = cookies().get('dh_hero')?.value;
-  const hero = valg === 'side' ? 'side' : valg === 'zoom' ? 'zoom' : valg === 'zoomfull' ? 'zoomfull' : 'stage';
-  const produkt = cookies().get('dh_produkt')?.value === 'full' ? 'full' : 'ramme';
-  const bilde = searchParams?.bilde === 'bygg' ? 'bygg' : searchParams?.bilde === 'stue' ? 'stue' : null;
+export default function ForsidePage() {
   /* LCP er scenens første bilde. Med FILM.direkte åpner heroen rett i sofa-loopen — da er loopens poster det som
-     faktisk tegnes (på alle flater), ikke gåturens poster. Feil preload = 120 KB som konkurrerer med LCP-bildet. */
-  const stageBilde = bilde === 'bygg' ? '/v4/bolig-hero.webp' : bilde === 'stue' ? '/v4/stue-2000.webp' : FILM.direkte ? FILM.hjemPoster : FILM.poster;
+     faktisk tegnes (på alle flater). Feil preload = 120 KB som konkurrerer med LCP-bildet. */
   return (
     <>
       {/* Scenebildet er LCP. Preload riktig utsnitt per flate; fontene preloades av next/font. */}
-      {hero !== 'side' ? (
-        FILM.direkte && !bilde ? (
-          <>
-            <link rel="preload" as="image" href={FILM.hjemPosterSmal} media="(max-width: 639px)" fetchPriority="high" />
-            <link rel="preload" as="image" href={FILM.hjemPoster} media="(min-width: 640px)" fetchPriority="high" />
-          </>
-        ) : (
-          <link rel="preload" as="image" href={stageBilde} media="(min-width: 640px)" fetchPriority="high" />
-        )
-      ) : (
+      {FILM.direkte ? (
         <>
-          <link rel="preload" as="image" href="/v4/bolig-hero.webp" media="(min-width: 640px)" fetchPriority="high" />
-          <link rel="preload" as="image" href="/v4/bolig-hero-mobil.webp" media="(max-width: 639px)" fetchPriority="high" />
+          <link rel="preload" as="image" href={FILM.hjemPosterSmal} media="(max-width: 639px)" fetchPriority="high" />
+          <link rel="preload" as="image" href={FILM.hjemPoster} media="(min-width: 640px)" fetchPriority="high" />
         </>
+      ) : (
+        <link rel="preload" as="image" href={FILM.poster} media="(min-width: 640px)" fetchPriority="high" />
       )}
-      <ForsideV4 hero={hero} bilde={bilde} veksler  produkt={produkt} />
+      <ForsideV4 />
     </>
   );
 }

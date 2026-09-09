@@ -75,7 +75,7 @@ export default function TillitStripe() {
        Hero → (setning + én rad logoer) → seksjon 2 tett på. */
     <section aria-label="Tjenester DigiHome er koblet til" className="relative" style={{ background: T.canvas, color: T.ink }} data-testid="v4-tillit">
       <div className="mx-auto flex w-full max-w-[1360px] flex-col items-center px-5 pb-12 pt-1 text-center sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-14 lg:pt-2">
-        <p className="text-[14.5px] leading-none text-[#15130F]/58 sm:text-[15px]" data-testid="v4-tillit-tekst">Koblet til tjenestene du allerede bruker.</p>
+        <p className="text-[14.5px] leading-none text-[#15130F]/64 sm:text-[15px]" data-testid="v4-tillit-tekst">Koblet til tjenestene du allerede bruker.</p>
         <ul className="mt-6 flex max-w-[1100px] flex-wrap items-center justify-center gap-x-9 gap-y-5 sm:gap-x-12 lg:mt-7 lg:gap-x-14 xl:gap-x-16" style={{ color: 'rgba(21,19,15,0.74)' }} data-testid="v4-tillit-logoer">
           {LOGOER.map((l) => (
             <li key={l.id} className="flex items-center" data-testid={`v4-logo-${l.id}`}>

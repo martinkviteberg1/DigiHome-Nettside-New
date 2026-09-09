@@ -78,9 +78,10 @@ function Panel({ children, className = '', style }) {
   return <div className={`rounded-[14px] ${className}`} style={{ background: '#FFFFFF', boxShadow: `0 0 0 1px ${HAIR}`, ...style }}>{children}</div>;
 }
 function Overskrift({ children, sub }) {
+  /* Ikke <h3>: dette er UI inni en mockup, ikke en overskrift i sidens dokumentstruktur (heading-order). */
   return (
     <div>
-      <h3 className="text-[30px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>{children}</h3>
+      <p className="text-[30px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1 }}>{children}</p>
       {sub && <p className="mt-2 text-[12.5px]" style={{ color: DIM }}>{sub}</p>}
     </div>
   );

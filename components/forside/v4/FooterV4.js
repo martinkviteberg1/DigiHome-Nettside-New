@@ -20,7 +20,8 @@ import { EASE, T, display } from './motion';
 
 const OFF = T.offwhite;
 const DIM = 'rgba(244,241,234,0.62)';
-const SVAK = 'rgba(244,241,234,0.42)';
+/* Sekundærtekst på mørk bunn: 0.58 gir ≥ 5.5:1 mot T.charcoal (WCAG AA krever 4.5:1) — fortsatt tydelig sekundær. */
+const SVAK = 'rgba(244,241,234,0.58)';
 const HAIR = 'rgba(244,241,234,0.12)';
 
 const KOLONNER = [
