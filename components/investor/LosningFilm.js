@@ -52,11 +52,11 @@ function FilmSkala({ skaler, children }) {
     return () => { ro?.disconnect(); window.removeEventListener('resize', m); };
   }, [skaler]);
   if (!skaler) return <div className="relative mt-6 w-full">{children}</div>;
-  // La filmen puste: trekk fra ~104px så det alltid er tydelig luft mellom tidslinjen og filmen (ikke «klistret»).
-  const k = box.h ? Math.min(1, Math.max(0.2, (box.h - 104) / H_FILM)) : 1;
+  // Fyll rommet: filmen skalerer til å fylle nesten hele resten av høyden (kan gå over 1×), med bare litt luft til tidslinjen.
+  const k = box.h ? Math.min(1.35, Math.max(0.3, (box.h - 36) / H_FILM)) : 1;
   const w = box.w && k ? box.w / k : null;
   return (
-    <div ref={ref} className="relative mx-auto w-full max-w-[1200px] grow" data-testid="deck-losning-skala" data-k={k.toFixed(3)}>
+    <div ref={ref} className="relative mx-auto w-full max-w-[1560px] grow" data-testid="deck-losning-skala" data-k={k.toFixed(3)}>
       <div className="absolute left-1/2 top-1/2" style={{ width: w ? `${w}px` : '100%', height: H_FILM, transform: `translate(-50%, -50%) scale(${k})`, transformOrigin: 'center center' }}>
         {children}
       </div>
@@ -120,7 +120,8 @@ export default function LosningFilm({ aktiv = false, nr = 3 }) {
 
   return (
     <div
-      className={`relative w-full ${bred ? 'h-[calc(100svh-184px)]' : ''}`}
+      className={`relative w-full ${bred ? 'h-[calc(100svh-150px)]' : ''}`}
+      style={bred ? { marginBottom: -34 } : undefined}   /* gjenvinner litt av slidens bunnmarg — filmen kan gå lenger ned, uten scroll */
       data-testid="deck-losning-film"
       data-kapittel={kap}
     >
@@ -138,18 +139,18 @@ export default function LosningFilm({ aktiv = false, nr = 3 }) {
 
       <div className={`relative ${bred ? 'flex h-full flex-col' : ''}`}>
         {/* FORTELLINGEN — én rolig, redaksjonell linje som rammer filmen som «Løsningen». */}
-        <div className="deck-inn mx-auto flex w-full max-w-[860px] shrink-0 flex-col items-center pt-1 text-center" style={{ '--i': 0 }}>
+        <div className="deck-inn mx-auto flex w-full max-w-[860px] shrink-0 flex-col items-center text-center" style={{ '--i': 0 }}>
           <div className="inline-flex items-center gap-2.5">
             <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: LILLA }} />
             <span className="text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ color: LILLA }}>Løsningen</span>
           </div>
-          <h2 className="mt-3.5 text-[22px] leading-[1.1] tracking-[-0.02em] sm:text-[28px] lg:text-[32px]" style={{ ...display, color: T.ink }}>
+          <h2 className="mt-3 text-[22px] leading-[1.1] tracking-[-0.02em] sm:text-[27px] lg:text-[30px]" style={{ ...display, color: T.ink }}>
             Ett system tar over <span style={{ color: LILLA }}>hele driften</span>.
           </h2>
         </div>
 
         {/* TIDSLINJE — leieforholdets fire steg på én linje: ett system. Lilla fyll rykker frem mens filmen spiller. */}
-        <div className="deck-inn mx-auto mt-7 w-full max-w-[620px] shrink-0 lg:mt-9" style={{ '--i': 1 }}>
+        <div className="deck-inn mx-auto mt-5 w-full max-w-[620px] shrink-0 lg:mt-6" style={{ '--i': 1 }}>
           <div role="tablist" aria-label="Kapitler i løsningen" className="relative grid grid-cols-4">
             <span aria-hidden="true" className="absolute bottom-[4px] left-[12.5%] right-[12.5%] h-px" style={{ background: 'rgba(21,19,15,0.14)' }} />
             <span

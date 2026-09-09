@@ -89,11 +89,11 @@ function usePrint() {
 /* ══════════════════════════ Primitiver ══════════════════════════ */
 /* Ett kapittel = ett lag som fyller skjermen. pos: 'aktiv' | 'over' | 'under' styrer inn/ut-bevegelsen
    (CSS i roten). Innholdet kan være høyere enn skjermen — da scroller kapitlet innvendig. */
-function Side({ id, children, morkt = false, aktiv = false, pos = 'under', bred = false }) {
+function Side({ id, children, morkt = false, aktiv = false, pos = 'under', bred = false, full = false }) {
   return (
     <section id={`deck-${id}`} data-aktiv={aktiv ? '1' : '0'} data-pos={pos} className="deck-side" style={{ background: morkt ? T.charcoal : T.canvas, color: morkt ? T.offwhite : T.ink }} data-testid={`deck-${id}`} aria-hidden={pos === 'aktiv' ? undefined : 'true'}>
       <div className="deck-side-indre flex min-h-full flex-col justify-center px-6 pb-24 pt-20 sm:px-10 lg:px-16">
-        <div className={`mx-auto w-full ${bred ? 'max-w-[1360px]' : 'max-w-[1180px]'}`}>{children}</div>
+        <div className={`mx-auto w-full ${full ? 'max-w-[1640px]' : bred ? 'max-w-[1360px]' : 'max-w-[1180px]'}`}>{children}</div>
       </div>
     </section>
   );
@@ -677,11 +677,11 @@ function FragStage({ domener, core, height, kompakt = false, aktiv = false, id =
             <g key={`${d.navn}-p`} data-testid="deck-frag-oppgave">
               <circle r={kompakt ? 8 : 10} fill={FARGE.kost} opacity="0">
                 <animateMotion dur={`${DUR}s`} begin={`${i * STEG}s`} repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.45 0 0.25 1"><mpath href={`#frag-${id}-${i}`} /></animateMotion>
-                <animate attributeName="opacity" values="0;0.14;0.14;0" keyTimes="0;0.1;0.86;1" dur={`${DUR}s`} begin={`${i * STEG}s`} repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0;0.12;0.12;0" keyTimes="0;0.1;0.7;0.84" dur={`${DUR}s`} begin={`${i * STEG}s`} repeatCount="indefinite" />
               </circle>
-              <circle r={kompakt ? 3 : 3.6} fill={FARGE.kost} opacity="0">
+              <circle r={kompakt ? 3 : 3.4} fill={FARGE.kost} opacity="0">
                 <animateMotion dur={`${DUR}s`} begin={`${i * STEG}s`} repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.45 0 0.25 1"><mpath href={`#frag-${id}-${i}`} /></animateMotion>
-                <animate attributeName="opacity" values="0;0.95;0.95;0" keyTimes="0;0.08;0.88;1" dur={`${DUR}s`} begin={`${i * STEG}s`} repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0;0.85;0.85;0" keyTimes="0;0.08;0.72;0.86" dur={`${DUR}s`} begin={`${i * STEG}s`} repeatCount="indefinite" />
               </circle>
             </g>
           )) : null}
@@ -699,17 +699,17 @@ function FragStage({ domener, core, height, kompakt = false, aktiv = false, id =
           </span>
         </div>
       ))}
-      {/* Navet i dag: DU — mennesket som må koble alt sammen for hånd (motstykket til AI-kjernen på Løsningen) */}
+      {/* Navet i dag: deg — mennesket som kobler alt sammen for hånd. Rolig, ren node (ikke alarm-rød). */}
       <div className="deck-inn absolute" style={{ '--i': 4, left: `${core.x}%`, top: `${core.y}%`, transform: 'translate(-50%,-50%)' }}>
         <div className="flex flex-col items-center text-center">
           <div className="relative flex items-center justify-center">
-            <span aria-hidden="true" className="deck-frag-puls absolute rounded-full" style={{ height: kjerne * 1.55, width: kjerne * 1.55, background: 'radial-gradient(circle, rgba(179,38,30,0.15) 0%, rgba(179,38,30,0.04) 45%, rgba(179,38,30,0) 70%)' }} />
-            <div className="relative flex items-center justify-center rounded-full" style={{ height: kjerne, width: kjerne, border: '2px dashed rgba(21,19,15,0.26)', background: 'radial-gradient(circle at 50% 40%, rgba(179,38,30,0.08), rgba(21,19,15,0) 72%)' }}>
-              <User style={{ height: kompakt ? 28 : 36, width: kompakt ? 28 : 36, color: 'rgba(21,19,15,0.55)' }} strokeWidth={1.5} />
+            <span aria-hidden="true" className="deck-frag-puls absolute rounded-full" style={{ height: kjerne * 1.7, width: kjerne * 1.7, background: 'radial-gradient(circle, rgba(179,38,30,0.08) 0%, rgba(179,38,30,0) 66%)' }} />
+            <div className="relative flex items-center justify-center rounded-full bg-white" style={{ height: kjerne, width: kjerne, boxShadow: `inset 0 0 0 1px ${HAIR}, 0 24px 52px -22px rgba(21,19,15,0.24)` }}>
+              <User style={{ height: kompakt ? 30 : 40, width: kompakt ? 30 : 40, color: T.ink }} strokeWidth={1.4} />
             </div>
           </div>
-          <p className="mt-4 text-[15.5px] font-semibold" style={{ color: T.ink }}>Du er systemet</p>
-          <p className="mt-0.5 text-[12.5px]" style={{ color: SVAK, maxWidth: '24ch' }}>alt kobles sammen for hånd</p>
+          <p className="mt-5 text-[15.5px] font-semibold" style={{ color: T.ink }}>Alt havner hos deg</p>
+          <p className="mt-1 text-[12.5px]" style={{ color: SVAK, maxWidth: '26ch' }}>du kobler verktøyene sammen manuelt</p>
         </div>
       </div>
     </div>
@@ -1535,7 +1535,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       {/* 03 · Løsningen — produktet som en NYDELIG EDITORIAL full-bleed bakgrunn (forsidens kino-filmer: foto +
           editorial tittel), ikke et kort. Stegene (Annonse→Kontrakt→Drift→Økonomi) spiller som bevis, styrt av
           decket (spiller kun når sliden er fremme — ytelse). LosningFilm eier hele det full-bleed oppsettet. */}
-      <Side id="losning" pos={pos('losning')} aktiv={er('losning')} bred>
+      <Side id="losning" pos={pos('losning')} aktiv={er('losning')} bred full>
         <LosningFilm aktiv={er('losning')} nr={kap('losning')} />
       </Side>
 
