@@ -124,6 +124,10 @@ export default function LosningFilm({ aktiv = false, nr = 3 }) {
       data-testid="deck-losning-film"
       data-kapittel={kap}
     >
+      {/* Forsidens Ramme kapper filmen til max-w min(1400px, 86vw). Inne i decket skal filmen fylle den skalerte flaten
+          nøyaktig (ellers blir skyggeflaten bredere enn kartet → synlige bånd). Scoped til denne sliden. */}
+      <style>{`[data-testid="deck-losning-film"] [data-testid$="-ramme"] { max-width: none !important; }`}</style>
+
       {/* Filmen står som en rammeløs, «svevende» flate med myke hjørner og en myk skygge — skarp som på forsiden,
           tydelig adskilt fra tidslinjen (ikke «klistret»), uten hvit kant/ramme. */}
 

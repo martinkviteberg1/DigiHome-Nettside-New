@@ -644,16 +644,49 @@ function LosningKjerne() {
    (Leietakere, Kontrakter, Husleie, Drift) lever i hvert sitt frakoblede, manuelle verktøy — og det eneste som binder
    dem sammen er DU. Manuelle (stiplede) tråder løper fra verktøyene inn til et slitent «Du er systemet»-nav i midten.
    Der Løsningen har en glødende AI-kjerne, har Hvorfor et menneske som må gjøre alt for hånd. */
-function FragStage({ domener, core, height, kompakt = false }) {
-  const bane = (d) => { const ex = core.x; const ey = core.y; return `M ${d.x} ${d.y} C ${d.x} ${(d.y + ey) / 2}, ${ex} ${(d.y + ey) / 2}, ${ex} ${ey}`; };
+function FragStage({ domener, core, height, kompakt = false, aktiv = false, id = 'd' }) {
+  /* Piksel-basert SVG (viewBox = faktisk bredde × høyde) så trådene er ekte kurver og punktene kan gli langs dem uten
+     forvrengning. Bredden måles; høyden er fast. */
+  const ref = useRef(null);
+  const [W, setW] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const m = () => setW(el.clientWidth);
+    m();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null;
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, []);
+  const Hh = height;
+  const P = (p) => ({ x: (p.x / 100) * W, y: (p.y / 100) * Hh });
+  const c = P(core);
+  const bane = (d) => { const a = P(d); return `M ${a.x} ${a.y} C ${a.x} ${(a.y + c.y) / 2}, ${c.x} ${(a.y + c.y) / 2}, ${c.x} ${c.y}`; };
   const kjerne = kompakt ? 102 : 136;
+  const DUR = 3.0; const STEG = 0.75;   // én oppgave lander hvert 0,75 s — jevnt, uten pause
   return (
-    <div className="relative w-full" style={{ height }} data-testid="deck-fragment">
-      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none">
-        {domener.map((d) => (
-          <path key={d.navn} className="deck-frag-trad" d={bane(d)} stroke="rgba(21,19,15,0.24)" strokeWidth="1.4" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        ))}
-      </svg>
+    <div ref={ref} className="relative w-full" style={{ height }} data-testid="deck-fragment">
+      {W > 0 ? (
+        <svg className="absolute inset-0 h-full w-full overflow-visible" viewBox={`0 0 ${W} ${Hh}`} fill="none" aria-hidden="true">
+          {domener.map((d, i) => (
+            <path key={d.navn} id={`frag-${id}-${i}`} className="deck-frag-trad" d={bane(d)} stroke="rgba(21,19,15,0.2)" strokeWidth="1.4" strokeLinecap="round" />
+          ))}
+          {/* Oppgavene som lander på deg: små varme punkter glir langs trådene inn til navet — hele tiden, én etter én.
+              Kun når sliden er aktiv (ytelse). */}
+          {aktiv ? domener.map((d, i) => (
+            <g key={`${d.navn}-p`} data-testid="deck-frag-oppgave">
+              <circle r={kompakt ? 8 : 10} fill={FARGE.kost} opacity="0">
+                <animateMotion dur={`${DUR}s`} begin={`${i * STEG}s`} repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.45 0 0.25 1"><mpath href={`#frag-${id}-${i}`} /></animateMotion>
+                <animate attributeName="opacity" values="0;0.14;0.14;0" keyTimes="0;0.1;0.86;1" dur={`${DUR}s`} begin={`${i * STEG}s`} repeatCount="indefinite" />
+              </circle>
+              <circle r={kompakt ? 3 : 3.6} fill={FARGE.kost} opacity="0">
+                <animateMotion dur={`${DUR}s`} begin={`${i * STEG}s`} repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.45 0 0.25 1"><mpath href={`#frag-${id}-${i}`} /></animateMotion>
+                <animate attributeName="opacity" values="0;0.95;0.95;0" keyTimes="0;0.08;0.88;1" dur={`${DUR}s`} begin={`${i * STEG}s`} repeatCount="indefinite" />
+              </circle>
+            </g>
+          )) : null}
+        </svg>
+      ) : null}
       {/* Verktøy-brikker — hvert driftsområde i sitt eget frakoblede verktøy */}
       {domener.map((d) => (
         <div key={d.navn} className="deck-inn absolute" style={{ '--i': 3, left: `${d.x}%`, top: `${d.y}%`, transform: 'translate(-50%,-50%)' }}>
@@ -682,7 +715,7 @@ function FragStage({ domener, core, height, kompakt = false }) {
     </div>
   );
 }
-function FragmentKjerne() {
+function FragmentKjerne({ aktiv = false }) {
   const desktop = [
     { navn: 'Leietakere', verktoy: 'SMS & anrop', Ikon: Users, x: 16, y: 16 },
     { navn: 'Kontrakter', verktoy: 'Word & penn', Ikon: FileText, x: 39, y: 9 },
@@ -697,8 +730,8 @@ function FragmentKjerne() {
   ];
   return (
     <div className="deck-inn w-full" style={{ '--i': 2 }}>
-      <div className="hidden sm:block"><FragStage domener={desktop} core={{ x: 50, y: 71 }} height={540} /></div>
-      <div className="sm:hidden"><FragStage domener={mobil} core={{ x: 50, y: 79 }} height={440} kompakt /></div>
+      <div className="hidden sm:block"><FragStage domener={desktop} core={{ x: 50, y: 71 }} height={540} aktiv={aktiv} id="d" /></div>
+      <div className="sm:hidden"><FragStage domener={mobil} core={{ x: 50, y: 79 }} height={440} kompakt aktiv={aktiv} id="m" /></div>
     </div>
   );
 }
@@ -1277,12 +1310,11 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-side[data-aktiv="1"] .deck-los-gloed { animation: deck-los-gloed 3.4s ${EASE} infinite; }
         @keyframes deck-los-gloed { 0%,100% { opacity: .5; transform: scale(1); } 50% { opacity: .85; transform: scale(1.14); } }
 
-        /* Hvorfor: manuelt arbeid «marsjerer» langs de stiplede trådene inn til «Du» — og navet pulserer slitent. Kun når sliden er aktiv. */
+        /* Hvorfor: trådene er statiske, stiplede (manuelle koblinger). Navet «Du» pulserer slitent. Oppgave-punktene
+           som glir inn til deg animeres i SVG (animateMotion) — kun rendret når sliden er aktiv. */
         .deck-frag-trad { stroke-dasharray: 2 5; }
-        .deck-side[data-aktiv="1"] .deck-frag-trad { animation: deck-frag-trad 2.2s linear infinite; }
-        @keyframes deck-frag-trad { to { stroke-dashoffset: -14; } }
         .deck-side[data-aktiv="1"] .deck-frag-puls { animation: deck-frag-puls 3.8s ${EASE} infinite; }
-        @keyframes deck-frag-puls { 0%,100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
+        @keyframes deck-frag-puls { 0%,100% { opacity: .5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
 
         .deck-side .deck-linje { --l: 0; transition: transform 700ms ${EASE} 500ms; }
         .deck-side[data-aktiv="1"] .deck-linje { --l: 1; }
@@ -1496,7 +1528,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             </div>
           </Inn>
         </>}>
-          <FragmentKjerne />
+          <FragmentKjerne aktiv={er('hvorfor')} />
         </Todelt>
       </Side>
 
