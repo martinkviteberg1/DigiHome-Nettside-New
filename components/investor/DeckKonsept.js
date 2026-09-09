@@ -18,7 +18,7 @@
      kapittel. Fremdriftslinje øverst, kapittelvelger, #hash for dyplenke. Print = PDF.
    ───────────────────────────────────────────────────────────────────────────── */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUp, Download, Lock, RotateCcw, Send, Check, Megaphone, Home, Building2, Link2, List, X, StickyNote, Share2, Copy, Trash2, Eye, KeyRound, Ban, ChevronDown } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUp, Download, Lock, RotateCcw, Send, Check, Megaphone, Home, Building2, Link2, Menu, X, Share2, Copy, Trash2, Eye, KeyRound, Ban, ChevronDown } from 'lucide-react';
 import { T, display, EASE, DIM, SVAK, HAIR } from '@/components/forside/v4/tokens';
 import HeroScene from '@/components/forside/v4/HeroScene';
 import HeroStage, { FILM as HERO_FILM } from '@/components/forside/v4/HeroStage';
@@ -1038,8 +1038,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
 
       {/* Toppstripe: kapittel (alle) + handlinger (kun presenter) — skjules ved ro i presenter */}
       <div className="deck-skjul-print pointer-events-none fixed inset-x-0 top-0 z-20 flex items-center justify-between px-5 pt-5 sm:px-8" style={{ opacity: musAktiv || side === 0 ? 1 : 0, transition: `opacity 500ms ${EASE}` }}>
-        <button onClick={() => setVisKapitler((v) => !v)} className="pointer-events-auto flex h-9 items-center gap-2 rounded-full pl-3 pr-3.5 text-[12.5px] font-medium transition-colors duration-500" style={{ background: morkSide ? 'rgba(244,241,234,0.1)' : 'rgba(21,19,15,0.06)', color: morkSide ? T.offwhite : T.ink }} data-testid="deck-kapitler" aria-label="Kapitler">
-          <List className="h-3.5 w-3.5" /> <span className="tabular-nums">{String(side + 1).padStart(2, '0')}</span><span style={{ opacity: 0.5 }}>/ {sider.length}</span><span className="hidden sm:inline"> · {KAPITLER[side].navn}</span>
+        <button onClick={() => setVisKapitler((v) => !v)} className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-500" style={{ background: morkSide ? 'rgba(244,241,234,0.08)' : 'rgba(21,19,15,0.05)', color: morkSide ? T.offwhite : T.ink, backdropFilter: 'blur(16px) saturate(160%)', WebkitBackdropFilter: 'blur(16px) saturate(160%)', boxShadow: morkSide ? 'inset 0 0 0 1px rgba(244,241,234,0.14)' : 'inset 0 0 0 1px rgba(21,19,15,0.08)' }} data-testid="deck-kapitler" aria-label={`Kapitler · ${side + 1} av ${sider.length}`} title="Kapitler">
+          <Menu className="h-[18px] w-[18px]" strokeWidth={1.7} />
         </button>
         {!ekstern && data.presenter ? (
           <div className="deck-topp-group pointer-events-auto flex items-center" data-testid="deck-presenter-valg">
@@ -1113,28 +1113,28 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           <div className="absolute" style={{ right: '-6%', top: '-20%', width: '54%', height: '82%', background: 'radial-gradient(circle, rgba(212,150,255,0.1) 0%, rgba(212,150,255,0.03) 44%, rgba(212,150,255,0) 70%)' }} />
         </div>
 
-        <div className="relative max-w-[720px]">
-          <Inn i={0} className="flex items-center gap-3">
-            <span className="text-[14px] font-semibold" style={{ ...display, letterSpacing: '-0.01em', color: T.offwhite }}>DigiHome</span>
-            <span className="deck-cover-strek h-px w-10" style={{ background: 'rgba(244,241,234,0.35)' }} />
-            <Etikett farge={LYS_SVAK}>Investordeck</Etikett>
+        <div className="relative max-w-[680px]">
+          <Inn i={0} className="flex items-center gap-3.5">
+            <span className="text-[15px] font-semibold" style={{ ...display, letterSpacing: '-0.01em', color: T.offwhite }}>DigiHome</span>
+            <span className="deck-cover-strek h-px w-8" style={{ background: 'rgba(244,241,234,0.3)' }} />
+            <span className="text-[11px] font-medium uppercase" style={{ letterSpacing: '0.2em', color: 'rgba(244,241,234,0.55)' }}>Investordeck</span>
           </Inn>
-          <Inn i={1}><Etikett farge={LYS_SVAK} className="mt-6">{investor ? `Utarbeidet for ${investor.label}` : data.presenter ? 'Presenter' : 'Konfidensielt'} · {new Date().toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</Etikett></Inn>
-          <h1 className="mt-5 max-w-[10ch] text-[56px] sm:text-[84px] lg:text-[108px]" style={{ ...display, color: T.offwhite, letterSpacing: '-0.035em', lineHeight: 0.96, textShadow: '0 2px 40px rgba(0,0,0,0.35)' }}>
-            {['Utleie', 'på', 'autopilot'].map((o, i) => <span key={o} className={`deck-ord ${i < 2 ? 'mr-[0.22em]' : ''}`} style={{ '--o': i }}>{o}{i === 2 ? <span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span> : null}</span>)}
+          {investor ? <Inn i={1}><p className="mt-5 text-[12.5px]" style={{ color: 'rgba(244,241,234,0.5)' }}>Utarbeidet for <span style={{ color: 'rgba(244,241,234,0.82)' }}>{investor.label}</span></p></Inn> : null}
+          <h1 className="mt-7 max-w-[9ch] text-[58px] sm:text-[88px] lg:text-[112px]" style={{ ...display, color: T.offwhite, letterSpacing: '-0.04em', lineHeight: 0.92, textShadow: '0 2px 60px rgba(0,0,0,0.45)' }}>
+            {['Utleie', 'på', 'autopilot'].map((o, i) => <span key={o} className={`deck-ord ${i < 2 ? 'mr-[0.2em]' : ''}`} style={{ '--o': i }}>{o}{i === 2 ? <span style={{ color: T.lilla, marginLeft: '0.02em' }}>.</span> : null}</span>)}
           </h1>
-          <Inn i={3}><p className="mt-7 max-w-[46ch] text-[16px] leading-[1.5] sm:text-[18px]" style={{ color: LYS }}>Programvaren som driver utleieboligen – for private huseiere og for eiendomsselskaper med hele porteføljer. Og forvaltningsselskapet som gjør jobben for dem som ikke vil. To selskaper, én plattform.</p></Inn>
-          <div className="mt-9 grid max-w-[620px] grid-cols-2 gap-x-8 gap-y-5 border-t pt-6 sm:grid-cols-4" style={{ borderColor: 'rgba(244,241,234,0.18)' }} data-testid="deck-kort-fortalt">
+          <Inn i={3}><p className="mt-7 max-w-[44ch] text-[16.5px] leading-[1.6] sm:text-[19px]" style={{ color: 'rgba(244,241,234,0.87)' }}>Programvaren som driver utleieboligen – for private huseiere og for eiendomsselskaper med hele porteføljer. Og forvaltningsselskapet som gjør jobben for dem som ikke vil. <span style={{ color: T.offwhite }}>To selskaper, én plattform.</span></p></Inn>
+          <div className="mt-10 grid max-w-[600px] grid-cols-2 gap-x-10 gap-y-6 border-t pt-7 sm:grid-cols-4" style={{ borderColor: 'rgba(244,241,234,0.16)' }} data-testid="deck-kort-fortalt">
             {[
               [`${nb(enheterIDag)} → ${nb(Math.round(mF.enheter[N - 1] || 0))}`, 'enheter, i dag → ' + mndLabel(plan.startYm, N - 1, false)],
-              [mnok(kapBuffer), 'henter vi – kapitalbehov' + (skattPaa ? ' etter skatt' : '') + ' + 30 % buffer'],
+              [mnok(kapBuffer), 'kapitalbehov' + (skattPaa ? ' etter skatt' : '') + ' + 30 % buffer'],
               [be(sK.breakEvenIdx), 'konsernet går i pluss'],
-              [mnok(sK.arrExit), 'årlig omsetningstakt ved periodeslutt'],
+              [mnok(sK.arrExit), 'omsetningstakt ved periodeslutt'],
             ].map(([v, u], i) => (
-              <div key={u} className="deck-inn" style={{ '--i': 4 + i * 0.6 }}><p className="text-[22px] sm:text-[26px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.offwhite }}>{v}</p><p className="mt-2 text-[12px] leading-[1.4]" style={{ color: LYS_SVAK }}>{u}</p></div>
+              <div key={u} className="deck-inn" style={{ '--i': 4 + i * 0.6 }}><p className="text-[23px] tabular-nums sm:text-[27px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.offwhite }}>{v}</p><p className="mt-2.5 text-[12px] leading-[1.45]" style={{ color: 'rgba(244,241,234,0.6)' }}>{u}</p></div>
             ))}
           </div>
-          <Inn i={7} className="deck-skjul-print mt-9 flex items-center gap-2 text-[12px] font-medium" style={{ color: LYS_SVAK }}>Bla, eller bruk piltastene <ChevronDown className="deck-nikk h-3.5 w-3.5" /></Inn>
+          <Inn i={7} className="deck-skjul-print mt-10 flex items-center gap-2.5 text-[11px] font-medium uppercase" style={{ letterSpacing: '0.16em', color: 'rgba(244,241,234,0.42)' }}>Bla videre <ChevronDown className="deck-nikk h-3.5 w-3.5" /></Inn>
         </div>
       </Side>
 
