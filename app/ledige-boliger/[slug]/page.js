@@ -1,15 +1,18 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import Header from '@/components/dh/Header';
-import Footer from '@/components/dh/Footer';
+import NavV4 from '@/components/forside/v4/NavV4';
+import FooterV4 from '@/components/forside/v4/FooterV4';
+import AvslutningSeksjon from '@/components/forside/v4/AvslutningSeksjon';
+import BoligDetalj from '@/components/forside/v4/boliger/BoligDetalj';
+import { RelaterteKort } from '@/components/forside/v4/boliger/LedigeGrid';
+import { T, display } from '@/components/forside/v4/tokens';
 import { JsonLd } from '@/components/site/JsonLd';
 import { breadcrumbLd } from '@/lib/seo';
 import { site } from '@/lib/site';
-import ListingDetail from '@/components/dh/ListingDetail';
 import ListingPreview from '@/components/dh/ListingPreview';
 import { getListingBySlug, getListingBySlugForNewsletter } from '@/lib/listings-server';
 import { verifyPropertyInterestToken } from '@/lib/newsletter';
-import { ArrowLeft, ArrowUpRight, MapPin } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight } from 'lucide-react';
 
 // BOLIGSIDE — fast, søkbar URL per bolig.
 //
@@ -56,7 +59,7 @@ export async function generateMetadata({ params, searchParams }) {
     title: available ? `${listing.title} — til leie i ${place}` : `${listing.title} — utleid`,
     description: available
       ? metaDesc
-      : `${listing.title} i ${place} er utleid. Se andre ledige boliger i Bergen hos DigiHome.`,
+      : `${listing.title} i ${place} er utleid. Se andre ledige boliger hos DigiHome.`,
     alternates: { canonical: `/ledige-boliger/${listing.slug}` },
     robots: available ? undefined : { index: false, follow: true },
     openGraph: {
@@ -105,10 +108,10 @@ export default async function ListingPage({ params, searchParams }) {
   if (!data) {
     if (searchParams?.forhandsvis === '1') {
       return (
-        <div className="min-h-screen bg-[#fdfcfb] text-[#1f1f1f]">
-          <Header />
-          <ListingPreview slug={params.slug} />
-          <Footer />
+        <div className="min-h-screen antialiased" style={{ background: T.canvas, color: T.ink }}>
+          <NavV4 />
+          <div className="pt-6"><ListingPreview slug={params.slug} /></div>
+          <FooterV4 />
         </div>
       );
     }
@@ -167,44 +170,37 @@ export default async function ListingPage({ params, searchParams }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#fdfcfb] text-[#1f1f1f]">
-      <Header />
+    <div className="min-h-screen overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="bolig-v4">
+      <NavV4 />
       <JsonLd data={breadcrumbLd([{ name: 'Ledige boliger', path: '/ledige-boliger' }, { name: listing.title, path: `/ledige-boliger/${listing.slug}` }])} />
       <JsonLd data={ld} />
 
-      <div className="mx-auto max-w-[1400px] px-4 pt-28 sm:px-10 sm:pt-32 lg:px-16">
-        <Link href="/ledige-boliger" className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-[#78726a] transition-colors hover:text-[#0a0a0a]">
-          <ArrowLeft className="h-4 w-4" /> Alle ledige boliger
-        </Link>
-      </div>
-
-      <ListingDetail listing={listing} available={available} nl={nl} />
-
-      {related?.length > 0 && (
-        <section className="mx-auto max-w-[1400px] px-4 pb-20 sm:px-10 lg:px-16">
-          <h2 className="text-[22px] font-bold tracking-[-0.02em] sm:text-[26px]" style={{ fontFamily: 'var(--font-heading)' }}>Andre ledige boliger</h2>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {related.map((c) => (
-              <Link key={c.id} href={`/ledige-boliger/${c.slug}`}
-                className="group flex flex-col overflow-hidden rounded-[24px] bg-white ring-1 ring-black/[0.04] shadow-[0_10px_36px_-24px_rgba(0,0,0,0.24)] transition-shadow hover:shadow-[0_18px_54px_-26px_rgba(0,0,0,0.3)]">
-                <div className="relative aspect-[4/3] overflow-hidden bg-[#f3f1ee]">
-                  {c.images?.[0] && <img src={c.images[0]} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />}
-                </div>
-                <div className="p-5">
-                  <h3 className="text-[15.5px] font-semibold leading-snug text-[#0a0a0a] group-hover:text-[#7c3aed]" style={{ fontFamily: 'var(--font-heading)' }}>{c.title}</h3>
-                  <p className="mt-1.5 flex items-start gap-1.5 text-[13px] text-[#78726a]"><MapPin className="mt-[2px] h-3.5 w-3.5 shrink-0 text-[#8a837a]" /><span className="break-words">{[c.streetAddress || c.area, c.district].filter(Boolean).join(', ')}</span></p>
-                  <p className="mt-3 text-[14px] font-semibold text-[#0a0a0a]">{c.rentText || 'Pris på forespørsel'}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <Link href="/ledige-boliger" className="mt-8 inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#7c3aed] hover:underline">
-            Se alle ledige boliger <ArrowUpRight className="h-4 w-4" />
+      <main>
+        <div className="mx-auto w-full max-w-[1360px] px-5 pb-6 pt-8 sm:px-8 sm:pt-10 lg:w-[calc(100%-128px)] lg:px-0">
+          <Link href="/ledige-boliger" className="inline-flex items-center gap-1.5 text-[14px] transition-colors hover:text-[#15130F]" style={{ color: 'rgba(21,19,15,0.6)' }} data-testid="listing-back">
+            <ArrowLeft className="h-4 w-4" strokeWidth={1.7} /> Alle ledige boliger
           </Link>
-        </section>
-      )}
+        </div>
 
-      <Footer />
+        <BoligDetalj listing={listing} available={available} nl={nl} />
+
+        {related?.length > 0 && (
+          <section className="mx-auto w-full max-w-[1360px] border-t px-5 py-16 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:py-20" style={{ borderColor: 'rgba(21,19,15,0.12)' }} data-testid="listing-related">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <h2 className="text-[clamp(28px,3vw,44px)]" style={{ ...display, color: T.ink }}>Andre ledige boliger<span style={{ color: T.lilla }}>.</span></h2>
+              <Link href="/ledige-boliger" className="inline-flex items-center gap-1.5 text-[15px] underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:decoration-[#15130F]" style={{ color: T.ink }}>Se alle <ArrowUpRight className="h-4 w-4" strokeWidth={1.6} /></Link>
+            </div>
+            <RelaterteKort listings={related} />
+          </section>
+        )}
+
+        <AvslutningSeksjon
+          tittel="Har du en bolig å leie ut"
+          under="Vi finner leietakeren og tar alt etterpå — eller du gjør det selv, med systemet som tar rutinen."
+          handling={{ knapp: { href: '/bli-utleier', tekst: 'Bli utleier' }, lenke: { href: '/priser', tekst: 'Se priser' } }}
+        />
+      </main>
+      <FooterV4 />
     </div>
   );
 }

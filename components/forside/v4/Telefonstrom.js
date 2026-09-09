@@ -41,6 +41,8 @@ export const STROM = [
   { id: 'kveld', kl: '20:45', ms: 0, slutt: true, chat: [{ fra: 'dh', t: 'Alt i orden på {adresse}. Ingenting venter på deg — god kveld.', ikon: 'hake' }] },
 ];
 const STROM_START = 1500; const STROM_TAKT = 3000; const STROM_ETTER = 700;
+/* Åpningen (direkte-modus): pushvarsel → han trykker → appen blomstrer ut. Så starter samtalen. */
+const AAPNING_MS = 2500;
 const BOBLE_TAKT = 1100;   // ms mellom boblene i ett slag
 const T_FORSTE = 200;      // første boble i et slag
 
@@ -92,7 +94,7 @@ function Avatar({ fra, m, px, ny, t0, mb = 0 }) {
   );
 }
 
-function Boble({ c, m, ny, t0, fs, bildePx, avatarPx, adresse, dxy, visAvatar = true }) {
+function Boble({ c, m, ny, t0, fs, bildePx, avatarPx, adresse, dxy, visAvatar = true, smal = false }) {
   const fra = c.fra;
   const hoyre = fra === 'deg';
   const send = hoyre;
@@ -133,10 +135,10 @@ function Boble({ c, m, ny, t0, fs, bildePx, avatarPx, adresse, dxy, visAvatar = 
   const G = c.godkjenning;
   const T_TAPP = t0 + BOBLE_TAKT + 220;
   const godkjenning = G ? (
-    <span className="mt-2.5 flex items-center justify-between gap-3 border-t pt-2.5" style={{ borderColor: 'rgba(255,255,255,0.12)', minWidth: 196, ...ordInn(ord.length + 1) }}>
+    <span className="mt-2.5 flex items-center justify-between gap-2.5 border-t pt-2.5" style={{ borderColor: 'rgba(255,255,255,0.12)', minWidth: smal ? 0 : 196, ...ordInn(ord.length + 1) }}>
       <span className="min-w-0">
         <span className="block truncate text-[11px]" style={{ color: 'rgba(244,241,234,0.6)' }}>{G.hva}</span>
-        <span className="block tabular-nums" style={{ ...display, fontSize: 17, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{G.belop}</span>
+        <span className="block tabular-nums" style={{ ...display, fontSize: smal ? 15.5 : 17, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{G.belop}</span>
       </span>
       <span className="relative inline-grid h-7 shrink-0 place-items-center overflow-visible rounded-full px-3 text-[12px] font-medium" style={{ background: stille ? T.gronn : T.lilla, color: stille ? '#fff' : T.ink, ...(stille ? {} : { animation: `v4-godkjent 520ms ${EASE} ${T_TAPP}ms both` }) }} data-testid="v4-strom-godkjenn">
         {/* Etikettene ligger i samme rute og bytter idet trykket lander */}
@@ -215,7 +217,68 @@ function Boble({ c, m, ny, t0, fs, bildePx, avatarPx, adresse, dxy, visAvatar = 
   );
 }
 
-export default function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5' }) {
+/* DigiHome-merket i en lilla sirkel — samme strøk som avataren, til pushvarselet */
+function DhMerke({ px }) {
+  return (
+    <svg width={px} height={px} viewBox="0 0 60 60" aria-hidden="true" className="shrink-0" style={{ width: px, height: px, borderRadius: '14px' }}>
+      <rect width="60" height="60" rx="16" fill="#D298FF" />
+      {[[45.0359, 36.7341], [42.5159, 51.0244], [47.5559, 22.4436], [18.6284, 36.7341], [29.3123, 51.0244], [34.3521, 22.4436], [16.1084, 51.0244], [21.1484, 22.4436]].map(([x, y]) => (
+        <rect key={`${x}-${y}`} width="6.60155" height="14.5107" transform={`matrix(-1 0 0.173648 -0.984808 ${x} ${y})`} fill="#1F1F1F" />
+      ))}
+    </svg>
+  );
+}
+
+/* Åpningen — ingen telefonramme, bare ett vakkert pushvarsel som stiger opp av hånden hans.
+   En hårlinje trekkes fra telefonen (X,Y) opp til varselet; et varmt lilla ambient-lys blomstrer bak.
+   Varselet lander med et lite pust (iOS-språk: app-ikon, navn, «nå», tittel, tekst). Han trykker — en ring
+   slår ut, varselet presses, en myk glød — og hele varselet skalerer ut mens appen blomstrer i rommet. */
+function Aapning({ X, Y, fx, fy, B, maalW, maalH, smal, adresse }) {
+  const cardW = smal ? Math.min(Math.round(maalW - 28), 306) : 300;
+  const cardCx = fx + B / 2;
+  const cardLeft = Math.max(12, Math.min(Math.round(cardCx - cardW / 2), Math.round(maalW - cardW - 12)));
+  const cardCxReal = cardLeft + cardW / 2;
+  const cardTop = Math.max(14, Math.round(fy - (smal ? 158 : 172)));
+  const iconPx = smal ? 34 : 36;
+  /* Hårlinjens topp: bunnen av varselet (anslått høyde) */
+  const linjeY = cardTop + (smal ? 82 : 86);
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[4]" style={{ animation: `v4-aapne-ut 500ms ${EASE} ${AAPNING_MS - 380}ms both` }} data-testid="v4-aapning">
+      {/* Ambient: et varmt lilla lys som blomstrer bak varselet */}
+      <span aria-hidden="true" className="absolute rounded-full" style={{ left: cardCxReal - cardW * 0.75, top: cardTop - cardW * 0.35, width: cardW * 1.5, height: cardW * 1.5, background: 'radial-gradient(circle, rgba(184,146,255,0.30) 0%, rgba(184,146,255,0.10) 40%, rgba(184,146,255,0) 68%)', filter: 'blur(3px)', animation: `v4-ambient 1000ms ${EASE} 120ms both` }} />
+
+      {/* Hårlinjen fra hånden hans opp til varselet */}
+      <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${maalW} ${maalH}`} preserveAspectRatio="none">
+        <line x1={X + 2} y1={Y} x2={cardCxReal} y2={linjeY} stroke="rgba(244,241,234,0.5)" strokeWidth="1" vectorEffect="non-scaling-stroke" pathLength="1" strokeDasharray="1" strokeDashoffset="1" style={{ animation: `v4-strek 720ms ${EASE} 220ms both` }} />
+        <circle cx={X + 2} cy={Y} r="2.2" fill="#FBFAF8" style={{ opacity: 0, animation: `v4-lese-inn 400ms ${EASE} 220ms both` }} />
+      </svg>
+
+      {/* Pushvarselet — stiger opp av hånden, lander med et pust */}
+      <div className="absolute" style={{ left: cardLeft, top: cardTop, width: cardW, transformOrigin: '50% 100%', animation: `v4-varsel-inn 720ms ${MORF} 420ms both` }}>
+        <div className="relative overflow-hidden" style={{ borderRadius: 22, padding: smal ? '13px 14px' : '14px 15px', background: 'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 44%), rgba(28,25,22,0.62)', boxShadow: 'inset 0 0 0 1px rgba(244,241,234,0.16), 0 30px 70px -28px rgba(0,0,0,0.72), 0 12px 40px -20px rgba(160,120,255,0.4)', backdropFilter: 'blur(22px) saturate(150%)', WebkitBackdropFilter: 'blur(22px) saturate(150%)', animation: `v4-push-pust 1000ms ${EASE} 1360ms both, v4-push-trykk 460ms ${EASE} ${AAPNING_MS - 560}ms both` }}>
+          <div className="flex items-start gap-2.5">
+            <DhMerke px={iconPx} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-2">
+                <span className="font-semibold uppercase tracking-[0.07em]" style={{ fontSize: 10, color: 'rgba(244,241,234,0.66)' }}>DigiHome</span>
+                <span className="ml-auto" style={{ fontSize: 10.5, color: 'rgba(244,241,234,0.5)' }}>nå</span>
+              </div>
+              <p className="mt-1 font-semibold leading-[1.3]" style={{ fontSize: smal ? 13.5 : 14, color: '#F7F5F1' }}>Husleie mottatt</p>
+              <p className="mt-0.5 leading-[1.32]" style={{ fontSize: smal ? 12.5 : 13, color: 'rgba(244,241,234,0.66)' }}>14 500 kr fra Emma Sørensen · bokført</p>
+            </div>
+          </div>
+          {/* Ringen der han trykker */}
+          <span aria-hidden="true" className="absolute rounded-full" style={{ right: '9%', bottom: '24%', width: 26, height: 26, border: '1px solid rgba(244,241,234,0.6)', opacity: 0, animation: `v4-ring 660ms ${EASE} ${AAPNING_MS - 580}ms both` }} />
+          {/* Myk glød idet appen åpnes */}
+          <span aria-hidden="true" className="absolute inset-0" style={{ background: 'radial-gradient(120% 120% at 50% 50%, rgba(255,255,255,0.55) 0%, rgba(220,200,255,0.25) 45%, rgba(255,255,255,0) 74%)', opacity: 0, animation: `v4-skjerm-blink 500ms ${EASE} ${AAPNING_MS - 460}ms both` }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5', direkte = false, onApnet }) {
   const ref = useRef(null);
   const [maal, setMaal] = useState({ w: 0, h: 0 });
   useEffect(() => {
@@ -246,6 +309,18 @@ export default function Telefonstrom({ hjemme, redusert, smal, puls, adresse = '
     return () => { window.clearTimeout(t); if (id) window.clearInterval(id); };
   }, [hjemme, redusert, puls]);
 
+  /* Åpningen (kun direkte-modus): silhuett + pushvarsel spilles én gang idet scenen er hjemme. Når den er ferdig
+     (AAPNING_MS), meldes det opp (onApnet) — da våkner veggen og samtalen starter. Redusert/ikke-direkte: appen er
+     «åpen» med en gang. */
+  const [apnet, setApnet] = useState(!direkte);
+  useEffect(() => {
+    if (!hjemme) { setApnet(false); return undefined; }
+    if (!direkte || redusert) { setApnet(true); if (onApnet) onApnet(); return undefined; }
+    setApnet(false);
+    const t = window.setTimeout(() => { setApnet(true); if (onApnet) onApnet(); }, AAPNING_MS);
+    return () => window.clearTimeout(t);
+  }, [hjemme, redusert, direkte, onApnet]);
+
   /* Filmpunkt → scenepunkt (object-cover, sentrert) */
   const A = maal.w && maal.h ? maal.w / maal.h : FILM_ASPEKT;
   /* object-position x (ox) på smal skjerm flytter utsnittet: filmpunkt t → beholder t·R − (R − 1)·ox, R = FILM_ASPEKT/A */
@@ -258,8 +333,9 @@ export default function Telefonstrom({ hjemme, redusert, smal, puls, adresse = '
   /* Tråden står opp og til høyre for skjermen — over skulderen, aldri over ansiktet. Bunnen bindes til skjermen.
      Bredden følger scenen (204–272 px); på smal skjerm klemmes den inn så den aldri går ut av scenens høyrekant. */
   const trang = !smal && maal.w < 1010;
-  const B = smal ? 220 : Math.max(204, Math.min(272, Math.round(maal.w * 0.246 - 4)));
-  const fx = Math.min(X + (smal || trang ? 16 : Math.round(maal.w * 0.034)), smal ? Math.max(0, maal.w - B - 12) : Infinity);
+  /* Smal skjerm: tråden bruker mer av scenens bredde (så bobler og godkjenning aldri kuttes), men aldri helt ut til kanten. */
+  const B = smal ? Math.min(Math.max(232, maal.w - 28), 264) : Math.max(204, Math.min(272, Math.round(maal.w * 0.246 - 4)));
+  const fx = Math.min(X + (smal || trang ? 12 : Math.round(maal.w * 0.034)), smal ? Math.max(12, maal.w - B - 12) : Infinity);
   /* Smal skjerm: bunnen ligger i høyde med hendene hans (Y + 18), til høyre for telefonen. */
   const fy = smal ? Y + 18 : Y - (trang ? 26 : Math.round(maal.h * 0.042));
   /* Trådens synlige høyde — nyeste slag nederst, eldre over, øverst tones alt bort. Bunnpolstring gir skyggene rom. */
@@ -276,8 +352,11 @@ export default function Telefonstrom({ hjemme, redusert, smal, puls, adresse = '
   const MASKE = `linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.5) 14%, #000 30%, #000 100%)`;
 
   return (
-    <div ref={ref} aria-hidden="true" className="pointer-events-none absolute inset-0 z-[3] overflow-hidden" data-testid="v4-telefonstrom" data-n={n}>
-      {maal.w > 0 && hjemme && !redusert && (
+    <div ref={ref} aria-hidden="true" className="pointer-events-none absolute inset-0 z-[3] overflow-hidden" data-testid="v4-telefonstrom" data-n={n} data-apnet={apnet ? '1' : '0'}>
+      {maal.w > 0 && hjemme && !redusert && direkte && !apnet && (
+        <Aapning X={X} Y={Y} fx={fx} fy={fy} B={B} maalW={maal.w} maalH={maal.h} smal={smal} adresse={adresse} />
+      )}
+      {maal.w > 0 && hjemme && !redusert && apnet && (
         <>
           {/* Lystråden fra skjermen opp til tråden — lysest ved kilden, tegnes én gang */}
           <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${maal.w} ${maal.h}`} preserveAspectRatio="none" style={{ opacity: inne ? 1 : 0, transition: `opacity 500ms ${EASE}` }}>
@@ -317,7 +396,7 @@ export default function Telefonstrom({ hjemme, redusert, smal, puls, adresse = '
                       const t0 = ny ? T_FORSTE + j * BOBLE_TAKT : 0;
                       return (
                         <Rad key={j} ny={ny} t0={t0}>
-                          <Boble c={c} m={m} ny={ny} t0={t0} fs={fs} bildePx={bildePx} avatarPx={avatarPx} adresse={adresse} dxy={dxy} visAvatar={j === 0 || m.chat[j - 1].fra !== c.fra} />
+                          <Boble c={c} m={m} ny={ny} t0={t0} fs={fs} bildePx={bildePx} avatarPx={avatarPx} adresse={adresse} dxy={dxy} visAvatar={j === 0 || m.chat[j - 1].fra !== c.fra} smal={smal} />
                         </Rad>
                       );
                     })}

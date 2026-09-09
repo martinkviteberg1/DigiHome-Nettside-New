@@ -450,9 +450,9 @@ function Veggkort({ hjemme, smal, k, adresse }) {
   );
 }
 
-function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, replay, zoom = false }) {
-  /* Direkte-modus: boligkortet står på veggen (Veggkort). */
-  if (direkte) return <Veggkort hjemme={hjemme} smal={smal} k={fort?.puls} adresse={adresse} />;
+function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, replay, zoom = false, apnet = true }) {
+  /* Direkte-modus: boligkortet står på veggen (Veggkort) — men først når appen er åpnet (apnet). */
+  if (direkte) return <Veggkort hjemme={hjemme && apnet} smal={smal} k={fort?.puls} adresse={adresse} />;
   /* (Teksten under gjelder Street View-flyten.) Én setning som står fra første bilde og aldri skifter, én linje under, en hårlinje
      og den stille meta-linjen (adresse · klokke · status). Det eneste som beveger seg er klokken, som følger samtalen
      på telefonen. Mindre og mer dempet enn en overskrift — veggen skal ikke konkurrere med ham og telefonen.
@@ -658,6 +658,15 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom =
     return () => window.clearTimeout(t);
   }, [direkte]);
   const hjemme = direkte ? direkteInne : hjemmeState;
+  /* Appen «åpnes»: Telefonstrom spiller pushvarselet på silhuetten først, og melder opp hit når han har åpnet (onApnet).
+     Da — ikke før — våkner veggen og samtalen. Ikke-direkte / redusert: åpen med en gang (ingen forspill). */
+  const [apnet, setApnet] = useState(false);
+  const onApnet = useCallback(() => setApnet(true), []);
+  useEffect(() => {
+    if (!direkte || redusert) { setApnet(true); return undefined; }
+    if (!hjemme) setApnet(false);
+    return undefined;
+  }, [direkte, redusert, hjemme]);
   /* Fortellingen starter idet videoen med eieren faktisk spiller — aldri over en frosset poster. Fallback etter 2,8 s
      (treg linje, sparemodus, video som ikke kan spille), så veggen aldri blir stående tom. */
   const [videoSpiller, setVideoSpiller] = useState(false);
@@ -669,7 +678,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom =
   }, [direkte, hjemme]);
   const onVideoSpiller = useCallback(() => setVideoSpiller(true), []);
   /* Fortellingen på veggen (kun direkte-modus) — og pulsen som driver telefonstrømmen i takt med den */
-  const fort = useFortelling(direkte && hjemme && (videoSpiller || ventetNok || redusert || !film?.hjemVideo), redusert);
+  const fort = useFortelling(direkte && hjemme && apnet && (videoSpiller || ventetNok || redusert || !film?.hjemVideo), redusert);
   useEffect(() => {
     if (!ferdig || !kanHjem) return undefined;
     if (redusert) { setHjemme(true); return undefined; }
@@ -765,10 +774,10 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom =
         <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.38) 0%, rgba(21,18,15,0.14) 40%, rgba(21,18,15,0.02) 62%, rgba(21,18,15,0.24) 100%)', opacity: inne ? 1 : 0, transition: `opacity ${hjemme ? 900 : 1400}ms ${EASE}` }} />
 
         {/* Det som skjer i appen mens han sitter der — kort som kommer opp av telefonen */}
-        <Telefonstrom hjemme={hjemme} redusert={redusert} smal={smal} puls={direkte ? fort.puls : undefined} adresse={adresse} />
+        <Telefonstrom hjemme={hjemme} redusert={redusert} smal={smal} puls={direkte ? fort.puls : undefined} adresse={adresse} direkte={direkte} onApnet={onApnet} />
 
         {/* ── Veggen: han hjemme. Fortellingen om hva DigiHome er står rett på den lyse veggen — ingen boks. ── */}
-        <Veggfortelling hjemme={hjemme} direkte={direkte} smal={smal} fort={fort} adresse={adresse} vist={vist} hvem={hvem} replay={replay} zoom={zoom} />
+        <Veggfortelling hjemme={hjemme} direkte={direkte} smal={smal} fort={fort} adresse={adresse} vist={vist} hvem={hvem} replay={replay} zoom={zoom} apnet={apnet} />
 
         {/* ── Dagen: ett panel. Alt som skjedde, i rekkefølge — og handlingen der hendelsen er. ── */}
         <div

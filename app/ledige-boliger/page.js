@@ -1,12 +1,14 @@
 import Link from 'next/link';
-import Header from '@/components/dh/Header';
-import Footer from '@/components/dh/Footer';
+import NavV4 from '@/components/forside/v4/NavV4';
+import FooterV4 from '@/components/forside/v4/FooterV4';
+import AvslutningSeksjon from '@/components/forside/v4/AvslutningSeksjon';
+import LedigeGrid, { Siffer } from '@/components/forside/v4/boliger/LedigeGrid';
+import { T, display } from '@/components/forside/v4/tokens';
 import { JsonLd } from '@/components/site/JsonLd';
 import { breadcrumbLd, webPageLd } from '@/lib/seo';
 import { site } from '@/lib/site';
-import ListingsGrid from '@/components/dh/ListingsGrid';
 import { getPublishedListingsResult } from '@/lib/listings-server';
-import { Home, ArrowUpRight, ShieldCheck } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 
 // LEDIGE BOLIGER — offentlig boligflate.
 //
@@ -28,95 +30,102 @@ import { Home, ArrowUpRight, ShieldCheck } from 'lucide-react';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Ledige leiligheter og boliger til leie i Bergen',
-  description: 'Ledige utleieboliger i Bergen forvaltet av DigiHome — kvalitetssikret utleie, digital kontrakt og depositumskonto. Se ledige leiligheter, meld interesse og bli varslet om nye boliger.',
+  title: 'Ledige boliger til leie',
+  description: 'Ledige utleieboliger forvaltet gjennom DigiHome — kredittsjekk, kontrakt med BankID og depositum i én løsning. Se ledige boliger, meld interesse og få beskjed før neste bolig annonseres.',
   alternates: { canonical: '/ledige-boliger' },
   twitter: { card: 'summary_large_image', images: ['/og/ledige-boliger.jpg'] },
   openGraph: {
-    title: 'Ledige boliger til leie i Bergen | DigiHome',
-    description: 'Se ledige utleieboliger i Bergen. Meld interesse direkte, eller bli varslet når noe nytt blir ledig.',
+    title: 'Ledige boliger til leie | DigiHome',
+    description: 'Se ledige utleieboliger. Meld interesse direkte, eller få beskjed før neste bolig annonseres.',
     url: `${site.url}/ledige-boliger`, type: 'website', locale: 'nb_NO',
     images: [{ url: site.url + '/og/ledige-boliger.jpg', width: 1200, height: 630 }],
   },
 };
 
+const HAIR = 'rgba(21,19,15,0.12)';
+const pen = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+
 export default async function LedigeBoligerPage() {
   const { ok: dbOk, listings } = await getPublishedListingsResult();
-  const vacant = listings.filter((l) => l.status === 'active');
-  const districts = [...new Set(vacant.map((l) => l.district).filter(Boolean))];
-  const amounts = vacant.map((l) => Number(l.rentAmount) || 0).filter(Boolean);
-  const from = amounts.length ? Math.min(...amounts) : null;
+  const ledige = listings.filter((l) => l.status === 'active');
+  const omrader = [...new Set(ledige.map((l) => l.district).filter(Boolean))];
+  const belop = ledige.map((l) => Number(l.rentAmount) || 0).filter(Boolean);
+  const fra = belop.length ? Math.min(...belop) : null;
+  const byer = [...new Set(ledige.map((l) => l.city).filter(Boolean))];
 
-  const itemList = vacant.length ? {
+  const itemList = ledige.length ? {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: 'Ledige boliger til leie i Bergen',
-    numberOfItems: vacant.length,
-    itemListElement: vacant.map((l, i) => ({
-      '@type': 'ListItem',
-      position: i + 1,
-      url: `${site.url}/ledige-boliger/${l.slug}`,
-      name: l.title,
-    })),
+    name: 'Ledige boliger til leie',
+    numberOfItems: ledige.length,
+    itemListElement: ledige.map((l, i) => ({ '@type': 'ListItem', position: i + 1, url: `${site.url}/ledige-boliger/${l.slug}`, name: l.title })),
   } : null;
 
+  /* Tre stille tall under overskriften — det boligsøkeren vil vite først */
+  const tallrad = [
+    ['Ledige nå', ledige.length ? String(ledige.length) : '—'],
+    ['Fra', fra ? <><Siffer v={pen(fra)} /><span className="text-[0.55em]" style={{ color: 'rgba(21,19,15,0.5)', letterSpacing: 0 }}> kr/mnd</span></> : '—'],
+    ['Områder', omrader.length ? String(omrader.length) : (byer.length ? String(byer.length) : '—')],
+  ];
+
   return (
-    <div className="min-h-screen bg-[#fdfcfb] text-[#1f1f1f]">
-      <Header />
+    <div className="min-h-screen overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="ledige-v4">
+      <NavV4 />
       <JsonLd data={breadcrumbLd([{ name: 'Ledige boliger', path: '/ledige-boliger' }])} />
       <JsonLd data={webPageLd({
-        name: 'Ledige boliger til leie i Bergen',
-        description: 'Ledige utleieboliger i Bergen forvaltet av DigiHome. Meld interesse direkte eller bli varslet om nye boliger.',
+        name: 'Ledige boliger til leie',
+        description: 'Ledige utleieboliger forvaltet gjennom DigiHome. Meld interesse direkte eller få beskjed før neste bolig annonseres.',
         path: '/ledige-boliger',
         type: 'CollectionPage',
       })} />
       {itemList && <JsonLd data={itemList} />}
 
-      <section className="mx-auto max-w-[1400px] px-6 pb-10 pt-32 sm:px-10 sm:pt-36 lg:px-16">
-        <div className="mb-4 inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-[#7c3aed]">
-          <Home className="h-3.5 w-3.5" /> Ledige boliger
-        </div>
-        <h1 className="max-w-[24ch] text-[36px] font-bold leading-[1.05] tracking-[-0.025em] sm:text-[52px]" style={{ fontFamily: 'var(--font-heading)' }}>
-          Ledige boliger til leie i Bergen
-        </h1>
-        <p className="mt-5 max-w-[62ch] text-[16px] leading-relaxed text-[#4a4a4a] sm:text-[18px]">
-          {vacant.length > 0
-            ? <>Vi forvalter {vacant.length === 1 ? 'denne boligen' : `${vacant.length} ledige boliger`}{districts.length ? ` i ${districts.slice(0, 3).join(', ')}${districts.length > 3 ? ' med flere' : ''}` : ' i Bergen'}{from ? `, fra ${String(from).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0')} kr/mnd` : ''}. Meld interesse direkte — vi svarer samme dag.</>
-            : dbOk
-              ? <>Alle boligene våre er utleid akkurat nå. Vi får nye boliger fortløpende i Bergen, og varsler deg gjerne før de blir annonsert.</>
-              : <>Vi fikk ikke hentet boligene akkurat nå. Last siden på nytt om et øyeblikk — eller legg inn e-posten din, så varsler vi deg om ledige boliger i Bergen.</>}
-        </p>
-        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13.5px] text-[#78726a]">
-          <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-[#7c3aed]" /> Kredittsjekk og digital kontrakt</span>
-          <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-[#7c3aed]" /> Depositumskonto i bank</span>
-          <Link href="/bli-leietaker" className="inline-flex items-center gap-1 font-semibold text-[#7c3aed] hover:underline">Slik leier du hos oss <ArrowUpRight className="h-3.5 w-3.5" /></Link>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1400px] px-6 pb-20 sm:px-10 lg:px-16 lg:pb-28">
-        <ListingsGrid listings={listings} dbOk={dbOk} />
-      </section>
-
-      <section className="mx-auto max-w-[1400px] px-6 pb-20 sm:px-10 lg:px-16">
-        <div className="rounded-[30px] bg-[#0a0a0a] p-8 text-white sm:p-12">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#d298ff]">Er du utleier?</p>
-              <h2 className="mt-3 max-w-[28ch] text-[26px] font-bold leading-[1.12] tracking-[-0.02em] sm:text-[34px]" style={{ fontFamily: 'var(--font-heading)' }}>
-                Vi finner leietakeren — og håndterer alt etterpå
-              </h2>
-              <p className="mt-4 max-w-[56ch] text-[15px] leading-relaxed text-white/70">
-                Annonsering, visning, kredittsjekk, kontrakt, depositum og oppfølging. Du får leien inn på konto og slipper alt arbeidet.
+      <main>
+        {/* Hero: label, én påstand i display, én setning — og tre tall på en hårlinje. Ingen by i overskriften:
+            boligene sier selv hvor de er. */}
+        <section className="mx-auto w-full max-w-[1360px] px-5 pb-10 pt-10 sm:px-8 sm:pt-16 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-14 lg:pt-20" data-testid="ledige-hero">
+          <div className="grid gap-8 lg:grid-cols-12 lg:items-end lg:gap-10">
+            <div className="lg:col-span-7">
+              <p className="dh-cover-inn text-[14.5px] font-medium" style={{ color: 'rgba(21,19,15,0.55)' }}>Ledige boliger</p>
+              <h1 className="dh-cover-inn mt-4 text-[clamp(48px,7vw,112px)]" style={{ ...display, color: T.ink, animationDelay: '.04s' }} data-testid="ledige-h1">
+                Ledig nå<span style={{ color: T.lilla }}>.</span>
+              </h1>
+            </div>
+            <div className="lg:col-span-4 lg:col-start-9 lg:pb-3">
+              <p className="dh-cover-inn max-w-[40ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: 'rgba(21,19,15,0.64)', animationDelay: '.1s' }} data-testid="ledige-ingress">
+                {ledige.length > 0
+                  ? <>Boliger som leies ut gjennom DigiHome. Kredittsjekk, kontrakt med BankID og depositum i én løsning — meld interesse direkte, så svarer vi samme dag.</>
+                  : dbOk
+                    ? <>Alt er utleid akkurat nå. Nye boliger kommer fortløpende — legg inn e-posten din, så sier vi fra før neste annonseres.</>
+                    : <>Vi fikk ikke hentet boligene akkurat nå. Last siden på nytt om et øyeblikk — eller legg inn e-posten din, så sier vi fra når noe blir ledig.</>}
+              </p>
+              <p className="dh-cover-inn mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14.5px]" style={{ animationDelay: '.16s' }}>
+                <Link href="/bli-leietaker" className="inline-flex items-center gap-1.5 underline decoration-[#15130F]/25 underline-offset-4 transition-colors hover:decoration-[#15130F]" style={{ color: T.ink }} data-testid="ledige-slik">Slik leier du gjennom oss <ArrowUpRight className="h-4 w-4" strokeWidth={1.6} /></Link>
               </p>
             </div>
-            <Link href="/bli-utleier" className="inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-white px-6 text-[15px] font-semibold text-[#0a0a0a] transition-transform hover:scale-[1.02]">
-              Snakk med oss <ArrowUpRight className="h-4 w-4" />
-            </Link>
           </div>
-        </div>
-      </section>
+          <dl className="dh-cover-inn mt-10 grid grid-cols-3 gap-6 border-t pt-5 sm:mt-14 lg:gap-10" style={{ borderColor: HAIR, animationDelay: '.22s' }} data-testid="ledige-tall">
+            {tallrad.map(([k, v]) => (
+              <div key={k}>
+                <dt className="text-[13px]" style={{ color: 'rgba(21,19,15,0.5)' }}>{k}</dt>
+                <dd className="mt-1.5 text-[clamp(22px,2.4vw,34px)] tabular-nums" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.ink }}>{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
 
-      <Footer />
+        <section className="mx-auto w-full max-w-[1360px] px-5 pb-20 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-28">
+          <LedigeGrid listings={listings} dbOk={dbOk} />
+        </section>
+
+        {/* Utleier? Samme avslutning som resten av siden — én setning, én handling. */}
+        <AvslutningSeksjon
+          tittel="Har du en bolig å leie ut"
+          under="Vi finner leietakeren og tar alt etterpå — eller du gjør det selv, med systemet som tar rutinen."
+          handling={{ knapp: { href: '/bli-utleier', tekst: 'Bli utleier' }, lenke: { href: '/priser', tekst: 'Se priser' } }}
+        />
+      </main>
+      <FooterV4 />
     </div>
   );
 }
