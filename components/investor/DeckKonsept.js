@@ -615,6 +615,24 @@ function Person({ p, liten = false, rolle }) {
     </div>
   );
 }
+/* Stort, redaksjonelt portrettkort: foto med navn/rolle brent inn nederst + én drepende referanse under. */
+function PortrettKort({ p, rolle, cred }) {
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-[20px] bg-white" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 24px 50px -28px rgba(21,19,15,0.3)` }}>
+      <div className="relative aspect-[4/5] w-full overflow-hidden" style={{ background: T.charcoal }}>
+        {p.img
+          ? <img src={p.img} alt={p.n} className="h-full w-full object-cover" style={{ objectPosition: p.pos }} loading="lazy" />
+          : <span className="flex h-full w-full items-center justify-center text-[28px] font-semibold" style={{ color: T.offwhite }}>{p.n.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join('')}</span>}
+        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-2/5" style={{ background: 'linear-gradient(180deg, transparent, rgba(17,15,12,0.72))' }} />
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <p className="text-[16.5px] font-semibold leading-tight text-white">{p.n}</p>
+          <p className="mt-0.5 text-[12px] font-medium tracking-[0.01em]" style={{ color: 'rgba(255,255,255,0.85)' }}>{rolle || p.r}</p>
+        </div>
+      </div>
+      <p className="flex-1 px-4 py-3.5 text-[12.5px] leading-[1.5]" style={{ color: DIM }}>{cred || p.s}</p>
+    </div>
+  );
+}
 function OrgKart({ aarsverkStart, aarsverkSlutt, utviklingPerMnd, enheterPerAarsverk }) {
   const Boks = ({ children, className = '', tone = 'lys', testid }) => (
     <div className={`rounded-[20px] p-4 sm:p-5 ${className}`} data-testid={testid} style={tone === 'mork' ? { background: T.charcoal, color: T.offwhite } : tone === 'lilla' ? { background: '#F6F0FB', boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.22)' } : { background: '#FBFAF8', boxShadow: `inset 0 0 0 1px ${HAIR}` }}>{children}</div>
@@ -1476,6 +1494,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-spk-skinne { transform: scaleX(0); transform-origin: left; }
         .deck-side[data-aktiv="1"] .deck-spk-skinne { animation: deck-spk-skinne 1.1s ${EASE} .5s both; }
         @keyframes deck-spk-skinne { to { transform: scaleX(1); } }
+        .deck-side[data-aktiv="1"] .deck-live-dot { animation: deck-live 1.8s ${EASE} infinite; }
+        @keyframes deck-live { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.6); } }
 
         .deck-side .deck-linje { --l: 0; transition: transform 700ms ${EASE} 500ms; }
         .deck-side[data-aktiv="1"] .deck-linje { --l: 1; }
@@ -1547,7 +1567,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-side[data-aktiv="1"] .deck-cover-strek { transform: scaleX(1); }
         /* Coverens scene: forsidens HeroStage, men som sceneteppe — kant til kant, uten kortets radius/skygge/høydetak. */
         .deck-cover-scene .dh-hero-scene { max-height: none !important; border-radius: 0 !important; box-shadow: none !important; }
-        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring, .deck-hjul-rot, .deck-hjul-tegn, .deck-hjul-orbit, .deck-hjul-lisens, .deck-spk-knott, .deck-spk-skinne { animation: none !important; } .deck-hjul-tegn { stroke-dashoffset: 0 !important; } .deck-hjul-chev, .deck-hjul-orbit { opacity: 1 !important; } .deck-spk-skinne { transform: scaleX(1) !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
+        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring, .deck-hjul-rot, .deck-hjul-tegn, .deck-hjul-orbit, .deck-hjul-lisens, .deck-spk-knott, .deck-spk-skinne, .deck-live-dot { animation: none !important; } .deck-hjul-tegn { stroke-dashoffset: 0 !important; } .deck-hjul-chev, .deck-hjul-orbit { opacity: 1 !important; } .deck-spk-skinne { transform: scaleX(1) !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
         @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
 
@@ -1859,30 +1879,78 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
 
       {/* 05 · Organisasjon */}
       <Side id="org" pos={pos('org')} aktiv={er('org')} bred>
-        <Kapittel nr={kap('org')} navn="Organisasjon" under="felles styre · ledelse · to selskaper" />
-        <Inn i={1}><H2 maks="18ch">Bygget av utleiere, for utleiere.</H2></Inn>
-        <div className="mt-8"><OrgKart aarsverkStart={aarsverk(0)} aarsverkSlutt={aarsverk(N - 1)} utviklingPerMnd={basisT ? basisT.kost.utviklingFast : 0} enheterPerAarsverk={basisF.enheterPerAarsverk} /></div>
-        <Inn i={6}>
-          <div className="mt-6 grid gap-x-8 gap-y-3 text-[13px] leading-[1.5] sm:grid-cols-2 lg:grid-cols-3" style={{ color: DIM }}>
-            {TEAM.map((p) => <p key={p.n}><b style={{ color: T.ink }}>{p.n.split(' ')[0]}</b> – {p.s}</p>)}
+        <Kapittel nr={kap('org')} navn="Organisasjon" under="et lite, senior team som allerede har bygget det" />
+        <div className="mt-2 grid gap-8 lg:grid-cols-12 lg:gap-12">
+          <div className="lg:col-span-4">
+            <Inn i={1}><H2 maks="13ch">Bygget av utleiere, for utleiere.</H2></Inn>
+            <Ingress i={2} maks="42ch">Vi bygger ikke for et marked vi har lest om — vi bygger for oss selv. Plattformen drifter allerede {nb(enheterIDag)} boliger på signerte kontrakter.</Ingress>
+            <Inn i={3} className="mt-8 space-y-3.5">
+              {[['Operatør + AI + jus', 'en sjelden kombinasjon i ett lite team'], ['Allerede bygget og i drift', 'ikke en idé på papir'], ['Felles styre', 'ett konsern, to selskaper — én retning']].map(([t, u]) => (
+                <div key={t} className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full" style={{ background: 'rgba(122,63,168,0.1)', color: LILLA_M }}><Check className="h-3.5 w-3.5" strokeWidth={2.6} /></span>
+                  <span><span className="text-[14.5px] font-semibold" style={{ color: T.ink }}>{t}</span><span className="ml-1.5 text-[13px]" style={{ color: SVAK }}>· {u}</span></span>
+                </div>
+              ))}
+            </Inn>
           </div>
-        </Inn>
+          <div className="lg:col-span-8">
+            <div className="grid gap-5 sm:grid-cols-3" data-testid="deck-org-portretter">
+              <Inn i={2}><PortrettKort p={TEAM[0]} rolle="Daglig leder" cred="Eiendomsmegler med seks år i DNB. Leder kundeakkvisisjon og forvaltning — og sitter i styret." /></Inn>
+              <Inn i={3}><PortrettKort p={TEAM[1]} rolle="Produktsjef" cred="Grunnla BnbSpesialisten, en av Norges første proffe utleieforvaltere. 10 år i Adonis frem mot exit." /></Inn>
+              <Inn i={4}><PortrettKort p={TEAM[3]} rolle="AI-rådgiver" cred="Analytiker i DNB, siviløkonom fra NHH. Bygger og automatiserer plattformen med AI-drevet utvikling." /></Inn>
+            </div>
+            <Inn i={5} className="mt-5 flex flex-col gap-4 rounded-[18px] px-6 py-5 sm:flex-row sm:items-center sm:justify-between" style={{ background: '#FBFAF8', boxShadow: `inset 0 0 0 1px ${HAIR}` }} data-testid="deck-org-styre">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: SVAK }}>Felles styre — Digihome AS og Digihome Tech AS</p>
+                <p className="mt-1.5 text-[13.5px] leading-[1.5]" style={{ color: DIM }}><b style={{ color: T.ink }}>Erik Hoffmann-Dahl</b> (styreleder, advokat) · Jens-Petter Glittenberg · Sarah Sleeman · Martin C. Kviteberg.</p>
+              </div>
+              <div className="flex -space-x-2.5">
+                {[TEAM[2], TEAM[4], TEAM[0], TEAM[1]].map((pp) => (
+                  <span key={pp.n} className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full" style={{ boxShadow: `0 0 0 2px #FBFAF8, 0 0 0 3px ${HAIR}`, background: pp.img ? undefined : T.charcoal }}>
+                    {pp.img ? <img src={pp.img} alt={pp.n} className="h-full w-full object-cover" style={{ objectPosition: pp.pos }} loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[12px] font-semibold" style={{ color: T.offwhite }}>{pp.n.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join('')}</span>}
+                  </span>
+                ))}
+              </div>
+            </Inn>
+          </div>
+        </div>
       </Side>
 
       {/* 06 · Hvor vi står */}
-      <Side id="staar" pos={pos('staar')} aktiv={er('staar')}>
-        <Kapittel nr={kap('staar')} navn="Hvor vi står" under="fakta fra plattformen" />
-        <Todelt venstre={<>
-          <Inn i={1}><H2 maks="12ch">Vi starter ikke fra null.</H2></Inn>
-          <Ingress>Tallene oppdateres fra signerte kontrakter når decket åpnes. Alt som følger er en plan bygget på disse – og på drivere du kan skru på selv.</Ingress>
-        </>}>
-          <div className="grid gap-x-10 gap-y-10 sm:grid-cols-2">
-            <Inn i={2} className="border-t pt-5" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={enheterIDag} format={(v) => nb(v)} /><p className="mt-3 text-[14px] leading-[1.45]" style={{ color: DIM }}>enheter under forvaltning – signerte leiekontrakter</p></Inn>
-            <Inn i={3} className="border-t pt-5" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={honorarIDag * 12} /><p className="mt-3 text-[14px] leading-[1.45]" style={{ color: DIM }}>årlig honorarinntekt fra dagens portefølje (eks. mva)</p></Inn>
-            <Inn i={4} className="border-t pt-5" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={enheterIDag * (basisT?.forvaltning?.pris || basisF.systemPerEnhet) * 12} /><p className="mt-3 text-[14px] leading-[1.45]" style={{ color: DIM }}>årlig lisensinntekt i Tech fra forvaltningen i dag</p></Inn>
-            <Inn i={5} className="border-t pt-5" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={plEnheterIDag} format={(v) => nb(v)} /><p className="mt-3 text-[14px] leading-[1.45]" style={{ color: DIM }}>selvbetjente enheter på plattformen{bedriftIDag ? ` · ${nb(bedriftIDag)} eiendomsselskaper` : ''} – oppside, ikke forutsetning</p></Inn>
+      <Side id="staar" pos={pos('staar')} aktiv={er('staar')} bred>
+        <Kapittel nr={kap('staar')} navn="Hvor vi står" under="live fra plattformen — ikke løfter" />
+        <div className="mt-2 grid gap-8 lg:grid-cols-12 lg:items-center lg:gap-14">
+          <div className="lg:col-span-5">
+            <Inn i={1}>
+              <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ background: 'rgba(122,63,168,0.1)', color: LILLA_M }}>
+                <span className="deck-live-dot h-2 w-2 rounded-full" style={{ background: LILLA_M }} /> Live · signerte kontrakter
+              </span>
+            </Inn>
+            <Inn i={2} className="mt-4"><H2 maks="12ch">Vi starter ikke fra null.</H2></Inn>
+            <Ingress i={3} maks="44ch">Tallene hentes fra signerte leiekontrakter når decket åpnes. Alt som følger er en plan bygget på disse — og på drivere du kan skru på selv.</Ingress>
           </div>
-        </Todelt>
+          <div className="lg:col-span-7">
+            <Inn i={2}>
+              <div className="rounded-[22px] p-6 sm:p-7" style={{ background: '#F6F0FB', boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.22)' }} data-testid="deck-staar-hero">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <Tall aktiv={er('staar')} verdi={enheterIDag} format={(v) => nb(v)} storrelse="text-[64px] lg:text-[84px]" farge={LILLA_M} />
+                    <p className="mt-1 text-[15px] font-medium" style={{ color: T.ink }}>boliger under forvaltning</p>
+                  </div>
+                  <p className="mb-2 text-right text-[12.5px] font-medium leading-[1.4]" style={{ color: SVAK }}>signerte<br />leiekontrakter</p>
+                </div>
+              </div>
+            </Inn>
+            <div className="mt-5 grid gap-x-8 gap-y-6 sm:grid-cols-3">
+              <Inn i={3} className="border-t pt-4" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={honorarIDag * 12} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>årlig honorarinntekt i dag (eks. mva)</p></Inn>
+              <Inn i={4} className="border-t pt-4" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={enheterIDag * (basisT?.forvaltning?.pris || basisF.systemPerEnhet) * 12} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>årlig lisensinntekt i Tech fra forvaltningen</p></Inn>
+              <Inn i={5} className="border-t pt-4" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={plEnheterIDag} format={(v) => nb(v)} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>selvbetjente enheter{bedriftIDag ? ` · ${nb(bedriftIDag)} selskaper` : ''} — oppside</p></Inn>
+            </div>
+            <Inn i={6} className="mt-6 flex items-center gap-2 text-[13px]" style={{ color: SVAK }}>
+              <ArrowRight className="h-4 w-4" style={{ color: LILLA_M }} /> Dette er utgangspunktet — planen bygger videre herfra.
+            </Inn>
+          </div>
+        </div>
       </Side>
 
       {/* 07 · Unit economics (mørk) */}
