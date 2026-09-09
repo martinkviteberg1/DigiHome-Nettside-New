@@ -21,6 +21,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown, ArrowRight, ArrowUp, Download, Lock, RotateCcw, Send, Check, Megaphone, Home, Building2, Link2, List, X, StickyNote, Share2, Copy, Trash2, Eye, KeyRound, Ban, ChevronDown } from 'lucide-react';
 import { T, display, EASE, DIM, SVAK, HAIR } from '@/components/forside/v4/tokens';
 import HeroScene from '@/components/forside/v4/HeroScene';
+import HeroStage, { FILM as HERO_FILM } from '@/components/forside/v4/HeroStage';
 import {
   beregnInvestorModell, beregnTech, beregnKonsernSammenstilling, rensModellDrivere, rensTechDrivere, rensTechFakta, skalerVekst,
 } from '@/lib/budsjett-modell';
@@ -1019,6 +1020,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-side[data-aktiv="1"] .deck-cover-foto { transform: scaleX(-1) scale(1.08); }
         .deck-cover-strek { transform: scaleX(0); transform-origin: 0 50%; transition: transform 1200ms ${EASE} 900ms; }
         .deck-side[data-aktiv="1"] .deck-cover-strek { transform: scaleX(1); }
+        /* Coverens scene: forsidens HeroStage, men som sceneteppe — kant til kant, uten kortets radius/skygge/høydetak. */
+        .deck-cover-scene .dh-hero-scene { max-height: none !important; border-radius: 0 !important; box-shadow: none !important; }
         @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk { animation: none; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
         @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
@@ -1087,52 +1090,44 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </div>
 
-      {/* 01 · Forside — coveren. Mørk, kinematisk: merkets signaturbilde (eieren hjemme om kvelden) bak et rolig sløret
-          lys, løftet med et varmt lilla åndedrag. Løftet avsløres ord for ord, så én tesesetning, så «kort fortalt».
-          Innholdsfortegnelsen står som i et magasin til høyre. Resten av decket er lyst — coveren er sceneteppet. */}
+      {/* 01 · Forside — coveren. Full-bleed video (sofa-loopen, speilvendt så han sitter til høyre) bak et rolig sløret
+          lys — og oppå: pushvarselet som åpner appen + chat-boblene (gjenbruk av Telefonstrom, speilvendt). Ikke veggkort,
+          ikke kart. Løftet står til venstre. Ingen innholdsfortegnelse. Resten av decket er lyst — coveren er sceneteppet. */}
       <Side id="forside" pos={pos('forside')} aktiv={er('forside')} morkt bred>
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden" data-testid="deck-cover-bak">
-          <img src="/v4/video/eier-hjemme-loop-poster.webp" alt="" className="deck-cover-foto absolute inset-0 h-full w-full object-cover" style={{ objectPosition: '38% 50%' }} decoding="async" />
-          {/* Sløret lys: mørkt der teksten står (venstre/bunn), åpent mot scenen (høyre) */}
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(20,17,14,0.97) 0%, rgba(20,17,14,0.92) 30%, rgba(20,17,14,0.66) 54%, rgba(20,17,14,0.32) 78%, rgba(20,17,14,0.22) 100%)' }} />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(20,17,14,0.42) 0%, rgba(20,17,14,0) 26%, rgba(20,17,14,0.12) 70%, rgba(20,17,14,0.62) 100%)' }} />
+          {/* Selve forsidescenen, uendret — video-loopen med pushvarselet som åpner appen og chat-boblene. Uten kart/adressekort. */}
+          <div className="deck-cover-scene absolute inset-0 flex items-center" data-testid="deck-cover-scene">
+            <div className="w-full"><HeroStage eiendom={null} bilde="stue" film={HERO_FILM} utenVegg speil /></div>
+          </div>
+          {/* Sløret lys: mørkt der teksten står (venstre/bunn), åpent mot ham og boblene (høyre) */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(20,17,14,0.95) 0%, rgba(20,17,14,0.88) 24%, rgba(20,17,14,0.52) 48%, rgba(20,17,14,0.16) 72%, rgba(20,17,14,0.08) 100%)' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(20,17,14,0.42) 0%, rgba(20,17,14,0) 24%, rgba(20,17,14,0.06) 68%, rgba(20,17,14,0.60) 100%)' }} />
           {/* Et varmt lilla åndedrag øverst til høyre — merkets farge i rommet */}
-          <div className="absolute" style={{ right: '-8%', top: '-24%', width: '58%', height: '86%', background: 'radial-gradient(circle, rgba(212,150,255,0.15) 0%, rgba(212,150,255,0.05) 40%, rgba(212,150,255,0) 66%)' }} />
+          <div className="absolute" style={{ right: '-8%', top: '-24%', width: '58%', height: '86%', background: 'radial-gradient(circle, rgba(212,150,255,0.13) 0%, rgba(212,150,255,0.045) 40%, rgba(212,150,255,0) 66%)' }} />
         </div>
 
-        <div className="relative grid items-end gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:gap-16">
-          <div>
-            <Inn i={0} className="flex items-center gap-3">
-              <span className="text-[14px] font-semibold" style={{ ...display, letterSpacing: '-0.01em', color: T.offwhite }}>DigiHome</span>
-              <span className="deck-cover-strek h-px w-10" style={{ background: 'rgba(244,241,234,0.35)' }} />
-              <Etikett farge={LYS_SVAK}>Investordeck</Etikett>
-            </Inn>
-            <Inn i={1}><Etikett farge={LYS_SVAK} className="mt-6">{investor ? `Utarbeidet for ${investor.label}` : data.presenter ? 'Presenter' : 'Konfidensielt'} · {new Date().toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</Etikett></Inn>
-            <h1 className="mt-5 max-w-[11ch] text-[58px] sm:text-[86px] lg:text-[112px]" style={{ ...display, color: T.offwhite, letterSpacing: '-0.035em', lineHeight: 0.96, textShadow: '0 2px 40px rgba(0,0,0,0.35)' }}>
-              {['Utleie', 'på', 'autopilot'].map((o, i) => <span key={o} className={`deck-ord ${i < 2 ? 'mr-[0.22em]' : ''}`} style={{ '--o': i }}>{o}{i === 2 ? <span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span> : null}</span>)}
-            </h1>
-            <Inn i={3}><p className="mt-7 max-w-[48ch] text-[17px] leading-[1.5] sm:text-[19px]" style={{ color: LYS }}>Programvaren som driver utleieboligen – for private huseiere og for eiendomsselskaper med hele porteføljer. Og forvaltningsselskapet som gjør jobben for dem som ikke vil. To selskaper, én plattform – og en plan for de neste {N} månedene som er levende.</p></Inn>
-            <div className="mt-10 grid max-w-[840px] grid-cols-2 gap-x-8 gap-y-6 border-t pt-6 sm:grid-cols-4" style={{ borderColor: 'rgba(244,241,234,0.18)' }} data-testid="deck-kort-fortalt">
-              {[
-                [`${nb(enheterIDag)} → ${nb(Math.round(mF.enheter[N - 1] || 0))}`, 'enheter under forvaltning, i dag → ' + mndLabel(plan.startYm, N - 1, false)],
-                [mnok(kapBuffer), 'henter vi – dekker kapitalbehovet' + (skattPaa ? ' etter skatt' : '') + ' med 30 % buffer'],
-                [be(sK.breakEvenIdx), 'konsernet går i pluss'],
-                [mnok(sK.arrExit), 'årlig omsetningstakt ved slutten av perioden'],
-              ].map(([v, u], i) => (
-                <div key={u} className="deck-inn" style={{ '--i': 4 + i * 0.6 }}><p className="text-[24px] sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.offwhite }}>{v}</p><p className="mt-2 text-[12px] leading-[1.4]" style={{ color: LYS_SVAK }}>{u}</p></div>
-              ))}
-            </div>
-            <Inn i={7} className="deck-skjul-print mt-10 flex items-center gap-2 text-[12px] font-medium" style={{ color: LYS_SVAK }}>Bla, eller bruk piltastene <ChevronDown className="deck-nikk h-3.5 w-3.5" /></Inn>
-          </div>
-          <Inn i={5} className="deck-skjul-print hidden lg:block">
-            <p className="text-[12px] font-medium" style={{ color: LYS_SVAK }}>Innhold</p>
-            <ol className="mt-2 border-t" style={{ borderColor: 'rgba(244,241,234,0.16)' }}>
-              {KAPITLER.slice(1).map((c, i) => (
-                <li key={c.id}><button onClick={() => gaaTil(i + 1)} className="group flex w-full items-baseline gap-3 border-b py-[5px] text-left text-[13px] transition-colors hover:text-[#D496FF]" style={{ borderColor: 'rgba(244,241,234,0.12)', color: T.offwhite }}><span className="w-6 text-[11.5px] tabular-nums" style={{ color: T.lilla }}>{String(i + 2).padStart(2, '0')}</span>{c.navn}<ArrowRight className="ml-auto h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" /></button></li>
-              ))}
-            </ol>
-            <p className="mt-3 text-[11.5px]" style={{ color: LYS_SVAK }}>{plan.navn}{techPlan ? ` · ${techPlan.navn}` : ''}</p>
+        <div className="relative max-w-[720px]">
+          <Inn i={0} className="flex items-center gap-3">
+            <span className="text-[14px] font-semibold" style={{ ...display, letterSpacing: '-0.01em', color: T.offwhite }}>DigiHome</span>
+            <span className="deck-cover-strek h-px w-10" style={{ background: 'rgba(244,241,234,0.35)' }} />
+            <Etikett farge={LYS_SVAK}>Investordeck</Etikett>
           </Inn>
+          <Inn i={1}><Etikett farge={LYS_SVAK} className="mt-6">{investor ? `Utarbeidet for ${investor.label}` : data.presenter ? 'Presenter' : 'Konfidensielt'} · {new Date().toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</Etikett></Inn>
+          <h1 className="mt-5 max-w-[10ch] text-[56px] sm:text-[84px] lg:text-[108px]" style={{ ...display, color: T.offwhite, letterSpacing: '-0.035em', lineHeight: 0.96, textShadow: '0 2px 40px rgba(0,0,0,0.35)' }}>
+            {['Utleie', 'på', 'autopilot'].map((o, i) => <span key={o} className={`deck-ord ${i < 2 ? 'mr-[0.22em]' : ''}`} style={{ '--o': i }}>{o}{i === 2 ? <span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span> : null}</span>)}
+          </h1>
+          <Inn i={3}><p className="mt-7 max-w-[46ch] text-[16px] leading-[1.5] sm:text-[18px]" style={{ color: LYS }}>Programvaren som driver utleieboligen – for private huseiere og for eiendomsselskaper med hele porteføljer. Og forvaltningsselskapet som gjør jobben for dem som ikke vil. To selskaper, én plattform.</p></Inn>
+          <div className="mt-9 grid max-w-[620px] grid-cols-2 gap-x-8 gap-y-5 border-t pt-6 sm:grid-cols-4" style={{ borderColor: 'rgba(244,241,234,0.18)' }} data-testid="deck-kort-fortalt">
+            {[
+              [`${nb(enheterIDag)} → ${nb(Math.round(mF.enheter[N - 1] || 0))}`, 'enheter, i dag → ' + mndLabel(plan.startYm, N - 1, false)],
+              [mnok(kapBuffer), 'henter vi – kapitalbehov' + (skattPaa ? ' etter skatt' : '') + ' + 30 % buffer'],
+              [be(sK.breakEvenIdx), 'konsernet går i pluss'],
+              [mnok(sK.arrExit), 'årlig omsetningstakt ved periodeslutt'],
+            ].map(([v, u], i) => (
+              <div key={u} className="deck-inn" style={{ '--i': 4 + i * 0.6 }}><p className="text-[22px] sm:text-[26px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.offwhite }}>{v}</p><p className="mt-2 text-[12px] leading-[1.4]" style={{ color: LYS_SVAK }}>{u}</p></div>
+            ))}
+          </div>
+          <Inn i={7} className="deck-skjul-print mt-9 flex items-center gap-2 text-[12px] font-medium" style={{ color: LYS_SVAK }}>Bla, eller bruk piltastene <ChevronDown className="deck-nikk h-3.5 w-3.5" /></Inn>
         </div>
       </Side>
 

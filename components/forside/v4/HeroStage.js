@@ -547,7 +547,7 @@ function Veggfortelling({ hjemme, direkte, smal, fort, adresse, vist, hvem, repl
 
 /* zoom: scenen ligger i HeroZoom (sticky, fullskjerm) og beskjæres med clip-path fra kort til hele flaten —
    verdiene kommer som CSS-variabler (--dh-ix/--dh-iy/--dh-r) fra rammen rundt. Kun lg+. */
-export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom = false }) {
+export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom = false, utenVegg = false, speil = false }) {
   const ref = useRef(null);
   const figRef = useRef(null);
   const smal = useSmal();
@@ -763,6 +763,7 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom =
         className={`dh-hero-scene relative w-full overflow-hidden rounded-[20px] sm:rounded-[24px] ${zoom ? 'dh-zoom-scene' : ''}`}
         style={{ background: T.charcoal, boxShadow: '0 0 0 1px rgba(21,19,15,0.08)', opacity: skifter ? 0 : 1, transition: `opacity 320ms ${EASE}` }}
         data-zoom={zoom ? '1' : '0'}
+        data-speil={speil ? '1' : '0'}
         role="group"
         aria-label={direkte ? `Animert eksempel: eieren hjemme i sofaen mens DigiHome håndterer ${adresse} — annonse, kontrakt, husleie og drift går av seg selv; han godkjenner resten.` : `Animert eksempel: en dag i ${adresse} med DigiHome — husleie registrert, kontrakt signert, et spørsmål fra leietaker besvart fra kontrakten, og et varmtvannsproblem løst med én godkjenning fra eier.`}
         data-testid="v4-scene"
@@ -774,11 +775,11 @@ export default function HeroStage({ eiendom, bilde = 'stue', film = FILM, zoom =
         <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.38) 0%, rgba(21,18,15,0.14) 40%, rgba(21,18,15,0.02) 62%, rgba(21,18,15,0.24) 100%)', opacity: inne ? 1 : 0, transition: `opacity ${hjemme ? 900 : 1400}ms ${EASE}` }} />
 
         {/* Det som skjer i appen mens han sitter der — kort som kommer opp av telefonen */}
-        <Telefonstrom hjemme={hjemme} redusert={redusert} smal={smal} puls={direkte ? fort.puls : undefined} adresse={adresse} direkte={direkte} onApnet={onApnet} />
+        <Telefonstrom hjemme={hjemme} redusert={redusert} smal={smal} puls={direkte ? fort.puls : undefined} adresse={adresse} direkte={direkte} onApnet={onApnet} speil={speil} />
 
-        {/* ── Veggen: han hjemme. Fortellingen om hva DigiHome er står rett på den lyse veggen — ingen boks. ── */}
-        <Veggfortelling hjemme={hjemme} direkte={direkte} smal={smal} fort={fort} adresse={adresse} vist={vist} hvem={hvem} replay={replay} zoom={zoom} apnet={apnet} />
-
+        {/* ── Veggen: han hjemme. Fortellingen om hva DigiHome er står rett på den lyse veggen — ingen boks. ──
+            utenVegg: coveren i investordecket gjenbruker scenen, men uten kart/adressekort — bare video + samtale. */}
+        {!utenVegg && <Veggfortelling hjemme={hjemme} direkte={direkte} smal={smal} fort={fort} adresse={adresse} vist={vist} hvem={hvem} replay={replay} zoom={zoom} apnet={apnet} />}
         {/* ── Dagen: ett panel. Alt som skjedde, i rekkefølge — og handlingen der hendelsen er. ── */}
         <div
           className="absolute rounded-[18px] sm:rounded-[20px]"

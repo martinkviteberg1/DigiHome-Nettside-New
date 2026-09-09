@@ -1094,6 +1094,15 @@ html.dh-nav-klar [data-testid="v4-nav"] { background-color: transparent; border-
 .dh-hero-hjem-ramme { transform-origin: 30% 100%; }
 @media (max-width: 639px) { .dh-hero-hjem-ramme { transform: scale(1.26); } }
 
+/* Speilvendt scene (investordeckets forside): virkeligheten (video/foto) speiles vannrett så personen står til
+   HØYRE for løftet. Kun mediet snus — overlagene (samtalen fra telefonen) regner selv om via `speil`-flagget, så
+   tekst og bobler aldri blir speilvendt. Gated på data-speil="1" → forsidens hero (uten flagg) er urørt.
+   Descendant-selektor på rammen + direkte-barn på de frittstående mediene unngår dobbel speiling. */
+.dh-hero-scene[data-speil="1"] .dh-hero-hjem-ramme { transform: scaleX(-1); transform-origin: 50% 50%; }
+.dh-hero-scene[data-speil="1"] > .dh-hero-hjem,
+.dh-hero-scene[data-speil="1"] > [data-testid="v4-film"] { transform: scaleX(-1); transform-origin: 50% 50%; }
+@media (max-width: 639px) { .dh-hero-scene[data-speil="1"] .dh-hero-hjem-ramme { transform: scaleX(-1) scale(1.26); transform-origin: 70% 100%; } }
+
 /* Heroens veggfortelling (direkte): filmatisk toning. Inn: fra svak uskarphet og et lite løft; ut: rolig bort oppover.
    Under 640 px (over video på mobil) samme bevegelse uten blur. */
 @keyframes v4-ord-fade { from { opacity: 0; transform: translateY(0.3em); filter: blur(10px); } 60% { filter: blur(0); } to { opacity: 1; transform: none; filter: blur(0); } }

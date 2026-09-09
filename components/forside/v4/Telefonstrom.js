@@ -233,7 +233,8 @@ function DhMerke({ px }) {
    En hårlinje trekkes fra telefonen (X,Y) opp til varselet; et varmt lilla ambient-lys blomstrer bak.
    Varselet lander med et lite pust (iOS-språk: app-ikon, navn, «nå», tittel, tekst). Han trykker — en ring
    slår ut, varselet presses, en myk glød — og hele varselet skalerer ut mens appen blomstrer i rommet. */
-function Aapning({ X, Y, fx, fy, B, maalW, maalH, smal, adresse }) {
+function Aapning({ X, Y, fx, fy, B, maalW, maalH, smal, adresse, speil = false }) {
+  const x0 = X + (speil ? -2 : 2);
   const cardW = smal ? Math.min(Math.round(maalW - 28), 306) : 300;
   const cardCx = fx + B / 2;
   const cardLeft = Math.max(12, Math.min(Math.round(cardCx - cardW / 2), Math.round(maalW - cardW - 12)));
@@ -248,11 +249,13 @@ function Aapning({ X, Y, fx, fy, B, maalW, maalH, smal, adresse }) {
       {/* Ambient: et varmt lilla lys som blomstrer bak varselet */}
       <span aria-hidden="true" className="absolute rounded-full" style={{ left: cardCxReal - cardW * 0.75, top: cardTop - cardW * 0.35, width: cardW * 1.5, height: cardW * 1.5, background: 'radial-gradient(circle, rgba(184,146,255,0.30) 0%, rgba(184,146,255,0.10) 40%, rgba(184,146,255,0) 68%)', filter: 'blur(3px)', animation: `v4-ambient 1000ms ${EASE} 120ms both` }} />
 
-      {/* Hårlinjen fra hånden hans opp til varselet */}
-      <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${maalW} ${maalH}`} preserveAspectRatio="none">
-        <line x1={X + 2} y1={Y} x2={cardCxReal} y2={linjeY} stroke="rgba(244,241,234,0.5)" strokeWidth="1" vectorEffect="non-scaling-stroke" pathLength="1" strokeDasharray="1" strokeDashoffset="1" style={{ animation: `v4-strek 720ms ${EASE} 220ms both` }} />
-        <circle cx={X + 2} cy={Y} r="2.2" fill="#FBFAF8" style={{ opacity: 0, animation: `v4-lese-inn 400ms ${EASE} 220ms both` }} />
-      </svg>
+      {/* Hårlinjen fra hånden hans opp til varselet — kun på store skjermer (på mobil «treffer» den ikke og roter til bildet). */}
+      {!smal && (
+        <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${maalW} ${maalH}`} preserveAspectRatio="none">
+          <line x1={x0} y1={Y} x2={cardCxReal} y2={linjeY} stroke="rgba(244,241,234,0.5)" strokeWidth="1" vectorEffect="non-scaling-stroke" pathLength="1" strokeDasharray="1" strokeDashoffset="1" style={{ animation: `v4-strek 720ms ${EASE} 220ms both` }} />
+          <circle cx={x0} cy={Y} r="2.2" fill="#FBFAF8" style={{ opacity: 0, animation: `v4-lese-inn 400ms ${EASE} 220ms both` }} />
+        </svg>
+      )}
 
       {/* Pushvarselet — stiger opp av hånden, lander med et pust */}
       <div className="absolute" style={{ left: cardLeft, top: cardTop, width: cardW, transformOrigin: '50% 100%', animation: `v4-varsel-inn 720ms ${MORF} 420ms both` }}>
@@ -278,7 +281,7 @@ function Aapning({ X, Y, fx, fy, B, maalW, maalH, smal, adresse }) {
   );
 }
 
-export default function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5', direkte = false, onApnet }) {
+export default function Telefonstrom({ hjemme, redusert, smal, puls, adresse = 'Nygårdsgaten 5', direkte = false, onApnet, speil = false }) {
   const ref = useRef(null);
   const [maal, setMaal] = useState({ w: 0, h: 0 });
   useEffect(() => {
@@ -329,13 +332,17 @@ export default function Telefonstrom({ hjemme, redusert, smal, puls, adresse = '
   let py = A >= FILM_ASPEKT ? 0.5 + (TELEFON.y - 0.5) * (A / FILM_ASPEKT) : TELEFON.y;
   /* Smal: rammen er skalert HJEM_ZOOM_SMAL om (30 %, 100 %) — punktet følger med */
   if (smal) { px = HJEM_FOKUS_SMAL_X + (px - HJEM_FOKUS_SMAL_X) * HJEM_ZOOM_SMAL; py = 1 - (1 - py) * HJEM_ZOOM_SMAL; }
-  const X = px * maal.w; const Y = py * maal.h;
+  /* speil: filmen er speilvendt (han sitter til høyre) — da speiles skjermpunktet, og tråden står til VENSTRE for ham. */
+  const X = speil ? maal.w - px * maal.w : px * maal.w; const Y = py * maal.h;
   /* Tråden står opp og til høyre for skjermen — over skulderen, aldri over ansiktet. Bunnen bindes til skjermen.
      Bredden følger scenen (204–272 px); på smal skjerm klemmes den inn så den aldri går ut av scenens høyrekant. */
   const trang = !smal && maal.w < 1010;
   /* Smal skjerm: tråden bruker mer av scenens bredde (så bobler og godkjenning aldri kuttes), men aldri helt ut til kanten. */
   const B = smal ? Math.min(Math.max(232, maal.w - 28), 264) : Math.max(204, Math.min(272, Math.round(maal.w * 0.246 - 4)));
-  const fx = Math.min(X + (smal || trang ? 12 : Math.round(maal.w * 0.034)), smal ? Math.max(12, maal.w - B - 12) : Infinity);
+  const off = smal || trang ? 12 : Math.round(maal.w * 0.034);
+  const fx = speil
+    ? Math.max(12, Math.min(X - off - B, maal.w - B - 12))
+    : Math.min(X + off, smal ? Math.max(12, maal.w - B - 12) : Infinity);
   /* Smal skjerm: bunnen ligger i høyde med hendene hans (Y + 18), til høyre for telefonen. */
   const fy = smal ? Y + 18 : Y - (trang ? 26 : Math.round(maal.h * 0.042));
   /* Trådens synlige høyde — nyeste slag nederst, eldre over, øverst tones alt bort. Bunnpolstring gir skyggene rom. */
@@ -345,8 +352,8 @@ export default function Telefonstrom({ hjemme, redusert, smal, puls, adresse = '
   const fs = smal ? 13 : 13.5;
   const bildePx = smal ? 58 : 68;
   const avatarPx = 24;
-  /* Lystrådens to ender: skjermpunktet og trådens nedre venstre hjørne. */
-  const L0 = { x: X + 4, y: Y - 2 }; const L1 = { x: fx + 12, y: fy + 4 };
+  /* Lystrådens to ender: skjermpunktet og trådens nedre hjørne nærmest telefonen (venstre normalt, høyre ved speil). */
+  const L0 = { x: speil ? X - 4 : X + 4, y: Y - 2 }; const L1 = speil ? { x: fx + B - 12, y: fy + 4 } : { x: fx + 12, y: fy + 4 };
   /* Eierens bobler sendes fra skjermpunktet: forskyvning fra boblens landingshjørne (nede til høyre i tråden) */
   const dxy = { x: Math.round(L0.x - (fx + B)), y: Math.round(L0.y - fy) };
   const MASKE = `linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.5) 14%, #000 30%, #000 100%)`;
@@ -354,11 +361,13 @@ export default function Telefonstrom({ hjemme, redusert, smal, puls, adresse = '
   return (
     <div ref={ref} aria-hidden="true" className="pointer-events-none absolute inset-0 z-[3] overflow-hidden" data-testid="v4-telefonstrom" data-n={n} data-apnet={apnet ? '1' : '0'}>
       {maal.w > 0 && hjemme && !redusert && direkte && !apnet && (
-        <Aapning X={X} Y={Y} fx={fx} fy={fy} B={B} maalW={maal.w} maalH={maal.h} smal={smal} adresse={adresse} />
+        <Aapning X={X} Y={Y} fx={fx} fy={fy} B={B} maalW={maal.w} maalH={maal.h} smal={smal} adresse={adresse} speil={speil} />
       )}
       {maal.w > 0 && hjemme && !redusert && apnet && (
         <>
-          {/* Lystråden fra skjermen opp til tråden — lysest ved kilden, tegnes én gang */}
+          {/* Lystråden fra skjermen opp til tråden — lysest ved kilden, tegnes én gang. Kun store skjermer:
+              på mobil står tråden rett over telefonen (maske-fade), og en linje «treffer» ikke — den kuttes. */}
+          {!smal && (
           <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${maal.w} ${maal.h}`} preserveAspectRatio="none" style={{ opacity: inne ? 1 : 0, transition: `opacity 500ms ${EASE}` }}>
             <defs>
               <linearGradient id="v4-lystrad" gradientUnits="userSpaceOnUse" x1={L0.x} y1={L0.y} x2={L1.x} y2={L1.y}>
@@ -370,6 +379,7 @@ export default function Telefonstrom({ hjemme, redusert, smal, puls, adresse = '
             <line x1={L0.x} y1={L0.y} x2={L1.x} y2={L1.y} stroke="url(#v4-lystrad)" strokeWidth="1" vectorEffect="non-scaling-stroke" pathLength="1" strokeDasharray="1" strokeDashoffset={inne ? 0 : 1} style={{ transition: `stroke-dashoffset 1100ms ${EASE} 200ms` }} />
             <circle cx={L0.x} cy={L0.y} r="2.2" fill="#FBFAF8" style={{ opacity: inne ? 0.95 : 0, transition: `opacity 400ms ${EASE} 100ms` }} />
           </svg>
+          )}
           {/* Skjermen lyser svakt opp idet noe kommer INN — det er alt. Sending og trykk trenger ingen effekt: boblen forlater
               skjermen, og knappen presses ned der den står. */}
           {inne && (STROM[n].chat || []).map((c, j) => {
