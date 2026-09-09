@@ -8,7 +8,7 @@ import {
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
   ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User, Eye, EyeOff,
-  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar, Network, BookMarked, Camera,
+  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar, Network, BookMarked, Camera, Presentation,
 } from 'lucide-react';
 import Brukere from '@/components/admin/Brukere';
 import Salgsradar from '@/components/admin/Salgsradar';
@@ -25,6 +25,7 @@ import LandingPagesTab from '@/components/admin/LandingPagesTab';
 import PropertiesTab from '@/components/admin/PropertiesTab';
 import HistoryTab from '@/components/admin/HistoryTab';
 import InvestorRoomTab from '@/components/admin/InvestorRoomTab';
+import DeckModul from '@/components/admin/DeckModul';
 import SeoAeoTab from '@/components/admin/SeoAeoTab';
 import TasksTab from '@/components/admin/TasksTab';
 import MeetingsTab from '@/components/admin/MeetingsTab';
@@ -52,6 +53,7 @@ const NAV = [
       { k: 'dokumenter', l: 'Dokumenter', icon: FileText, desc: 'Dokumenthub — frittstående dokumenter, arkiv og BankID-signering' },
       { k: 'brukere', l: 'Brukere', icon: Users, desc: 'Personer, roller og tilgang — inviter, endre og se portalen som andre' },
       { k: 'investorrom', l: 'Investor-rom', icon: Landmark, desc: 'Levende DD-rom — tilgangslenker, dokumenter & Q&A' },
+      { k: 'deck', l: 'Deck', icon: Presentation, desc: 'Investordecket — velg plan, presenter, del lenker og se hvem som åpnet' },
       { k: 'playbook', l: 'Playbook', icon: FileText, desc: 'Marketing-strategi · konkurrentanalyse · 90-dagersplan' },
     ],
   },
@@ -144,6 +146,7 @@ const ROLLE_NAVN = { owner: 'Systemeier', admin: 'Admin', bruker: 'Bruker', part
 const SECTION_TITLES = {
   nokkeltall: { t: 'Nøkkeltall', s: 'Investorklare KPIer · CAC · LTV · tid til kunde · konvertering' },
   investorrom: { t: 'Investor-rom', s: 'Levende DD-rom — del tilgangslenker, administrer dokumenthvelv og svar på investorspørsmål. All aktivitet logges' },
+  deck: { t: 'Deck', s: 'Investordecket — velg planen decket viser, presenter, del rene lenker og se hvem som åpnet' },
   playbook: { t: 'Playbook', s: 'Head of Marketing-strategi · Utleiemegleren-analyse · 90-dagersplan · budsjettmatematikk' },
   innsikt: { t: 'Innsikt', s: 'Førsteparts analyse · cookieless · GDPR-trygt' },
   okonomi: { t: 'Økonomi', s: 'Resultat & likviditet · honorar (prosent av leie) · burn rate & runway' },
@@ -210,6 +213,7 @@ const SLUG_TIL_SEKSJON = {
   moter: { section: 'moter' },
   brukere: { section: 'brukere' },
   investorrom: { section: 'investorrom' },
+  deck: { section: 'deck' },
   playbook: { section: 'playbook' },
   kunder: { section: 'kunder' },
   salgsradar: { section: 'salgsradar' },
@@ -854,6 +858,7 @@ export default function AdminPage({ params }) {
         <div key={section} className={`dh-fade ${section === 'leieforhold' || section === 'datarom' || section === 'salgsradar' || section === 'budsjett' ? 'max-w-none px-4 py-3 sm:px-6' : 'max-w-[1440px] px-4 py-6 sm:px-8'}`}>
           {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
           {section === 'investorrom' && <InvestorRoomTab apiKey={token} />}
+          {section === 'deck' && <DeckModul apiKey={token} />}
           {section === 'playbook' && <PlaybookTab apiKey={token} />}
           {section === 'nyhetsbrev' && <NewsletterTab apiKey={token} />}
           {section === 'landingssider' && <LandingPagesTab apiKey={token} />}
