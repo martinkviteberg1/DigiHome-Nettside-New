@@ -1168,7 +1168,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   const kapBuffer = Math.ceil((kapReell || 0) * 1.3 / 250000) * 250000;
   const resReell = skattPaa ? sK.resultatEtterSkatt : sK.resultat;
   const uT = mT?.unit || null; const uF = mF.cac || {};
-  const morkSide = ['forside', 'losning', 'unit', 'trenger'].includes(sider[side]);
+  const morkSide = ['forside', 'unit', 'trenger'].includes(sider[side]);
   const nyeSerie = mF.nyePerMndSerie || [];
   const fakserie = () => { if (!nyeSerie.length) return ''; const lo = Math.min(...nyeSerie); const hi = Math.max(...nyeSerie); return lo === hi ? `${nb(lo, 1)} nye enheter/mnd` : `${nb(lo, 1)}–${nb(hi, 1)} nye enheter/mnd`; };
   const prisHuseier = basisT ? (basisT.huseier.prisModell === 'fast' ? `${kr(basisT.huseier.pris)}/mnd` : `${nb(basisT.huseier.pris, 1)} % av leien`) : null;
@@ -1449,10 +1449,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       {/* 03 · Løsningen — produktet som en NYDELIG EDITORIAL full-bleed bakgrunn (forsidens kino-filmer: foto +
           editorial tittel), ikke et kort. Stegene (Annonse→Kontrakt→Drift→Økonomi) spiller som bevis, styrt av
           decket (spiller kun når sliden er fremme — ytelse). LosningFilm eier hele det full-bleed oppsettet. */}
-      <Side id="losning" pos={pos('losning')} aktiv={er('losning')} morkt bred>
-        <div className="absolute inset-0" data-testid="deck-losning-scene">
-          <LosningFilm aktiv={er('losning')} nr={kap('losning')} />
-        </div>
+      <Side id="losning" pos={pos('losning')} aktiv={er('losning')} bred>
+        <LosningFilm aktiv={er('losning')} nr={kap('losning')} />
       </Side>
 
 
