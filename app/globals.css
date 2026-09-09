@@ -1163,6 +1163,29 @@ html.dh-nav-klar [data-testid="v4-nav"] { background-color: transparent; border-
 @keyframes v4-frag-ut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-12px) scale(0.985); } }
 /* Leselysets fremdrift i registeret — én tynn linje som fyller raden i takt med at det går videre */
 @keyframes v4-fremdrift { from { width: 0; } to { width: 100%; } }
+/* Vertikal variant: en lilla aksentstang på venstre kant som fylles ovenfra og ned mens leselyset dveler på raden */
+@keyframes v4-fremdrift-v { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* Fragment-bytte i «Hele utleien»: den innkommende flaten MONTERES ledd for ledd (stagger), ikke som én blokk.
+   Selve flaten toner bare; hver linje/rad kommer nedenfra, skarpt ut av en lett uskarphet — som om produktet
+   settes sammen for øynene dine. Rad-listene (dl/ol) toner bare som container, radene inni beveger seg. */
+@keyframes v4-frag-opacity { from { opacity: 0; } to { opacity: 1; } }
+@keyframes v4-frag-ledd { from { opacity: 0; transform: translateY(13px); filter: blur(5px); } 68% { filter: blur(0); } to { opacity: 1; transform: none; filter: blur(0); } }
+.v4-frag-monter { animation: v4-frag-opacity 340ms cubic-bezier(0.16,1,0.3,1) both; }
+.v4-frag-monter [data-frag] > * { animation: v4-frag-ledd 640ms cubic-bezier(0.16,1,0.3,1) both; }
+.v4-frag-monter [data-frag] > *:nth-child(1) { animation-delay: 0.05s; }
+.v4-frag-monter [data-frag] > *:nth-child(2) { animation-delay: 0.12s; }
+.v4-frag-monter [data-frag] > *:nth-child(3) { animation-delay: 0.19s; }
+.v4-frag-monter [data-frag] > *:nth-child(4) { animation-delay: 0.26s; }
+.v4-frag-monter [data-frag] > *:nth-child(5) { animation-delay: 0.33s; }
+.v4-frag-monter [data-frag] > dl, .v4-frag-monter [data-frag] > ol { animation-name: v4-frag-opacity; animation-duration: 420ms; }
+.v4-frag-monter [data-frag] dl > *, .v4-frag-monter [data-frag] ol > * { animation: v4-frag-ledd 560ms cubic-bezier(0.16,1,0.3,1) both; }
+.v4-frag-monter [data-frag] dl > *:nth-child(1), .v4-frag-monter [data-frag] ol > *:nth-child(1) { animation-delay: 0.26s; }
+.v4-frag-monter [data-frag] dl > *:nth-child(2), .v4-frag-monter [data-frag] ol > *:nth-child(2) { animation-delay: 0.33s; }
+.v4-frag-monter [data-frag] dl > *:nth-child(3), .v4-frag-monter [data-frag] ol > *:nth-child(3) { animation-delay: 0.40s; }
+@media (prefers-reduced-motion: reduce) {
+  .v4-frag-monter, .v4-frag-monter [data-frag] > *, .v4-frag-monter [data-frag] dl > *, .v4-frag-monter [data-frag] ol > * { animation: none !important; }
+}
 /* Godkjenn-knappen i samtalen: presses ned, blir grønn, lander */
 @keyframes v4-godkjent { 0% { background-color: #D298FF; color: #15130F; transform: scale(1); } 30% { transform: scale(0.9); background-color: #D298FF; color: #15130F; } 62% { background-color: #1F9D55; color: #fff; transform: scale(1.05); } 100% { background-color: #1F9D55; color: #fff; transform: none; } }
 /* Skjermen lyser opp når noe kommer inn — et mykt bloom rundt telefonens punkt */

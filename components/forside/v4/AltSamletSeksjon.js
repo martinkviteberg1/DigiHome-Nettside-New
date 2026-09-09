@@ -166,10 +166,10 @@ export default function AltSamletSeksjon() {
 
   const scene = (
     <div className="relative grid h-full w-full items-center" data-testid="v4-alt-scene" data-aktiv={vist.id}>
-      {vist.forrige && (
-        <div key={`ut-${vist.forrige}`} className="col-start-1 row-start-1" aria-hidden="true" style={{ animation: `v4-frag-ut 520ms ${EASE} both`, pointerEvents: 'none' }}><Fragment id={vist.forrige} /></div>
+      {vist.forrige && !redusert && (
+        <div key={`ut-${vist.forrige}`} className="col-start-1 row-start-1" aria-hidden="true" inert="" style={{ animation: `v4-frag-ut 360ms ${EASE} both`, pointerEvents: 'none' }}><Fragment id={vist.forrige} /></div>
       )}
-      <div key={vist.id} className="col-start-1 row-start-1" style={{ animation: redusert ? 'none' : `v4-frag-inn 700ms ${EASE} 60ms both` }}><Fragment id={vist.id} /></div>
+      <div key={vist.id} className={`col-start-1 row-start-1 ${redusert ? '' : 'v4-frag-monter'}`}><Fragment id={vist.id} /></div>
     </div>
   );
 
@@ -221,19 +221,28 @@ export default function AltSamletSeksjon() {
         <div className="mt-10 grid gap-6 lg:mt-14 lg:grid-cols-12 lg:items-stretch lg:gap-10">
           {smal && <div className="min-w-0" style={inn(1)}>{stage}</div>}
 
-          <ol className="min-w-0 lg:col-span-5" data-testid="v4-alt-liste" style={inn(1)}>
+          <ol className="min-w-0 lg:col-span-5" data-testid="v4-alt-liste">
             {OMRADER.map((x, i) => {
               const er = i === aktiv;
               return (
                 <li
                   key={x.nr}
                   className="relative"
-                  style={{ borderTop: `1px solid ${HAIR}`, borderBottom: i === OMRADER.length - 1 ? `1px solid ${HAIR}` : 'none' }}
+                  style={{ ...inn(2 + i * 0.7), borderTop: `1px solid ${HAIR}`, borderBottom: i === OMRADER.length - 1 ? `1px solid ${HAIR}` : 'none' }}
                   data-testid={`v4-alt-${x.id}`}
                   data-aktiv={er ? '1' : '0'}
                 >
-                  {er && synlig && !manuell && !redusert && (
-                    <span key={`frem-${aktiv}`} aria-hidden="true" className="absolute bottom-[-1px] left-0 h-px" style={{ background: 'rgba(21,19,15,0.45)', animation: `v4-fremdrift ${TAKT}ms linear both` }} />
+                  {/* Leselyset: en lilla aksentstang på venstre kant. Auto → fylles ovenfra og ned i takt (TAKT);
+                      valgt/pauset → står fylt. Slik ser man lyset dvele og vandre nedover av seg selv. */}
+                  {er && !redusert && (
+                    <span
+                      key={`frem-${aktiv}-${manuell ? 'm' : 'a'}`}
+                      aria-hidden="true"
+                      className="absolute left-0 top-[3px] bottom-[3px] w-[2px] rounded-full"
+                      style={synlig && !manuell
+                        ? { background: T.lilla, transformOrigin: '50% 0%', animation: `v4-fremdrift-v ${TAKT}ms linear both` }
+                        : { background: T.lilla }}
+                    />
                   )}
                   <button
                     type="button"
@@ -242,9 +251,9 @@ export default function AltSamletSeksjon() {
                     className="grid w-full grid-cols-[36px_minmax(0,1fr)] items-baseline gap-x-4 rounded-[10px] py-5 text-left transition-colors duration-300 hover:bg-[#15130F]/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/20 sm:grid-cols-[44px_minmax(0,1fr)] sm:py-6 lg:-mx-3 lg:w-[calc(100%+24px)] lg:px-3"
                   >
                     <span className="text-[13px] tabular-nums" style={{ color: er ? T.lilla : 'rgba(21,19,15,0.42)', transition: 'color 400ms' }}>{x.nr}</span>
-                    <span className="min-w-0">
-                      <span className="block text-[clamp(26px,2vw,32px)]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.ink, opacity: er ? 1 : 0.58, transition: `opacity 500ms ${EASE}` }}>{x.navn}</span>
-                      <span className="mt-2 block max-w-[44ch] text-[15px] leading-[1.45]" style={{ color: 'rgba(21,19,15,0.62)', opacity: er ? 1 : 0.6, transition: `opacity 500ms ${EASE}` }}>{x.t}</span>
+                    <span className="min-w-0" style={{ transform: er ? 'translateX(2px)' : 'none', transition: `transform 500ms ${EASE}` }}>
+                      <span className="block text-[clamp(26px,2vw,32px)]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.ink, opacity: er ? 1 : 0.5, transition: `opacity 500ms ${EASE}` }}>{x.navn}</span>
+                      <span className="mt-2 block max-w-[44ch] text-[15px] leading-[1.45]" style={{ color: 'rgba(21,19,15,0.62)', opacity: er ? 1 : 0.55, transition: `opacity 500ms ${EASE}` }}>{x.t}</span>
                     </span>
                   </button>
                 </li>
