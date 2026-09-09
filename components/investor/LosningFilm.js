@@ -132,11 +132,6 @@ export default function LosningFilm({ aktiv = false, nr = 3 }) {
       {/* Filmen står som en rammeløs, «svevende» flate med myke hjørner og en myk skygge — skarp som på forsiden,
           tydelig adskilt fra tidslinjen (ikke «klistret»), uten hvit kant/ramme. */}
 
-      {/* LIT-STAGE — en varm lysning bak fortellingen: det rammeløse innholdet står i et bevisst, opplyst rom. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-[1%] h-[56%] w-[72%] -translate-x-1/2 rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(255,255,255,0.58), rgba(255,255,255,0) 72%)' }} />
-      </div>
-
       <div className={`relative ${bred ? 'flex h-full flex-col' : ''}`}>
         {/* FORTELLINGEN — én rolig, redaksjonell linje som rammer filmen som «Løsningen». */}
         <div className="deck-inn mx-auto flex w-full max-w-[860px] shrink-0 flex-col items-center text-center" style={{ '--i': 0 }}>
