@@ -1611,7 +1611,7 @@ function Kompakt({ fase, ov, onAkt, onHold, neste, startet }) {
 /* `onFerdig` — kalles når sluttbildet har stått ferdig. Returnerer den true, tar forelderen over (neste kapittel);
    ellers looper filmen. `neste` = navnet på neste kapittel (vises i broen). */
 /* `synlig` = seksjonen er i bildet (inngang). `spiller` = produktflaten er i bildet — klokken går bare da. */
-export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, onFremdrift, neste = null, full = false, tittel = null, ingress = null, staaende = false }) {
+export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', onFerdig, onFremdrift, neste = null, full = false, tittel = null, ingress = null, staaende = false, naken = false }) {
   const [fase, setFase] = useState(F.START);
   const [startet, setStartet] = useState(false);
   const [ov, setOv] = useState(false);
@@ -1670,16 +1670,17 @@ export default function AnnonseFilm({ synlig, spiller = synlig, tema = 'mork', o
   }
 
   const bredE = staaende ? false : bred;   // staaende: tving stående (kompakt) layout uansett skjerm
+  const flate = naken ? { boxShadow: 'none', background: 'transparent' } : { boxShadow: skygge, background: PAPIR };   // naken: ingen ramme/skygge — innholdet står rett på siden
   return (
     <div className={`relative mx-auto w-full ${staaende ? 'max-w-[440px]' : 'max-w-[min(1400px,86vw)]'}`} data-testid="v4-annonse-scene" data-fase={fase} data-holdt={holdt ? '1' : '0'}>
       <FilmStil />
       {bredE !== false && (
-        <div className={`overflow-hidden rounded-[18px] ${bredE === null ? 'hidden lg:block' : ''}`} style={{ boxShadow: skygge, background: PAPIR, ...inn }}>
+        <div className={`overflow-hidden ${naken ? '' : 'rounded-[18px]'} ${bredE === null ? 'hidden lg:block' : ''}`} style={{ ...flate, ...inn }}>
           <div style={blend}><Desktop {...felles} /></div>
         </div>
       )}
       {bredE !== true && (
-        <div className={`mx-auto w-full max-w-[440px] overflow-hidden rounded-[18px] ${bredE === null ? 'lg:hidden' : ''}`} style={{ boxShadow: skygge, background: PAPIR, ...inn }}>
+        <div className={`mx-auto w-full max-w-[440px] overflow-hidden ${naken ? '' : 'rounded-[18px]'} ${bredE === null ? 'lg:hidden' : ''}`} style={{ ...flate, ...inn }}>
           <div style={blend}><Kompakt {...felles} /></div>
         </div>
       )}

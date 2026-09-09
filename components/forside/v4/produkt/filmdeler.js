@@ -406,12 +406,15 @@ function FullStage({ bred, inn, blend, children }) {
 }
 
 /* Ytre ramme — samme skygge/radius i alle kapitler. `full`: rammeløs, full bredde, skjermhøy (FullStage). */
-export function Ramme({ synlig, tema, ov, morkt, bred, desktop, kompakt, testid, fase, ekstra, full = false }) {
+export function Ramme({ synlig, tema, ov, morkt, bred, desktop, kompakt, testid, fase, ekstra, full = false, naken = false }) {
   const inn = { opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(28px)', transition: ov ? 'none' : `opacity 800ms ${EASE}, transform 800ms ${EASE}` };
   const skygge = tema === 'lys'
     ? '0 0 0 1px rgba(21,19,15,0.08), 0 60px 120px -40px rgba(21,19,15,0.35)'
     : '0 0 0 1px rgba(244,241,234,0.12), 0 70px 120px -50px rgba(0,0,0,0.75)';
   const blend = { opacity: morkt ? 0 : 1, transition: ov ? 'none' : `opacity 450ms ${EASE}` };
+  // naken: ingen ramme/skygge — innholdet står rett på siden (brukes i decket, «animasjonen skjer på bakgrunnen»)
+  const flate = naken ? { boxShadow: 'none', background: 'transparent' } : { boxShadow: skygge, background: PAPIR };
+  const hjorne = naken ? '' : 'rounded-[18px]';
   if (full) {
     return (
       <div className="relative w-full" data-testid={testid} data-fase={fase} data-full="1" {...ekstra}>
@@ -429,12 +432,12 @@ export function Ramme({ synlig, tema, ov, morkt, bred, desktop, kompakt, testid,
     <div className="relative mx-auto w-full max-w-[min(1400px,86vw)]" data-testid={testid} data-fase={fase} {...ekstra}>
       <FilmStil />
       {bred !== false && (
-        <div className={`overflow-hidden rounded-[18px] ${bred === null ? 'hidden lg:block' : ''}`} style={{ boxShadow: skygge, background: PAPIR, ...inn }}>
+        <div className={`overflow-hidden ${hjorne} ${bred === null ? 'hidden lg:block' : ''}`} style={{ ...flate, ...inn }}>
           <div style={blend}>{desktop}</div>
         </div>
       )}
       {bred !== true && (
-        <div className={`mx-auto w-full max-w-[440px] overflow-hidden rounded-[18px] ${bred === null ? 'lg:hidden' : ''}`} style={{ boxShadow: skygge, background: PAPIR, ...inn }}>
+        <div className={`mx-auto w-full max-w-[440px] overflow-hidden ${hjorne} ${bred === null ? 'lg:hidden' : ''}`} style={{ ...flate, ...inn }}>
           <div style={blend}>{kompakt}</div>
         </div>
       )}
