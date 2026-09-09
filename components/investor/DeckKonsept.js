@@ -18,7 +18,7 @@
      kapittel. Fremdriftslinje øverst, kapittelvelger, #hash for dyplenke. Print = PDF.
    ───────────────────────────────────────────────────────────────────────────── */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUp, Download, Lock, RotateCcw, Send, Check, Megaphone, Home, Building2, Link2, Menu, X, Share2, Copy, Trash2, Eye, KeyRound, Ban, ChevronDown, Calendar, ShieldCheck, FileText, Coins, Users, CreditCard, Wrench, Table2, AlertTriangle, Sparkles } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUp, Download, Lock, RotateCcw, Send, Check, Megaphone, Home, Building2, Link2, Menu, X, Share2, Copy, Trash2, Eye, KeyRound, Ban, ChevronDown, Calendar, ShieldCheck, FileText, Coins, Users, User, CreditCard, Wrench, Table2, AlertTriangle, Sparkles } from 'lucide-react';
 import { T, display, EASE, DIM, SVAK, HAIR } from '@/components/forside/v4/tokens';
 import HeroScene from '@/components/forside/v4/HeroScene';
 import HeroStage, { FILM as HERO_FILM } from '@/components/forside/v4/HeroStage';
@@ -640,15 +640,62 @@ function LosningKjerne() {
     </div>
   );
 }
-/* Slide 02 · problemet — SAMME visuelle språk som Løsningen, men motsatt: driftsområdene strømmer mot et TOMT,
-   stiplet «Intet system» (brutte grå linjer som aldri når frem). Parret med «Utleie mangler et system». */
+/* Slide 02 · problemet — «Utleie mangler et system». Det direkte motstykket til Løsningen: de fire driftsområdene
+   (Leietakere, Kontrakter, Husleie, Drift) lever i hvert sitt frakoblede, manuelle verktøy — og det eneste som binder
+   dem sammen er DU. Manuelle (stiplede) tråder løper fra verktøyene inn til et slitent «Du er systemet»-nav i midten.
+   Der Løsningen har en glødende AI-kjerne, har Hvorfor et menneske som må gjøre alt for hånd. */
+function FragStage({ domener, core, height, kompakt = false }) {
+  const bane = (d) => { const ex = core.x; const ey = core.y; return `M ${d.x} ${d.y} C ${d.x} ${(d.y + ey) / 2}, ${ex} ${(d.y + ey) / 2}, ${ex} ${ey}`; };
+  const kjerne = kompakt ? 102 : 136;
+  return (
+    <div className="relative w-full" style={{ height }} data-testid="deck-fragment">
+      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none">
+        {domener.map((d) => (
+          <path key={d.navn} d={bane(d)} stroke="rgba(21,19,15,0.22)" strokeWidth="1.4" strokeDasharray="2 5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        ))}
+      </svg>
+      {/* Verktøy-brikker — hvert driftsområde i sitt eget frakoblede verktøy */}
+      {domener.map((d) => (
+        <div key={d.navn} className="deck-inn absolute" style={{ '--i': 3, left: `${d.x}%`, top: `${d.y}%`, transform: 'translate(-50%,-50%)' }}>
+          <span className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 18px 42px rgba(21,19,15,0.10)` }}>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: 'rgba(21,19,15,0.05)' }}><d.Ikon className="h-[18px] w-[18px]" strokeWidth={1.6} style={{ color: 'rgba(21,19,15,0.5)' }} /></span>
+            <span className="text-left leading-tight">
+              <span className="block text-[14px] font-semibold" style={{ color: T.ink }}>{d.navn}</span>
+              <span className="mt-0.5 block whitespace-nowrap text-[11.5px]" style={{ color: SVAK }}>{d.verktoy}</span>
+            </span>
+          </span>
+        </div>
+      ))}
+      {/* Navet i dag: DU — mennesket som må koble alt sammen for hånd (motstykket til AI-kjernen på Løsningen) */}
+      <div className="deck-inn absolute" style={{ '--i': 4, left: `${core.x}%`, top: `${core.y}%`, transform: 'translate(-50%,-50%)' }}>
+        <div className="flex flex-col items-center text-center">
+          <div className="relative flex items-center justify-center rounded-full" style={{ height: kjerne, width: kjerne, border: '2px dashed rgba(21,19,15,0.26)', background: 'radial-gradient(circle at 50% 40%, rgba(179,38,30,0.09), rgba(21,19,15,0) 72%)' }}>
+            <User style={{ height: kompakt ? 28 : 36, width: kompakt ? 28 : 36, color: 'rgba(21,19,15,0.55)' }} strokeWidth={1.5} />
+          </div>
+          <p className="mt-4 text-[15.5px] font-semibold" style={{ color: T.ink }}>Du er systemet</p>
+          <p className="mt-0.5 text-[12.5px]" style={{ color: SVAK, maxWidth: '24ch' }}>alt kobles sammen for hånd</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 function FragmentKjerne() {
-  const desktop = [{ navn: 'Leietakere', x: 13, y: 17 }, { navn: 'Kontrakter', x: 38, y: 10 }, { navn: 'Husleie', x: 62, y: 10 }, { navn: 'Drift', x: 87, y: 17 }];
-  const mobil = [{ navn: 'Leietakere', x: 50, y: 8 }, { navn: 'Kontrakter', x: 17, y: 37 }, { navn: 'Husleie', x: 83, y: 37 }, { navn: 'Drift', x: 50, y: 86 }];
+  const desktop = [
+    { navn: 'Leietakere', verktoy: 'SMS & anrop', Ikon: Users, x: 16, y: 16 },
+    { navn: 'Kontrakter', verktoy: 'Word & penn', Ikon: FileText, x: 39, y: 9 },
+    { navn: 'Husleie', verktoy: 'Regneark', Ikon: Coins, x: 63, y: 9 },
+    { navn: 'Drift', verktoy: 'E-post & tlf', Ikon: Wrench, x: 86, y: 16 },
+  ];
+  const mobil = [
+    { navn: 'Leietakere', verktoy: 'SMS & anrop', Ikon: Users, x: 26, y: 11 },
+    { navn: 'Kontrakter', verktoy: 'Word & penn', Ikon: FileText, x: 74, y: 11 },
+    { navn: 'Husleie', verktoy: 'Regneark', Ikon: Coins, x: 26, y: 37 },
+    { navn: 'Drift', verktoy: 'E-post & tlf', Ikon: Wrench, x: 74, y: 37 },
+  ];
   return (
     <div className="deck-inn w-full" style={{ '--i': 2 }}>
-      <div className="hidden sm:block"><KjerneStage variant="problem" domener={desktop} core={{ x: 50, y: 72 }} height={460} /></div>
-      <div className="sm:hidden"><KjerneStage variant="problem" domener={mobil} core={{ x: 50, y: 47 }} height={380} chipMobil /></div>
+      <div className="hidden sm:block"><FragStage domener={desktop} core={{ x: 50, y: 74 }} height={460} /></div>
+      <div className="sm:hidden"><FragStage domener={mobil} core={{ x: 50, y: 80 }} height={420} kompakt /></div>
     </div>
   );
 }
@@ -1414,17 +1461,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             <span className="block"><span className="deck-ord" data-ord="2" style={{ '--o': 2 }}>autopilot<span style={{ color: T.lilla }}>.</span></span></span>
           </h1>
           <Inn i={3}><p className="mt-7 max-w-[42ch] text-[16.5px] leading-[1.6] sm:text-[18.5px]" style={{ color: 'rgba(244,241,234,0.86)' }}>Programvaren som driver utleieboligen – for private huseiere og eiendomsselskaper med hele porteføljer. Og forvaltningen for dem som ikke vil gjøre jobben selv. <span style={{ color: T.offwhite }}>To selskaper, én plattform.</span></p></Inn>
-          <div className="deck-inn mt-10 grid max-w-[640px] grid-cols-2 gap-x-10 gap-y-7 border-t pt-7 sm:grid-cols-4" style={{ '--i': 4, borderColor: 'rgba(244,241,234,0.16)' }} data-testid="deck-kort-fortalt">
-            {[
-              [`${nb(enheterIDag)} → ${nb(Math.round(mF.enheter[N - 1] || 0))}`, 'enheter · i dag → ' + mndLabel(plan.startYm, N - 1, false)],
-              [mnok(kapBuffer), 'kapitalbehov' + (skattPaa ? ' etter skatt' : '') + ' + buffer'],
-              [be(sK.breakEvenIdx), 'konsernet i pluss'],
-              [mnok(sK.arrExit), 'omsetningstakt · periodeslutt'],
-            ].map(([v, u], i) => (
-              <div key={u} className="deck-inn" style={{ '--i': 4 + i * 0.6 }}><p className="text-[24px] tabular-nums sm:text-[28px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.offwhite }}>{v}</p><p className="mt-3 text-[10.5px] font-medium uppercase leading-[1.55]" style={{ letterSpacing: '0.1em', color: 'rgba(244,241,234,0.55)' }}>{u}</p></div>
-            ))}
-          </div>
-          <Inn i={7} className="deck-skjul-print mt-10 flex items-center gap-2.5 text-[11px] font-medium uppercase" style={{ letterSpacing: '0.16em', color: 'rgba(244,241,234,0.42)' }}>Bla videre <ChevronDown className="deck-nikk h-3.5 w-3.5" /></Inn>
+          <Inn i={5} className="deck-skjul-print mt-12 flex items-center gap-2.5 text-[11px] font-medium uppercase" style={{ letterSpacing: '0.16em', color: 'rgba(244,241,234,0.42)' }}>Bla videre <ChevronDown className="deck-nikk h-3.5 w-3.5" /></Inn>
         </div>
       </Side>
 
