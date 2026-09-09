@@ -1547,3 +1547,9 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - **SystemSeksjon**: portalen og appen kan brukes (alle moduler, Godkjenn-knapper, app-faner Hjem/Meldinger/Dokumenter/Profil, Betal, Meld fra).
 - **/priser**: levende regnestykke i hero (glidebryter delt med «Ett leieår i tall»), «Det du aldri betaler for» (fire nuller), nivåer med «passer for».
 - Alt er agent-testet med skjermbilder (desktop 1920 + mobil 390) — ikke brukerbekreftet.
+
+## Oppdatering 9. sep 2026 — investordeck «verdensklasse»-løft (DeckKonsept.js)
+- **Konseptet (slide 4):** venstre kolonne ombygd fra flat ikonliste til en sammenkoblet vertikal PIPELINE. Tre steg (Leietakere, Kontrakt, Husleie) er merket «automatisk» (grønn hake); Drift er fremhevet med lilla, opphøyd node + «ett trykk»-pille. Forbindelseslinje (gradient hårlinje→lilla) binder stegene, og lilla endenode rimer visuelt med «Godkjenn»-knappen i HeroScene til høyre. Kjerneinnsikt: systemet gjør alt, eieren trykker én gang.
+- **Hele decket (delt `Kapittel`-masthead):** løftet fra enkel «nr · navn» til redaksjonell masthead — lilla tabular index (sperret 0.12em) + gradient-hårlinje + navn/undertittel. Konsistent på alle 17 slides, både lyse og mørke.
+- Agent-testet (kompilering + skjermbilder desktop 1920 + mobil 390, #konsept/#marked/#unit) — IKKE brukerbekreftet.
+- Bruker-mandat: «Løft til verdensklasse» — fortsett å løfte resten av slidene med samme rolige, redaksjonelle språk (ett sterkt anker per slide, tydelig kjerneinnsikt, ikke tett kort/ikon-grøt).

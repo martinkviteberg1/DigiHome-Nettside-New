@@ -99,9 +99,10 @@ function Side({ id, children, morkt = false, aktiv = false, pos = 'under', bred 
 }
 const Inn = ({ i = 0, children, className = '', style }) => <div className={`deck-inn ${className}`} style={{ '--i': i, ...style }}>{children}</div>;
 const Kapittel = ({ nr, navn, under, morkt = false }) => (
-  <Inn i={0} className="flex items-baseline gap-3">
-    <span className="text-[12px] font-semibold tabular-nums" style={{ color: morkt ? T.lilla : LILLA_M }}>{String(nr).padStart(2, '0')}</span>
-    <span className="text-[13px] font-medium" style={{ color: morkt ? LYS_SVAK : SVAK }}>{navn}{under ? <span style={{ color: morkt ? 'rgba(244,241,234,0.35)' : 'rgba(21,19,15,0.35)' }}> · {under}</span> : null}</span>
+  <Inn i={0} className="flex items-center gap-3">
+    <span className="text-[11px] font-semibold tabular-nums tracking-[0.12em]" style={{ color: morkt ? T.lilla : LILLA_M }}>{String(nr).padStart(2, '0')}</span>
+    <span aria-hidden="true" className="h-px w-7" style={{ background: `linear-gradient(90deg, ${morkt ? 'rgba(212,150,255,0.65)' : 'rgba(122,63,168,0.5)'}, ${morkt ? 'rgba(212,150,255,0)' : 'rgba(122,63,168,0)'})` }} />
+    <span className="text-[12.5px] font-medium tracking-[0.01em]" style={{ color: morkt ? LYS_SVAK : SVAK }}>{navn}{under ? <span style={{ color: morkt ? 'rgba(244,241,234,0.35)' : 'rgba(21,19,15,0.35)' }}> · {under}</span> : null}</span>
   </Inn>
 );
 /* H2 avsløres ord for ord (som forsidens hero) når kapitlet er aktivt — bare for rene tekststrenger. */
@@ -114,11 +115,11 @@ const H2 = ({ children, morkt = false, maks = '16ch', className = '' }) => {
   );
 };
 /* Punktfelt: 360 punkter = ≈ 570 000 husholdninger som leier. Lilla = 1 % av markedet; den lille = planen. */
-function Punktfelt({ enheterPlan = 0, marked = 570000, kol = 36, rader = 10, morkt = false }) {
+function Punktfelt({ enheterPlan = 0, marked = 570000, kol = 36, rader = 10, morkt = false, maxH = 190 }) {
   const n = kol * rader; const perPunkt = marked / n; const enProsent = Math.max(1, Math.round((marked / 100) / perPunkt));
   const planAndel = Math.min(1, enheterPlan / perPunkt); const r = 4.2; const steg = 12; const W = kol * steg; const H = rader * steg;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 190 }} role="img" aria-label={`${nb(marked)} husholdninger som leier, planen er ${nb(enheterPlan)} enheter`} data-testid="deck-punktfelt">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: maxH }} role="img" aria-label={`${nb(marked)} husholdninger som leier, planen er ${nb(enheterPlan)} enheter`} data-testid="deck-punktfelt">
       {Array.from({ length: rader }, (_, ri) => (
         <g key={ri} className="deck-inn" style={{ '--i': ri * 0.6 }}>
           {Array.from({ length: kol }, (_, ci) => {
@@ -194,6 +195,22 @@ const Kolonne = ({ i = 0, ikon: Ikon, over, tittel, tekst, rader = [], morkt = f
     {fot}
   </Inn>
 );
+/* Løftet kort (verdensklasse): hvit flate med dybde, ikon-chip, over-etikett, tittel, rader og fot. Brukes der det gir
+   «produkt»-følelse (tilbud / veier inn). Kortene er like høye (fot forankres i bunn), så raden står som ett system. */
+const Kort = ({ i = 0, ikon: Ikon, over, tittel, rader = [], fot, className = '', testid }) => (
+  <Inn i={i} className={`deck-kort-stor flex flex-col ${className}`} data-testid={testid}>
+    {Ikon ? <span className="deck-kort-stor-ikon"><Ikon className="h-[18px] w-[18px]" strokeWidth={1.7} /></span> : null}
+    {over ? <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.13em]" style={{ color: LILLA_M }}>{over}</p> : null}
+    {tittel ? <p className="mt-2 text-[22px] sm:text-[25px]" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.06, color: T.ink }}>{tittel}</p> : null}
+    {rader.length ? (
+      <div className="mt-4 flex flex-col gap-2.5">
+        {rader.map((r, ri) => <p key={ri} className="text-[14px] leading-[1.5]" style={{ color: DIM }}>{r}</p>)}
+      </div>
+    ) : null}
+    {fot ? <div className="mt-auto pt-6">{fot}</div> : null}
+  </Inn>
+);
+
 /* Nøkkeltall i display – som forsidens tallpar. */
 const Fakta = ({ v, u, morkt = false, stor = false }) => (
   <div>
@@ -1150,6 +1167,9 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-kort-hylster { display: inline-flex; }
         .deck-kort { display: inline-flex; align-items: center; gap: 9px; padding: 9px 14px 9px 9px; border-radius: 15px; background: #FFFFFF; border: 1px solid rgba(21,19,15,0.06); box-shadow: 0 14px 30px -12px rgba(21,19,15,0.22), 0 2px 6px -2px rgba(21,19,15,0.08); transform: rotate(var(--rot, 0deg)); }
         .deck-kort-ikon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; background: rgba(122,63,168,0.08); color: ${LILLA_M}; flex: none; }
+        /* Løftet «produkt»-kort (tilbud/veier inn): hvit flate med dybde. */
+        .deck-kort-stor { background: #FFFFFF; border: 1px solid rgba(21,19,15,0.06); border-radius: 22px; padding: 26px 24px; box-shadow: 0 26px 50px -22px rgba(21,19,15,0.18), 0 2px 6px -3px rgba(21,19,15,0.06); }
+        .deck-kort-stor-ikon { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 13px; background: rgba(122,63,168,0.09); color: ${LILLA_M}; }
         /* ── Cinematisk intro (før forsiden) ── blur-fri (kun opacity/transform → GPU, ingen lagg). Merket samler seg,
            løftet skrives ord for ord PÅ ÉN LINJE. UTGANG = per-ord-MORPH: hvert ord reiser (FLIP, inline transform) til
            sin plass på forsidens to linjer og skifter farge; lyset toner til mørke; merket skyves gjennom kamera. */
@@ -1352,11 +1372,11 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         <Kapittel nr={kap('marked')} navn="Markedet" under="stort nok til å ikke være spørsmålet" />
         <Todelt venstre={<>
           <Inn i={1}><H2 maks="13ch">Hver fjerde husholdning leier.</H2></Inn>
-          <Ingress>Nesten ingen av utleierne har et system. Markedet er stort, privat og fragmentert – og det begrenser ikke planen. Tempoet på kundeanskaffelse gjør det.</Ingress>
-          <Inn i={3} className="mt-8 border-t pt-5" style={{ borderColor: HAIR }}>
-            <Punktfelt enheterPlan={Math.round(mF.enheter[N - 1] || 0)} />
-            <div className="mt-4 flex flex-wrap items-baseline gap-x-6 gap-y-2">
-              <Fakta v={`${nb((Math.round(mF.enheter[N - 1] || 0) / 570000) * 100, 2)} %`} u={`av leiemarkedet er planen ved ${mndLabel(plan.startYm, N - 1, false)} – den lille prikken`} />
+          <Ingress>Stort, privat og fragmentert – og nesten ingen utleier har et system. Planen begrenses ikke av markedet, men av tempoet på kundeanskaffelse.</Ingress>
+          <Inn i={3} className="mt-8 border-t pt-6" style={{ borderColor: HAIR }}>
+            <Punktfelt enheterPlan={Math.round(mF.enheter[N - 1] || 0)} maxH={230} />
+            <div className="mt-5 flex flex-wrap items-baseline gap-x-6 gap-y-2">
+              <Fakta v={`${nb((Math.round(mF.enheter[N - 1] || 0) / 570000) * 100, 2)} %`} u={`av leiemarkedet ved ${mndLabel(plan.startYm, N - 1, false)} – den lille prikken`} />
               <Fakta v="1 %" u={`= ${nb(5700)} enheter, ${nb(Math.round(5700 / Math.max(1, Math.round(mF.enheter[N - 1] || 1))))}× planen – de lilla`} />
             </div>
           </Inn>
@@ -1380,11 +1400,29 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             <Inn i={1}><H2 maks="14ch">Systemet driver boligen. Eieren har siste ord.</H2></Inn>
             <Inn i={2}><p className="mt-6 max-w-[44ch] text-[16px] leading-[1.55] sm:text-[17px]" style={{ color: DIM }}>Husleie registreres, kontrakter signeres med BankID, leietakerens spørsmål besvares fra kontrakten – og når varmtvannet svikter, finner systemet rørleggeren og ber om ett trykk.</p></Inn>
             <Inn i={3}>
-              <ul className="mt-8 grid gap-0 text-[14.5px]" style={{ color: T.ink }}>
-                {[['Leietakere', 'annonse, visning, kredittsjekk, valg'], ['Kontrakt og depositum', 'BankID-signering, depositumsgaranti'], ['Husleie', 'innkreving, purring, regulering'], ['Drift', 'sak → leverandør → ett trykk']].map(([t, u], i) => (
-                  <li key={t} className="flex items-baseline gap-3 border-t py-2.5" style={{ borderColor: HAIR }}><span className="w-5 shrink-0 text-[12px] font-semibold tabular-nums" style={{ color: LILLA_M }}>0{i + 1}</span><span className="font-medium">{t}</span><span className="ml-auto text-right text-[13px]" style={{ color: SVAK }}>{u}</span></li>
-                ))}
-              </ul>
+              <ol className="relative mt-9" data-testid="deck-konsept-flyt">
+                {/* forbindelseslinjen — tre steg skjer av seg selv, det fjerde ender i ett trykk */}
+                <span aria-hidden="true" className="pointer-events-none absolute left-[19px] top-6 bottom-6 w-px" style={{ background: `linear-gradient(180deg, ${HAIR} 0%, ${HAIR} 52%, rgba(122,63,168,0.5) 100%)` }} />
+                {[[Users, 'Leietakere', 'annonse, visning, kredittsjekk', 'auto'], [FileText, 'Kontrakt og depositum', 'BankID-signering, depositumsgaranti', 'auto'], [Coins, 'Husleie', 'innkreving, purring, regulering', 'auto'], [Wrench, 'Drift', 'sak → leverandør → forslag', 'trykk']].map(([Ikon, t, u, type]) => {
+                  const siste = type === 'trykk';
+                  return (
+                    <li key={t} className="relative flex items-start gap-4 py-[14px]">
+                      <span className="relative z-10 flex h-[38px] w-[38px] flex-none items-center justify-center rounded-[12px]" style={siste ? { background: LILLA_M, color: '#fff', boxShadow: '0 12px 30px rgba(122,63,168,0.34)' } : { background: '#fff', color: LILLA_M, boxShadow: `inset 0 0 0 1px ${HAIR}, 0 6px 18px rgba(21,19,15,0.05)` }}>
+                        <Ikon className="h-[18px] w-[18px]" strokeWidth={1.8} />
+                      </span>
+                      <div className="min-w-0 flex-1 pt-1">
+                        <p className="text-[15.5px] font-medium leading-tight" style={{ color: T.ink }}>{t}</p>
+                        <p className="mt-1 text-[13px] leading-snug" style={{ color: SVAK }}>{u}</p>
+                      </div>
+                      {siste ? (
+                        <span className="mt-1 flex flex-none items-center gap-1.5 rounded-full py-1 pl-2 pr-2.5 text-[11px] font-semibold" style={{ background: 'rgba(122,63,168,0.12)', color: LILLA_M }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: LILLA_M }} /> ett trykk</span>
+                      ) : (
+                        <span className="mt-1.5 flex flex-none items-center gap-1.5 text-[11px] font-medium" style={{ color: T.gronn }}><Check className="h-3.5 w-3.5" strokeWidth={2.4} /> automatisk</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
             </Inn>
           </div>
           <Inn i={2} className="min-w-0"><HeroScene eiendom={null} /></Inn>
@@ -1398,13 +1436,13 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           <Inn i={1}><H2 maks="12ch">Én plattform. Tre veier inn.</H2></Inn>
           <Ingress>Én kodebase, én prisliste, tre inngangsdører. Det som bygges for eiendomsselskapet – roller, rapportering, volum – gjør plattformen bedre for den private, og omvendt.</Ingress>
         </>}>
-          <div className="grid gap-10 sm:grid-cols-3" data-testid="deck-hvem-kort">
-            <Kolonne i={2} ikon={Home} over="Private huseiere" tittel="Selvbetjent på plattformen" rader={['Leietakere, kontrakt med BankID, husleie og drift – styrt fra mobilen.', 'Hele Norge. Ingen binding.']}
-              fot={<div className="mt-6 grid grid-cols-2 gap-4"><Fakta v={prisHuseier || '—'} u="pris" /><Fakta v={nb(plEnheterIDag)} u="selvbetjente enheter i dag" /></div>} />
-            <Kolonne i={3} ikon={Building2} over="Eiendomsselskaper" tittel="Hele porteføljen, per enhet" rader={['Ansatte jobber i ett system: leietakere, betaling, saker og leverandører.', 'Roller, rapportering og API. Pris per enhet.']}
-              fot={<div className="mt-6 grid grid-cols-2 gap-4"><Fakta v={basisT ? `${kr(basisT.bedrift.pris)}` : '—'} u="per enhet per måned" /><Fakta v={nb(bedriftIDag)} u="selskaper i dag" /></div>} />
-            <Kolonne i={4} ikon={Link2} over="Forvaltning" tittel="Digihome AS gjør jobben" rader={['En fast forvalter – på den samme plattformen. Eieren følger alt live.', 'Bergen og 60 km rundt. Betaler seg fra første måned.']}
-              fot={<div className="mt-6 grid grid-cols-2 gap-4"><Fakta v={pct(basisF.honorarPctNye, 1)} u="av leien, inkl. mva" /><Fakta v={nb(enheterIDag)} u="enheter under forvaltning i dag" /></div>} />
+          <div className="grid items-stretch gap-5 sm:grid-cols-3" data-testid="deck-hvem-kort">
+            <Kort i={2} ikon={Home} over="Private huseiere" tittel="Selvbetjent på plattformen" rader={['Leietakere, kontrakt med BankID, husleie og drift – styrt fra mobilen.', 'Hele Norge. Ingen binding.']}
+              fot={<div className="grid grid-cols-2 gap-4 border-t pt-5" style={{ borderColor: HAIR }}><Fakta v={prisHuseier || '—'} u="pris" /><Fakta v={nb(plEnheterIDag)} u="selvbetjente enheter i dag" /></div>} />
+            <Kort i={3} ikon={Building2} over="Eiendomsselskaper" tittel="Hele porteføljen, per enhet" rader={['Ett system for de ansatte: leietakere, betaling, saker og leverandører.', 'Roller, rapportering og API. Pris per enhet.']}
+              fot={<div className="grid grid-cols-2 gap-4 border-t pt-5" style={{ borderColor: HAIR }}><Fakta v={basisT ? `${kr(basisT.bedrift.pris)}` : '—'} u="per enhet per måned" /><Fakta v={nb(bedriftIDag)} u="selskaper i dag" /></div>} />
+            <Kort i={4} ikon={Link2} over="Forvaltning" tittel="Digihome AS gjør jobben" rader={['En fast forvalter – på den samme plattformen. Eieren følger alt live.', 'Bergen og 60 km rundt. Betaler seg fra første måned.']}
+              fot={<div className="grid grid-cols-2 gap-4 border-t pt-5" style={{ borderColor: HAIR }}><Fakta v={pct(basisF.honorarPctNye, 1)} u="av leien, inkl. mva" /><Fakta v={nb(enheterIDag)} u="enheter under forvaltning i dag" /></div>} />
           </div>
         </Todelt>
       </Side>
