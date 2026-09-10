@@ -41,87 +41,84 @@ import { cacheHent, cacheSlett } from '@/lib/klient-cache';
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
 
-// Menystruktur 2026 — gruppert etter jobben som skal gjøres, ikke etter modul.
-// Elementer med `insight` peker inn i Innsikt-motoren (samme data, ny inngang).
+// Menystruktur 2026 — fem domener etter jobben som skal gjøres: Drift · Økonomi ·
+// Vekst · Investor · System. Gruppene er sammenleggbare (kun aktiv åpen som standard).
+//
+// `insight`  → fane i Innsikt-motoren (section 'innsikt'). Disse er ALLE samlet bak ett
+//              menypunkt «Analyse & vekst» (k:'innsikt') og markert `hub:'innsikt'` slik at
+//              de skjules i admin-sidebaren, men beholdes i ⌘K-paletten, i modultilgang
+//              (Brukere → moduler) og for begrensede roller som har fått enkeltfaner.
+// `datarom`  → fane i investorrommet (section 'datarom').
+// Nøklene (k) er uendret — ruting, tilgang og lagrede innstillinger påvirkes ikke.
 const NAV = [
   {
-    group: 'Ledelse',
+    group: 'Drift',
     items: [
-      { k: 'nokkeltall', l: 'Nøkkeltall', icon: TrendingUp, desc: 'Investorklare KPIer · CAC · LTV · konvertering' },
-      { k: 'okonomi', l: 'Økonomi', icon: Wallet, desc: 'Resultat · likviditet · burn · runway' },
-      { k: 'regnskap', l: 'Regnskap (faktisk)', icon: Receipt, desc: 'Faktiske regnskapstall fra PowerOffice Go — resultat per måned, konto for konto og balanse' },
-      { k: 'pris', l: 'Pris', icon: Tags, desc: 'DigiHome Tech sin B2B-prisliste + faktureringsgrunnlag — konsernlisensen til DigiHome AS' },
       { k: 'leieforhold', l: 'Leieforhold', icon: KeyRound, desc: 'Leieforhold & inntekter — porteføljen med Excel-eksport (1:1 med plattformen)' },
+      { k: 'kunder', l: 'Kunder', icon: Users, desc: 'Utleiere · kontrakter · MRR fra plattformen' },
+      { k: 'dr-pipeline', datarom: 'pipeline', l: 'Pipeline', icon: TrendingUp, desc: 'Enheter på vei inn — signert kontra forventet' },
       { k: 'saker', l: 'Saker', icon: ClipboardCheck, badge: 'tasks', desc: 'Internt sakssystem — oppfølging, frister og ansvar' },
       { k: 'moter', l: 'Møter', icon: CalendarDays, desc: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter' },
-      { k: 'dokumenter', l: 'Dokumenter', icon: FileText, desc: 'Dokumenthub — frittstående dokumenter, arkiv og BankID-signering' },
-      { k: 'brukere', l: 'Brukere', icon: Users, desc: 'Personer, roller og tilgang — inviter, endre og se portalen som andre' },
-      { k: 'investorrom', l: 'Investor-rom', icon: Landmark, desc: 'Levende DD-rom — tilgangslenker, dokumenter & Q&A' },
-      { k: 'deck', l: 'Deck', icon: Presentation, desc: 'Investordecket — velg plan, presenter, del lenker og se hvem som åpnet' },
-      { k: 'playbook', l: 'Playbook', icon: FileText, desc: 'Marketing-strategi · konkurrentanalyse · 90-dagersplan' },
-    ],
-  },
-  {
-    group: 'Datarom',
-    items: [
-      { k: 'dr-oversikt', datarom: 'oversikt', l: 'Oversikt', icon: Landmark, desc: 'Investorrommets forside — nøkkeltall, drift, pipeline og investorpakke' },
-      { k: 'dr-resultat', datarom: 'resultat', l: 'Regnskap', icon: BarChart3, desc: 'Månedlig resultat fra oppstart — inntekter, kostnader og akkumulert' },
-      { k: 'dr-enheter', datarom: 'enheter', l: 'Enhetsøkonomi', icon: Scale, desc: 'Hva én ny enhet er verdt — bidrag, CAC payback, LTV og prisverktøy' },
-      { k: 'budsjett', l: 'Budsjett', icon: Target, desc: 'Enkle periodebudsjetter — honorar fra leieforholdene, del med investorrommet om ønskelig' },
-      // Enhetsøkonomi er egen investorside (dr-enheter) — aggregert unit
-      // economics med skaleringsgraf. Per-enhet-detaljer bor i Leieforhold.
-      { k: 'dr-pipeline', datarom: 'pipeline', l: 'Pipeline', icon: TrendingUp, desc: 'Enheter på vei inn — signert kontra forventet' },
-      { k: 'dr-selskap', datarom: 'selskap', l: 'Selskap', icon: ShieldCheck, desc: 'Ansatte, faste kostnader, gjeld og aksjonærlån' },
-      { k: 'dr-organisasjon', datarom: 'organisasjon', l: 'Organisasjon', icon: Network, desc: 'Styre & ledelse — interaktivt kart for begge selskapene, synket fra Brønnøysund' },
-      { k: 'dr-eierbok', datarom: 'eierbok', l: 'Aksjeeierbok', icon: BookMarked, desc: 'Aksjonærer, transaksjoner og cap table — full historikk for begge selskapene' },
-      { k: 'dr-dokumenter', datarom: 'dokumenter', l: 'Dokumenter', icon: FileText, desc: 'Delte rapporter og avtaler fra dokumenthvelvet' },
-    ],
-  },
-  {
-    group: 'Salg',
-    items: [
-      { k: 'i-leads', insight: 'leads', l: 'Leads', icon: UserPlus, badge: 'pending', desc: 'Innkommende leads — status, kilde og CRM-synk' },
-      { k: 'salgsradar', l: 'Salgsradar', icon: Radar, desc: 'FINN-annonser → prisanalyse, AI-styling og tilbud til huseier' },
-      { k: 'kunder', l: 'Kunder', icon: Users, desc: 'Utleiere · kontrakter · MRR fra plattformen' },
-      { k: 'historikk', l: 'Historikk', icon: History, desc: 'Leads fra før sporingen — sett kilde & verdi manuelt' },
-      { k: 'abonnementer', l: 'Abonnementer', icon: CreditCard, soon: true, desc: 'Aktive avtaler & fakturering' },
-    ],
-  },
-  {
-    group: 'Markedsføring',
-    items: [
-      { k: 'i-annonser', insight: 'annonser', l: 'Annonser', icon: Megaphone, desc: 'Meta & Google Ads — forbruk, ROAS og resultater' },
-      { k: 'i-annonsestudio', insight: 'annonsestudio', l: 'Annonsestudio', icon: Wand2, desc: 'Lag og publiser annonser med AI' },
-      { k: 'nyhetsbrev', l: 'Nyhetsbrev', icon: Mail, desc: 'E-post til leads & kunder — komponer, test og send' },
-      { k: 'landingssider', l: 'Landingssider', icon: LayoutTemplate, desc: 'Kampanjesider · annonse-LP-er · hovedsider — med live ytelse' },
-      { k: 'i-finnstudio', insight: 'finnstudio', l: 'FINN-studio', icon: Layers, desc: 'FINN-annonser — analyse og optimalisering' },
-      { k: 'i-konkurrent', insight: 'konkurrent', l: 'Konkurrentanalyse', icon: Crosshair, desc: 'Overvåk konkurrentene i Bergen' },
-      { k: 'seo', l: 'SEO & AEO', icon: Globe, desc: 'Google-posisjoner · AI-synlighet · teknisk SEO-helse' },
-    ],
-  },
-  {
-    group: 'Analyse',
-    items: [
-      { k: 'i-oversikt', insight: 'oversikt', l: 'Oversikt', icon: LayoutDashboard, desc: 'Totalbildet — trafikk, leads og kanaler' },
-      { k: 'i-trafikk', insight: 'trafikk', l: 'Trafikk', icon: Activity, desc: 'Økter, kilder og sider — cookieless' },
-      { k: 'i-live', insight: 'live', l: 'Sanntid', icon: Radio, desc: 'Hvem er på nettsiden akkurat nå' },
-      { k: 'i-trakt', insight: 'trakt', l: 'Trakt & A/B', icon: GitBranch, desc: 'Konverteringstrakt og eksperimenter' },
-      { k: 'i-innsikt', insight: 'innsikt', l: 'Lead-innsikt', icon: BarChart3, desc: 'Dybdeinnsikt i leads og segmenter' },
-      { k: 'i-leiemarked', insight: 'leiemarked', l: 'Leiemarked', icon: Database, desc: 'Leiepriser og markedsdata for Bergen' },
-      { k: 'i-ytelse', insight: 'ytelse', l: 'Ytelse', icon: Gauge, desc: 'Web Vitals og teknisk ytelse' },
-      { k: 'i-ai', insight: 'ai', l: 'AI-assistent', icon: Sparkles, desc: 'Spør AI om dataene dine' },
-    ],
-  },
-  {
-    group: 'Innhold',
-    items: [
-      { k: 'artikler', l: 'Artikler', icon: FileText, href: '/admin/artikler' },
       { k: 'boliger', l: 'Boliger', icon: Home, desc: 'Vis forvaltede boliger på forsiden — synk & synlighet' },
     ],
   },
   {
-    group: 'Koordinering',
+    group: 'Økonomi',
     items: [
+      { k: 'nokkeltall', l: 'Nøkkeltall', icon: TrendingUp, desc: 'Investorklare KPIer · CAC · LTV · konvertering' },
+      { k: 'okonomi', l: 'Resultat & likviditet', icon: Wallet, desc: 'Resultat · likviditet · burn · runway (modell)' },
+      { k: 'regnskap', l: 'Regnskap · PowerOffice', icon: Receipt, desc: 'Faktiske regnskapstall fra PowerOffice Go — resultat per måned, konto for konto og balanse' },
+      { k: 'dr-resultat', datarom: 'resultat', l: 'Resultat', icon: BarChart3, desc: 'Månedlig resultat fra oppstart — inntekter, kostnader og akkumulert' },
+      { k: 'budsjett', l: 'Budsjett', icon: Target, desc: 'Enkle periodebudsjetter — honorar fra leieforholdene, del med investorrommet om ønskelig' },
+      { k: 'dr-enheter', datarom: 'enheter', l: 'Enhetsøkonomi', icon: Scale, desc: 'Hva én ny enhet er verdt — bidrag, CAC payback, LTV og prisverktøy' },
+      { k: 'pris', l: 'Pris', icon: Tags, desc: 'DigiHome Tech sin B2B-prisliste + faktureringsgrunnlag — konsernlisensen til DigiHome AS' },
+    ],
+  },
+  {
+    group: 'Vekst',
+    items: [
+      { k: 'innsikt', l: 'Analyse & vekst', icon: LayoutDashboard, desc: 'Ett sted for trafikk, leads, annonser, trakt, konkurrenter, ytelse og AI — med egne faner' },
+      { k: 'salgsradar', l: 'Salgsradar', icon: Radar, desc: 'FINN-annonser → prisanalyse, AI-styling og tilbud til huseier' },
+      { k: 'nyhetsbrev', l: 'Nyhetsbrev', icon: Mail, desc: 'E-post til leads & kunder — komponer, test og send' },
+      { k: 'landingssider', l: 'Landingssider', icon: LayoutTemplate, desc: 'Kampanjesider · annonse-LP-er · hovedsider — med live ytelse' },
+      { k: 'seo', l: 'SEO & AEO', icon: Globe, desc: 'Google-posisjoner · AI-synlighet · teknisk SEO-helse' },
+      { k: 'historikk', l: 'Historikk', icon: History, desc: 'Leads fra før sporingen — sett kilde & verdi manuelt' },
+      { k: 'abonnementer', l: 'Abonnementer', icon: CreditCard, soon: true, desc: 'Aktive avtaler & fakturering' },
+      // ── Faner i Innsikt-motoren (skjult i sidebar, samlet bak «Analyse & vekst») ──
+      { k: 'i-oversikt', insight: 'oversikt', hub: 'innsikt', l: 'Oversikt (analyse)', icon: LayoutDashboard, desc: 'Totalbildet — trafikk, leads og kanaler' },
+      { k: 'i-leads', insight: 'leads', hub: 'innsikt', l: 'Leads', icon: UserPlus, badge: 'pending', desc: 'Innkommende leads — status, kilde og CRM-synk' },
+      { k: 'i-annonser', insight: 'annonser', hub: 'innsikt', l: 'Annonser', icon: Megaphone, desc: 'Meta & Google Ads — forbruk, ROAS og resultater' },
+      { k: 'i-annonsestudio', insight: 'annonsestudio', hub: 'innsikt', l: 'Annonsestudio', icon: Wand2, desc: 'Lag og publiser annonser med AI' },
+      { k: 'i-finnstudio', insight: 'finnstudio', hub: 'innsikt', l: 'FINN-studio', icon: Layers, desc: 'FINN-annonser — analyse og optimalisering' },
+      { k: 'i-konkurrent', insight: 'konkurrent', hub: 'innsikt', l: 'Konkurrentanalyse', icon: Crosshair, desc: 'Overvåk konkurrentene i Bergen' },
+      { k: 'i-trafikk', insight: 'trafikk', hub: 'innsikt', l: 'Trafikk', icon: Activity, desc: 'Økter, kilder og sider — cookieless' },
+      { k: 'i-live', insight: 'live', hub: 'innsikt', l: 'Sanntid', icon: Radio, desc: 'Hvem er på nettsiden akkurat nå' },
+      { k: 'i-trakt', insight: 'trakt', hub: 'innsikt', l: 'Trakt & A/B', icon: GitBranch, desc: 'Konverteringstrakt og eksperimenter' },
+      { k: 'i-innsikt', insight: 'innsikt', hub: 'innsikt', l: 'Lead-innsikt', icon: BarChart3, desc: 'Dybdeinnsikt i leads og segmenter' },
+      { k: 'i-leiemarked', insight: 'leiemarked', hub: 'innsikt', l: 'Leiemarked', icon: Database, desc: 'Leiepriser og markedsdata for Bergen' },
+      { k: 'i-ytelse', insight: 'ytelse', hub: 'innsikt', l: 'Ytelse', icon: Gauge, desc: 'Web Vitals og teknisk ytelse' },
+      { k: 'i-ai', insight: 'ai', hub: 'innsikt', l: 'AI-assistent', icon: Sparkles, desc: 'Spør AI om dataene dine' },
+    ],
+  },
+  {
+    group: 'Investor',
+    items: [
+      { k: 'dr-oversikt', datarom: 'oversikt', l: 'Oversikt', icon: Landmark, desc: 'Investorrommets forside — nøkkeltall, drift, pipeline og investorpakke' },
+      { k: 'deck', l: 'Deck', icon: Presentation, desc: 'Investordecket — velg plan, presenter, del lenker og se hvem som åpnet' },
+      { k: 'investorrom', l: 'Tilgang & Q&A', icon: ShieldCheck, desc: 'Levende DD-rom — tilgangslenker, dokumenthvelv & investorspørsmål' },
+      { k: 'dr-organisasjon', datarom: 'organisasjon', l: 'Organisasjon', icon: Network, desc: 'Styre & ledelse — interaktivt kart for begge selskapene, synket fra Brønnøysund' },
+      { k: 'dr-selskap', datarom: 'selskap', l: 'Selskap', icon: Landmark, desc: 'Ansatte, faste kostnader, gjeld og aksjonærlån' },
+      { k: 'dr-eierbok', datarom: 'eierbok', l: 'Aksjeeierbok', icon: BookMarked, desc: 'Aksjonærer, transaksjoner og cap table — full historikk for begge selskapene' },
+      { k: 'dr-dokumenter', datarom: 'dokumenter', l: 'Delte dokumenter', icon: FileText, desc: 'Delte rapporter og avtaler fra dokumenthvelvet' },
+    ],
+  },
+  {
+    group: 'System',
+    items: [
+      { k: 'dokumenter', l: 'Dokumenter', icon: FileText, desc: 'Dokumenthub — frittstående dokumenter, arkiv og BankID-signering' },
+      { k: 'brukere', l: 'Brukere', icon: Users, desc: 'Personer, roller og tilgang — inviter, endre og se portalen som andre' },
+      { k: 'playbook', l: 'Playbook', icon: FileText, desc: 'Marketing-strategi · konkurrentanalyse · 90-dagersplan' },
+      { k: 'artikler', l: 'Artikler', icon: FileText, href: '/admin/artikler' },
       { k: 'bro', l: 'Agent-bro', icon: MessageSquare, desc: 'Meldinger til/fra plattform-prosjektet' },
     ],
   },
@@ -152,7 +149,7 @@ const SECTION_TITLES = {
   investorrom: { t: 'Investor-rom', s: 'Levende DD-rom — del tilgangslenker, administrer dokumenthvelv og svar på investorspørsmål. All aktivitet logges' },
   deck: { t: 'Deck', s: 'Investordecket — velg planen decket viser, presenter, del rene lenker og se hvem som åpnet' },
   playbook: { t: 'Playbook', s: 'Head of Marketing-strategi · Utleiemegleren-analyse · 90-dagersplan · budsjettmatematikk' },
-  innsikt: { t: 'Innsikt', s: 'Førsteparts analyse · cookieless · GDPR-trygt' },
+  innsikt: { t: 'Analyse & vekst', s: 'Trafikk · leads · annonser · trakt · konkurrenter · ytelse · AI — førsteparts, cookieless, GDPR-trygt' },
   okonomi: { t: 'Økonomi', s: 'Resultat & likviditet · honorar (prosent av leie) · burn rate & runway' },
   leieforhold: { t: 'Leieforhold & inntekter', s: 'Inntektstrappen — leie i dag, sikret, pipeline og ledig · honorar & netto · Excel-eksport' },
   budsjett: { t: 'Budsjett', s: 'Velg fra/til måned — honorar hentes ferdig utfylt fra leieforholdene' },
@@ -319,8 +316,11 @@ export default function AdminPage({ params }) {
   useEffect(() => {
     try { setNavOpen(JSON.parse(localStorage.getItem(NAV_OPEN_KEY) || '{}') || {}); } catch (e) {}
   }, []);
-  const toggleGroup = (g) => setNavOpen((prev) => {
-    const next = { ...prev, [g]: prev[g] === false };
+  // Trekkspill: grupper er lukket som standard (kun aktiv gruppe åpen). Klikk
+  // veksler ut fra faktisk visningstilstand; gruppen med aktivt punkt kan ikke
+  // lukkes (man ser alltid hvor man er). Valget huskes i localStorage.
+  const toggleGroup = (g, erOpen) => setNavOpen((prev) => {
+    const next = { ...prev, [g]: !erOpen };
     try { localStorage.setItem(NAV_OPEN_KEY, JSON.stringify(next)); } catch (e) {}
     return next;
   });
@@ -595,26 +595,35 @@ export default function AdminPage({ params }) {
   const NavList = ({ compact = false }) => (
     <nav className={`flex-1 overflow-y-auto ${compact ? 'px-2.5' : 'px-3'} py-4 ${compact ? 'space-y-3' : 'space-y-4'}`}>
       {synligNav.map((grp, gi) => {
+        // Full admin: fanene som bor inne i en hub (hub:'innsikt') skjules — de har ett
+        // samlet menypunkt («Analyse & vekst») og finnes fortsatt i ⌘K. Begrensede
+        // roller ser nøyaktig sine tildelte moduler, også enkeltfaner.
+        const items = begrensning ? grp.items : grp.items.filter((it) => !it.hub);
         const containsActive = grp.items.some((it) => (it.datarom ? (section === 'datarom' && dataromTab === it.datarom) : it.insight ? (section === 'innsikt' && insightTab === it.insight) : section === it.k));
-        const isOpen = compact ? true : (navOpen[grp.group] !== false || containsActive);
+        // Trekkspill: kun gruppen med aktivt punkt er åpen som standard; grupper brukeren
+        // selv har åpnet huskes (localStorage).
+        const isOpen = compact ? true : (navOpen[grp.group] === true || containsActive);
         return (
         <div key={grp.group}>
           {compact ? (
             gi > 0 && <div className="mx-2 mb-3 h-px bg-white/[0.07]" />
           ) : (
           <button
-            onClick={() => toggleGroup(grp.group)}
+            onClick={() => toggleGroup(grp.group, isOpen)}
             className="w-full px-3 mb-1.5 flex items-center justify-between group/hdr"
             aria-expanded={isOpen}
             data-testid={`nav-group-${grp.group}`}
           >
             <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-white/30 group-hover/hdr:text-white/55 transition-colors">{grp.group}</span>
-            <ChevronDown className={`w-3 h-3 text-white/20 group-hover/hdr:text-white/55 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} />
+            <span className="flex items-center gap-1.5">
+              {!isOpen && <span className="text-[10px] tabular-nums text-white/20">{items.length}</span>}
+              <ChevronDown className={`w-3 h-3 text-white/20 group-hover/hdr:text-white/55 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} />
+            </span>
           </button>
           )}
           {isOpen && (
           <div className="space-y-0.5 dh-fade">
-            {grp.items.map((it) => {
+            {items.map((it) => {
               const Icon = it.icon;
               const active = it.datarom ? (section === 'datarom' && dataromTab === it.datarom) : it.insight ? (section === 'innsikt' && insightTab === it.insight) : section === it.k;
               const pend = it.badge === 'pending' ? (insightStats.pending || 0) : it.badge === 'tasks' ? (taskStats.overdue || 0) : 0;
@@ -695,6 +704,26 @@ export default function AdminPage({ params }) {
           </>
         )}
       </div>
+      {/* ⌘K — primær hurtignavigasjon: søk og hopp til hva som helst, også fanene som
+          bor inne i «Analyse & vekst». Gjør paletten synlig, ikke bare en snarvei. */}
+      <div className={`${compact ? 'px-2' : 'px-3'} pt-3`}>
+        <button
+          onClick={() => { setPaletteOpen(true); setSidebarOpen(false); }}
+          title="Søk eller hopp til … (⌘K)"
+          data-testid="sidebar-search-btn"
+          className={compact
+            ? 'flex h-10 w-full items-center justify-center rounded-xl text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white'
+            : 'flex h-9 w-full items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-[12.5px] text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white/80'}
+        >
+          <Search className="h-[15px] w-[15px] shrink-0" />
+          {!compact && (
+            <>
+              <span className="flex-1 text-left">Søk eller hopp til …</span>
+              <kbd className="rounded-md border border-white/[0.12] bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-white/50">⌘K</kbd>
+            </>
+          )}
+        </button>
+      </div>
       <NavList compact={compact} />
       <div className={`${compact ? 'px-2' : 'px-3'} py-3 border-t border-white/[0.07] shrink-0`}>
         {compact ? (
@@ -745,9 +774,11 @@ export default function AdminPage({ params }) {
     window.setTimeout(() => window.dispatchEvent(new CustomEvent('dh:saker', { detail })), varDer ? 0 : 420);
   };
   const paletteCommands = [
-    // Hele menyen — automatisk fra NAV-strukturen (alltid i synk med sidemenyen)
+    // Hele menyen — automatisk fra NAV-strukturen (alltid i synk med sidemenyen).
+    // Faner som bor i en hub (skjult i sidebar) får gruppen «Analyse & vekst» så de er
+    // lette å finne og forstå i paletten.
     ...synligNav.flatMap((g) => g.items.filter((it) => !it.soon).map((it) => ({
-      id: `nav-${it.k}`, group: g.group, label: it.l, icon: it.icon,
+      id: `nav-${it.k}`, group: it.hub === 'innsikt' ? 'Analyse & vekst' : g.group, label: it.l, icon: it.icon,
       action: () => {
         setPaletteOpen(false);
         if (it.href) { window.location.href = it.href; return; }
@@ -909,6 +940,27 @@ export default function AdminPage({ params }) {
           {section === 'brukere' && <Brukere apiKey={token} user={user} onImpersonate={startImpersonation} />}
           {section === 'moter' && <MeetingsTab apiKey={token} user={user} onOpenTask={(id, arkivert) => runSaker({ do: 'aapne', id, arkivert })} />}
           {section === 'dokumenter' && <DokumenterModul apiKey={token} user={user} />}
+          {section === 'innsikt' && (
+            <div className="mb-5 flex items-center gap-1 overflow-x-auto rounded-2xl bg-white p-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.04)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {INSIGHT_TABS.map((t) => {
+                const on = insightTab === t.k;
+                const Ikon = t.icon;
+                const pend = t.badge === 'pending' ? (insightStats.pending || 0) : 0;
+                return (
+                  <button
+                    key={t.k}
+                    onClick={() => setInsightTab(t.k)}
+                    data-testid={`innsikt-tab-${t.k}`}
+                    className={`relative flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-medium transition-colors ${on ? 'bg-[#0a0a0a] text-white shadow-sm' : 'text-[#666] hover:bg-black/[0.04] hover:text-[#0a0a0a]'}`}
+                  >
+                    <Ikon className={`h-4 w-4 ${on ? 'text-[#cf97fc]' : ''}`} />
+                    {t.l}
+                    {pend > 0 && <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold leading-none ${on ? 'bg-[#cf97fc] text-[#0a0a0a]' : 'bg-amber-400 text-[#0a0a0a]'}`}>{pend}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <CustomersDashboard apiKey={token} />}
           {section === 'salgsradar' && <Salgsradar apiKey={token} />}
