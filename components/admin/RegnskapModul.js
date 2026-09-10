@@ -71,6 +71,13 @@ export default function RegnskapModul({ apiKey, presentasjon = false }) {
   const [nyKey, setNyKey] = useState('');
   const [nyEnv, setNyEnv] = useState('demo');
   const [lagrer, setLagrer] = useState(false);
+  // Redigering av eksisterende selskap
+  const [redigerId, setRedigerId] = useState('');
+  const [redNavn, setRedNavn] = useState('');
+  const [redKey, setRedKey] = useState('');
+  const [redEnv, setRedEnv] = useState('demo');
+  const [redFeil, setRedFeil] = useState('');
+  const [redLagrer, setRedLagrer] = useState(false);
   const [skjemaFeil, setSkjemaFeil] = useState('');
 
   const hentSelskaper = useCallback(async () => {
@@ -145,6 +152,20 @@ export default function RegnskapModul({ apiKey, presentasjon = false }) {
     await hentSelskaper();
   };
 
+  const startRediger = (s) => { setRedigerId(s.id); setRedNavn(s.navn); setRedKey(''); setRedEnv(s.env || 'demo'); setRedFeil(''); };
+  const lagreRediger = async () => {
+    setRedLagrer(true); setRedFeil('');
+    try {
+      const body = { id: redigerId, navn: redNavn.trim(), env: redEnv };
+      if (redKey.trim()) body.clientKey = redKey.trim();
+      const r = await fetch(`/api/admin/regnskap/selskaper?${q}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (!d.ok) { setRedFeil(d.feil || 'Kunne ikke lagre'); }
+      else { setRedigerId(''); await hentSelskaper(); if (redigerId === valgtId) hentStatus(valgtId); }
+    } catch (e) { setRedFeil('Kunne ikke lagre'); }
+    setRedLagrer(false);
+  };
+
   const maksMnd = res ? Math.max(1, ...res.maaneder.map((m) => Math.max(m.inntekt, m.kostnad))) : 1;
   const valgt = selskaper.find((s) => s.id === valgtId);
 
@@ -201,12 +222,34 @@ export default function RegnskapModul({ apiKey, presentasjon = false }) {
           {/* Eksisterende selskaper */}
           <div className="mt-4 space-y-2">
             {selskaper.map((s) => (
-              <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/[0.06] bg-white px-4 py-3">
-                <div className="min-w-0">
-                  <div className="text-[14px] font-medium">{s.navn}</div>
-                  <div className="text-[12px] text-black/45">Klientnøkkel {s.klientNokkelMaske} · {s.env}{s.klientNavn ? ` · ${s.klientNavn}` : ''}</div>
+              <div key={s.id} className="rounded-xl border border-black/[0.06] bg-white px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-medium">{s.navn}</div>
+                    <div className="text-[12px] text-black/45">Klientnøkkel {s.klientNokkelMaske} · {s.env}{s.klientNavn ? ` · ${s.klientNavn}` : ''}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => (redigerId === s.id ? setRedigerId('') : startRediger(s))} className="flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-black/70 hover:bg-black/[0.03]"><Settings2 className="h-3.5 w-3.5" /> Endre</button>
+                    <button onClick={() => slettSelskap(s.id, s.navn)} className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-red-600 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /> Fjern</button>
+                  </div>
                 </div>
-                <button onClick={() => slettSelskap(s.id, s.navn)} className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-red-600 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /> Fjern</button>
+                {redigerId === s.id && (
+                  <div className="mt-3 border-t border-black/[0.06] pt-3">
+                    <div className="grid gap-3 sm:grid-cols-[1fr_1.5fr_auto]">
+                      <input value={redNavn} onChange={(e) => setRedNavn(e.target.value)} placeholder="Navn" className="rounded-lg border border-black/10 px-3 py-2 text-[13.5px]" />
+                      <input value={redKey} onChange={(e) => setRedKey(e.target.value)} placeholder="Ny klientnøkkel (la stå tom for å beholde)" className="rounded-lg border border-black/10 px-3 py-2 text-[13.5px] font-mono" />
+                      <select value={redEnv} onChange={(e) => setRedEnv(e.target.value)} className="rounded-lg border border-black/10 px-3 py-2 text-[13.5px]">
+                        <option value="demo">Demo</option>
+                        <option value="production">Produksjon</option>
+                      </select>
+                    </div>
+                    {redFeil ? <div className="mt-2 flex items-center gap-1.5 text-[12.5px] text-red-600"><AlertCircle className="h-3.5 w-3.5" /> {redFeil}</div> : null}
+                    <div className="mt-3 flex items-center gap-2">
+                      <button onClick={lagreRediger} disabled={redLagrer} className="flex items-center gap-1.5 rounded-lg bg-[#151310] px-3.5 py-1.5 text-[12.5px] font-medium text-white hover:opacity-90 disabled:opacity-50">{redLagrer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />} Test & lagre</button>
+                      <button onClick={() => setRedigerId('')} className="rounded-lg border border-black/10 px-3.5 py-1.5 text-[12.5px] font-medium text-black/60 hover:bg-black/[0.03]">Avbryt</button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
             {selskaper.length === 0 && <p className="text-[13px] text-black/40">Ingen selskaper lagt inn ennå.</p>}
