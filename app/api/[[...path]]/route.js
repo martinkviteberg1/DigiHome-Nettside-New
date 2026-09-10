@@ -10,6 +10,7 @@ import {
 import { promises as fsp } from 'fs';
 import nodePath from 'path';
 import { getDb, clean } from '@/lib/mongodb';
+import { poFellesKonfigurert, poKlientInfo, poResultat, poSaldobalanse, PO_DEFAULT_ENV, PO_BOOTSTRAP_CLIENT_KEY } from '@/lib/poweroffice';
 import { getObject, putObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
 import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels, computeLandingPages, buildPaidFunnel, computeVelocity, computeMarketingTrends } from '@/lib/analytics-server';
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
@@ -3177,6 +3178,126 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: true, report }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: (e && e.message) || 'SSB utilgjengelig' }, { status: 502 }));
+      }
+    }
+
+    // ═══════════════ REGNSKAP: PowerOffice Go (faktiske regnskapstall, les-only, FLERSELSKAP) ═══════════════
+    // App-/abonnementsnøkkel er delt (.env). Hvert selskap (DigiHome AS, DigiHome Tech AS, …)
+    // har sin egen klientnøkkel, lagret i db-kolleksjonen `regnskap_selskaper`, og sitt eget regnskap.
+    if (route.startsWith('/admin/regnskap')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const felles = poFellesKonfigurert();
+      const koll = db.collection('regnskap_selskaper');
+      const mask = (ck) => (ck ? `${String(ck).slice(0, 8)}…${String(ck).slice(-2)}` : '');
+      const offentlig = (s) => ({ id: s.id, navn: s.navn, env: s.env || PO_DEFAULT_ENV, klientNokkelMaske: mask(s.clientKey), klientNavn: s.klientNavn || null, sistTestet: s.sistTestet || null, opprettet: s.opprettet || null });
+
+      // Engangs-seeding: hvis ingen selskaper finnes men .env har en bootstrap-klientnøkkel,
+      // opprett ett selskap så eksisterende demo-oppsett virker uten manuelle steg.
+      const ensureSeed = async () => {
+        const antall = await koll.countDocuments({});
+        if (antall === 0 && PO_BOOTSTRAP_CLIENT_KEY) {
+          await koll.insertOne({ id: uuidv4(), navn: 'DigiHome AS', clientKey: PO_BOOTSTRAP_CLIENT_KEY, env: PO_DEFAULT_ENV, klientNavn: null, opprettet: new Date().toISOString(), sistTestet: null });
+        }
+      };
+      const finnSelskap = async (id) => {
+        if (id) return koll.findOne({ id });
+        return koll.find({}).sort({ opprettet: 1 }).limit(1).next();
+      };
+
+      // --- Liste over selskaper (maskert) ---
+      if (route === '/admin/regnskap/selskaper' && method === 'GET') {
+        await ensureSeed();
+        const liste = await koll.find({}).sort({ opprettet: 1 }).toArray();
+        return cors(NextResponse.json({ ok: true, konfigurert: felles, env: PO_DEFAULT_ENV, selskaper: liste.map(offentlig) }));
+      }
+
+      // --- Legg til selskap (tester tilkoblingen før lagring) ---
+      if (route === '/admin/regnskap/selskaper' && method === 'POST') {
+        if (!felles) return cors(NextResponse.json({ ok: false, feil: 'Mangler app-/abonnementsnøkkel i miljøet' }, { status: 400 }));
+        let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+        const navn = String(body.navn || '').trim();
+        const clientKey = String(body.clientKey || '').trim();
+        const env = (String(body.env || PO_DEFAULT_ENV).toLowerCase());
+        if (!navn || !clientKey) return cors(NextResponse.json({ ok: false, feil: 'Navn og klientnøkkel er påkrevd' }, { status: 400 }));
+        let klientNavn = null;
+        try { const info = await poKlientInfo({ clientKey, env }); klientNavn = info.klientNavn; }
+        catch (e) { return cors(NextResponse.json({ ok: false, feil: `Tilkobling feilet: ${(e && e.message) || 'ukjent'}` }, { status: 502 })); }
+        const doc = { id: uuidv4(), navn, clientKey, env, klientNavn, opprettet: new Date().toISOString(), sistTestet: new Date().toISOString() };
+        await koll.insertOne(doc);
+        return cors(NextResponse.json({ ok: true, selskap: offentlig(doc) }));
+      }
+
+      // --- Endre selskap (navn / ny klientnøkkel / miljø) ---
+      if (route === '/admin/regnskap/selskaper' && method === 'PUT') {
+        let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+        const id = String(body.id || '');
+        const eksisterende = await koll.findOne({ id });
+        if (!eksisterende) return cors(NextResponse.json({ ok: false, feil: 'Selskap ikke funnet' }, { status: 404 }));
+        const patch = {};
+        if (typeof body.navn === 'string' && body.navn.trim()) patch.navn = body.navn.trim();
+        if (typeof body.env === 'string' && body.env.trim()) patch.env = body.env.toLowerCase();
+        const nyKey = typeof body.clientKey === 'string' && body.clientKey.trim() ? body.clientKey.trim() : null;
+        const testKey = nyKey || eksisterende.clientKey;
+        const testEnv = patch.env || eksisterende.env || PO_DEFAULT_ENV;
+        try { const info = await poKlientInfo({ clientKey: testKey, env: testEnv }); patch.klientNavn = info.klientNavn; patch.sistTestet = new Date().toISOString(); }
+        catch (e) { return cors(NextResponse.json({ ok: false, feil: `Tilkobling feilet: ${(e && e.message) || 'ukjent'}` }, { status: 502 })); }
+        if (nyKey) patch.clientKey = nyKey;
+        await koll.updateOne({ id }, { $set: patch });
+        const oppdatert = await koll.findOne({ id });
+        return cors(NextResponse.json({ ok: true, selskap: offentlig(oppdatert) }));
+      }
+
+      // --- Slett selskap ---
+      if (route === '/admin/regnskap/selskaper' && method === 'DELETE') {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id') || '';
+        await koll.deleteOne({ id });
+        return cors(NextResponse.json({ ok: true }));
+      }
+
+      // --- Status/tilkobling for ett selskap ---
+      if (route === '/admin/regnskap/status' && method === 'GET') {
+        await ensureSeed();
+        if (!felles) return cors(NextResponse.json({ ok: false, konfigurert: false, env: PO_DEFAULT_ENV, feil: 'PowerOffice app-/abonnementsnøkkel mangler' }));
+        const { searchParams } = new URL(request.url);
+        const selskap = await finnSelskap(searchParams.get('selskap'));
+        if (!selskap) return cors(NextResponse.json({ ok: false, konfigurert: true, env: PO_DEFAULT_ENV, feil: 'Ingen selskaper lagt inn ennå' }));
+        try {
+          const klient = await poKlientInfo({ clientKey: selskap.clientKey, env: selskap.env });
+          await koll.updateOne({ id: selskap.id }, { $set: { klientNavn: klient.klientNavn, sistTestet: new Date().toISOString() } });
+          return cors(NextResponse.json({ ok: true, konfigurert: true, env: selskap.env, selskap: offentlig(selskap), klient }));
+        } catch (e) {
+          return cors(NextResponse.json({ ok: false, konfigurert: true, env: selskap.env, selskap: offentlig(selskap), feil: (e && e.message) || 'Tilkobling feilet' }, { status: 502 }));
+        }
+      }
+
+      // --- Resultat (P&L) for ett selskap ---
+      if (route === '/admin/regnskap/resultat' && method === 'GET') {
+        if (!felles) return cors(NextResponse.json({ ok: false, feil: 'PowerOffice ikke konfigurert' }, { status: 400 }));
+        const { searchParams } = new URL(request.url);
+        const selskap = await finnSelskap(searchParams.get('selskap'));
+        if (!selskap) return cors(NextResponse.json({ ok: false, feil: 'Ingen selskap valgt' }, { status: 400 }));
+        const ar = Number(searchParams.get('ar')) || new Date().getFullYear();
+        try {
+          const data = await poResultat({ ar }, { clientKey: selskap.clientKey, env: selskap.env });
+          return cors(NextResponse.json({ ...data, selskap: offentlig(selskap) }));
+        } catch (e) {
+          return cors(NextResponse.json({ ok: false, feil: (e && e.message) || 'Kunne ikke hente resultat' }, { status: 502 }));
+        }
+      }
+
+      // --- Saldobalanse for ett selskap ---
+      if (route === '/admin/regnskap/saldobalanse' && method === 'GET') {
+        if (!felles) return cors(NextResponse.json({ ok: false, feil: 'PowerOffice ikke konfigurert' }, { status: 400 }));
+        const { searchParams } = new URL(request.url);
+        const selskap = await finnSelskap(searchParams.get('selskap'));
+        if (!selskap) return cors(NextResponse.json({ ok: false, feil: 'Ingen selskap valgt' }, { status: 400 }));
+        try {
+          const data = await poSaldobalanse({ dato: searchParams.get('dato') || '' }, { clientKey: selskap.clientKey, env: selskap.env });
+          return cors(NextResponse.json({ ...data, selskap: offentlig(selskap) }));
+        } catch (e) {
+          return cors(NextResponse.json({ ok: false, feil: (e && e.message) || 'Kunne ikke hente saldobalanse' }, { status: 502 }));
+        }
       }
     }
 

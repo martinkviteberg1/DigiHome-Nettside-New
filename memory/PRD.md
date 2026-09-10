@@ -1665,3 +1665,12 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   - deck-ord 760→480ms (stagger 60→40ms); deck-linje 700→460ms; deck-rad/stolpe/stolpe-tekst proporsjonalt raskere.
   - Navigasjonslås `laastTilRef` 720→360ms; utgående-opprydding 880→500ms.
 - Reduced-motion + print-stier uendret (klassenavn urørt). Verifisert: rask tastatur-nav (6 slides @ 420ms holder følge), losning (tyngste, video) overflowY=0 + willChange=1, ingen page-errors. Kompilerer rent. IKKE brukerbekreftet.
+
+## Oppdatering 10. sep 2026 (19) — PowerOffice Go regnskapsintegrasjon (FLERSELSKAP) i admin
+- Bruker: «bygg integrasjon med PowerOffice for å hente faktiske regnskapstall i adminportalen» + «må støtte BÅDE DigiHome AS og DigiHome Tech AS — hver sin klientnøkkel og hvert sitt regnskap».
+- MODELL: App-/abonnementsnøkkel delt (.env: POWEROFFICE_APP_KEY, POWEROFFICE_SUBSCRIPTION_KEY, POWEROFFICE_ENV=demo, POWEROFFICE_CLIENT_KEY=bootstrap). Klientnøkkel UNIK per selskap i Mongo `regnskap_selskaper`.
+- NYE FILER: /lib/poweroffice.js (OAuth2 client-credentials, token-cache per klientnøkkel, kontoplan/resultat/saldobalanse, kontekst {clientKey,env}); /components/admin/RegnskapModul.js (selskapsbytter + Tilkoblinger-panel add/slett + Resultat/Balanse-faner, månedsgraf, konto-lister).
+- API (/app/app/api/[[...path]]/route.js, blokk startsWith('/admin/regnskap'), alle adminAuthed): selskaper GET/POST/PUT/DELETE (POST/PUT TESTER tilkobling før lagring; klientnøkkel MASKERT i responser, full nøkkel aldri eksponert), status/resultat/saldobalanse per ?selskap=<id>. Auto-seeder 'DigiHome AS' fra bootstrap-nøkkel.
+- ADMIN-UI: ny meny «Regnskap (faktisk)» i Ledelse-gruppen (/admin/regnskap), ikon Receipt. RegnskapModul importert + rendret på section==='regnskap'.
+- VERIFISERT mot ekte PowerOffice DEMO (testklient «Shd Eiendom AS»): testagent 8/8 bestått — masking, tilkoblings-validering før lagring, flerselskap-CRUD, resultat 2026 (55 500 inntekt), saldobalanse, auth 401. Merk: ar med tom/gammel data kan gi 502 (demo-API timeout) — uvesentlig.
+- GJENSTÅR: frontend-test av admin-modulen (venter på brukertillatelse). Bruker skal legge inn ekte klientnøkler for DigiHome AS + Tech AS (prod) når klart; prod-nøkler ligger allerede delvis i env-mal (må aktiveres).

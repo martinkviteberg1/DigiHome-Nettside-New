@@ -8,7 +8,7 @@ import {
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
   ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User, Eye, EyeOff,
-  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar, Network, BookMarked, Camera, Presentation,
+  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar, Network, BookMarked, Camera, Presentation, Receipt,
 } from 'lucide-react';
 import Brukere from '@/components/admin/Brukere';
 import Salgsradar from '@/components/admin/Salgsradar';
@@ -26,6 +26,7 @@ import PropertiesTab from '@/components/admin/PropertiesTab';
 import HistoryTab from '@/components/admin/HistoryTab';
 import InvestorRoomTab from '@/components/admin/InvestorRoomTab';
 import DeckModul from '@/components/admin/DeckModul';
+import RegnskapModul from '@/components/admin/RegnskapModul';
 import SeoAeoTab from '@/components/admin/SeoAeoTab';
 import TasksTab from '@/components/admin/TasksTab';
 import MeetingsTab from '@/components/admin/MeetingsTab';
@@ -47,6 +48,7 @@ const NAV = [
     items: [
       { k: 'nokkeltall', l: 'Nøkkeltall', icon: TrendingUp, desc: 'Investorklare KPIer · CAC · LTV · konvertering' },
       { k: 'okonomi', l: 'Økonomi', icon: Wallet, desc: 'Resultat · likviditet · burn · runway' },
+      { k: 'regnskap', l: 'Regnskap (faktisk)', icon: Receipt, desc: 'Faktiske regnskapstall fra PowerOffice Go — resultat per måned, konto for konto og balanse' },
       { k: 'leieforhold', l: 'Leieforhold', icon: KeyRound, desc: 'Leieforhold & inntekter — porteføljen med Excel-eksport (1:1 med plattformen)' },
       { k: 'saker', l: 'Saker', icon: ClipboardCheck, badge: 'tasks', desc: 'Internt sakssystem — oppfølging, frister og ansvar' },
       { k: 'moter', l: 'Møter', icon: CalendarDays, desc: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter' },
@@ -206,6 +208,7 @@ const IMP_ORIG_KEY = 'dh_admin_imp_original';     // admin-token under en «se s
 const SLUG_TIL_SEKSJON = {
   nokkeltall: { section: 'nokkeltall' },
   okonomi: { section: 'okonomi' },
+  regnskap: { section: 'regnskap' },
   leieforhold: { section: 'leieforhold' },
   budsjett: { section: 'budsjett' },
   saker: { section: 'saker' },
@@ -866,6 +869,7 @@ export default function AdminPage({ params }) {
           {section === 'historikk' && <HistoryTab apiKey={token} />}
           {section === 'seo' && <SeoAeoTab apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
+          {section === 'regnskap' && <RegnskapModul apiKey={token} />}
           {erBegrenset && begrensning.length === 0 && (
             <ComingSoon icon={Lock} title="Ingen moduler tildelt ennå" body="Kontoen din er opprettet, men ingen moduler er delt med deg riktig ennå. Be administratoren om å tildele modulene du skal se — de dukker opp her automatisk." />
           )}
