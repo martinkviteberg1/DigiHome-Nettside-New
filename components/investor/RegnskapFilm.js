@@ -17,7 +17,7 @@
 --------------------------------------------------------------------------- */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, Scale, TrendingUp } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Scale, TrendingUp, Layers, RefreshCw, ChevronDown } from 'lucide-react';
 import { T, display, EASE, DIM, SVAK, HAIR } from '@/components/forside/v4/tokens';
 
 const LILLA_M = '#7A3FA8';
@@ -124,16 +124,70 @@ function Rad({ i, l, v, fet = false, under = false, farge, hoved = false }) {
   );
 }
 
+/* Konsern-fordeling: viser hvordan de sammenstilte tallene fordeler seg på hvert
+   selskap. Rene faktiske tall per selskap + en sum-linje. Tydelig «sammenstilt». */
+function KonsernFordeling({ rader, fane }) {
+  const felt = fane === 'resultat'
+    ? [{ k: 'inntekt', l: 'Inntekt' }, { k: 'resultat', l: 'Resultat' }]
+    : [{ k: 'eiendeler', l: 'Eiendeler' }, { k: 'egenkapital', l: 'Egenkapital' }, { k: 'gjeld', l: 'Gjeld' }];
+  const hovedFelt = felt[0].k;
+  const maks = Math.max(1, ...rader.map((r) => Math.abs(r[hovedFelt] || 0)));
+  const sum = (k) => rader.reduce((a, r) => a + (r[k] || 0), 0);
+  const fargeFor = (k, v) => (k === 'resultat' ? (v >= 0 ? GRONN : ROD) : DIM);
+  return (
+    <div className="deck-inn mt-10 border-t pt-7" data-strek="1" style={{ '--i': 4, '--strek': HAIR, borderColor: HAIR }}>
+      <div className="flex items-center gap-2">
+        <Layers className="h-4 w-4" style={{ color: LILLA_M }} strokeWidth={2} />
+        <p className="text-[13px] font-semibold" style={{ color: T.ink }}>Fordelt på selskapene</p>
+        <span className="text-[11.5px]" style={{ color: SVAK }}>· sammenstilt, før elimineringer</span>
+      </div>
+      <div className="mt-4 space-y-4">
+        {rader.map((r, idx) => (
+          <div key={r.id} className="deck-rad" style={{ '--i': 0.4 + idx * 0.3 }}>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <span className="text-[13px] font-medium" style={{ color: T.ink }}>{r.navn}</span>
+              <span className="flex items-center gap-4 tabular-nums text-[12.5px]">
+                {felt.map((f) => (
+                  <span key={f.k} style={{ color: fargeFor(f.k, r[f.k] || 0) }}>
+                    <span className="mr-1 text-[10.5px]" style={{ color: SVAK }}>{f.l}</span>{kr(r[f.k] || 0)}
+                  </span>
+                ))}
+              </span>
+            </div>
+            <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full" style={{ background: LYS_HAIR }}>
+              <span className="deck-stolpe block h-full origin-left rounded-full" style={{ '--i': 0.5 + idx * 0.3, width: `${(Math.abs(r[hovedFelt] || 0) / maks) * 100}%`, background: `linear-gradient(90deg, ${T.lilla}, ${LILLA_M})`, transformOrigin: 'left center' }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t pt-3.5" style={{ borderColor: 'rgba(21,19,15,0.2)' }}>
+        <span className="text-[13px] font-semibold" style={{ color: T.ink }}>Sum sammenstilt</span>
+        <span className="flex items-center gap-4 tabular-nums text-[13px] font-semibold">
+          {felt.map((f) => (
+            <span key={f.k} style={{ color: f.k === 'resultat' ? (sum(f.k) >= 0 ? GRONN : ROD) : T.ink }}>
+              <span className="mr-1 text-[10.5px] font-medium" style={{ color: SVAK }}>{f.l}</span>{kr(sum(f.k))}
+            </span>
+          ))}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function RegnskapFilm({ adminKey = '', aktiv = false }) {
   const q = `key=${encodeURIComponent(adminKey)}`;
   const [selskaper, setSelskaper] = useState([]);
   const [valgtId, setValgtId] = useState('');
   const [ar, setAar] = useState(naaAar);
   const [fane, setFane] = useState('resultat');
+  const [detaljert, setDetaljert] = useState(false);
   const [res, setRes] = useState(null);
   const [bal, setBal] = useState(null);
+  const [konsernRader, setKonsernRader] = useState([]);
   const [laster, setLaster] = useState(true);
   const [feil, setFeil] = useState('');
+
+  const erKonsern = valgtId === '__konsern__';
 
   const hentSelskaper = useCallback(async () => {
     try {
@@ -141,7 +195,7 @@ export default function RegnskapFilm({ adminKey = '', aktiv = false }) {
       const d = await r.json();
       const liste = (d.selskaper || []).map((s) => ({ id: s.id, navn: s.navn }));
       setSelskaper(liste);
-      setValgtId((prev) => (prev && liste.some((s) => s.id === prev) ? prev : (liste[0]?.id || '')));
+      setValgtId((prev) => (prev && (prev === '__konsern__' || liste.some((s) => s.id === prev)) ? prev : (liste[0]?.id || '')));
       if (!liste.length) { setFeil('ingen'); setLaster(false); }
     } catch (e) { setFeil('feil'); setLaster(false); }
   }, [q]);
@@ -150,13 +204,22 @@ export default function RegnskapFilm({ adminKey = '', aktiv = false }) {
     if (!id) return;
     setLaster(true); setFeil('');
     try {
-      const [rr, rb] = await Promise.all([
-        fetch(`/api/admin/regnskap/resultat?${q}&selskap=${id}&ar=${aar}`, { cache: 'no-store' }).then((r) => r.json()),
-        fetch(`/api/admin/regnskap/saldobalanse?${q}&selskap=${id}&dato=${aar}-12-31`, { cache: 'no-store' }).then((r) => r.json()),
-      ]);
-      setRes(rr && rr.ok ? rr : null);
-      setBal(rb && rb.ok ? rb : null);
-      if (!(rr && rr.ok) && !(rb && rb.ok)) setFeil('feil');
+      if (id === '__konsern__') {
+        const d = await fetch(`/api/admin/regnskap/konsern?${q}&ar=${aar}&dato=${aar}-12-31`, { cache: 'no-store' }).then((r) => r.json());
+        setRes(d && d.resultat && d.resultat.ok ? d.resultat : null);
+        setBal(d && d.balanse && d.balanse.ok ? d.balanse : null);
+        setKonsernRader(Array.isArray(d?.selskaper) ? d.selskaper : []);
+        if (!(d && (d.resultat?.ok || d.balanse?.ok))) setFeil('feil');
+      } else {
+        const [rr, rb] = await Promise.all([
+          fetch(`/api/admin/regnskap/resultat?${q}&selskap=${id}&ar=${aar}`, { cache: 'no-store' }).then((r) => r.json()),
+          fetch(`/api/admin/regnskap/saldobalanse?${q}&selskap=${id}&dato=${aar}-12-31`, { cache: 'no-store' }).then((r) => r.json()),
+        ]);
+        setRes(rr && rr.ok ? rr : null);
+        setBal(rb && rb.ok ? rb : null);
+        setKonsernRader([]);
+        if (!(rr && rr.ok) && !(rb && rb.ok)) setFeil('feil');
+      }
     } catch (e) { setFeil('feil'); }
     setLaster(false);
   }, [q]);
@@ -166,25 +229,34 @@ export default function RegnskapFilm({ adminKey = '', aktiv = false }) {
 
   const valgt = selskaper.find((s) => s.id === valgtId);
   const g = bal?.grupper;
+  const flereSelskaper = selskaper.length > 1;
 
   return (
     <div className="mt-7">
-      {/* Kontroller: selskap · resultat|balanse · år */}
+      {/* Kontroller: selskap · konsern · resultat|balanse · detaljer · år */}
       <div className="deck-inn flex flex-wrap items-center justify-between gap-3" style={{ '--i': 1 }}>
         <div className="flex flex-wrap items-center gap-2">
-          {selskaper.length > 1 && selskaper.map((s) => (
+          {flereSelskaper && selskaper.map((s) => (
             <button key={s.id} onClick={() => setValgtId(s.id)} className="rounded-full px-3.5 py-1.5 text-[12.5px] font-medium transition-colors" style={valgtId === s.id ? { background: T.charcoal, color: T.offwhite } : { color: DIM, boxShadow: `inset 0 0 0 1px ${HAIR}` }}>{s.navn}</button>
           ))}
+          {flereSelskaper && (
+            <button onClick={() => setValgtId('__konsern__')} className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors" style={erKonsern ? { background: `linear-gradient(180deg, ${T.lilla}, ${LILLA_M})`, color: '#fff' } : { color: LILLA_M, boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.35)' }}>
+              <Layers className="h-3.5 w-3.5" strokeWidth={2.2} /> Konsern
+            </button>
+          )}
           {selskaper.length === 1 && valgt ? (
             <span className="text-[13px] font-medium" style={{ color: T.ink }}>{valgt.navn}</span>
           ) : null}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 rounded-full p-1" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}` }}>
             {[{ k: 'resultat', l: 'Resultat' }, { k: 'balanse', l: 'Balanse' }].map((f) => (
               <button key={f.k} onClick={() => setFane(f.k)} className="rounded-full px-3.5 py-1 text-[12.5px] font-medium transition-colors" style={fane === f.k ? { background: T.ink, color: T.offwhite } : { color: SVAK }}>{f.l}</button>
             ))}
           </div>
+          <button onClick={() => setDetaljert((v) => !v)} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors" style={detaljert ? { background: T.ink, color: T.offwhite } : { color: SVAK, boxShadow: `inset 0 0 0 1px ${HAIR}` }} aria-pressed={detaljert}>
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${detaljert ? 'rotate-180' : ''}`} strokeWidth={2} /> Detaljer
+          </button>
           <div className="flex items-center gap-2 text-[13px] font-medium tabular-nums" style={{ color: DIM }}>
             <button onClick={() => setAar((y) => y - 1)} className="grid h-6 w-6 place-items-center rounded-full transition-colors hover:text-black" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}`, color: SVAK }} aria-label="Forrige år">‹</button>
             <span style={{ color: T.ink }}>{ar}</span>
@@ -192,12 +264,31 @@ export default function RegnskapFilm({ adminKey = '', aktiv = false }) {
           </div>
         </div>
       </div>
+      {erKonsern ? (
+        <div className="deck-inn mt-3 flex items-center gap-2 text-[11.5px]" style={{ '--i': 1.2, color: SVAK }}>
+          <Layers className="h-3.5 w-3.5" style={{ color: LILLA_M }} strokeWidth={2} />
+          Sammenstilt · sum av {konsernRader.length || selskaper.length} selskaper, før konserninterne elimineringer
+        </div>
+      ) : null}
 
       {laster && !res && !bal ? (
-        <div className="mt-10 text-[13px]" style={{ color: SVAK }}>Henter regnskapet …</div>
+        <div className="mt-10 flex items-center gap-2.5 text-[13px]" style={{ color: SVAK }}>
+          <RefreshCw className="h-4 w-4 animate-spin" strokeWidth={2} style={{ color: LILLA_M }} /> Henter regnskapet …
+        </div>
       ) : feil === 'ingen' ? (
         <div className="mt-10 text-[13.5px]" style={{ color: DIM }}>Regnskapet vises her når selskapet er koblet til.</div>
+      ) : (feil === 'feil' && !res && !bal) ? (
+        <div className="deck-inn mt-9 max-w-xl rounded-2xl p-6" style={{ '--i': 1.5, boxShadow: `inset 0 0 0 1px ${HAIR}`, background: 'rgba(21,19,15,0.015)' }}>
+          <p className="text-[15px] font-semibold" style={{ color: T.ink }}>Kunne ikke hente tallene akkurat nå</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: DIM }}>
+            Regnskapstjenesten svarte ikke for {erKonsern ? 'konsernet' : (valgt?.navn || 'selskapet')} for {ar}. Tallene hentes direkte fra PowerOffice Go og er kanskje ikke ferdig ført for perioden ennå.
+          </p>
+          <button onClick={() => hentData(valgtId, ar)} className="mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12.5px] font-semibold transition-colors" style={{ background: T.ink, color: T.offwhite }}>
+            <RefreshCw className="h-3.5 w-3.5" strokeWidth={2} /> Prøv igjen
+          </button>
+        </div>
       ) : (
+        <>
         <div className="mt-7 grid gap-x-12 gap-y-9 lg:grid-cols-[1.05fr_1fr]">
           {/* Venstre: nøkkeltall + graf (resultat) / nøkkeltall (balanse) */}
           <div>
@@ -253,15 +344,15 @@ export default function RegnskapFilm({ adminKey = '', aktiv = false }) {
           </div>
 
           {/* Høyre: oppstilling / balanse-detaljer */}
-          <div className="deck-inn" style={{ '--i': 2 }}>
+          <div className={`deck-inn ${detaljert ? 'max-h-[440px] overflow-y-auto pr-1.5' : ''}`} style={{ '--i': 2 }}>
             {fane === 'resultat' ? (
               <div>
                 <p className="text-[12.5px] font-medium" style={{ color: DIM }}>Resultatoppstilling</p>
                 <div className="mt-3">
                   <Rad i={0} l="Driftsinntekter" v={res?.sum?.inntekt || 0} fet />
-                  {(res?.inntektKontoer || []).slice(0, 4).map((k, idx) => <Rad key={k.kontonr} i={0.4 + idx * 0.3} l={k.navn} v={k.belop} under />)}
+                  {(detaljert ? (res?.inntektKontoer || []) : (res?.inntektKontoer || []).slice(0, 4)).map((k, idx) => <Rad key={k.kontonr} i={0.4 + idx * 0.3} l={k.navn} v={k.belop} under />)}
                   <Rad i={2} l="Driftskostnader" v={res?.sum?.kostnad || 0} fet />
-                  {(res?.kostnadKontoer || []).slice(0, 4).map((k, idx) => <Rad key={k.kontonr} i={2.4 + idx * 0.3} l={k.navn} v={k.belop} under />)}
+                  {(detaljert ? (res?.kostnadKontoer || []) : (res?.kostnadKontoer || []).slice(0, 4)).map((k, idx) => <Rad key={k.kontonr} i={2.4 + idx * 0.3} l={k.navn} v={k.belop} under />)}
                   <Rad i={4} l={`Driftsresultat ${ar}`} v={res?.sum?.resultat || 0} fet hoved farge={(res?.sum?.resultat || 0) >= 0 ? GRONN : ROD} />
                 </div>
               </div>
@@ -270,15 +361,15 @@ export default function RegnskapFilm({ adminKey = '', aktiv = false }) {
                 <div>
                   <p className="text-[12.5px] font-medium" style={{ color: DIM }}>Eiendeler</p>
                   <div className="mt-3">
-                    {(g?.eiendeler?.kontoer || []).slice(0, 5).map((k, idx) => <Rad key={k.kontonr} i={0.3 + idx * 0.3} l={k.navn} v={k.saldo} under />)}
+                    {(detaljert ? (g?.eiendeler?.kontoer || []) : (g?.eiendeler?.kontoer || []).slice(0, 5)).map((k, idx) => <Rad key={k.kontonr} i={0.3 + idx * 0.3} l={k.navn} v={k.saldo} under />)}
                     <Rad i={2} l="Sum eiendeler" v={g?.eiendeler?.sum || 0} fet hoved />
                   </div>
                 </div>
                 <div>
                   <p className="text-[12.5px] font-medium" style={{ color: DIM }}>Egenkapital og gjeld</p>
                   <div className="mt-3">
-                    {(g?.egenkapital?.kontoer || []).slice(0, 2).map((k, idx) => <Rad key={k.kontonr} i={0.3 + idx * 0.3} l={k.navn} v={k.saldo} under />)}
-                    {(g?.gjeld?.kontoer || []).slice(0, 4).map((k, idx) => <Rad key={k.kontonr} i={1 + idx * 0.3} l={k.navn} v={k.saldo} under />)}
+                    {(detaljert ? (g?.egenkapital?.kontoer || []) : (g?.egenkapital?.kontoer || []).slice(0, 2)).map((k, idx) => <Rad key={k.kontonr} i={0.3 + idx * 0.3} l={k.navn} v={k.saldo} under />)}
+                    {(detaljert ? (g?.gjeld?.kontoer || []) : (g?.gjeld?.kontoer || []).slice(0, 4)).map((k, idx) => <Rad key={k.kontonr} i={1 + idx * 0.3} l={k.navn} v={k.saldo} under />)}
                     <Rad i={2.6} l="Sum egenkapital og gjeld" v={(g?.egenkapital?.sum || 0) + (g?.gjeld?.sum || 0)} fet hoved />
                   </div>
                 </div>
@@ -286,12 +377,14 @@ export default function RegnskapFilm({ adminKey = '', aktiv = false }) {
             )}
           </div>
         </div>
+        {erKonsern && konsernRader.length ? <KonsernFordeling rader={konsernRader} fane={fane} /> : null}
+        </>
       )}
 
       {/* Kilde: diskret, ingen tilkoblingsdetaljer */}
       <div className="deck-inn mt-9 flex items-center gap-2 text-[11.5px]" style={{ '--i': 5, color: SVAK }}>
         <span className="relative flex h-1.5 w-1.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: LILLA_M }} /><span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: LILLA_M }} /></span>
-        Ført regnskap · hentet direkte fra PowerOffice Go
+        {erKonsern ? 'Sammenstilt regnskap · hentet direkte fra PowerOffice Go' : 'Ført regnskap · hentet direkte fra PowerOffice Go'}
       </div>
     </div>
   );

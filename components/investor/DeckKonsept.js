@@ -646,14 +646,20 @@ const TEAM = [
   { n: 'Sarah Sleeman', r: 'Daglig leder · styremedlem', kort: 'Daglig leder', img: '/team-sarah.webp', pos: '50% 20%', s: 'Eiendomsmegler, seks år i rådgivende roller i DNB. Leder kundeakkvisisjon og forvaltning. Styremedlem i begge selskaper.' },
   { n: 'Martin C. Kviteberg', r: 'Produktsjef · styremedlem', kort: 'Produktsjef', img: '/team/martin-kviteberg-face.jpg', pos: 'top', s: 'Gründer av BnbSpesialisten – en av Norges første profesjonelle utleieforvaltere. 10 år i Adonis AS frem mot exit. Styremedlem i begge selskaper.' },
   { n: 'Erik Hoffmann-Dahl', r: 'Styreleder · begge selskaper', kort: 'Styreleder', img: '/team-erik.webp', pos: 'top', s: 'Advokat og partner i Hoffmann Thinn. Tegnet selskapsstrukturen som skal bære vekst og emisjon.' },
-  { n: 'Kevin Ha', r: 'AI-rådgiver', kort: 'AI-rådgiver', img: '/team/kevin-ai-v2.webp', pos: '50% 22%', s: 'Analytiker i DNB, siviløkonom NHH. Bygger og automatiserer plattformen med AI-drevet utvikling.' },
+  { n: 'Kevin Ha', r: 'AI-rådgiver', kort: 'AI-rådgiver', img: '/team/kevin-ai-v2.webp', fallback: '/team/kevin-ai.jpg', pos: '50% 22%', s: 'Analytiker i DNB, siviløkonom NHH. Bygger og automatiserer plattformen med AI-drevet utvikling.' },
   { n: 'Jens-Petter Glittenberg', r: 'Styremedlem · begge selskaper', kort: 'Styremedlem', img: '/team/jens-petter-glittenberg.webp', pos: '50% 30%', s: 'Styremedlem i Digihome AS og Digihome Tech AS.' },
 ];
+/* Hvis et portrett ikke finnes på serveren (f.eks. et nytt bilde som ikke ble med i en
+   utrulling), bytt én gang til et kjent reservebilde i stedet for å vise brukket bilde. */
+const bildeFallback = (e, p) => {
+  const el = e && e.currentTarget;
+  if (el && p && p.fallback && el.dataset.fallback !== '1') { el.dataset.fallback = '1'; el.src = p.fallback; }
+};
 function Person({ p, liten = false, rolle }) {
   return (
     <div className="flex items-center gap-3">
       <span className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-full ${liten ? 'h-10 w-10' : 'h-12 w-12'}`} style={{ boxShadow: `0 0 0 2px ${T.canvas}, 0 0 0 3px ${HAIR}`, background: p.img ? undefined : T.charcoal }}>
-        {p.img ? <img src={p.img} alt={p.n} className="h-full w-full object-cover" style={{ objectPosition: p.pos }} loading="lazy" />
+        {p.img ? <img src={p.img} alt={p.n} className="h-full w-full object-cover" style={{ objectPosition: p.pos }} loading="lazy" onError={(e) => bildeFallback(e, p)} />
           : <span className="text-[13px] font-semibold" style={{ color: T.offwhite, letterSpacing: '0.02em' }}>{p.n.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join('')}</span>}
       </span>
       <span className="min-w-0">
@@ -672,7 +678,7 @@ function PortrettKort({ p, rolle, cred, idx = 0, zoom = 1, zoomPos = '50% 24%' }
       <div className="relative aspect-[4/5] w-full overflow-hidden">
         <div className="absolute inset-0 transition-transform duration-[1100ms] ease-out group-hover:scale-[1.045]">
           {p.img
-            ? <img src={p.img} alt={p.n} className="deck-portrett h-full w-full object-cover" style={{ objectPosition: p.pos, transform: zoom !== 1 ? `scale(${zoom})` : undefined, transformOrigin: zoomPos, '--pf-delay': `${idx * 1.5}s` }} loading="lazy" />
+            ? <img src={p.img} alt={p.n} className="deck-portrett h-full w-full object-cover" style={{ objectPosition: p.pos, transform: zoom !== 1 ? `scale(${zoom})` : undefined, transformOrigin: zoomPos, '--pf-delay': `${idx * 1.5}s` }} loading="lazy" onError={(e) => bildeFallback(e, p)} />
             : <span className="flex h-full w-full items-center justify-center text-[30px] font-semibold" style={{ color: T.offwhite }}>{p.n.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join('')}</span>}
         </div>
         <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,19,15,0) 46%, rgba(15,13,11,0.5) 74%, rgba(13,11,9,0.9) 100%)' }} />

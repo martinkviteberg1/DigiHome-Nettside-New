@@ -3373,6 +3373,86 @@ async function handleRoute(request, { params }) {
           return cors(NextResponse.json({ ok: false, feil: (e && e.message) || 'Kunne ikke hente saldobalanse' }, { status: 502 }));
         }
       }
+
+      // --- Konsern: SAMMENSTILTE tall (sum av alle selskaper). Dette er en enkel
+      //     sammenstilling («sum av selskapene»), IKKE en formell konsolidering med
+      //     konserninterne elimineringer. Merkes tydelig i UI som «sammenstilt».
+      //     Hvert selskap hentes uavhengig; ett selskap som feiler stopper ikke resten.
+      if (route === '/admin/regnskap/konsern' && method === 'GET') {
+        if (!felles) return cors(NextResponse.json({ ok: false, feil: 'PowerOffice ikke konfigurert' }, { status: 400 }));
+        await ensureSeed();
+        const { searchParams } = new URL(request.url);
+        const ar = Number(searchParams.get('ar')) || new Date().getFullYear();
+        const dato = searchParams.get('dato') || `${ar}-12-31`;
+        const alle = await koll.find({}).sort({ opprettet: 1 }).toArray();
+        if (!alle.length) return cors(NextResponse.json({ ok: false, feil: 'Ingen selskaper' }, { status: 400 }));
+
+        const MND_NAVN = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
+        const maaneder = MND_NAVN.map((navn, i) => ({ mnd: i + 1, navn, inntekt: 0, kostnad: 0, resultat: 0 }));
+        const inntektMap = new Map(); // kontonr -> { navn, belop }
+        const kostnadMap = new Map();
+        const grpMap = { eiendeler: new Map(), egenkapital: new Map(), gjeld: new Map() };
+        const grpSum = { eiendeler: 0, egenkapital: 0, gjeld: 0 };
+        let resOk = false; let balOk = false;
+
+        const rader = await Promise.all(alle.map(async (s) => {
+          const rad = { id: s.id, navn: s.navn, resultatOk: false, balanseOk: false, inntekt: 0, kostnad: 0, resultat: 0, eiendeler: 0, egenkapital: 0, gjeld: 0 };
+          const [rr, rb] = await Promise.all([
+            poResultat({ ar }, { clientKey: s.clientKey, env: s.env }).then((d) => ({ ok: true, d })).catch(() => ({ ok: false })),
+            poSaldobalanse({ dato }, { clientKey: s.clientKey, env: s.env }).then((d) => ({ ok: true, d })).catch(() => ({ ok: false })),
+          ]);
+          if (rr.ok && rr.d && rr.d.ok) {
+            resOk = true; rad.resultatOk = true;
+            rad.inntekt = rr.d.sum.inntekt; rad.kostnad = rr.d.sum.kostnad; rad.resultat = rr.d.sum.resultat;
+            rr.d.maaneder.forEach((m, i) => { maaneder[i].inntekt += m.inntekt; maaneder[i].kostnad += m.kostnad; });
+            for (const k of (rr.d.inntektKontoer || [])) { const cur = inntektMap.get(k.kontonr) || { navn: k.navn, belop: 0 }; cur.belop += k.belop; inntektMap.set(k.kontonr, cur); }
+            for (const k of (rr.d.kostnadKontoer || [])) { const cur = kostnadMap.get(k.kontonr) || { navn: k.navn, belop: 0 }; cur.belop += k.belop; kostnadMap.set(k.kontonr, cur); }
+          }
+          if (rb.ok && rb.d && rb.d.ok) {
+            balOk = true; rad.balanseOk = true;
+            for (const gk of ['eiendeler', 'egenkapital', 'gjeld']) {
+              const g = rb.d.grupper[gk]; if (!g) continue;
+              grpSum[gk] += g.sum; rad[gk] = g.sum;
+              for (const k of (g.kontoer || [])) { const cur = grpMap[gk].get(k.kontonr) || { navn: k.navn, saldo: 0 }; cur.saldo += k.saldo; grpMap[gk].set(k.kontonr, cur); }
+            }
+          }
+          return rad;
+        }));
+
+        for (const m of maaneder) { m.inntekt = Math.round(m.inntekt); m.kostnad = Math.round(m.kostnad); m.resultat = m.inntekt - m.kostnad; }
+        const sumInntekt = maaneder.reduce((a, m) => a + m.inntekt, 0);
+        const sumKostnad = maaneder.reduce((a, m) => a + m.kostnad, 0);
+        const listeFra = (map) => Array.from(map.entries()).map(([kontonr, v]) => ({ kontonr, navn: v.navn, belop: Math.round(v.belop) })).filter((x) => Math.abs(x.belop) >= 1).sort((a, b) => Math.abs(b.belop) - Math.abs(a.belop));
+        const kontoerFra = (map) => Array.from(map.entries()).map(([kontonr, v]) => ({ kontonr, navn: v.navn, saldo: Math.round(v.saldo) })).filter((x) => Math.abs(x.saldo) >= 1).sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
+
+        return cors(NextResponse.json({
+          ok: resOk || balOk,
+          konsern: true,
+          ar,
+          dato,
+          valuta: 'NOK',
+          resultat: resOk ? {
+            ok: true, ar, valuta: 'NOK', maaneder,
+            sum: { inntekt: Math.round(sumInntekt), kostnad: Math.round(sumKostnad), resultat: Math.round(sumInntekt - sumKostnad) },
+            inntektKontoer: listeFra(inntektMap), kostnadKontoer: listeFra(kostnadMap),
+          } : null,
+          balanse: balOk ? {
+            ok: true, dato, valuta: 'NOK',
+            grupper: {
+              eiendeler: { navn: 'Eiendeler', sum: Math.round(grpSum.eiendeler), kontoer: kontoerFra(grpMap.eiendeler) },
+              egenkapital: { navn: 'Egenkapital', sum: Math.round(grpSum.egenkapital), kontoer: kontoerFra(grpMap.egenkapital) },
+              gjeld: { navn: 'Gjeld', sum: Math.round(grpSum.gjeld), kontoer: kontoerFra(grpMap.gjeld) },
+            },
+          } : null,
+          selskaper: rader.map((r) => ({
+            id: r.id, navn: r.navn, resultatOk: r.resultatOk, balanseOk: r.balanseOk,
+            inntekt: Math.round(r.inntekt), kostnad: Math.round(r.kostnad), resultat: Math.round(r.resultat),
+            eiendeler: Math.round(r.eiendeler), egenkapital: Math.round(r.egenkapital), gjeld: Math.round(r.gjeld),
+          })),
+          antallSelskaper: alle.length,
+          antallOk: rader.filter((r) => r.resultatOk || r.balanseOk).length,
+        }));
+      }
     }
 
     // ═══════════════ SAKER: internt sakssystem — CRUD + personer + varsling ═══════════════
