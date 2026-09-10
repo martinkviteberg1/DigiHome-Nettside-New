@@ -26,6 +26,8 @@ import { recordWonConversions } from '@/lib/closed-loop';
 import { runDueReminders } from '@/lib/reminders';
 import { hentLeieforhold } from '@/lib/leieforhold';
 import { hentAlt as prisHentAlt, lagreInnstillinger as prisLagreInnstillinger, lagrePlan as prisLagrePlan, slettPlan as prisSlettPlan, lagreKunde as prisLagreKunde, slettKunde as prisSlettKunde, beregnGrunnlag as prisBeregnGrunnlag, forrigeMaaned as prisForrigeMaaned } from '@/lib/pris';
+import { byggFaktura as prisByggFaktura } from '@/lib/faktura';
+import { fakturaPdf as prisFakturaPdf } from '@/lib/faktura-pdf';
 import { synkFraBrreg, hentOrganisasjon, lagrePerson, slettPerson, nyRolle, oppdaterRolle, slettRolle, oppdaterSelskap, hentEierbok, lagreEier, slettEier, lagreKlasse, slettKlasse, nyTransaksjon, slettTransaksjon, sokBrregEnheter, lagreStotte } from '@/lib/selskap';
 import { lagLeieforholdExcel, lagLeieforholdCsv } from '@/lib/leieforhold-excel';
 import {
@@ -680,7 +682,34 @@ async function provisionSelfService(lead, request) {
       signal: AbortSignal.timeout(8000),
     });
     const data = await res.json().catch(() => ({}));
-    if (res.status === 200 && (data.success || data.status === 'provisioned') && data.handoff_url) {
+    const ok200 = res.status === 200 && (data.success || data.status === 'provisioned');
+    // NY FLYT — APPEN EIER E-POSTVERIFISERING (magisk lenke). Appen oppretter
+    // kontoen som UBEKREFTET (email_verified=false) og sender en verifiserings-
+    // lenke til e-posten. Da får vi INGEN umiddelbar handoff_url: nettsiden
+    // viser «Sjekk innboksen» i stedet for å logge kunden rett inn på en
+    // konto med en e-post ingen har bevist at de eier.
+    const kreverVerifisering = ok200 && (data.requires_verification === true || data.email_verified === false);
+    if (kreverVerifisering) {
+      return { ok: true, id: null, account: {
+        status: 'provisioned',
+        requires_verification: true,
+        email_verified: false,
+        verification_sent: data.verification_sent !== false,
+        email_masked: data.email_masked || null,
+        // Opak referanse for «send på nytt»/«endre e-post» uten å eksponere bruker-ID.
+        account_ref: data.account_ref || data.verification_ref || data.owner_user_id || null,
+        resend_available_in: Number(data.resend_available_in) || 0,
+        portal_url: data.portal_url || null,
+        owner_user_id: data.owner_user_id || null,
+        property_id: data.property_id || null,
+        unit_id: data.unit_id || null,
+        agreement_id: data.agreement_id || null,
+        provisioned_at: new Date().toISOString(),
+        ...(data.idempotent === true ? { idempotent: true } : {}),
+      } };
+    }
+    // LEGACY-FLYT (uendret): 200 + handoff_url = konto klar + engangs magic login.
+    if (ok200 && data.handoff_url) {
       return { ok: true, id: null, account: {
         onboarding_url: data.handoff_url,
         portal_url: data.portal_url || null,
@@ -700,6 +729,50 @@ async function provisionSelfService(lead, request) {
     return { ok: false, error: e && e.name === 'TimeoutError' ? 'Tidsavbrudd (8s)' : ((e && e.message) || String(e)) };
   }
 }
+
+// --- E-POSTVERIFISERING (APP-EID): send på nytt / endre e-post ---
+// Nettsiden orkestrerer BARE UX-en (skjerm, forsøksbegrensning). Selve
+// verifiseringen — den magiske lenken, innloggingen, utløpet — eies av appen.
+// Disse to er tynne server-proxyer mot appens bro slik at den delte
+// hemmeligheten (AGENT_BRIDGE_SECRET) aldri havner i nettleseren.
+function selfServiceRefFields(lead) {
+  const acc = (lead && lead.platform_account) || {};
+  return {
+    event_id: lead && lead.id,
+    account_ref: acc.account_ref || acc.owner_user_id || null,
+    email: (lead && lead.email) || '',
+  };
+}
+
+async function callSelfServiceBridge(path, payload) {
+  const target = digiHomeTarget();
+  if (!target.url) return { ok: false, status: 0, error: 'Plattform-URL mangler' };
+  try {
+    const res = await fetch(`${target.url}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Bridge-Secret': (process.env.AGENT_BRIDGE_SECRET || '').trim(),
+        'X-API-Key': target.key,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = await res.json().catch(() => ({}));
+    const ok = res.status === 200 && data.success !== false && data.ok !== false;
+    return {
+      ok,
+      status: res.status,
+      email_masked: data.email_masked || null,
+      resend_available_in: Number(data.resend_available_in) || 0,
+      verification_sent: data.verification_sent !== false,
+      error: ok ? null : String(data.error || data.message || `HTTP ${res.status}`).slice(0, 200),
+    };
+  } catch (e) {
+    return { ok: false, status: 0, error: e && e.name === 'TimeoutError' ? 'Tidsavbrudd (8s)' : ((e && e.message) || String(e)) };
+  }
+}
+
 
 // --- Adressesøk (Geonorge) med in-memory cache + retry + timeout ---
 // Gjør autofullføringen rask og robust: Geonorge svarer tidvis 500 (overbelastet),
@@ -4296,6 +4369,53 @@ async function handleRoute(request, { params }) {
       const sum = per.reduce((a, p) => ({ enheter: a.enheter + p.antallEnheter, eks: a.eks + p.sumEksMva, ink: a.ink + p.sumInkMva }), { enheter: 0, eks: 0, ink: 0 });
       return cors(NextResponse.json({ ok: true, maaned, per, sum, antallKunder: alt.kunder.length, aktive: alt.kunder.filter((k) => k.status === 'aktiv').length }));
     }
+
+    // Proforma-faktura (JSON + PDF). Bygger en komplett faktura fra grunnlaget
+    // + selgeropplysninger. GET ?kunde=<id>&maaned=&spesifiser=1 (lagret kunde),
+    // POST {maaned, kunde, plan, spesifiser} (u-lagret → live forhåndsvisning).
+    // ?format=pdf ELLER ruten .../faktura/pdf gir application/pdf.
+    if ((route === '/admin/pris/faktura' || route === '/admin/pris/faktura/pdf') && (method === 'GET' || method === 'POST')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const url = new URL(request.url);
+      const body = method === 'POST' ? await request.json().catch(() => ({})) : {};
+      const maaned = ((body.maaned || url.searchParams.get('maaned') || '').match(/^\d{4}-\d{2}$/) ? (body.maaned || url.searchParams.get('maaned')) : prisForrigeMaaned());
+      const spesifiser = body.spesifiser === true || ['1', 'true', 'ja'].includes(String(url.searchParams.get('spesifiser') || '').toLowerCase());
+      const somPdf = route.endsWith('/pdf') || String(url.searchParams.get('format') || '').toLowerCase() === 'pdf';
+      const alt = await prisHentAlt(db);
+      const planFor = (id) => alt.planer.find((p) => p.id === id) || alt.planer.find((p) => p.standard) || alt.planer[0];
+
+      let kunde = null; let plan = null;
+      if (method === 'POST' && body.kunde) { kunde = body.kunde; plan = body.plan || planFor(kunde.planId); }
+      else {
+        const kundeId = url.searchParams.get('kunde');
+        kunde = alt.kunder.find((k) => k.id === kundeId);
+        if (!kunde) return cors(NextResponse.json({ error: 'Ukjent kunde' }, { status: 404 }));
+        plan = planFor(kunde.planId);
+      }
+      let rows = [];
+      if (kunde && kunde.enhetskilde === 'plattform') { try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { rows = []; } }
+      const grunnlag = prisBeregnGrunnlag(rows, plan, kunde, alt.settings, maaned);
+      const faktura = prisByggFaktura({ settings: alt.settings, plan, kunde, grunnlag, maaned, spesifiserPerEnhet: spesifiser });
+
+      if (somPdf) {
+        try {
+          const pdf = await prisFakturaPdf(faktura);
+          const kortNavn = String(kunde?.navn || 'kunde').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40);
+          return new NextResponse(pdf, {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/pdf',
+              'Content-Disposition': `inline; filename="proforma-${kortNavn}-${maaned}.pdf"`,
+              'Cache-Control': 'no-store',
+            },
+          });
+        } catch (e) {
+          return cors(NextResponse.json({ ok: false, error: 'Kunne ikke generere PDF', detail: String(e?.message || e).slice(0, 200) }, { status: 500 }));
+        }
+      }
+      return cors(NextResponse.json({ ok: true, faktura }));
+    }
+
 
     // ═══ Kontrakt-PDF (proxy mot plattformen — nøkkelen forblir server-side) ═══
     // Åpner signert leiekontrakt/forvaltningsavtale i skuffens PDF-visning.
@@ -7988,6 +8108,66 @@ async function handleRoute(request, { params }) {
 
       return cors(NextResponse.json({ success: true, ok: true, data: { id: lead.id }, forwarded: fwd.ok, account: fwd.account || null, lead: clean(lead) }, { status: 201 }));
     }
+
+    // --- E-POSTVERIFISERING: send bekreftelseslenken på nytt (server-proxy) ---
+    // Offentlig, men strengt forsøksbegrenset. Slår opp registreringen på id,
+    // og ber appen sende verifiseringslenken på nytt til e-posten på filen.
+    if (route === '/self-service/resend-verification' && method === 'POST') {
+      if (!rateLimit(`ss-resend-ip:${clientIp(request)}`, 6, 60000)) {
+        return cors(NextResponse.json({ ok: false, error: 'For mange forsøk — vent litt og prøv igjen.' }, { status: 429 }));
+      }
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const leadId = String(body.leadId || body.id || '').trim();
+      if (!leadId) return cors(NextResponse.json({ ok: false, error: 'Mangler referanse.' }, { status: 400 }));
+      const lead = await db.collection('leads').findOne({ id: leadId, self_service: true }, { projection: { _id: 0 } });
+      if (!lead) return cors(NextResponse.json({ ok: false, error: 'Fant ikke registreringen.' }, { status: 404 }));
+      if (!rateLimit(`ss-resend-lead:${leadId}`, 4, 60000)) {
+        return cors(NextResponse.json({ ok: false, error: 'Du kan sende på nytt om litt.' }, { status: 429 }));
+      }
+      const res = await callSelfServiceBridge('/api/bridge/self-service/resend-verification', selfServiceRefFields(lead));
+      if (!res.ok) {
+        return cors(NextResponse.json({ ok: false, error: 'Vi fikk ikke sendt lenken på nytt akkurat nå. Prøv igjen om litt.', detail: res.error }, { status: res.status === 429 ? 429 : 502 }));
+      }
+      const emailMasked = res.email_masked || (lead.platform_account && lead.platform_account.email_masked) || null;
+      await db.collection('leads').updateOne({ id: leadId }, { $set: { verification_last_resend_at: new Date().toISOString() } });
+      return cors(NextResponse.json({ ok: true, email_masked: emailMasked, resend_available_in: res.resend_available_in }, { status: 200 }));
+    }
+
+    // --- E-POSTVERIFISERING: rett/endre e-post på UBEKREFTET konto (proxy) ---
+    // En skrivefeil i e-posten skal ikke låse folk ute før noe er bevist. Kun
+    // lov mens kontoen er ubekreftet; etter bekreftelse endres e-post i portalen.
+    if (route === '/self-service/change-email' && method === 'POST') {
+      if (!rateLimit(`ss-change-ip:${clientIp(request)}`, 6, 60000)) {
+        return cors(NextResponse.json({ ok: false, error: 'For mange forsøk — vent litt og prøv igjen.' }, { status: 429 }));
+      }
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const leadId = String(body.leadId || body.id || '').trim();
+      const nyEpost = String(body.email || '').trim().toLowerCase();
+      if (!leadId) return cors(NextResponse.json({ ok: false, error: 'Mangler referanse.' }, { status: 400 }));
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nyEpost)) return cors(NextResponse.json({ ok: false, error: 'Skriv inn en gyldig e-postadresse.' }, { status: 400 }));
+      const lead = await db.collection('leads').findOne({ id: leadId, self_service: true }, { projection: { _id: 0 } });
+      if (!lead) return cors(NextResponse.json({ ok: false, error: 'Fant ikke registreringen.' }, { status: 404 }));
+      if (lead.platform_account && lead.platform_account.email_verified === true) {
+        return cors(NextResponse.json({ ok: false, error: 'E-posten er allerede bekreftet. Endre den inne i portalen.' }, { status: 409 }));
+      }
+      if (!rateLimit(`ss-change-lead:${leadId}`, 4, 60000)) {
+        return cors(NextResponse.json({ ok: false, error: 'Du kan prøve igjen om litt.' }, { status: 429 }));
+      }
+      const res = await callSelfServiceBridge('/api/bridge/self-service/change-email', { ...selfServiceRefFields(lead), new_email: nyEpost });
+      if (!res.ok) {
+        return cors(NextResponse.json({ ok: false, error: 'Vi fikk ikke endret e-posten akkurat nå. Prøv igjen om litt.', detail: res.error }, { status: res.status === 429 ? 429 : 502 }));
+      }
+      const emailMasked = res.email_masked || null;
+      await db.collection('leads').updateOne({ id: leadId }, { $set: {
+        email: nyEpost,
+        'platform_account.email_masked': emailMasked,
+        verification_email_changed_at: new Date().toISOString(),
+      } });
+      return cors(NextResponse.json({ ok: true, email_masked: emailMasked, verification_sent: res.verification_sent }, { status: 200 }));
+    }
+
 
     // --- Tenants (leietaker-skjema) ---
     if (route === '/tenants' && method === 'POST') {

@@ -1,5 +1,31 @@
 # PRD — DigiHome markedsside (Next.js) · oppdatert 2. juli 2026
 
+## Siste leveranser (sesjon · sep 2026)
+1. **Pris-modul → verdensklasse faktura (økonomisjef-visning).** Proforma-faktura per B2B-kunde
+   med full enhetsspesifikasjon (adresse, leietaker, leieperiode, dager, beløp) + ekte PDF
+   (pdf-lib, DigiHome-fonter, «PROFORMA/UTKAST»-merke, paginerer). Nye filer: `lib/faktura.js`,
+   `lib/faktura-pdf.js`. Nye API: `GET/POST /api/admin/pris/faktura` (JSON) og `.../faktura/pdf`
+   (application/pdf; `?spesifiser=1` = én linje per enhet; POST = u-lagret live-forhåndsvisning).
+   `lib/pris.js` utvidet: selgeropplysninger i innstillinger (org.nr, adresse, bankkonto/IBAN,
+   mva-registrert, prefiks, notat), mva=0 når ikke mva-registrert, pris+beløp per enhet.
+   `components/admin/PrisModul.js` omskrevet: rik on-skjerm fakturaforhåndsvisning + utvidbar
+   enhetstabell + PDF-modal + ny «Innstillinger»-fane. Backend testet 43/43 (100 %).
+2. **Levende, interaktiv budsjettmodell PÅ deck-slide (internt).** `BudsjettModell` fikk
+   `presentasjon`-modus: sliderne er levende (regner om i sanntid, verifisert), men INGENTING
+   lagres og admin-chrome (Lagre/Del/status/tilbake) er skjult. `ModellTopplinje` fikk
+   `presentasjon`. Ny `components/investor/ModellPresentasjon.js` laster NØYAKTIG samme plan
+   som `/admin/budsjett`. Deck: nytt kapittel «Modellen · interaktiv» KUN for intern presenter
+   (`?key=`, ikke delte `?t=`/`/deck`-lenker) — eksterne ser aldri driverne. Gest/tastatur-trygt
+   (`data-deck-overlay` + input-fokus-guard). Kapittelvelger gjort scrollbar.
+3. **E-postverifisering (selvbetjent) — nettside-orkestrering.** Appen eier verifisering
+   (magisk lenke); nettsiden viser «Sjekk innboksen» i stedet for auto-innlogging når appen
+   svarer `requires_verification`. `provisionSelfService` bakoverkompatibel. Nye proxyer:
+   `POST /api/self-service/resend-verification` + `/change-email` (rate-limitet, mot app-broen).
+   `StartV4.js`: maskert e-post, send på nytt m/nedtelling, endre e-post + skrivefeil-forslag.
+   Backend testet 22/22. APP-BROEN (`/api/bridge/self-service/*`) må implementeres av app-teamet.
+
+
+
 ## Produkt
 Konverteringsoptimalisert markeds-/SaaS-side for DigiHome (utleieforvaltning Bergen) med
 Google Ads/Meta-landingssider, DB-drevet blogg (/nyheter), og et fullt admin-/annonse-

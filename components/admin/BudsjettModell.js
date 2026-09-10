@@ -1225,7 +1225,7 @@ function ScenarioSammenligning({ plan, fakta, drivere, scenarioer, aktivtScenari
   );
 }
 
-export default function BudsjettModell({ plan, api, apiKey = '', readOnly = false, onTilbake, onEndret }) {
+export default function BudsjettModell({ plan, api, apiKey = '', readOnly = false, presentasjon = false, onTilbake, onEndret }) {
   const [navn, setNavn] = useState(plan.navn);
   const [status, setStatus] = useState(plan.status || 'utkast');
   const [investorSynlig, setInvestorSynlig] = useState(Boolean(plan.investorSynlig));
@@ -1361,7 +1361,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
     }
   }, [apiKey]);
   useEffect(() => {
-    if (tourStartetRef.current) return undefined;
+    if (tourStartetRef.current || presentasjon) return undefined;
     if (typeof window === 'undefined' || window.innerWidth < 1024) return undefined;
     try { if (localStorage.getItem('dh-omvisning-budsjettmodell')) return undefined; } catch (e) {}
     // Ref settes først når timeren FYRER — StrictMode-sikkert (se BudsjettEnkel).
@@ -1645,7 +1645,12 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const breakEvenVerdi = be.ingen ? 'Nås ikke innen 36 mnd' : stor(mndLang(ymPluss(plan.startYm, be.idx)));
   const breakEvenUnder = be.ingen ? 'juster drivere eller forleng perioden' : `ved ~${be.enheter} enheter${be.utenfor ? ' · utenfor perioden' : ''}`;
 
-  const feltProps = { drivere, sanert, lagret: lagretDrivere, onEndre: settDriver, readOnly };
+  // PRESENTASJONSMODUS (levende deck): sliderne er interaktive og regner om i
+  // sanntid som i admin, men INGENTING lagres — ren «hva om» på scenen.
+  // «kanLagre» styrer all persistens-UI (Lagre, status, del, scenario-lagring).
+  const interaktiv = presentasjon || !readOnly;
+  const kanLagre = !readOnly && !presentasjon;
+  const feltProps = { drivere, sanert, lagret: lagretDrivere, onEndre: settDriver, readOnly: !interaktiv };
 
   const Stat = ({ tittel, verdi, under, farge, testid, hoyre }) => (
     <div className="flex min-w-0 items-center justify-between gap-3 rounded-[14px] bg-white px-4 py-3.5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
@@ -1663,7 +1668,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
       {/* Topplinje — én linje: identitet til venstre, handlinger gruppert til høyre */}
       <ModellTopplinje
         selskap="digihome" testPrefix="modell"
-        navn={navn} onNavn={(v) => { setNavn(v); setSkittent(true); }} readOnly={readOnly} onTilbake={onTilbake}
+        navn={navn} onNavn={(v) => { setNavn(v); setSkittent(true); }} readOnly={!kanLagre} presentasjon={presentasjon} onTilbake={onTilbake}
         startYm={plan.startYm} antallMnd={antallMnd} onHorisont={endreHorisont} horisontBusy={endrerHorisont}
         horisontHint="Porteføljefakta hentes på nytt fra leieforholdene for hele den nye perioden. Lagres først når du trykker Lagre."
         status={status} onStatus={(v) => { setStatus(v); lagre({ status: v }); }}
@@ -1717,7 +1722,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                         <span className="block truncate text-[13px] font-semibold text-[#1c1917]">{sc.navn}</span>
                         {aktivtScenario === sc.id && <Check className="h-3.5 w-3.5 shrink-0 text-[#6d28d9]" />}
                       </button>
-                      {!readOnly && (
+                      {kanLagre && (
                         <button onClick={() => slettScenario(sc.id)} title={`Slett scenarioet «${sc.navn}»`}
                           className="mr-1.5 hidden h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#c2beb8] hover:bg-[#f6dedd] hover:text-[#c2413b] group-hover/sc:flex">
                           <Trash2 className="h-3 w-3" />
@@ -1725,7 +1730,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                       )}
                     </div>
                   ))}
-                  {!readOnly && (
+                  {kanLagre && (
                     <>
                       <div className="mx-1.5 my-1 border-t border-black/[0.06]" />
                       {nyScenarioNavn === null ? (

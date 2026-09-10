@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, Mail, RefreshCw, Pencil } from 'lucide-react';
 import { detectFinnReference } from '@/components/dh/PropertyInputs';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
@@ -72,6 +72,43 @@ const intSiffer = (v, iso) => { const d = bareSiffer(v); return iso !== 'NO' && 
 const telefonOk = (v, iso) => { const c = landFor(iso); const d = intSiffer(v, iso); return d.length >= c.min && d.length <= c.max; };
 const e164 = (v, iso) => `${landFor(iso).dial}${intSiffer(v, iso)}`;
 const visTelefon = (d, iso) => (iso === 'NO' && d.length > 3 ? `${d.slice(0, 3)} ${d.slice(3, 5)}${d.length > 5 ? ` ${d.slice(5, 8)}` : ''}`.trim() : d);
+
+/* E-postmaskering for «Sjekk innboksen»-skjermen: ola@eksempel.no → o•••@e•••.no.
+   Vi viser aldri hele adressen etter innsending — nok til å kjenne den igjen,
+   ikke nok til at en skuldertitter leser den. Appen sender helst masken selv;
+   dette er fallbacken når den ikke gjør det. */
+const maskEpost = (raw) => {
+  const s = String(raw || '').trim();
+  const at = s.indexOf('@');
+  if (at < 1) return s;
+  const local = s.slice(0, at);
+  const domain = s.slice(at + 1);
+  const dot = domain.lastIndexOf('.');
+  const navn = dot > 0 ? domain.slice(0, dot) : domain;
+  const tld = dot > 0 ? domain.slice(dot) : '';
+  const skjul = (str, behold = 1) => (str.length <= behold ? `${str}•••` : `${str.slice(0, behold)}${'•'.repeat(Math.max(2, Math.min(4, str.length - behold)))}`);
+  return `${skjul(local)}@${skjul(navn)}${tld}`;
+};
+
+/* Vanlige skrivefeil i e-postdomener. En feil her betyr at bekreftelseslenken
+   aldri kommer fram — verdt et diskré «Mente du …?». */
+const DOMENE_RETT = {
+  'gmial.com': 'gmail.com', 'gmai.com': 'gmail.com', 'gmail.co': 'gmail.com', 'gmail.con': 'gmail.com', 'gmail.om': 'gmail.com', 'gnail.com': 'gmail.com', 'gmail.no': 'gmail.com',
+  'hotmial.com': 'hotmail.com', 'hotmai.com': 'hotmail.com', 'hotmail.con': 'hotmail.com', 'hotmail.co': 'hotmail.com', 'hotnail.com': 'hotmail.com',
+  'outlok.com': 'outlook.com', 'outllook.com': 'outlook.com', 'outlook.con': 'outlook.com', 'outlook.co': 'outlook.com',
+  'yahho.com': 'yahoo.com', 'yaho.com': 'yahoo.com', 'yahoo.con': 'yahoo.com',
+  'iclould.com': 'icloud.com', 'icloud.con': 'icloud.com', 'iclod.com': 'icloud.com',
+  'onlie.no': 'online.no', 'onlin.no': 'online.no', 'hotmail.nno': 'hotmail.com',
+};
+const foreslaEpost = (raw) => {
+  const s = String(raw || '').trim().toLowerCase();
+  const at = s.indexOf('@');
+  if (at < 1) return '';
+  const local = s.slice(0, at);
+  const domain = s.slice(at + 1);
+  const rett = DOMENE_RETT[domain];
+  return rett && rett !== domain ? `${local}@${rett}` : '';
+};
 
 /* Porteføljestørrelse for bedrift — valgfritt, men gir riktig oppfølging. */
 const PORTEFOLJE = [
@@ -218,6 +255,20 @@ export default function StartV4() {
   const [sendFeil, setSendFeil] = useState('');
   const [prefillFerdig, setPrefillFerdig] = useState(false);
 
+  /* E-postverifisering (app-eid, magisk lenke). Når appen svarer at kontoen er
+     opprettet UBEKREFTET, viser vi «Sjekk innboksen» i stedet for å logge inn. */
+  const [leadId, setLeadId] = useState('');
+  const [maaVerifisere, setMaaVerifisere] = useState(false);
+  const [epostMaske, setEpostMaske] = useState('');
+  const [resendLaster, setResendLaster] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [sendtPaNytt, setSendtPaNytt] = useState(false);
+  const [verifiseringsFeil, setVerifiseringsFeil] = useState('');
+  const [endreApen, setEndreApen] = useState(false);
+  const [nyEpost, setNyEpost] = useState('');
+  const [endreLaster, setEndreLaster] = useState(false);
+  const [endreFeil, setEndreFeil] = useState('');
+
   const stegIndex = STEG.findIndex((s) => s.id === steg);
   const gate = gateAv(form.address, form.postalCode, form.city);
   const fullUtilgjengelig = !!form.postalCode && !innenforOmrade(pos, form.postalCode, form.city);
@@ -351,15 +402,62 @@ export default function StartV4() {
     try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { /* ok */ }
   }, [steg, stegIndex]);
 
-  /* Konto-handoff for selvforvaltning. */
+  /* Konto-handoff for selvforvaltning (LEGACY-flyt — kun når appen IKKE krever
+     e-postverifisering). Ved verifisering setter vi aldri accountUrl, så denne
+     effekten er en no-op da. */
   useEffect(() => {
-    if (!sendt || form.service !== 'selvforvaltning' || !accountUrl) return undefined;
+    if (!sendt || form.service !== 'selvforvaltning' || !accountUrl || maaVerifisere) return undefined;
     const t = window.setTimeout(() => {
       try { track('account_handoff_redirect', { form: 'utleier', flow: 'utleier-v4' }); } catch (e) { /* ok */ }
       window.location.replace(accountUrl);
     }, 1400);
     return () => window.clearTimeout(t);
-  }, [sendt, accountUrl, form.service]);
+  }, [sendt, accountUrl, form.service, maaVerifisere]);
+
+  /* Nedtelling på «send på nytt» — hindrer at man mailbomber seg selv. */
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const t = window.setInterval(() => setResendCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
+    return () => window.clearInterval(t);
+  }, [resendCooldown]);
+
+  const sendVerifiseringPaNytt = useCallback(async () => {
+    if (resendLaster || resendCooldown > 0 || !leadId) return;
+    setResendLaster(true); setVerifiseringsFeil(''); setSendtPaNytt(false);
+    try {
+      const r = await fetch('/api/self-service/resend-verification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || 'resend_failed');
+      if (d.email_masked) setEpostMaske(d.email_masked);
+      setSendtPaNytt(true);
+      setResendCooldown(Math.max(30, Number(d.resend_available_in) || 30));
+      try { track('verification_resend', { form: 'utleier', flow: 'utleier-v4' }); } catch (e) { /* ok */ }
+    } catch (e) {
+      setVerifiseringsFeil('Vi fikk ikke sendt lenken på nytt akkurat nå. Prøv igjen om litt.');
+    } finally {
+      setResendLaster(false);
+    }
+  }, [resendLaster, resendCooldown, leadId]);
+
+  const lagreNyEpost = useCallback(async () => {
+    const e = nyEpost.trim().toLowerCase();
+    if (endreLaster) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { setEndreFeil('Skriv inn en gyldig e-postadresse.'); return; }
+    setEndreLaster(true); setEndreFeil('');
+    try {
+      const r = await fetch('/api/self-service/change-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId, email: e }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || 'change_failed');
+      setField('email', e);
+      setEpostMaske(d.email_masked || maskEpost(e));
+      setEndreApen(false); setNyEpost(''); setSendtPaNytt(true); setResendCooldown(30); setVerifiseringsFeil('');
+      try { track('verification_change_email', { form: 'utleier', flow: 'utleier-v4' }); } catch (err) { /* ok */ }
+    } catch (err) {
+      setEndreFeil('Vi fikk ikke endret e-posten akkurat nå. Prøv igjen om litt.');
+    } finally {
+      setEndreLaster(false);
+    }
+  }, [nyEpost, endreLaster, leadId, setField]);
 
   const fortsettFraAdresse = async () => {
     const v = form.address.trim();
@@ -428,8 +526,19 @@ export default function StartV4() {
       const r = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || (!d.success && !d.ok)) throw new Error('submit_failed');
-      const url = d?.account?.onboarding_url || d?.data?.account?.onboarding_url;
-      if (typeof url === 'string' && /^https:\/\//.test(url)) setAccountUrl(url);
+      const acc = d?.account || d?.data?.account || null;
+      const nyLeadId = d?.data?.id || d?.data?.lead?.id || '';
+      if (nyLeadId) setLeadId(nyLeadId);
+      /* NY FLYT: appen opprettet kontoen ubekreftet og sendte en magisk
+         verifiseringslenke. Vi logger IKKE inn — vi viser «Sjekk innboksen». */
+      if (acc && acc.requires_verification) {
+        setMaaVerifisere(true);
+        setEpostMaske(acc.email_masked || maskEpost(form.email.trim()));
+      } else {
+        /* LEGACY: 200 + onboarding_url = engangs magic login → åpne portalen. */
+        const url = acc?.onboarding_url || d?.data?.account?.onboarding_url;
+        if (typeof url === 'string' && /^https:\/\//.test(url)) setAccountUrl(url);
+      }
       setSendt(true);
       try { track('lead_submit', { form: 'utleier', flow: 'utleier-v4', tier: form.service }); } catch (e2) { /* ok */ }
       try { trackLead({ formId: 'utleier', source: 'bli-utleier', leadId: d?.data?.id, email: form.email.trim(), phone: telefon }); } catch (e2) { /* ok */ }
@@ -453,7 +562,91 @@ export default function StartV4() {
   const panelKompakt = underLg && (form.address || pos || sikt) ? <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} sikt={sikt} modell={form.service} kompakt /> : null;
 
   const fornavn = form.name.trim().split(' ')[0];
-  const ferdigInnhold = sendt ? (
+  const visInnboks = sendt && erSelv && maaVerifisere;
+  const epostForslag = foreslaEpost(endreApen ? nyEpost : form.email);
+
+  const innboksInnhold = visInnboks ? (
+    <section key="innboks" className="dh-cover-inn" data-testid="start-innboks">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: 'rgba(212,150,255,0.20)' }}>
+        <Mail className="h-5 w-5" strokeWidth={1.9} style={{ color: T.ink }} />
+      </span>
+      <h1 className="mt-7 text-[40px] sm:text-[52px]" style={{ ...display, color: T.ink, maxWidth: '14ch' }} data-testid="start-innboks-tittel">
+        Sjekk innboksen.
+      </h1>
+      <p className="mt-4 max-w-[46ch] text-[16px] leading-[1.5] text-[#15130F]/65 sm:text-[17px]">
+        Vi har sendt en bekreftelseslenke til <span className="font-medium text-[#15130F]" data-testid="start-innboks-epost">{epostMaske || maskEpost(form.email.trim())}</span>. Åpne den for å aktivere kontoen og komme rett i gang med boligen din.
+      </p>
+      <p className="mt-3 text-[14px] leading-[1.5] text-[#15130F]/50">Lenken er gyldig en kort stund. Finner du den ikke? Sjekk søppelpost og reklame.</p>
+
+      {sendtPaNytt ? (
+        <p className="mt-4 inline-flex items-center gap-2 text-[13.5px] text-[#1F9D55]" data-testid="start-innboks-sendt"><Check className="h-3.5 w-3.5" strokeWidth={2.4} /> Ny lenke er på vei.</p>
+      ) : null}
+      {verifiseringsFeil ? (
+        <p role="alert" className="mt-4 rounded-[12px] px-4 py-3 text-[13.5px]" style={{ background: 'rgba(180,60,40,0.08)', color: '#8E2E1F' }}>{verifiseringsFeil}</p>
+      ) : null}
+
+      {!endreApen && epostForslag ? (
+        <p className="mt-4 text-[13.5px] text-[#15130F]/60" data-testid="start-innboks-forslag">
+          Mente du{' '}
+          <button type="button" onClick={() => { setEndreApen(true); setNyEpost(epostForslag); setEndreFeil(''); }} className="font-medium text-[#15130F] underline decoration-[#15130F]/30 underline-offset-4 hover:decoration-[#15130F]">{epostForslag}</button>?
+        </p>
+      ) : null}
+
+      {endreApen ? (
+        <div className="mt-6 rounded-[16px] p-4 sm:p-5" style={{ background: 'rgba(21,19,15,0.035)' }} data-testid="start-innboks-endre">
+          <label htmlFor="verify-new-email" className="text-[13.5px] font-medium text-[#15130F]">Ny e-postadresse</label>
+          <div className="mt-2 flex flex-col gap-2.5 sm:flex-row">
+            <input
+              id="verify-new-email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={nyEpost}
+              onChange={(ev) => { setNyEpost(ev.target.value); setEndreFeil(''); }}
+              onKeyDown={(ev) => { if (ev.key === 'Enter') { ev.preventDefault(); lagreNyEpost(); } }}
+              placeholder="ola@eksempel.no"
+              className="h-[46px] w-full rounded-[10px] border-0 bg-white px-3.5 text-[15px] text-[#15130F] outline-none focus:ring-2 focus:ring-[#15130F]/25"
+              style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.12)' }}
+            />
+            <div className="flex gap-2">
+              <button type="button" onClick={lagreNyEpost} disabled={endreLaster} className="inline-flex h-[46px] items-center justify-center gap-2 rounded-[10px] px-5 text-[14.5px] font-medium disabled:opacity-60" style={{ background: T.ink, color: '#F4F1EA' }} data-testid="start-innboks-lagre">
+                {endreLaster ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Lagre
+              </button>
+              <button type="button" onClick={() => { setEndreApen(false); setNyEpost(''); setEndreFeil(''); }} className="inline-flex h-[46px] items-center justify-center rounded-[10px] px-4 text-[14.5px] font-medium text-[#15130F]" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.14)' }}>Avbryt</button>
+            </div>
+          </div>
+          {endreFeil ? <p role="alert" className="mt-2 text-[13px] text-[#8E2E1F]">{endreFeil}</p> : null}
+          {epostForslag && epostForslag !== nyEpost.trim().toLowerCase() ? (
+            <p className="mt-2 text-[13px] text-[#15130F]/60">Mente du <button type="button" onClick={() => setNyEpost(epostForslag)} className="font-medium text-[#15130F] underline decoration-[#15130F]/30 underline-offset-4">{epostForslag}</button>?</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <button
+          type="button"
+          onClick={sendVerifiseringPaNytt}
+          disabled={resendLaster || resendCooldown > 0}
+          className="inline-flex h-[52px] items-center justify-center gap-2 rounded-[12px] px-7 text-[15px] font-medium disabled:opacity-55"
+          style={{ background: T.ink, color: '#F4F1EA' }}
+          data-testid="start-innboks-resend"
+        >
+          {resendLaster ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" strokeWidth={1.9} />}
+          {resendCooldown > 0 ? `Send på nytt (${resendCooldown}s)` : 'Send lenken på nytt'}
+        </button>
+        {!endreApen ? (
+          <button type="button" onClick={() => { setEndreApen(true); setNyEpost(''); setEndreFeil(''); }} className="inline-flex h-[52px] items-center justify-center gap-2 rounded-[12px] px-6 text-[15px] font-medium text-[#15130F]" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.14)' }} data-testid="start-innboks-endre-knapp">
+            <Pencil className="h-4 w-4" strokeWidth={1.8} /> Endre e-postadresse
+          </button>
+        ) : null}
+      </div>
+      <p className="mt-6 text-[13.5px] text-[#15130F]/50">
+        Feil adresse eller trenger du hjelp? <Link href="/" className="underline decoration-[#15130F]/25 underline-offset-4 hover:text-[#15130F]">Til forsiden</Link> — eller ring oss på <a href={`tel:${site.phoneHref}`} className="underline decoration-[#15130F]/25 underline-offset-4 hover:text-[#15130F]">{site.phone}</a>.
+      </p>
+    </section>
+  ) : null;
+
+  const ferdigInnhold = sendt && !visInnboks ? (
     <section key="ferdig" className="dh-cover-inn" data-testid="start-ferdig">
       <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: erSelv && accountUrl ? T.ink : T.gronn }}>
         {erSelv && accountUrl ? <Loader2 className="h-5 w-5 animate-spin text-[#F4F1EA]" /> : <Check className="h-5 w-5 text-white" strokeWidth={2.4} />}
@@ -487,6 +680,7 @@ export default function StartV4() {
 
           <div className={`mx-auto w-full lg:mx-0 ${steg === 'tjeneste' && !sendt ? 'max-w-[720px]' : 'max-w-[560px]'}`} style={{ opacity: prefillFerdig ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>
             {ferdigInnhold}
+            {innboksInnhold}
             {!sendt && steg === 'adresse' ? (
               <section key="adresse" className="dh-cover-inn" data-testid="start-steg-adresse">
                 <Tittel tittel="Hvor ligger boligen?" tekst="Skriv inn adressen — eller lim inn FINN-annonsen." testId="start-h1" />

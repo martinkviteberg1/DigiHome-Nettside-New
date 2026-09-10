@@ -95,7 +95,7 @@ const Bryter = ({ paa }) => (
 );
 
 export default function ModellTopplinje({
-  selskap = 'digihome', navn, onNavn, readOnly = false, onTilbake,
+  selskap = 'digihome', navn, onNavn, readOnly = false, presentasjon = false, onTilbake,
   startYm, antallMnd, onHorisont, horisontBusy = 0, horisontHint,
   status = 'utkast', onStatus,
   investorSynlig = false, onInvestorSynlig,
@@ -115,14 +115,18 @@ export default function ModellTopplinje({
   const visMer = !readOnly && (merValg.length > 0 || onSlett || onStatus);
 
   return (
-    <div className="z-30 -mx-4 -mt-3 border-b border-black/[0.05] bg-[#f7f6f3]/92 px-4 pb-2.5 pt-2.5 backdrop-blur-md sm:-mx-6 sm:px-6 lg:sticky lg:top-0" data-testid={`${tp}-topplinje`}>
+    <div className={presentasjon
+      ? 'z-30 mb-1 flex flex-col gap-2 border-b border-black/[0.06] pb-3'
+      : 'z-30 -mx-4 -mt-3 border-b border-black/[0.05] bg-[#f7f6f3]/92 px-4 pb-2.5 pt-2.5 backdrop-blur-md sm:-mx-6 sm:px-6 lg:sticky lg:top-0'} data-testid={`${tp}-topplinje`}>
       <div className="flex items-center gap-2">
         {/* ── Venstre: identitet ── */}
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <button onClick={() => onTilbake?.()} data-testid="budsjett-tilbake" title="Alle budsjetter"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#8f8a82] transition-colors hover:bg-black/[0.05] hover:text-[#1c1917]">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
+          {!presentasjon ? (
+            <button onClick={() => onTilbake?.()} data-testid="budsjett-tilbake" title="Alle budsjetter"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#8f8a82] transition-colors hover:bg-black/[0.05] hover:text-[#1c1917]">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+          ) : null}
           <span title={selskap === 'tech' ? 'Digihome Tech AS' : 'Digihome AS'} data-testid={`${tp}-selskap`}><SelskapMerke id={selskap} storrelse={26} /></span>
           {readOnly || !onNavn ? (
             <h2 className="truncate text-[18px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{navn}</h2>

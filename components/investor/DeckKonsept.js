@@ -25,6 +25,7 @@ import HeroStage, { FILM as HERO_FILM } from '@/components/forside/v4/HeroStage'
 import LosningFilm from '@/components/investor/LosningFilm';
 import PortefoljeData from '@/components/investor/PortefoljeData';
 import RegnskapFilm from '@/components/investor/RegnskapFilm';
+import ModellPresentasjon from '@/components/investor/ModellPresentasjon';
 import {
   beregnInvestorModell, beregnTech, beregnKonsernSammenstilling, rensModellDrivere, rensTechDrivere, rensTechFakta, skalerVekst,
 } from '@/lib/budsjett-modell';
@@ -109,7 +110,7 @@ function Side({ id, children, morkt = false, aktiv = false, pos = 'under', bred 
 const Inn = ({ i = 0, children, className = '', style, strek }) => <div className={`deck-inn ${className}`} data-strek={strek ? '1' : undefined} style={{ '--i': i, ...(typeof strek === 'string' ? { '--strek': strek } : {}), ...style }}>{children}</div>;
 const Kapittel = ({ nr, navn, under, morkt = false }) => (
   <Inn i={0} className="flex items-center gap-3">
-    <span className="text-[11px] font-semibold tabular-nums tracking-[0.12em]" style={{ color: morkt ? T.lilla : LILLA_M }}>{String(nr).padStart(2, '0')}</span>
+    {nr ? <span className="text-[11px] font-semibold tabular-nums tracking-[0.12em]" style={{ color: morkt ? T.lilla : LILLA_M }}>{String(nr).padStart(2, '0')}</span> : null}
     <span aria-hidden="true" className="deck-kap-linje h-px w-8" style={{ background: `linear-gradient(90deg, ${morkt ? 'rgba(212,150,255,0.65)' : 'rgba(122,63,168,0.5)'}, ${morkt ? 'rgba(212,150,255,0)' : 'rgba(122,63,168,0)'})` }} />
     <span className="text-[12.5px] font-medium tracking-[0.01em]" style={{ color: morkt ? LYS_SVAK : SVAK }}>{navn}{under ? <span style={{ color: morkt ? 'rgba(244,241,234,0.35)' : 'rgba(21,19,15,0.35)' }}> · {under}</span> : null}</span>
   </Inn>
@@ -988,6 +989,8 @@ const KAPITLER = [
   { id: 'risiko', navn: 'Risiko' },
   { id: 'trenger', navn: 'Det vi trenger' },
 ];
+// Internt tilleggskapittel (kun presenter): det levende, interaktive verktøyet.
+const MODELL_KAP = { id: 'modell', navn: 'Modellen · interaktiv' };
 const NOTATER = {
   forside: 'Åpne rolig. Én setning: vi fjerner jobben med å leie ut – med programvare, og med mennesker som bruker den samme programvaren.',
   hvorfor: 'Smerten er kjent for alle i rommet som har leid ut. Ikke tall her – gjenkjennelse.',
@@ -1249,6 +1252,12 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
 
   /* ── Modeller ── */
   const plan = data?.plan; const techPlan = data?.tech || null;
+  // Internt/presenter (kun ekte admin via ?key=, aldri delte lenker): låser opp
+  // det interaktive modell-kapitlet. Eksterne lenker ser det aldri.
+  const internPresenter = Boolean(data?.presenter) && !token && Boolean(adminKey);
+  // Kapittellisten som driver navigasjon/velger. Presenter får det interaktive
+  // modell-kapitlet lagt til på slutten (uten å forskyve nummereringen ellers).
+  const synligeKapitler = useMemo(() => (internPresenter ? [...KAPITLER, MODELL_KAP] : KAPITLER), [internPresenter]);
   const N = plan ? Math.min(36, Math.max(1, Number(plan.antallMnd) || 12)) : 12;
   const NT = techPlan ? Math.min(36, Math.max(1, Number(techPlan.antallMnd) || 12)) : N;
   const basisF = useMemo(() => (plan ? rensModellDrivere(plan.drivere || {}) : null), [plan]);
@@ -1295,7 +1304,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   /* ── Navigasjon: deterministisk kapittelmotor ──
      `side` er sannheten. Kapitlene ligger som lag (absolutt) og glir inn/ut med CSS på data-pos.
      Én gest = ett kapittel. Kapitler høyere enn skjermen scroller innvendig først. */
-  const sider = useMemo(() => KAPITLER.map((c) => c.id), []);
+  const sider = useMemo(() => synligeKapitler.map((c) => c.id), [synligeKapitler]);
   const sideRef = useRef(0);
   const [utgaaende, setUtgaaende] = useState(null); // forrige kapittel holdes «aktivt» mens det glir ut
   const [merUnder, setMerUnder] = useState(false);   // aktivt kapittel har mer innhold under kanten
@@ -1739,9 +1748,9 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       {/* Kapittelvelger */}
       {visKapitler ? (
         <div className="deck-skjul-print fixed inset-0 z-40 flex items-start justify-start p-5 sm:p-8" onClick={() => setVisKapitler(false)} data-deck-overlay>
-          <div className="mt-12 w-full max-w-[380px] rounded-[22px] p-2 shadow-[0_24px_80px_rgba(20,17,14,0.25)]" style={{ background: '#FBFAF8' }} onClick={(e) => e.stopPropagation()} data-testid="deck-kapittelliste">
+          <div className="mt-12 max-h-[82vh] w-full max-w-[380px] overflow-y-auto overscroll-contain rounded-[22px] p-2 shadow-[0_24px_80px_rgba(20,17,14,0.25)]" style={{ background: '#FBFAF8' }} onClick={(e) => e.stopPropagation()} data-testid="deck-kapittelliste">
             <div className="flex items-center justify-between px-3 pb-1 pt-2"><p className="text-[12px] font-medium" style={{ color: SVAK }}>Kapitler</p><button onClick={() => setVisKapitler(false)} className="rounded-full p-1" style={{ color: SVAK }} aria-label="Lukk"><X className="h-4 w-4" /></button></div>
-            {KAPITLER.map((c, i) => (
+            {synligeKapitler.map((c, i) => (
               <button key={c.id} onClick={() => gaaTil(i)} className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2 text-left text-[14px] transition-colors" style={{ background: side === i ? T.ink : 'transparent', color: side === i ? T.offwhite : T.ink }} data-testid={`deck-kap-${c.id}`}>
                 <span className="w-6 text-[12px] tabular-nums" style={{ color: side === i ? T.lilla : LILLA_M }}>{String(i + 1).padStart(2, '0')}</span>{c.navn}
               </button>
@@ -2474,6 +2483,27 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
         <Inn i={5}><p className="mt-4 max-w-[82ch] text-[12px] leading-[1.5]" style={{ color: SVAK }}>Konserntall etter at intern lisens mellom selskapene er eliminert{k.sammendrag.eliminert ? ` (${mnok(k.sammendrag.eliminert)} over perioden)` : ''}. «Ved utgang» = siste måned i hvert år. {skattPaa ? 'Tallene er før skatt – skatt og kapitalbehov etter skatt vises under Det vi trenger.' : 'Full plan per selskap ligger under Planen · Digihome AS og Planen · Tech.'}</p></Inn>
       </Side>
+
+
+      {/* Internt · interaktiv modell (kun presenter) — det levende verktøyet på en slide */}
+      {internPresenter ? (
+        <Side id="modell" pos={pos('modell')} aktiv={er('modell')} full>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <Kapittel navn="Modellen · interaktiv" under="samme motor som budsjettmodulen · endre forutsetningene live · ingenting lagres" />
+              <Inn i={1}><H2 className="!text-[30px] sm:!text-[38px] lg:!text-[42px]">Dra i forutsetningene. Se break-even flytte seg.</H2></Inn>
+            </div>
+            <Inn i={2}>
+              <span className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-medium" style={{ background: 'rgba(122,63,168,0.12)', color: LILLA_M }}>
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: LILLA_M }} /> Internt · presenter
+              </span>
+            </Inn>
+          </div>
+          <Inn i={3} className="mt-6 min-w-0" data-deck-overlay>
+            <ModellPresentasjon apiKey={adminKey} planId={plan?.id || planId} aktiv={er('modell')} />
+          </Inn>
+        </Side>
+      ) : null}
 
 
       {/* 12 · Den ene variabelen */}
