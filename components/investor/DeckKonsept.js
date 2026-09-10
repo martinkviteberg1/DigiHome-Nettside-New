@@ -1621,6 +1621,25 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         @keyframes deck-eier-h { to { transform: scaleX(1); } }
         @keyframes deck-eier-p { to { opacity: 1; transform: scale(1); } }
 
+        /* ── Nye slide-animasjoner (Strukturen / Hvor vi står / Hvorfor) ── */
+        /* Vekst fra bunn: bemanningstrapp + momentum-pinner reiser seg */
+        .deck-vokst { transform: scaleY(0); transform-origin: bottom; }
+        .deck-side[data-aktiv="1"] .deck-vokst { animation: deck-vokst .72s ${EASE} var(--d, 0s) both; }
+        @keyframes deck-vokst { to { transform: scaleY(1); } }
+        /* «Én plattform»-basebjelke sveiper inn fra venstre */
+        .deck-plattform-bar { transform: scaleX(0); transform-origin: left; }
+        .deck-side[data-aktiv="1"] .deck-plattform-bar { animation: deck-plattform-bar .95s ${EASE} var(--d, 1.35s) both; }
+        @keyframes deck-plattform-bar { to { transform: scaleX(1); } }
+        /* Lys som flyter ned stammen (verdien som blir i konsernet) */
+        .deck-flyt { opacity: 0; }
+        .deck-side[data-aktiv="1"] .deck-flyt { animation: deck-flyt 3s ${EASE} 2s infinite; }
+        @keyframes deck-flyt { 0% { opacity: 0; transform: translateY(-4px); } 20% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(38px); } }
+        /* Myk pust på hero-glød (Hvor vi står) */
+        .deck-side[data-aktiv="1"] .deck-hero-glow { animation: deck-los-gloed 5s ${EASE} infinite; }
+        /* Sen, myk innkomst for et helt kort (skala + løft) */
+        .deck-kortinn { opacity: 0; transform: translateY(14px) scale(0.985); transition: opacity 640ms ${EASE}, transform 700ms ${EASE}; transition-delay: calc(var(--i, 0) * 60ms + 120ms); }
+        .deck-side[data-aktiv="1"] .deck-kortinn { opacity: 1; transform: none; }
+
         .deck-side .deck-linje { --l: 0; transition: transform 460ms ${EASE} 280ms; }
         .deck-side[data-aktiv="1"] .deck-linje { --l: 1; }
         .deck-ord { display: inline-block; opacity: 0; transform: translateY(0.5em); transition: opacity 480ms ${EASE}, transform 480ms ${EASE}; transition-delay: calc(var(--o, 0) * 40ms + 120ms); }
@@ -1691,7 +1710,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-side[data-aktiv="1"] .deck-cover-strek { transform: scaleX(1); }
         /* Coverens scene: forsidens HeroStage, men som sceneteppe – kant til kant, uten kortets radius/skygge/høydetak. */
         .deck-cover-scene .dh-hero-scene { max-height: none !important; border-radius: 0 !important; box-shadow: none !important; }
-        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-side .deck-inn[data-strek]::before { transform: scaleX(1); transition: none; } .deck-side .deck-rad, .deck-side .deck-stolpe, .deck-side .deck-stolpe-tekst { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring, .deck-hjul-rot, .deck-hjul-tegn, .deck-hjul-orbit, .deck-hjul-lisens, .deck-spk-knott, .deck-spk-skinne, .deck-live-dot, .deck-eier-v, .deck-eier-h, .deck-eier-p { animation: none !important; } .deck-eier-v, .deck-eier-h, .deck-eier-p { transform: none !important; opacity: 1 !important; } .deck-hjul-tegn { stroke-dashoffset: 0 !important; } .deck-hjul-chev, .deck-hjul-orbit { opacity: 1 !important; } .deck-spk-skinne { transform: scaleX(1) !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } .deck-portrett { animation: none !important; filter: grayscale(0) contrast(1) !important; } .deck-kap-linje { transform: scaleX(1) !important; transition: none !important; } }
+        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-side .deck-inn[data-strek]::before { transform: scaleX(1); transition: none; } .deck-side .deck-rad, .deck-side .deck-stolpe, .deck-side .deck-stolpe-tekst { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring, .deck-hjul-rot, .deck-hjul-tegn, .deck-hjul-orbit, .deck-hjul-lisens, .deck-spk-knott, .deck-spk-skinne, .deck-live-dot, .deck-eier-v, .deck-eier-h, .deck-eier-p { animation: none !important; } .deck-eier-v, .deck-eier-h, .deck-eier-p { transform: none !important; opacity: 1 !important; } .deck-hjul-tegn { stroke-dashoffset: 0 !important; } .deck-hjul-chev, .deck-hjul-orbit { opacity: 1 !important; } .deck-spk-skinne { transform: scaleX(1) !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } .deck-portrett { animation: none !important; filter: grayscale(0) contrast(1) !important; } .deck-kap-linje { transform: scaleX(1) !important; transition: none !important; } .deck-vokst { transform: none !important; animation: none !important; } .deck-plattform-bar { transform: scaleX(1) !important; animation: none !important; } .deck-flyt { animation: none !important; opacity: 0 !important; } .deck-hero-glow { animation: none !important; } .deck-kortinn { opacity: 1 !important; transform: none !important; transition: none !important; } }
         @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
 
@@ -1827,7 +1846,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             {/* Bemanningstrappen – kostnaden gjort synlig: flere enheter → flere manuelle timer → flere folk */}
             <div className="mt-5 flex items-end gap-[6px]" data-testid="deck-kost-trapp">
               {[12, 18, 26, 36, 48, 62].map((h, i) => (
-                <span key={h} aria-hidden="true" className="deck-inn w-[9px] rounded-t-[3px]" style={{ '--i': 6 + i * 0.3, height: h, background: i < 2 ? 'rgba(21,19,15,0.16)' : i < 4 ? 'rgba(179,38,30,0.38)' : FARGE.kost }} />
+                <span key={h} aria-hidden="true" className="deck-vokst w-[9px] rounded-t-[3px]" style={{ '--d': `${0.7 + i * 0.11}s`, height: h, background: i < 2 ? 'rgba(21,19,15,0.16)' : i < 4 ? 'rgba(179,38,30,0.38)' : FARGE.kost }} />
               ))}
               <span className="ml-3 text-[11.5px] leading-[1.3]" style={{ color: SVAK }}>flere enheter →<br />flere folk på lønn</span>
             </div>
@@ -1978,47 +1997,63 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         <Kapittel nr={kap('eier')} navn="Strukturen" under="ett konsern, to selskaper, én plattform" />
         <div className="mx-auto max-w-[760px] text-center">
           <Inn i={1}><H2 maks="24ch" className="mx-auto !text-[30px] sm:!text-[40px] lg:!text-[46px]">Ett konsern. To selskaper. Én plattform.</H2></Inn>
-          <Inn i={2}><p className="mx-auto mt-3 max-w-[58ch] text-[14.5px] leading-[1.55] sm:text-[16px]" style={{ color: DIM }}>Digihome Group AS eier begge selskapene fullt ut. Forvaltningen tjener penger i dag; programvaren skalerer uten grenser. De deler én kodebase.</p></Inn>
+          <Inn i={2}><p className="mx-auto mt-3 max-w-[58ch] text-[14.5px] leading-[1.55] sm:text-[16px]" style={{ color: DIM }}>Digihome Group AS eier begge selskapene 100 %. Forvaltningen tjener penger i dag; programvaren skalerer uten grenser – og de hviler på én felles kodebase.</p></Inn>
         </div>
-        <div className="relative mx-auto mt-6 w-full max-w-[880px]" data-testid="deck-eier">
+        <div className="relative mx-auto mt-7 w-full max-w-[840px]" data-testid="deck-eier">
           {/* Morselskapet */}
-          <Inn i={3} className="mx-auto w-full max-w-[340px]">
-            <div className="relative overflow-hidden rounded-[18px] px-7 py-4 text-center" style={{ background: T.charcoal, boxShadow: '0 26px 54px -30px rgba(21,19,15,0.55)' }} data-testid="deck-eier-mor">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'rgba(212,150,255,0.85)' }}>Morselskap</p>
-              <p className="mt-1 text-[22px] font-semibold tracking-[-0.02em] text-white sm:text-[24px]" style={display}>Digihome Group AS</p>
-              <p className="mt-0.5 text-[12px]" style={{ color: 'rgba(244,241,234,0.72)' }}>Eier og styrer 100 % av begge selskapene</p>
+          <Inn i={3} className="mx-auto w-full max-w-[360px]">
+            <div className="relative overflow-hidden rounded-[20px] px-7 py-5 text-center" style={{ background: T.charcoal, boxShadow: '0 30px 62px -34px rgba(21,19,15,0.6)' }} data-testid="deck-eier-mor">
+              <span aria-hidden="true" className="pointer-events-none absolute -right-8 -top-12 h-32 w-32 rounded-full" style={{ background: 'radial-gradient(circle, rgba(212,150,255,0.3), rgba(212,150,255,0) 70%)' }} />
+              <p className="relative text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'rgba(212,150,255,0.9)' }}>Morselskap</p>
+              <p className="relative mt-1 text-[23px] font-semibold tracking-[-0.02em] text-white sm:text-[26px]" style={display}>Digihome Group AS</p>
+              <p className="relative mt-1 text-[12px]" style={{ color: 'rgba(244,241,234,0.74)' }}>Eier og styrer 100 % av begge selskapene</p>
             </div>
           </Inn>
-          {/* Linjene tegner seg ned: stamme → tverrlinje → to grener */}
-          <div aria-hidden="true" className="relative mx-auto hidden h-[46px] w-full sm:block">
-            <span className="deck-eier-v absolute top-0 h-[23px] w-px" style={{ left: 'calc(50% - 0.5px)', background: 'linear-gradient(180deg, rgba(122,63,168,0.6), rgba(122,63,168,0.42))', '--d': '.6s' }} />
-            <span className="deck-eier-h absolute top-[23px] h-px" style={{ left: '25%', right: '25%', background: 'rgba(122,63,168,0.42)', '--d': '.95s' }} />
-            <span className="deck-eier-v absolute top-[23px] h-[23px] w-px" style={{ left: 'calc(25% - 0.5px)', background: 'rgba(122,63,168,0.42)', '--d': '1.3s' }} />
-            <span className="deck-eier-v absolute top-[23px] h-[23px] w-px" style={{ left: 'calc(75% - 0.5px)', background: 'rgba(122,63,168,0.42)', '--d': '1.3s' }} />
-            <span className="deck-eier-p absolute h-1.5 w-1.5 rounded-full" style={{ left: 'calc(50% - 3px)', top: '20px', background: LILLA_M, '--d': '.9s' }} />
+          {/* Stammen tegner seg ned + et lys flyter ned den (verdien som blir i konsernet) → tverrlinje → to grener */}
+          <div aria-hidden="true" className="relative mx-auto hidden h-[52px] w-full sm:block">
+            <span className="deck-eier-v absolute top-0 h-[26px] w-px" style={{ left: 'calc(50% - 0.5px)', background: 'linear-gradient(180deg, rgba(122,63,168,0.65), rgba(122,63,168,0.42))', '--d': '.55s' }} />
+            <span className="deck-flyt absolute h-2 w-2 rounded-full" style={{ left: 'calc(50% - 4px)', top: '3px', background: LILLA_M, boxShadow: `0 0 10px ${LILLA_M}` }} />
+            <span className="deck-eier-h absolute top-[26px] h-px" style={{ left: '25%', right: '25%', background: 'rgba(122,63,168,0.42)', '--d': '.9s' }} />
+            <span className="deck-eier-v absolute top-[26px] h-[26px] w-px" style={{ left: 'calc(25% - 0.5px)', background: 'rgba(122,63,168,0.42)', '--d': '1.25s' }} />
+            <span className="deck-eier-v absolute top-[26px] h-[26px] w-px" style={{ left: 'calc(75% - 0.5px)', background: 'rgba(122,63,168,0.42)', '--d': '1.25s' }} />
           </div>
+          {/* To selskaper */}
           <div className="mt-5 grid gap-5 sm:mt-0 sm:grid-cols-2">
             {[
-              { over: 'Forvaltningen', navn: 'Digihome AS', Ikon: Building2, tekst: 'Drifter boliger for eiere som overlater jobben – fast forvalter, honorar av leien.', metrikk: `${nb(enheterIDag)} boliger i drift i dag`, tag: 'Margin', i: 20 },
-              { over: 'Programvaren', navn: 'Digihome Tech AS', Ikon: Sparkles, tekst: 'Plattformen for private utleiere (B2C), eiendomsselskaper (B2B) og forvaltningen selv.', metrikk: 'Én kodebase · én prisliste', tag: 'Skala', i: 21 },
-            ].map((s) => (
-              <Inn key={s.navn} i={s.i}>
-                <div className="flex h-full flex-col rounded-[18px] bg-white p-5" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 20px 44px -30px rgba(21,19,15,0.22)` }}>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.13em]" style={{ color: LILLA_M }}><s.Ikon className="h-3.5 w-3.5" strokeWidth={1.9} />{s.over}</span>
-                    <span className="rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold" style={{ background: 'rgba(122,63,168,0.1)', color: LILLA_M }}>100 %</span>
-                  </div>
-                  <p className="mt-1.5 text-[21px] font-semibold tracking-[-0.02em] sm:text-[23px]" style={{ ...display, color: T.ink }}>{s.navn}</p>
-                  <p className="mt-2 text-[13px] leading-[1.5]" style={{ color: DIM }}>{s.tekst}</p>
-                  <div className="mt-3 flex items-center justify-between gap-3 border-t pt-2.5" style={{ borderColor: HAIR }}>
-                    <span className="text-[12px] font-medium" style={{ color: T.ink }}>{s.metrikk}</span>
-                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.09em]" style={{ color: SVAK }}>{s.tag}</span>
-                  </div>
+              { over: 'Forvaltningen', navn: 'Digihome AS', Ikon: Building2, tekst: 'Drifter boliger for eiere som overlater jobben – fast forvalter, honorar av leien.', metrikk: `${nb(enheterIDag)} boliger i drift i dag`, tag: 'Margin' },
+              { over: 'Programvaren', navn: 'Digihome Tech AS', Ikon: Sparkles, tekst: 'Plattformen for private utleiere (B2C), eiendomsselskaper (B2B) og forvaltningen selv.', metrikk: 'Én kodebase · én prisliste', tag: 'Skala' },
+            ].map((s, idx) => (
+              <div key={s.navn} className="deck-kortinn flex h-full flex-col rounded-[20px] bg-white p-5" style={{ '--i': 4 + idx, boxShadow: `inset 0 0 0 1px ${HAIR}, 0 24px 50px -32px rgba(21,19,15,0.24)` }}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.13em]" style={{ color: LILLA_M }}><s.Ikon className="h-3.5 w-3.5" strokeWidth={1.9} />{s.over}</span>
+                  <span className="rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold" style={{ background: 'rgba(122,63,168,0.1)', color: LILLA_M }}>Eid 100 %</span>
                 </div>
-              </Inn>
+                <p className="mt-1.5 text-[21px] font-semibold tracking-[-0.02em] sm:text-[23px]" style={{ ...display, color: T.ink }}>{s.navn}</p>
+                <p className="mt-2 flex-1 text-[13px] leading-[1.5]" style={{ color: DIM }}>{s.tekst}</p>
+                <div className="mt-3 flex items-center justify-between gap-3 border-t pt-2.5" style={{ borderColor: HAIR }}>
+                  <span className="text-[12px] font-medium" style={{ color: T.ink }}>{s.metrikk}</span>
+                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.09em]" style={{ color: SVAK }}>{s.tag}</span>
+                </div>
+              </div>
             ))}
           </div>
-          <Inn i={22}><p className="mx-auto mt-5 max-w-[64ch] text-center text-[12.5px] leading-[1.5]" style={{ color: SVAK }}>Lisensen Digihome AS betaler til Digihome Tech AS nulles ut i konsernregnskapet – marginen blir værende i konsernet.</p></Inn>
+          {/* Grenene samles ned i den felles plattform-basen */}
+          <div aria-hidden="true" className="relative mx-auto hidden h-[30px] w-full sm:block">
+            <span className="deck-eier-v absolute top-0 h-[15px] w-px" style={{ left: 'calc(25% - 0.5px)', background: 'rgba(122,63,168,0.4)', '--d': '1.55s' }} />
+            <span className="deck-eier-v absolute top-0 h-[15px] w-px" style={{ left: 'calc(75% - 0.5px)', background: 'rgba(122,63,168,0.4)', '--d': '1.55s' }} />
+            <span className="deck-eier-h absolute top-[15px] h-px" style={{ left: '25%', right: '25%', background: 'rgba(122,63,168,0.4)', '--d': '1.7s' }} />
+            <span className="deck-eier-v absolute top-[15px] h-[15px] w-px" style={{ left: 'calc(50% - 0.5px)', background: 'rgba(122,63,168,0.4)', '--d': '1.85s' }} />
+          </div>
+          {/* Én plattform – basen som bærer begge */}
+          <Inn i={7} className="mt-5 sm:mt-0">
+            <div className="relative overflow-hidden rounded-[18px] px-6 py-4 text-center" style={{ background: '#F6F0FB', boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.24)' }} data-testid="deck-eier-plattform">
+              <span aria-hidden="true" className="deck-plattform-bar absolute inset-x-0 top-0 h-[3px]" style={{ background: `linear-gradient(90deg, ${LILLA_M}, rgba(122,63,168,0.32))`, '--d': '1.95s' }} />
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: LILLA_M }}>Én plattform</p>
+              <p className="mt-1 text-[18px] font-semibold tracking-[-0.01em] sm:text-[20px]" style={{ ...display, color: T.ink }}>Digihome Tech-plattformen</p>
+              <p className="mt-0.5 text-[12.5px]" style={{ color: DIM }}>Én kodebase, én prisliste – under begge selskapene og alle kundene.</p>
+            </div>
+          </Inn>
+          <Inn i={8}><p className="mx-auto mt-5 max-w-[64ch] text-center text-[12.5px] leading-[1.5]" style={{ color: SVAK }}>Lisensen Digihome AS betaler til Digihome Tech AS nulles ut i konsernregnskapet – marginen blir værende i konsernet.</p></Inn>
         </div>
       </Side>
 
@@ -2092,14 +2127,25 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           </div>
           <div className="lg:col-span-7">
             <Inn i={2}>
-              <div className="rounded-[22px] p-6 sm:p-7" style={{ background: '#F6F0FB', boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.22)' }} data-testid="deck-staar-hero">
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <Tall aktiv={er('staar')} verdi={enheterIDag} format={(v) => nb(v)} storrelse="text-[64px] lg:text-[84px]" farge={LILLA_M} />
-                    <p className="mt-1 text-[15px] font-medium" style={{ color: T.ink }}>boliger under forvaltning</p>
-                  </div>
-                  <p className="mb-2 text-right text-[12.5px] font-medium leading-[1.4]" style={{ color: SVAK }}>signerte<br />leiekontrakter</p>
+              <div className="relative overflow-hidden rounded-[22px] p-6 sm:p-8" style={{ background: '#F6F0FB', boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.22)' }} data-testid="deck-staar-hero">
+                <span aria-hidden="true" className="deck-hero-glow pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full" style={{ background: 'radial-gradient(circle, rgba(122,63,168,0.22), rgba(122,63,168,0) 70%)' }} />
+                <div className="relative flex items-start justify-between gap-4">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em]" style={{ color: LILLA_M }}>
+                    <span className="deck-live-dot h-2 w-2 rounded-full" style={{ background: LILLA_M }} /> Live nå
+                  </span>
+                  <p className="mb-1 text-right text-[12px] font-medium leading-[1.4]" style={{ color: SVAK }}>signerte<br />leiekontrakter</p>
                 </div>
+                <div className="relative mt-3">
+                  <Tall aktiv={er('staar')} verdi={enheterIDag} format={(v) => nb(v)} storrelse="text-[68px] leading-[0.95] lg:text-[92px]" farge={LILLA_M} />
+                  <p className="mt-1 text-[15px] font-medium" style={{ color: T.ink }}>boliger under forvaltning</p>
+                </div>
+                <div className="relative mt-5 flex items-end gap-[5px]" aria-hidden="true">
+                  {[10, 14, 13, 19, 17, 24, 22, 30].map((h, i) => (
+                    <span key={i} className="deck-vokst w-[7px] rounded-t-[2px]" style={{ height: h, '--d': `${0.65 + i * 0.08}s`, background: i < 4 ? 'rgba(122,63,168,0.28)' : LILLA_M }} />
+                  ))}
+                  <span className="ml-3 self-center text-[11.5px]" style={{ color: SVAK }}>signert og i drift</span>
+                </div>
+                <span aria-hidden="true" className="deck-plattform-bar absolute inset-x-0 bottom-0 h-[3px]" style={{ background: `linear-gradient(90deg, ${LILLA_M}, rgba(122,63,168,0.3))`, '--d': '1.1s' }} />
               </div>
             </Inn>
             <div className="mt-5 grid gap-x-8 gap-y-6 sm:grid-cols-3">

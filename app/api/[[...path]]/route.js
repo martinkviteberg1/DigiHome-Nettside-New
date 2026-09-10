@@ -8109,6 +8109,21 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ success: true, ok: true, data: { id: lead.id }, forwarded: fwd.ok, account: fwd.account || null, lead: clean(lead) }, { status: 201 }));
     }
 
+    // --- KLIENTFEIL: React-feilgrensen rapporterer hit, så den ekte feilen
+    // (melding + stack + URL) havner i serverloggen og kan feilsøkes. ---
+    if (route === '/klientfeil' && method === 'POST') {
+      if (!rateLimit(`klientfeil:${clientIp(request)}`, 10, 60000)) return cors(NextResponse.json({ ok: true }, { status: 200 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const melding = String(body.message || '').slice(0, 600);
+      const stack = String(body.stack || '').slice(0, 3000);
+      const url = String(body.url || '').slice(0, 400);
+      const ua = String(body.ua || '').slice(0, 200);
+      console.error(`[KLIENTFEIL] ${new Date().toISOString()} url=${url}\n  melding=${melding}\n  ua=${ua}\n  stack=${stack.split('\n').slice(0, 8).join('\n    ')}`);
+      try { await db.collection('klientfeil').insertOne({ id: uuidv4(), melding, stack, url, ua, digest: String(body.digest || '').slice(0, 80), ip: clientIp(request), createdAt: new Date().toISOString() }); } catch (e) { /* stille */ }
+      return cors(NextResponse.json({ ok: true }));
+    }
+
     // --- E-POSTVERIFISERING: send bekreftelseslenken på nytt (server-proxy) ---
     // Offentlig, men strengt forsøksbegrenset. Slår opp registreringen på id,
     // og ber appen sende verifiseringslenken på nytt til e-posten på filen.
