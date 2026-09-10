@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import NavV4 from './NavV4';
 import HeroStage, { FILM } from './HeroStage';
 import TillitStripe from './TillitStripe';
@@ -89,6 +90,9 @@ export default function ForsideV4({ bilde = null, produkt = 'ramme' }) {
               {/* Handlingen er feltet. Ink-knapp: lilla er reservert for det ene du gjør i scenen — «Godkjenn». */}
               <div className="dh-cover-inn relative z-20 mx-auto mt-7 w-full max-w-[520px] sm:mt-9" style={{ animationDelay: '.14s' }}>
                 <AdresseFelt onValgt={valgt} variant="ink" />
+                <p className="mt-3.5 text-[14.5px]" style={{ color: 'rgba(21,19,15,0.6)' }}>
+                  Skal du bare lage en leiekontrakt? <Link href="/utleier/husleiekontrakt" className="font-medium underline underline-offset-4 transition-colors hover:decoration-current" style={{ color: T.ink, textDecorationColor: 'rgba(21,19,15,0.28)' }}>Lag en gratis husleiekontrakt</Link> med BankID.
+                </p>
               </div>
             </div>
             {/* Scenen (LCP): én flate, litt bredere enn seksjonene under. Står der fra første bilde — ingen

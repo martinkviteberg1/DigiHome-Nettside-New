@@ -77,6 +77,7 @@ import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarge
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
 import { searchBrreg, lookupOrgNo, isValidOrgNr, normalizeOrgNr, companyLine } from '@/lib/brreg';
 import { buildSelfServicePayload, resolveOwnerKind, ownerOrgNo, SS_UNIT_TYPE, RENTAL_LABELS } from '@/lib/self-service';
+import { normaliserUtkast, validerForOpprett, leadFraUtkast, buildLeaseDraft } from '@/lib/leiekontrakt';
 import { WIZARD_CATALOG_DEFAULT, normalizeCatalog } from '@/lib/catalog';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
@@ -662,7 +663,7 @@ async function hydrateBlockDistricts(dbx, blocks) {
     }));
   } catch (_) { return blocks; }
 }
-async function provisionSelfService(lead, request) {
+async function provisionSelfService(lead, request, extra = {}) {
   const target = digiHomeTarget();
   if (!target.url) return { ok: false, error: 'Plattform-URL mangler' };
   const payload = buildSelfServicePayload(lead, {
@@ -670,6 +671,13 @@ async function provisionSelfService(lead, request) {
     // Lenken plattformen lagrer som agreement.pdf_url: selve avtalen kunden godtok — ikke de generelle brukervilkårene.
     termsUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no'}/avtale/selvforvaltning`,
   });
+  // Leiekontrakt-wizarden sender med et lease_draft slik at appen kan
+  // forhåndsutfylle kontrakten ved signering. Ekstra felt er ufarlige for den
+  // eksisterende broen — kontoopprettelsen virker uansett (Fase 1).
+  if (extra && extra.leaseDraft) {
+    payload.source = 'leiekontrakt';
+    payload.lease_draft = extra.leaseDraft;
+  }
   try {
     const res = await fetch(`${target.url}/api/bridge/self-service-customer`, {
       method: 'POST',
@@ -8264,7 +8272,133 @@ async function handleRoute(request, { params }) {
     }
 
 
-    // --- Tenants (leietaker-skjema) ---
+    // ═══════════════ LEIEKONTRAKT (offentlig «verdi først»-wizard) ═══════════════
+    // digihome.no samler inn bolig/leietaker/vilkår UTEN innlogging, viser
+    // kontrakten ta form, og ber om konto først rett før signering. Kontoen
+    // opprettes av APPEN via den eksisterende self-service-broen (identiteten
+    // eies der). Kontrakten genereres/signeres i appen (Husleieloven + BankID).
+
+    // --- Lagre/oppdater utkast (anonymt, opak token) ---
+    if (route === '/leiekontrakt/utkast' && method === 'POST') {
+      if (!rateLimit(`lk-utkast:${clientIp(request)}`, 60, 60000)) {
+        return cors(NextResponse.json({ ok: false, error: 'For mange forsøk — vent litt.' }, { status: 429 }));
+      }
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const u = normaliserUtkast(body);
+      const naa = new Date().toISOString();
+      const innToken = String(body.token || '').trim();
+      let doc = innToken ? await db.collection('leiekontrakt_utkast').findOne({ token: innToken }, { projection: { _id: 0 } }) : null;
+      if (doc && doc.status === 'sendt') {
+        // Sendt utkast er låst — start et nytt (unngå å endre noe som er provisjonert).
+        doc = null;
+      }
+      if (doc) {
+        await db.collection('leiekontrakt_utkast').updateOne({ token: doc.token }, { $set: { ...u, oppdatert: naa } });
+        return cors(NextResponse.json({ ok: true, token: doc.token, id: doc.id }, { status: 200 }));
+      }
+      const token = crypto.randomUUID();
+      const id = crypto.randomUUID();
+      await db.collection('leiekontrakt_utkast').insertOne({
+        id, token, status: 'kladd', ...u,
+        attribution: (body.attribution && typeof body.attribution === 'object') ? body.attribution : {},
+        opprettet: naa, oppdatert: naa,
+      });
+      return cors(NextResponse.json({ ok: true, token, id }, { status: 200 }));
+    }
+
+    // --- Hent utkast (gjenoppta via token) ---
+    if (route === '/leiekontrakt/utkast' && method === 'GET') {
+      const token = String(new URL(request.url).searchParams.get('token') || '').trim();
+      if (!token) return cors(NextResponse.json({ ok: false, error: 'Mangler token' }, { status: 400 }));
+      const doc = await db.collection('leiekontrakt_utkast').findOne({ token }, { projection: { _id: 0, bridge: 0 } });
+      if (!doc) return cors(NextResponse.json({ ok: false, error: 'Fant ikke utkastet' }, { status: 404 }));
+      return cors(NextResponse.json({ ok: true, utkast: { bolig: doc.bolig, leietaker: doc.leietaker, vilkaar: doc.vilkaar, owner: doc.owner }, status: doc.status }, { status: 200 }));
+    }
+
+    // --- Fullfør: opprett konto (via bro) + send kontrakt-utkast til signering ---
+    if (route === '/leiekontrakt/opprett' && method === 'POST') {
+      if (!rateLimit(`lk-opprett-ip:${clientIp(request)}`, 8, 60000)) {
+        return cors(NextResponse.json({ ok: false, error: 'For mange forsøk — vent litt.' }, { status: 429 }));
+      }
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const token = String(body.token || '').trim();
+      if (!token) return cors(NextResponse.json({ ok: false, error: 'Mangler utkast-referanse.' }, { status: 400 }));
+      const doc = await db.collection('leiekontrakt_utkast').findOne({ token }, { projection: { _id: 0 } });
+      if (!doc) return cors(NextResponse.json({ ok: false, error: 'Fant ikke utkastet.' }, { status: 404 }));
+
+      // Slå sammen owner-feltene fra siste steg og re-normaliser hele utkastet.
+      const u = normaliserUtkast({ bolig: doc.bolig, leietaker: doc.leietaker, vilkaar: doc.vilkaar, owner: { ...(doc.owner || {}), ...(body.owner || {}) } });
+      const sjekk = validerForOpprett(u);
+      if (!sjekk.ok) return cors(NextResponse.json({ ok: false, error: 'Mangler noen felter.', feil: sjekk.feil }, { status: 400 }));
+
+      // Idempotent: allerede provisjonert utkast → returner samme verifiseringsstatus.
+      if (doc.status === 'sendt' && doc.lead_id) {
+        const eksisterende = await db.collection('leads').findOne({ id: doc.lead_id }, { projection: { _id: 0 } });
+        const acc = (eksisterende && eksisterende.platform_account) || {};
+        return cors(NextResponse.json({ ok: true, idempotent: true, requires_verification: acc.requires_verification !== false, email_masked: acc.email_masked || null, leadId: doc.lead_id, onboarding_url: acc.onboarding_url || null }, { status: 200 }));
+      }
+      if (!rateLimit(`lk-opprett-epost:${u.owner.epost}`, 4, 60000)) {
+        return cors(NextResponse.json({ ok: false, error: 'Du kan prøve igjen om litt.' }, { status: 429 }));
+      }
+
+      const leadId = crypto.randomUUID();
+      const naa = new Date().toISOString();
+      const lead = leadFraUtkast(u, { id: leadId, attribution: doc.attribution || {} });
+      const leaseDraft = buildLeaseDraft(u);
+
+      // Persister lead FØR bro-kallet, så «send på nytt»/«endre e-post» virker
+      // selv om appen svarer tregt. self_service:true kreves av de proxyene.
+      await db.collection('leads').insertOne({
+        id: leadId, self_service: true, kilde: 'leiekontrakt',
+        name: lead.name, email: lead.email, phone: lead.phone,
+        owner_kind: lead.owner_kind, org_no: lead.org_no, company_name: lead.company_name,
+        address: lead.address, city: lead.city, property_type: lead.property_type,
+        attribution: lead.attribution, lease_draft_token: token,
+        opprettet: naa, oppdatert: naa,
+      });
+
+      const prov = await provisionSelfService(lead, request, { leaseDraft });
+      const acc = prov.account || {};
+      const bridgeMeta = {
+        provisioned: !!prov.ok,
+        requires_verification: acc.requires_verification === true,
+        email_verified: acc.email_verified === true,
+        email_masked: acc.email_masked || null,
+        account_ref: acc.account_ref || acc.owner_user_id || null,
+        onboarding_url: acc.onboarding_url || null,
+        pending_manual: !!prov.pendingManual,
+        error: prov.ok ? null : (prov.error || null),
+        at: naa,
+      };
+      await db.collection('leiekontrakt_utkast').updateOne({ token }, { $set: { status: 'sendt', lead_id: leadId, bridge: bridgeMeta, oppdatert: naa } });
+      await db.collection('leads').updateOne({ id: leadId }, { $set: {
+        platform_account: {
+          status: acc.status || (prov.ok ? 'provisioned' : 'pending'),
+          requires_verification: acc.requires_verification === true,
+          email_verified: acc.email_verified === true,
+          email_masked: acc.email_masked || null,
+          account_ref: acc.account_ref || acc.owner_user_id || null,
+          onboarding_url: acc.onboarding_url || null,
+          provisioned_at: naa,
+        },
+      } });
+
+      // Aldri blindvei: selv om broen skulle feile, er utkast+lead lagret.
+      if (acc.onboarding_url) {
+        return cors(NextResponse.json({ ok: true, onboarding_url: acc.onboarding_url, requires_verification: false, leadId }, { status: 200 }));
+      }
+      return cors(NextResponse.json({
+        ok: true,
+        requires_verification: acc.requires_verification === true,
+        email_masked: acc.email_masked || null,
+        resend_available_in: Number(acc.resend_available_in) || 0,
+        pending: !prov.ok || !!prov.pendingManual,
+        leadId,
+      }, { status: 200 }));
+    }
+
     if (route === '/tenants' && method === 'POST') {
       // Offentlig skjema — beskytt mot spam/mailbombing: per-IP-tak + per-mottaker-tak.
       if (!rateLimit(`tenants:${clientIp(request)}`, 12, 60000)) {

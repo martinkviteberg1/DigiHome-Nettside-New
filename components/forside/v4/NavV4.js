@@ -22,6 +22,7 @@ const LENKER = [
   ['Boligeiere', '/boligeiere'],
   ['Eiendomsselskaper', '/bedrift'],
   ['Utleiemeglere', '/utleiemeglere'],
+  ['Husleiekontrakt', '/utleier/husleiekontrakt'],
   ['Forvaltning', '/forvaltning'],
   ['Priser', '/priser'],
 ];
