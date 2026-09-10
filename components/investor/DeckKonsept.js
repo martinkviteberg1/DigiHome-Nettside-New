@@ -24,6 +24,7 @@ import HeroScene from '@/components/forside/v4/HeroScene';
 import HeroStage, { FILM as HERO_FILM } from '@/components/forside/v4/HeroStage';
 import LosningFilm from '@/components/investor/LosningFilm';
 import Leieforhold from '@/components/admin/Leieforhold';
+import RegnskapModul from '@/components/admin/RegnskapModul';
 import {
   beregnInvestorModell, beregnTech, beregnKonsernSammenstilling, rensModellDrivere, rensTechDrivere, rensTechFakta, skalerVekst,
 } from '@/lib/budsjett-modell';
@@ -968,6 +969,7 @@ const KAPITLER = [
   { id: 'org', navn: 'Organisasjon' },
   { id: 'staar', navn: 'Hvor vi står' },
   { id: 'portefolje', navn: 'Porteføljen' },
+  { id: 'regnskap', navn: 'Regnskap' },
   { id: 'unit', navn: 'Unit economics' },
   { id: 'gtm', navn: 'Go-to-market' },
   { id: 'plan-dh', navn: 'Planen · Digihome AS' },
@@ -1422,6 +1424,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   // og hold den montert etterpå så filtre/tilstand og cache beholdes.
   const [pfBesokt, setPfBesokt] = useState(false);
   useEffect(() => { if (er('portefolje')) setPfBesokt(true); }, [side, utgaaende]); // eslint-disable-line
+  const [regnBesokt, setRegnBesokt] = useState(false);
+  useEffect(() => { if (er('regnskap')) setRegnBesokt(true); }, [side, utgaaende]); // eslint-disable-line
 
   /* ── Tilstander før data ── */
   if (trengerPin !== null) {
@@ -2108,6 +2112,35 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           )}
         </div>
       </Side>
+
+      {/* Regnskap · faktiske tall fra PowerOffice Go (samme visning som driftsportalen) */}
+      <Side id="regnskap" pos={pos('regnskap')} aktiv={er('regnskap')} full flush>
+        <div className="mb-3 flex shrink-0 flex-wrap items-end justify-between gap-3">
+          <Kapittel nr={kap('regnskap')} navn="Regnskap" under="faktiske tall fra PowerOffice Go" />
+          <span className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: SVAK }}>
+            <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: LILLA_M }} /><span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: LILLA_M }} /></span>
+            Ført regnskap · per selskap
+          </span>
+        </div>
+        <div className="min-h-0 flex-1 overflow-hidden rounded-2xl bg-white" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 34px 80px -46px rgba(21,19,15,0.34)` }}>
+          {adminKey ? (
+            regnBesokt ? (
+              <div className="h-full overflow-y-auto overscroll-contain p-5 sm:p-6">
+                <RegnskapModul apiKey={adminKey} presentasjon />
+              </div>
+            ) : (
+              <div className="flex h-full items-center justify-center text-[13px]" style={{ color: SVAK }}>Laster regnskapet …</div>
+            )
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
+              <Coins className="h-7 w-7" style={{ color: SVAK }} strokeWidth={1.6} />
+              <p className="text-[16px] font-semibold" style={{ color: T.ink }}>Ført regnskap</p>
+              <p className="max-w-[46ch] text-[13.5px] leading-[1.55]" style={{ color: DIM }}>Faktisk resultat og balanse per selskap – rett fra PowerOffice Go – vises når decket kjøres i presentasjonsmodus.</p>
+            </div>
+          )}
+        </div>
+      </Side>
+
 
 
       {/* 07 · Unit economics (mørk) */}

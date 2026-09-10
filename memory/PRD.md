@@ -1682,3 +1682,10 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - YTELSE: lazy-montering — `pfBesokt`-state slår på når kapitlet først besøkes, holdes montert etterpå (beholder filtre + klient-cache). Leieforhold henter `/api/admin/leieforhold*` med deckets adminKey.
 - PII/tilgang: live portefølje vises KUN i presentasjonsmodus (adminKey til stede = eier presenterer). Eksterne token-lenker (investorrom/delt) får en pen fallback («vises i presentasjonsmodus») → ingen leietaker-PII lekker til delte lenker.
 - VERIFISERT skjermbilde: desktop 1920 (full tabell, filtre, KPI honorar 35 162/mnd, leie 385 800/mnd, utleiegrad 50 %, hasTable=true, overflowY=52) + mobil 390 (Leieforholds egne kort, pageOverflowX=false). Kompilerer rent. Ingen backend-endring. IKKE brukerbekreftet visuelt.
+
+## Oppdatering 10. sep 2026 (21) — Regnskap-slide (faktisk regnskapsvisning) i decket
+- Bruker: «legg til en slide med faktisk regnskapsvisning».
+- LØSNING: gjenbruker `components/admin/RegnskapModul.js` i ny `presentasjon`-modus (skjuler «Tilkoblinger»-knapp, legg-til/slett-selskap og innstillingspanel; beholder selskapsbytter + status + Resultat/Balanse + KPI + månedsgraf + konto-lister).
+- DeckKonsept.js: import RegnskapModul; ny KAPITTEL `regnskap` (Regnskap) etter `portefolje`; slide med `full flush` + slim kicker/puls + innrammet app-vindu (samme mønster som Porteføljen). Lazy-montering via `regnBesokt`. adminKey-gated: fallback «vises i presentasjonsmodus» for eksterne token-lenker.
+- VERIFISERT skjermbilde: desktop 1920 (DigiHome AS valgt, «Tilkoblet · Shd Eiendom AS», Resultat/Balanse-faner, Inntekter 55 500 / Kostnader 0 / Resultat 55 500 kr overskudd, månedsgraf; Tilkoblinger-admin SKJULT som forventet) + mobil 390 (stabler, pageOverflowX=false). Kompilerer rent. Ingen backend-endring. IKKE brukerbekreftet.
+- Når DigiHome Tech AS legges inn i /admin/regnskap, kan man bytte mellom selskapene direkte i deck-sliden.

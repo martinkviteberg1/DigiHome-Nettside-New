@@ -45,7 +45,7 @@ function KontoListe({ tittel, ikon: Ikon, rader = [], tom }) {
   );
 }
 
-export default function RegnskapModul({ apiKey }) {
+export default function RegnskapModul({ apiKey, presentasjon = false }) {
   const q = `key=${encodeURIComponent(apiKey)}`;
   const [selskaper, setSelskaper] = useState([]);
   const [konfigurert, setKonfigurert] = useState(true);
@@ -161,9 +161,11 @@ export default function RegnskapModul({ apiKey }) {
         </div>
         <div className="flex items-center gap-3">
           <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-700">{miljo === 'demo' ? 'Demo' : 'Produksjon'}</span>
-          <button onClick={() => setVisInnstillinger((v) => !v)} className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium ${visInnstillinger ? 'border-black/20 bg-black/[0.04] text-black' : 'border-black/10 bg-white text-black/70 hover:bg-black/[0.03]'}`}>
-            <Settings2 className="h-3.5 w-3.5" /> Tilkoblinger
-          </button>
+          {!presentasjon && (
+            <button onClick={() => setVisInnstillinger((v) => !v)} className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium ${visInnstillinger ? 'border-black/20 bg-black/[0.04] text-black' : 'border-black/10 bg-white text-black/70 hover:bg-black/[0.03]'}`}>
+              <Settings2 className="h-3.5 w-3.5" /> Tilkoblinger
+            </button>
+          )}
         </div>
       </div>
 
@@ -177,14 +179,14 @@ export default function RegnskapModul({ apiKey }) {
               <Building2 className="h-3.5 w-3.5" /> {s.navn}
             </button>
           ))}
-          <button onClick={() => setVisInnstillinger(true)} className="flex items-center gap-1.5 rounded-xl border border-dashed border-black/20 px-4 py-2 text-[13.5px] font-medium text-black/55 hover:border-black/35 hover:text-black/75">
+          <button onClick={() => setVisInnstillinger(true)} className="flex items-center gap-1.5 rounded-xl border border-dashed border-black/20 px-4 py-2 text-[13.5px] font-medium text-black/55 hover:border-black/35 hover:text-black/75" style={{ display: presentasjon ? 'none' : undefined }}>
             <Plus className="h-3.5 w-3.5" /> Legg til selskap
           </button>
         </div>
       )}
 
       {/* Innstillinger: legg til / behandle tilkoblinger */}
-      {visInnstillinger && (
+      {!presentasjon && visInnstillinger && (
         <div className="rounded-2xl border border-black/[0.08] bg-[#faf9f7] p-5">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-[15px] font-semibold"><KeyRound className="h-4 w-4 text-black/45" /> PowerOffice-tilkoblinger</h3>
@@ -233,8 +235,10 @@ export default function RegnskapModul({ apiKey }) {
         <div className="mx-auto max-w-2xl rounded-2xl border border-black/[0.06] bg-white p-8 text-center">
           <Receipt className="mx-auto h-8 w-8 text-black/30" />
           <h2 className="mt-3 text-[19px] font-semibold">Ingen selskaper koblet til ennå</h2>
-          <p className="mt-2 text-[14px] text-black/55">Legg til DigiHome AS og DigiHome Tech AS med hver sin klientnøkkel, så henter vi regnskapet automatisk.</p>
-          <button onClick={() => setVisInnstillinger(true)} className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#151310] px-4 py-2 text-[13.5px] font-medium text-white"><Plus className="h-4 w-4" /> Legg til selskap</button>
+          <p className="mt-2 text-[14px] text-black/55">{presentasjon ? 'Regnskapet vises her når selskapene er koblet til i driftsportalen.' : 'Legg til DigiHome AS og DigiHome Tech AS med hver sin klientnøkkel, så henter vi regnskapet automatisk.'}</p>
+          {!presentasjon && (
+            <button onClick={() => setVisInnstillinger(true)} className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#151310] px-4 py-2 text-[13.5px] font-medium text-white"><Plus className="h-4 w-4" /> Legg til selskap</button>
+          )}
         </div>
       ) : null}
 
