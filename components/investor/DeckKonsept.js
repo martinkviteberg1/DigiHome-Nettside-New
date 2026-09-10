@@ -23,6 +23,7 @@ import { T, display, EASE, DIM, SVAK, HAIR } from '@/components/forside/v4/token
 import HeroScene from '@/components/forside/v4/HeroScene';
 import HeroStage, { FILM as HERO_FILM } from '@/components/forside/v4/HeroStage';
 import LosningFilm from '@/components/investor/LosningFilm';
+import DigiHomeIDag from '@/components/investor/DigiHomeIDag';
 import PortefoljeData from '@/components/investor/PortefoljeData';
 import RegnskapFilm from '@/components/investor/RegnskapFilm';
 import ModellPresentasjon from '@/components/investor/ModellPresentasjon';
@@ -974,6 +975,7 @@ const KAPITLER = [
   { id: 'forside', navn: 'DigiHome' },
   { id: 'hvorfor', navn: 'Hvorfor' },
   { id: 'losning', navn: 'Løsningen' },
+  { id: 'idag', navn: 'I dag' },
   { id: 'marked', navn: 'Markedet' },
   { id: 'konsept', navn: 'Konseptet' },
   { id: 'hvem', navn: 'For hvem' },
@@ -1869,6 +1871,18 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           decket (spiller kun når sliden er fremme – ytelse). LosningFilm eier hele det full-bleed oppsettet. */}
       <Side id="losning" pos={pos('losning')} aktiv={er('losning')} bred full>
         <LosningFilm aktiv={er('losning')} nr={kap('losning')} />
+      </Side>
+
+      {/* DigiHome i dag · bevis-øyeblikket rett etter Løsningen: ekte system i drift + live tall */}
+      <Side id="idag" pos={pos('idag')} aktiv={er('idag')} bred full>
+        <Kapittel nr={kap('idag')} navn="I dag" under="et system i drift · live fra driftsportalen" />
+        <div className="mt-2 grid gap-5 lg:grid-cols-12 lg:items-end lg:gap-12">
+          <div className="lg:col-span-6"><Inn i={1}><H2 maks="17ch">Ikke en plan på papir. Et system i drift i dag.</H2></Inn></div>
+          <div className="lg:col-span-6">
+            <Inn i={2}><p className="text-[15px] leading-[1.6] sm:text-[16.5px]" style={{ color: DIM, maxWidth: '52ch' }}>Programvaren, forvaltningen og hvert leieforhold lever allerede – for huseiere på desktop og i appen. Tallene under hentes rett fra driftsportalen mens du ser på.</p></Inn>
+          </div>
+        </div>
+        <DigiHomeIDag adminKey={adminKey} aktiv={er('idag')} enheterIDag={enheterIDag} />
       </Side>
 
 
