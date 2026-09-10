@@ -25,6 +25,7 @@ import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads
 import { recordWonConversions } from '@/lib/closed-loop';
 import { runDueReminders } from '@/lib/reminders';
 import { hentLeieforhold } from '@/lib/leieforhold';
+import { hentPrisConfig, lagrePrisConfig, beregnGrunnlag, forrigeMaaned } from '@/lib/pris';
 import { synkFraBrreg, hentOrganisasjon, lagrePerson, slettPerson, nyRolle, oppdaterRolle, slettRolle, oppdaterSelskap, hentEierbok, lagreEier, slettEier, lagreKlasse, slettKlasse, nyTransaksjon, slettTransaksjon, sokBrregEnheter, lagreStotte } from '@/lib/selskap';
 import { lagLeieforholdExcel, lagLeieforholdCsv } from '@/lib/leieforhold-excel';
 import {
@@ -4217,6 +4218,51 @@ async function handleRoute(request, { params }) {
       const freshLf = (() => { try { return new URL(request.url).searchParams.get('fresh') === '1'; } catch (e) { return false; } })();
       const dataLf = await hentLeieforhold(leieforholdTarget(), { db, fresh: freshLf });
       return cors(NextResponse.json(dataLf));
+    }
+
+    // ═══ Pris — DigiHome Tech AS sin B2B-prisliste + faktureringsgrunnlag ═════
+    // Ren leverandørmodell: Tech fakturerer forvaltere/eiendomsselskaper per
+    // enhet (volumtrinn). DigiHome AS er første kunde. Sluttkundepriser (5 %,
+    // honorar) håndteres i appen og ligger IKKE her. Ingen PowerOffice-skriving
+    // her — kun prisliste, regler og et live faktureringsgrunnlag.
+    if (route === '/admin/pris/config' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const cfg = await hentPrisConfig(db);
+      return cors(NextResponse.json({ ok: true, config: cfg }));
+    }
+    if (route === '/admin/pris/config' && (method === 'PUT' || method === 'POST')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const body = await request.json().catch(() => ({}));
+      const av = (() => { try { return sessionFra(request)?.email || 'admin'; } catch (e) { return 'admin'; } })();
+      const cfg = await lagrePrisConfig(body, { db, av });
+      return cors(NextResponse.json({ ok: true, config: cfg }));
+    }
+    // Faktureringsgrunnlag: teller enheter for en måned etter valgt grunnlag og
+    // priser dem etter prislisten. Standard måned = forrige måned.
+    if (route === '/admin/pris/grunnlag' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const url = new URL(request.url);
+      const maaned = (url.searchParams.get('maaned') || '').match(/^\d{4}-\d{2}$/) ? url.searchParams.get('maaned') : forrigeMaaned();
+      const cfg = await hentPrisConfig(db);
+      let rows = [];
+      try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { /* uten portefølje → tomt grunnlag */ }
+      const grunnlag = beregnGrunnlag(rows, cfg, maaned);
+      return cors(NextResponse.json({ ok: true, config: cfg, grunnlag, kunde: { navn: 'DigiHome AS' } }));
+    }
+    // Forhåndsvisning: samme beregning, men med en (u-lagret) prisliste fra
+    // klienten slik at redigering vises live før man lagrer.
+    if (route === '/admin/pris/grunnlag' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const body = await request.json().catch(() => ({}));
+      const url = new URL(request.url);
+      const maaned = (body.maaned || '').match?.(/^\d{4}-\d{2}$/) ? body.maaned : ((url.searchParams.get('maaned') || '').match(/^\d{4}-\d{2}$/) ? url.searchParams.get('maaned') : forrigeMaaned());
+      const lagret = await hentPrisConfig(db);
+      const cfg = { ...lagret, ...(body.config || {}) };
+      if (!Array.isArray(cfg.trinn) || !cfg.trinn.length) cfg.trinn = lagret.trinn;
+      let rows = [];
+      try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { /* uten portefølje */ }
+      const grunnlag = beregnGrunnlag(rows, cfg, maaned);
+      return cors(NextResponse.json({ ok: true, grunnlag, kunde: { navn: 'DigiHome AS' } }));
     }
 
     // ═══ Kontrakt-PDF (proxy mot plattformen — nøkkelen forblir server-side) ═══
