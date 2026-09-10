@@ -1654,3 +1654,14 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - LINJE-TEGNING påført: KPI-rutenett, staar (3 nøkkeltall), unit (3 kolonner, mørk LYS_HAIR), risiko (4 punkter), trenger (rullebane-skille). BEVISST IKKE rørt interaktive dashboards (plan-dh/plan-tech/konsern/variabel/hvaom grafer+slidere) — regresjonsrisiko.
 - BUDSJETT-GRAF: ny `AarStolper`-komponent ved siden av tabellen (grid 1fr/300px, stabler på mobil). Stablede søyler per år (Digihome AS + Tech ekstern), kostnadsnivå som stiplet strek, resultat farget under (grønn/rød). Vekst år-for-år (920k→2,9→6,9 MNOK) leses på et blunk.
 - Verifisert desktop 1920: unit overflowY=0, risiko=31, budsjett=0 + graf rendrer; mobil 390 budsjett stabler, pageOverflowX=false. Kompilerer rent (2542 moduler). IKKE brukerbekreftet.
+
+## Oppdatering 10. sep 2026 (18) — Ytelse: navigering «føles tung» → rask & smooth
+- Bruker: «sørg for at hele presentasjonen er super rask og smooth i navigering.. nå føles den tung».
+- ROTÅRSAK: `will-change: opacity, transform` lå på ALLE 21 `.deck-side` → 21 permanente GPU-lag (minne/kompositor-press = jank). I tillegg lange transisjoner (920ms) + 720ms navigasjonslås.
+- FIKSER (kun CSS-timing + én will-change-regel, ingen logikkendring på grafer/slidere):
+  - will-change flyttet fra base `.deck-side` → KUN `.deck-side[data-aktiv="1"]` (aktiv + utgående). Verifisert: idle=1 promotert lag (var 21), transient=2 under bytte, tilbake til 1.
+  - Slide-transisjon: opacity 640→340ms, transform 920→480ms, visibility-delay 920→480ms; --dy 8vh→7vh.
+  - deck-inn entré: 900→500ms, stagger 100→52ms/steg, base-delay 140→70ms.
+  - deck-ord 760→480ms (stagger 60→40ms); deck-linje 700→460ms; deck-rad/stolpe/stolpe-tekst proporsjonalt raskere.
+  - Navigasjonslås `laastTilRef` 720→360ms; utgående-opprydding 880→500ms.
+- Reduced-motion + print-stier uendret (klassenavn urørt). Verifisert: rask tastatur-nav (6 slides @ 420ms holder følge), losning (tyngste, video) overflowY=0 + willChange=1, ingen page-errors. Kompilerer rent. IKKE brukerbekreftet.

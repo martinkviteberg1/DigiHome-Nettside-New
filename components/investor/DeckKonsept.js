@@ -1290,10 +1290,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
     setVisKapitler(false);
     if (ny === naa) return;
     const el = seksjon(ny); if (el) el.scrollTop = 0;
-    sideRef.current = ny; laastTilRef.current = performance.now() + 720;
+    sideRef.current = ny; laastTilRef.current = performance.now() + 360;
     setUtgaaende(naa); setSide(ny);
   }, [sider, seksjon]);
-  useEffect(() => { if (utgaaende === null) return undefined; const t = window.setTimeout(() => setUtgaaende(null), 880); return () => window.clearTimeout(t); }, [utgaaende, side]);
+  useEffect(() => { if (utgaaende === null) return undefined; const t = window.setTimeout(() => setUtgaaende(null), 500); return () => window.clearTimeout(t); }, [utgaaende, side]);
   /* Dyplenke: #kapittel i URL – leses ved start, oppdateres ved bytte, og følges ved hashchange. */
   useEffect(() => {
     if (!data) return undefined;
@@ -1490,28 +1490,30 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       <style>{`
         .deck-rot { position: fixed; inset: 0; overflow: hidden; overscroll-behavior: none; }
         .deck-side { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(21,19,15,0.18) transparent;
-          opacity: 0; visibility: hidden; pointer-events: none; transform: translate3d(0, var(--dy, 9vh), 0) scale(var(--sc, .982)); will-change: opacity, transform;
-          transition: opacity 640ms ${EASE}, transform 920ms ${EASE}, visibility 0s linear 920ms; }
-        .deck-side[data-pos="over"] { --dy: -8vh; }
-        .deck-side[data-pos="under"] { --dy: 8vh; }
+          opacity: 0; visibility: hidden; pointer-events: none; transform: translate3d(0, var(--dy, 9vh), 0) scale(var(--sc, .982));
+          transition: opacity 340ms ${EASE}, transform 480ms ${EASE}, visibility 0s linear 480ms; }
+        /* Kun de 1–2 slidene som faktisk er i bevegelse (aktiv + utgående) promoteres til eget lag – ikke alle 21. */
+        .deck-side[data-aktiv="1"] { will-change: opacity, transform; }
+        .deck-side[data-pos="over"] { --dy: -7vh; }
+        .deck-side[data-pos="under"] { --dy: 7vh; }
         .deck-side[data-pos="aktiv"] { --dy: 0px; --sc: 1; opacity: 1; visibility: visible; pointer-events: auto; z-index: 2; transition-delay: 0s, 0s, 0s; }
         .dh-slider { -webkit-appearance: none; appearance: none; height: 2px; background: rgba(21,19,15,0.14); border-radius: 2px; outline: none; }
         .dh-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: ${T.ink}; border: 3px solid ${T.offwhite}; box-shadow: 0 0 0 1px rgba(21,19,15,0.2); cursor: pointer; }
         .dh-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: ${T.ink}; border: 3px solid ${T.offwhite}; cursor: pointer; }
-        .deck-side .deck-inn { opacity: 0; transform: translateY(26px) scale(.985); transition: opacity 900ms ${EASE}, transform 900ms ${EASE}; transition-delay: calc(var(--i, 0) * 100ms + 140ms); }
+        .deck-side .deck-inn { opacity: 0; transform: translateY(20px); transition: opacity 500ms ${EASE}, transform 500ms ${EASE}; transition-delay: calc(var(--i, 0) * 52ms + 70ms); }
         .deck-side[data-aktiv="1"] .deck-inn { opacity: 1; transform: none; }
         /* ── Felles bevegelsesspråk (rolig, én ting om gangen, alt i takt med entréen) ──
            .deck-inn[data-strek] : hårlinje øverst som tegner seg inn fra venstre (erstatter statisk border-t)
            .deck-rad             : tabellrader som kommer inn i sekvens (--i)
            .deck-stolpe          : søyler som vokser fra grunnlinjen (--i); .deck-stolpe-tekst = verdien over søylen */
         .deck-side .deck-inn[data-strek] { position: relative; }
-        .deck-side .deck-inn[data-strek]::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--strek, ${HAIR}); transform: scaleX(0); transform-origin: left center; transition: transform 1000ms ${EASE}; transition-delay: calc(var(--i, 0) * 100ms + 280ms); }
+        .deck-side .deck-inn[data-strek]::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--strek, ${HAIR}); transform: scaleX(0); transform-origin: left center; transition: transform 620ms ${EASE}; transition-delay: calc(var(--i, 0) * 52ms + 180ms); }
         .deck-side[data-aktiv="1"] .deck-inn[data-strek]::before { transform: scaleX(1); }
-        .deck-side .deck-rad { opacity: 0; transform: translateY(8px); transition: opacity 640ms ${EASE}, transform 640ms ${EASE}; transition-delay: calc(var(--i, 0) * 70ms + 460ms); }
+        .deck-side .deck-rad { opacity: 0; transform: translateY(8px); transition: opacity 420ms ${EASE}, transform 420ms ${EASE}; transition-delay: calc(var(--i, 0) * 45ms + 260ms); }
         .deck-side[data-aktiv="1"] .deck-rad { opacity: 1; transform: none; }
-        .deck-side .deck-stolpe { transform: scaleY(0); transform-origin: bottom center; transition: transform 1000ms ${EASE}; transition-delay: calc(var(--i, 0) * 130ms + 560ms); }
+        .deck-side .deck-stolpe { transform: scaleY(0); transform-origin: bottom center; transition: transform 640ms ${EASE}; transition-delay: calc(var(--i, 0) * 80ms + 320ms); }
         .deck-side[data-aktiv="1"] .deck-stolpe { transform: scaleY(1); }
-        .deck-side .deck-stolpe-tekst { opacity: 0; transform: translateY(6px); transition: opacity 600ms ${EASE}, transform 600ms ${EASE}; transition-delay: calc(var(--i, 0) * 130ms + 1250ms); }
+        .deck-side .deck-stolpe-tekst { opacity: 0; transform: translateY(6px); transition: opacity 420ms ${EASE}, transform 420ms ${EASE}; transition-delay: calc(var(--i, 0) * 80ms + 720ms); }
         .deck-side[data-aktiv="1"] .deck-stolpe-tekst { opacity: 1; transform: none; }
         /* Slide 02 · «Autopilot AV» – kul, subtil bevegelse (kun på aktiv slide, av hensyn til ytelse):
            toggelen prøver å slå seg PÅ og faller tilbake til AV, og fotoet får en langsom kinematisk zoom. */
@@ -1574,9 +1576,9 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         @keyframes deck-eier-h { to { transform: scaleX(1); } }
         @keyframes deck-eier-p { to { opacity: 1; transform: scale(1); } }
 
-        .deck-side .deck-linje { --l: 0; transition: transform 700ms ${EASE} 500ms; }
+        .deck-side .deck-linje { --l: 0; transition: transform 460ms ${EASE} 280ms; }
         .deck-side[data-aktiv="1"] .deck-linje { --l: 1; }
-        .deck-ord { display: inline-block; opacity: 0; transform: translateY(0.55em); transition: opacity 760ms ${EASE}, transform 760ms ${EASE}; transition-delay: calc(var(--o, 0) * 60ms + 260ms); }
+        .deck-ord { display: inline-block; opacity: 0; transform: translateY(0.5em); transition: opacity 480ms ${EASE}, transform 480ms ${EASE}; transition-delay: calc(var(--o, 0) * 40ms + 120ms); }
         .deck-side[data-aktiv="1"] .deck-ord { opacity: 1; transform: none; }
         @keyframes deck-strom { to { stroke-dashoffset: -28; } }
         .deck-strom { stroke-dasharray: 6 8; animation: deck-strom 1.6s linear infinite; }
