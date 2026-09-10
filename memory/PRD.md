@@ -1643,3 +1643,14 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - BUDSJETT (`budsjett`, NY): ren år-for-år tabell fra k.aar (Konserninntekt → Digihome AS / Tech ekstern → Driftskostnader → Driftsresultat, + Boliger/Omsetningstakt ved utgang, kolonner per år + «Hele perioden»). overflow-x-auto på mobil (min-w-640). Verifisert desktop overflowY=0; mobil tabellen scroller horisontalt i egen container (page overflow-x hidden).
 - Alt kompilerer rent (2427 moduler). Norsk copy, ingen du/deg/din, B2C+B2B, – ikke —. IKKE brukerbekreftet ennå.
 - GJENSTÅR (ikke gjort ennå): bred «moderne animasjoner på ALLE slides»-sweep — venter på brukerbekreftelse på batch 1 før jeg fortsetter.
+
+## Oppdatering 10. sep 2026 (17) — Felles bevegelsesspråk + budsjett-søylegraf
+- Bruker: «fortsett med Animasjons-sweep (felles bevegelsesspråk: entré, linje-tegning, tall-reveal) + budsjett-graf».
+- NYTT FELLES SPRÅK (CSS + Inn-prop, alle med reduced-motion-reset):
+  - `Inn strek` (bool eller farge-string via --strek): hårlinje øverst som tegner seg inn fra venstre (scaleX), i takt med entréen (--i). Erstatter statiske border-t på redaksjonelle skiller.
+  - `.deck-rad` (--i): tabellrader kommer inn i sekvens.
+  - `.deck-stolpe` (--i, scaleY fra bunn) + `.deck-stolpe-tekst`: søyler vokser fra grunnlinjen, verdier/strek kommer etterpå.
+  - Entré (.deck-inn) og tall-reveal (Tall count-up) fantes fra før → nå forent til ett rolig språk.
+- LINJE-TEGNING påført: KPI-rutenett, staar (3 nøkkeltall), unit (3 kolonner, mørk LYS_HAIR), risiko (4 punkter), trenger (rullebane-skille). BEVISST IKKE rørt interaktive dashboards (plan-dh/plan-tech/konsern/variabel/hvaom grafer+slidere) — regresjonsrisiko.
+- BUDSJETT-GRAF: ny `AarStolper`-komponent ved siden av tabellen (grid 1fr/300px, stabler på mobil). Stablede søyler per år (Digihome AS + Tech ekstern), kostnadsnivå som stiplet strek, resultat farget under (grønn/rød). Vekst år-for-år (920k→2,9→6,9 MNOK) leses på et blunk.
+- Verifisert desktop 1920: unit overflowY=0, risiko=31, budsjett=0 + graf rendrer; mobil 390 budsjett stabler, pageOverflowX=false. Kompilerer rent (2542 moduler). IKKE brukerbekreftet.

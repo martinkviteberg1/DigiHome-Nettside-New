@@ -98,7 +98,7 @@ function Side({ id, children, morkt = false, aktiv = false, pos = 'under', bred 
     </section>
   );
 }
-const Inn = ({ i = 0, children, className = '', style }) => <div className={`deck-inn ${className}`} style={{ '--i': i, ...style }}>{children}</div>;
+const Inn = ({ i = 0, children, className = '', style, strek }) => <div className={`deck-inn ${className}`} data-strek={strek ? '1' : undefined} style={{ '--i': i, ...(typeof strek === 'string' ? { '--strek': strek } : {}), ...style }}>{children}</div>;
 const Kapittel = ({ nr, navn, under, morkt = false }) => (
   <Inn i={0} className="flex items-center gap-3">
     <span className="text-[11px] font-semibold tabular-nums tracking-[0.12em]" style={{ color: morkt ? T.lilla : LILLA_M }}>{String(nr).padStart(2, '0')}</span>
@@ -454,6 +454,45 @@ function Tidslinje({ N, startYm, merker, morkt = true, aktiv = true }) {
     </div>
   );
 }
+/* Årsstolper: konserninntekt per år som stablede søyler (Digihome AS nederst, Tech · ekstern øverst) med kostnadsnivået
+   som stiplet strek – veksten og lønnsomheten år for år leses på et blunk. Søylene vokser fra grunnlinjen når sliden er
+   aktiv (.deck-stolpe, --i-stagger), verdier og kostnadsstrek kommer etterpå (.deck-stolpe-tekst). */
+function AarStolper({ aar = [], startYm, hoyde = 230 }) {
+  const maks = Math.max(1, ...aar.map((a) => Math.max(a.inntekt || 0, a.kost || 0)));
+  const h = (v) => `${Math.max(0, ((Number(v) || 0) / maks) * 100)}%`;
+  return (
+    <div data-testid="deck-budsjett-stolper">
+      <div className="relative flex items-end justify-between gap-3 sm:gap-4" style={{ height: hoyde, paddingTop: 30 }}>
+        {aar.map((a, i) => {
+          const te = Math.max(0, (a.tech?.inntekt || 0) - (a.eliminert || 0));
+          const topp = Math.max(a.inntekt || 0, a.kost || 0);
+          return (
+            <div key={a.nr} className="relative flex h-full flex-1 flex-col justify-end">
+              <div className="deck-stolpe-tekst absolute left-0 right-0 text-center" style={{ '--i': i, bottom: `calc(${h(topp)} + 8px)` }}>
+                <p className="whitespace-nowrap text-[13px] font-semibold tabular-nums" style={{ ...display, letterSpacing: '-0.02em', color: T.ink }}>{mnok(a.inntekt)}</p>
+              </div>
+              <div className="deck-stolpe relative flex w-full flex-col justify-end overflow-hidden rounded-t-[7px]" style={{ '--i': i, height: h(a.inntekt) }}>
+                {te > 0 && a.inntekt > 0 ? <span className="block w-full" style={{ height: `${(te / a.inntekt) * 100}%`, background: FARGE.tech }} /> : null}
+                <span className="block w-full flex-1" style={{ background: FARGE.dh }} />
+              </div>
+              <span aria-hidden="true" className="deck-stolpe-tekst absolute -left-1.5 -right-1.5 h-0 border-t border-dashed" style={{ '--i': i, bottom: h(a.kost), borderColor: FARGE.kost }} />
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2.5 flex justify-between gap-3 sm:gap-4">
+        {aar.map((a, i) => (
+          <div key={a.nr} className="deck-stolpe-tekst flex-1 text-center" style={{ '--i': i }}>
+            <p className="text-[12px] font-semibold" style={{ color: T.ink }}>År {a.nr}</p>
+            <p className="text-[10.5px] leading-[1.3]" style={{ color: SVAK }}>{mndLabel(startYm, a.fraIdx)} – {mndLabel(startYm, a.tilIdx)}</p>
+            <p className="mt-1 text-[12px] font-semibold tabular-nums" style={{ color: (a.resultat || 0) >= 0 ? T.gronn : FARGE.kost }}>{(a.resultat || 0) >= 0 ? '+' : '−'}{mnok(Math.abs(a.resultat || 0))}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 /* ══════════════════════════ Diagrammer ══════════════════════════ */
 /* Strukturen: plattformkunder → Tech ← Digihome AS ← boligeiere. Lisensstrømmen elimineres i konsernet. */
@@ -1461,6 +1500,19 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .dh-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: ${T.ink}; border: 3px solid ${T.offwhite}; cursor: pointer; }
         .deck-side .deck-inn { opacity: 0; transform: translateY(26px) scale(.985); transition: opacity 900ms ${EASE}, transform 900ms ${EASE}; transition-delay: calc(var(--i, 0) * 100ms + 140ms); }
         .deck-side[data-aktiv="1"] .deck-inn { opacity: 1; transform: none; }
+        /* ── Felles bevegelsesspråk (rolig, én ting om gangen, alt i takt med entréen) ──
+           .deck-inn[data-strek] : hårlinje øverst som tegner seg inn fra venstre (erstatter statisk border-t)
+           .deck-rad             : tabellrader som kommer inn i sekvens (--i)
+           .deck-stolpe          : søyler som vokser fra grunnlinjen (--i); .deck-stolpe-tekst = verdien over søylen */
+        .deck-side .deck-inn[data-strek] { position: relative; }
+        .deck-side .deck-inn[data-strek]::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--strek, ${HAIR}); transform: scaleX(0); transform-origin: left center; transition: transform 1000ms ${EASE}; transition-delay: calc(var(--i, 0) * 100ms + 280ms); }
+        .deck-side[data-aktiv="1"] .deck-inn[data-strek]::before { transform: scaleX(1); }
+        .deck-side .deck-rad { opacity: 0; transform: translateY(8px); transition: opacity 640ms ${EASE}, transform 640ms ${EASE}; transition-delay: calc(var(--i, 0) * 70ms + 460ms); }
+        .deck-side[data-aktiv="1"] .deck-rad { opacity: 1; transform: none; }
+        .deck-side .deck-stolpe { transform: scaleY(0); transform-origin: bottom center; transition: transform 1000ms ${EASE}; transition-delay: calc(var(--i, 0) * 130ms + 560ms); }
+        .deck-side[data-aktiv="1"] .deck-stolpe { transform: scaleY(1); }
+        .deck-side .deck-stolpe-tekst { opacity: 0; transform: translateY(6px); transition: opacity 600ms ${EASE}, transform 600ms ${EASE}; transition-delay: calc(var(--i, 0) * 130ms + 1250ms); }
+        .deck-side[data-aktiv="1"] .deck-stolpe-tekst { opacity: 1; transform: none; }
         /* Slide 02 · «Autopilot AV» – kul, subtil bevegelse (kun på aktiv slide, av hensyn til ytelse):
            toggelen prøver å slå seg PÅ og faller tilbake til AV, og fotoet får en langsom kinematisk zoom. */
         .deck-hv-foto { transform: scale(1); will-change: transform; }
@@ -1592,7 +1644,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-side[data-aktiv="1"] .deck-cover-strek { transform: scaleX(1); }
         /* Coverens scene: forsidens HeroStage, men som sceneteppe – kant til kant, uten kortets radius/skygge/høydetak. */
         .deck-cover-scene .dh-hero-scene { max-height: none !important; border-radius: 0 !important; box-shadow: none !important; }
-        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring, .deck-hjul-rot, .deck-hjul-tegn, .deck-hjul-orbit, .deck-hjul-lisens, .deck-spk-knott, .deck-spk-skinne, .deck-live-dot, .deck-eier-v, .deck-eier-h, .deck-eier-p { animation: none !important; } .deck-eier-v, .deck-eier-h, .deck-eier-p { transform: none !important; opacity: 1 !important; } .deck-hjul-tegn { stroke-dashoffset: 0 !important; } .deck-hjul-chev, .deck-hjul-orbit { opacity: 1 !important; } .deck-spk-skinne { transform: scaleX(1) !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
+        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-side .deck-inn[data-strek]::before { transform: scaleX(1); transition: none; } .deck-side .deck-rad, .deck-side .deck-stolpe, .deck-side .deck-stolpe-tekst { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring, .deck-hjul-rot, .deck-hjul-tegn, .deck-hjul-orbit, .deck-hjul-lisens, .deck-spk-knott, .deck-spk-skinne, .deck-live-dot, .deck-eier-v, .deck-eier-h, .deck-eier-p { animation: none !important; } .deck-eier-v, .deck-eier-h, .deck-eier-p { transform: none !important; opacity: 1 !important; } .deck-hjul-tegn { stroke-dashoffset: 0 !important; } .deck-hjul-chev, .deck-hjul-orbit { opacity: 1 !important; } .deck-spk-skinne { transform: scaleX(1) !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
         @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
 
@@ -2004,9 +2056,9 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
               </div>
             </Inn>
             <div className="mt-5 grid gap-x-8 gap-y-6 sm:grid-cols-3">
-              <Inn i={3} className="border-t pt-4" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={honorarIDag * 12} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>årlig honorarinntekt i dag (eks. mva)</p></Inn>
-              <Inn i={4} className="border-t pt-4" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={enheterIDag * (basisT?.forvaltning?.pris || basisF.systemPerEnhet) * 12} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>årlig lisensinntekt i Tech fra forvaltningen</p></Inn>
-              <Inn i={5} className="border-t pt-4" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={plEnheterIDag} format={(v) => nb(v)} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>selvbetjente enheter{bedriftIDag ? ` · ${nb(bedriftIDag)} selskaper` : ''} – oppside</p></Inn>
+              <Inn i={3} strek className="pt-4"><Tall aktiv={er('staar')} verdi={honorarIDag * 12} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>årlig honorarinntekt i dag (eks. mva)</p></Inn>
+              <Inn i={4} strek className="pt-4"><Tall aktiv={er('staar')} verdi={enheterIDag * (basisT?.forvaltning?.pris || basisF.systemPerEnhet) * 12} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>årlig lisensinntekt i Tech fra forvaltningen</p></Inn>
+              <Inn i={5} strek className="pt-4"><Tall aktiv={er('staar')} verdi={plEnheterIDag} format={(v) => nb(v)} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>selvbetjente enheter{bedriftIDag ? ` · ${nb(bedriftIDag)} selskaper` : ''} – oppside</p></Inn>
             </div>
             <Inn i={6} className="mt-6 flex items-center gap-2 text-[13px]" style={{ color: SVAK }}>
               <ArrowRight className="h-4 w-4" style={{ color: LILLA_M }} /> Dette er utgangspunktet – planen bygger videre herfra.
@@ -2021,7 +2073,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         <Inn i={1}><H2 morkt maks="16ch">Én enhet tjener seg inn – i begge selskaper.</H2></Inn>
         <Inn i={1}><p className="mt-5 max-w-[62ch] text-[15px] leading-[1.6] sm:text-[16px]" style={{ color: LYS }}>Payback måles i <b style={{ color: T.offwhite }}>måneder, ikke år</b>. Forvaltningen står i planen; plattformkundene er ren oppside oppå den.</p></Inn>
         <div className="mt-9 grid gap-10 md:grid-cols-3">
-          <Inn i={2} className="border-t pt-5" style={{ borderColor: LYS_HAIR }}>
+          <Inn i={2} strek={LYS_HAIR} className="pt-5">
             <p className="flex items-center gap-2 text-[13px] font-medium" style={{ color: LYS }}><Link2 className="h-3.5 w-3.5" /> Digihome AS · forvaltet enhet <span style={{ color: T.lilla }}>· i planen</span></p>
             <div className="mt-4"><Payback aktiv={er('unit')} mnd={uF.paybackMnd} bidrag={uF.bidrag || 0} ltvCac={null} cacDeler={[{ l: 'provisjon', v: uF.provisjon || 0, f: T.offwhite }, ...(uF.partnerPerEnhet ? [{ l: 'partner', v: uF.partnerPerEnhet, f: T.lilla }] : [])]} /></div>
             <dl className="mt-4 border-t" style={{ borderColor: LYS_HAIR }}>
@@ -2030,7 +2082,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
               <DlRad morkt l="Enheter per forvalter" v={nb(basisF.enheterPerAarsverk)} />
             </dl>
           </Inn>
-          <Inn i={3} className="border-t pt-5" style={{ borderColor: LYS_HAIR }}>
+          <Inn i={3} strek={LYS_HAIR} className="pt-5">
             <p className="flex items-center gap-2 text-[13px] font-medium" style={{ color: LYS }}><Home className="h-3.5 w-3.5" /> Tech · huseiere (selvbetjent) <span style={{ color: LYS_SVAK }}>· oppside</span></p>
             {uT ? (
               <>
@@ -2043,7 +2095,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
               </>
             ) : <p className="mt-4 text-[14px]" style={{ color: LYS_SVAK }}>Tech-budsjettet er ikke delt ennå.</p>}
           </Inn>
-          <Inn i={4} className="border-t pt-5" style={{ borderColor: LYS_HAIR }}>
+          <Inn i={4} strek={LYS_HAIR} className="pt-5">
             <p className="flex items-center gap-2 text-[13px] font-medium" style={{ color: LYS }}><Building2 className="h-3.5 w-3.5" /> Tech · eiendomsselskaper <span style={{ color: LYS_SVAK }}>· oppside</span></p>
             {uT ? (
               <>
@@ -2259,7 +2311,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           <div className="lg:col-span-7">
             <div className="grid grid-cols-2 gap-x-8 gap-y-7 sm:grid-cols-3">
               {kpiGrid.map((kp, i) => (
-                <Inn key={kp.l} i={4 + i} className="border-t pt-4" style={{ borderColor: HAIR }}>
+                <Inn key={kp.l} i={4 + i} strek className="pt-4">
                   {kp.tall !== undefined
                     ? <Tall aktiv={er('kpi')} verdi={kp.tall} format={kp.format} storrelse="text-[28px] lg:text-[36px]" farge={kp.farge || T.ink} />
                     : <p className="text-[28px] lg:text-[36px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: kp.farge || T.ink }}>{kp.tekst}</p>}
@@ -2284,9 +2336,11 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           <Inn i={2} className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12.5px]" style={{ color: DIM }}>
             <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: FARGE.dh }} /> Digihome AS</span>
             <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: FARGE.tech }} /> Tech · ekstern</span>
+            <span className="flex items-center gap-1.5"><span className="h-0 w-4 border-t border-dashed" style={{ borderColor: FARGE.kost }} /> Kostnader</span>
           </Inn>
         </div>
-        <Inn i={3} className="mt-7 overflow-x-auto" data-testid="deck-budsjett">
+        <div className="mt-7 grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+        <Inn i={3} className="min-w-0 overflow-x-auto" data-testid="deck-budsjett">
           {(() => {
             const yrs = k.aar;
             const arrAt = (i) => (k.inntekt[i] || 0) * 12;
@@ -2323,16 +2377,16 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
                   </tr>
                 </thead>
                 <tbody>
-                  {flyt.map((r) => (
-                    <tr key={r.l} style={{ background: r.res ? 'rgba(122,63,168,0.05)' : 'transparent' }}>
+                  {flyt.map((r, ri) => (
+                    <tr key={r.l} className="deck-rad" style={{ '--i': ri, background: r.res ? 'rgba(122,63,168,0.05)' : 'transparent' }}>
                       <td className={`px-3 py-2.5 text-[13.5px] ${r.fet ? 'font-semibold' : ''} ${r.indent ? 'pl-6' : ''}`} style={{ borderTop: `1px solid ${HAIR}`, color: r.indent ? DIM : T.ink }}>{r.l}</td>
                       {r.vals.map((v, i) => <td key={i} className={`${td} ${r.fet ? 'font-semibold' : 'font-medium'}`} style={{ borderTop: `1px solid ${HAIR}` }}>{num(v, r)}</td>)}
                       <td className={`${td} ${r.fet ? 'font-semibold' : 'font-medium'}`} style={{ borderTop: `1px solid ${HAIR}`, color: LILLA_M }}>{num(r.sum, r)}</td>
                     </tr>
                   ))}
                   <tr><td colSpan={yrs.length + 2} className="pt-3" /></tr>
-                  {stock.map((r) => (
-                    <tr key={r.l}>
+                  {stock.map((r, si) => (
+                    <tr key={r.l} className="deck-rad" style={{ '--i': flyt.length + 1 + si }}>
                       <td className="px-3 py-2.5 text-[13.5px]" style={{ borderTop: `1px solid ${HAIR}`, color: T.ink }}>{r.l}</td>
                       {r.vals.map((v, i) => <td key={i} className={`${td} font-medium`} style={{ borderTop: `1px solid ${HAIR}`, color: T.ink }}>{r.fmt ? r.fmt(v) : mnok(v)}</td>)}
                       <td className={`${td} font-semibold`} style={{ borderTop: `1px solid ${HAIR}`, color: LILLA_M }}>{r.fmt ? r.fmt(r.sum) : mnok(r.sum)}</td>
@@ -2343,7 +2397,13 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             );
           })()}
         </Inn>
-        <Inn i={4}><p className="mt-4 max-w-[82ch] text-[12px] leading-[1.5]" style={{ color: SVAK }}>Konserntall etter at intern lisens mellom selskapene er eliminert{k.sammendrag.eliminert ? ` (${mnok(k.sammendrag.eliminert)} over perioden)` : ''}. «Ved utgang» = siste måned i hvert år. {skattPaa ? 'Tallene er før skatt – skatt og kapitalbehov etter skatt vises under Det vi trenger.' : 'Full plan per selskap ligger under Planen · Digihome AS og Planen · Tech.'}</p></Inn>
+        <Inn i={4} className="rounded-[20px] p-5" style={{ background: T.flate }} data-testid="deck-budsjett-graf">
+          <p className="text-[13px] font-medium" style={{ color: T.ink }}>Vekst år for år</p>
+          <p className="mt-0.5 text-[12px] leading-[1.45]" style={{ color: SVAK }}>Inntekt som søyle, kostnadsnivå som strek – resultatet under.</p>
+          <div className="mt-3"><AarStolper aar={k.aar} startYm={plan.startYm} hoyde={200} /></div>
+        </Inn>
+        </div>
+        <Inn i={5}><p className="mt-4 max-w-[82ch] text-[12px] leading-[1.5]" style={{ color: SVAK }}>Konserntall etter at intern lisens mellom selskapene er eliminert{k.sammendrag.eliminert ? ` (${mnok(k.sammendrag.eliminert)} over perioden)` : ''}. «Ved utgang» = siste måned i hvert år. {skattPaa ? 'Tallene er før skatt – skatt og kapitalbehov etter skatt vises under Det vi trenger.' : 'Full plan per selskap ligger under Planen · Digihome AS og Planen · Tech.'}</p></Inn>
       </Side>
 
 
@@ -2447,7 +2507,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
               { t: 'Jus og regulering', tall: nb(Math.round(mF.enheter[N - 1] || 0)), tallU: 'enheter treffes samtidig av én malfeil', r: 'Husleieloven regulerer depositum, oppsigelse og regulering i detalj. Én systematisk feil i kontraktsmal eller frist treffer hele porteføljen samtidig.', m: 'Styreleder er advokat med selskaps- og kontraktsrett som fag. Kontrakter, depositum og signering er standardisert i programvaren – én rettelse gjelder alle enheter.', kap: 'org' },
               { t: 'Churn og bemanning', tall: `${kma(basisF.aarligChurnPct)} %`, tallU: 'årlig churn i planen – test 10 % i Hva om', r: `Planen antar ${kma(basisF.aarligChurnPct)} % årlig churn og en bemanningstrapp fra ${basisF.bemanningstrinn?.[0]?.prosent ?? 30} % til ${basisF.bemanningstrinn?.[basisF.bemanningstrinn.length - 1]?.prosent ?? '–'} % stilling ved ${nb(basisF.bemanningstrinn?.[basisF.bemanningstrinn.length - 1]?.fraEnheter ?? 0)} enheter.`, m: 'Forvaltningsavtaler er trege å si opp midt i et leieforhold. Modellen varsler når enheter per årsverk passerer grensen, og «Hva om» viser hva dobbel churn og halv vekst gjør med kapitalbehovet – før noen andre spør.', kap: 'hvaom' },
             ].map((x, i) => (
-              <Inn key={x.t} i={2 + i} className="border-t pt-5" style={{ borderColor: HAIR }}>
+              <Inn key={x.t} i={2 + i} strek className="pt-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-[26px] sm:text-[30px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.ink }}>{x.t}</p>
@@ -2481,7 +2541,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             { l: 'Break-even konsern', idx: sK.breakEvenIdx, f: T.gronn, opp: true },
           ]} />
         </Inn>
-        <Inn i={5} className="mt-10 border-t pt-5" style={{ borderColor: LYS_HAIR }}>
+        <Inn i={5} strek={LYS_HAIR} className="mt-10 pt-5">
           <p className="mb-2 text-[12.5px] font-medium" style={{ color: LYS_SVAK }}>Rullebanen · akkumulert kontantstrøm{skattPaa ? ' etter betalt skatt' : ''}, konsern</p>
           <Bane aktiv={er('trenger')} serie={skattPaa ? k.kontant.akkumulert : k.akkumulert} kapital={kapBuffer} bunnIdx={kapReellIdx} startYm={plan.startYm} N={N} hoyde={smal ? 200 : 220} bredde={smal ? 560 : 1000} />
         </Inn>
