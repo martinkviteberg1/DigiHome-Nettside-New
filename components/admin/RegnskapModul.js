@@ -10,33 +10,41 @@ const kr = (n) => `${new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }
 const MND = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des'];
 const naaAar = new Date().getFullYear();
 
-function Kort({ ikon: Ikon, etikett, verdi, farge = '#151310', under }) {
+function Kort({ ikon: Ikon, etikett, verdi, farge = '#151310', under, aksent = 'rgba(122,63,168,0.55)' }) {
   return (
-    <div className="rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-      <div className="flex items-center gap-2 text-[12px] font-medium uppercase tracking-[0.06em] text-black/45">
-        <Ikon className="h-3.5 w-3.5" strokeWidth={2} /> {etikett}
+    <div className="group relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow duration-300 hover:shadow-[0_16px_40px_-20px_rgba(0,0,0,0.18)]">
+      <div className="flex items-center gap-2 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-black/45">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: 'rgba(122,63,168,0.09)', color: '#7a3fa8' }}><Ikon className="h-4 w-4" strokeWidth={2.1} /></span>
+        {etikett}
       </div>
-      <div className="mt-2 text-[26px] font-semibold tabular-nums tracking-[-0.02em]" style={{ color: farge }}>{verdi}</div>
-      {under ? <div className="mt-1 text-[12.5px] text-black/45">{under}</div> : null}
+      <div className="mt-3.5 text-[32px] font-semibold leading-none tabular-nums tracking-[-0.03em]" style={{ color: farge }}>{verdi}</div>
+      {under ? <div className="mt-2 text-[12.5px] text-black/45">{under}</div> : null}
+      <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[3px]" style={{ background: `linear-gradient(90deg, ${aksent}, transparent 85%)` }} />
     </div>
   );
 }
 
-function KontoListe({ tittel, ikon: Ikon, rader = [], tom }) {
+function KontoListe({ tittel, ikon: Ikon, rader = [], tom, aksent = '#7a3fa8' }) {
+  const maks = Math.max(1, ...rader.map((r) => Math.abs(Number(r.belop) || 0)));
   return (
-    <div className="rounded-2xl border border-black/[0.06] bg-white p-5">
-      <h3 className="flex items-center gap-2 text-[15px] font-semibold"><Ikon className="h-4 w-4 text-black/40" /> {tittel}</h3>
+    <div className="rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <h3 className="flex items-center gap-2 text-[14.5px] font-semibold"><Ikon className="h-4 w-4" style={{ color: aksent }} strokeWidth={2.1} /> {tittel}</h3>
       {rader.length === 0 ? (
         <p className="mt-4 text-[13px] text-black/40">{tom}</p>
       ) : (
-        <div className="mt-3 divide-y divide-black/[0.05]">
+        <div className="mt-3 space-y-2.5">
           {rader.map((r) => (
-            <div key={r.kontonr} className="flex items-center justify-between gap-3 py-2">
-              <div className="min-w-0">
-                <div className="truncate text-[13.5px] text-black/75">{r.navn}</div>
-                <div className="text-[11px] text-black/35">Konto {r.kontonr}</div>
+            <div key={r.kontonr}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 truncate text-[13.5px] text-black/75">{r.navn}</div>
+                <div className="shrink-0 text-[13.5px] font-medium tabular-nums text-black/85">{kr(r.belop)}</div>
               </div>
-              <div className="shrink-0 text-[13.5px] font-medium tabular-nums text-black/80">{kr(r.belop)}</div>
+              <div className="mt-1 flex items-center gap-2">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/[0.05]">
+                  <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${(Math.abs(r.belop) / maks) * 100}%`, background: aksent, opacity: 0.75 }} />
+                </div>
+                <span className="w-10 shrink-0 text-right text-[10.5px] tabular-nums text-black/35">#{r.kontonr}</span>
+              </div>
             </div>
           ))}
         </div>
@@ -173,17 +181,19 @@ export default function RegnskapModul({ apiKey, presentasjon = false }) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#151310] text-white"><Receipt className="h-[18px] w-[18px]" /></div>
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl text-white shadow-[0_10px_24px_-12px_rgba(122,63,168,0.7)]" style={{ background: 'linear-gradient(135deg,#2a2530,#151310)' }}><Receipt className="h-5 w-5" strokeWidth={1.9} /></div>
           <div>
-            <h1 className="text-[22px] font-semibold tracking-[-0.02em]">Regnskap</h1>
-            <p className="text-[13px] text-black/50">Faktiske tall fra PowerOffice Go — ett regnskap per selskap</p>
+            <h1 className="text-[24px] font-semibold leading-tight tracking-[-0.025em]">Regnskap</h1>
+            <p className="mt-0.5 text-[13px] text-black/50">Faktiske tall fra PowerOffice Go · ett regnskap per selskap</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-700">{miljo === 'demo' ? 'Demo' : 'Produksjon'}</span>
+        <div className="flex items-center gap-2.5">
+          <span className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] ${miljo === 'demo' ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${miljo === 'demo' ? 'bg-amber-500' : 'bg-emerald-500'}`} />{miljo === 'demo' ? 'Demo' : 'Produksjon'}
+          </span>
           {!presentasjon && (
-            <button onClick={() => setVisInnstillinger((v) => !v)} className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium ${visInnstillinger ? 'border-black/20 bg-black/[0.04] text-black' : 'border-black/10 bg-white text-black/70 hover:bg-black/[0.03]'}`}>
+            <button onClick={() => setVisInnstillinger((v) => !v)} className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-[13px] font-medium transition ${visInnstillinger ? 'border-black/20 bg-[#151310] text-white' : 'border-black/10 bg-white text-black/70 hover:border-black/25 hover:bg-black/[0.02]'}`}>
               <Settings2 className="h-3.5 w-3.5" /> Tilkoblinger
             </button>
           )}
@@ -195,12 +205,15 @@ export default function RegnskapModul({ apiKey, presentasjon = false }) {
         <div className="flex items-center gap-2 text-[13px] text-black/50"><Loader2 className="h-4 w-4 animate-spin" /> Laster selskaper …</div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          {selskaper.map((s) => (
-            <button key={s.id} onClick={() => setValgtId(s.id)} className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-[13.5px] font-medium transition ${valgtId === s.id ? 'border-[#151310] bg-[#151310] text-white' : 'border-black/10 bg-white text-black/70 hover:border-black/20'}`}>
-              <Building2 className="h-3.5 w-3.5" /> {s.navn}
-            </button>
-          ))}
-          <button onClick={() => setVisInnstillinger(true)} className="flex items-center gap-1.5 rounded-xl border border-dashed border-black/20 px-4 py-2 text-[13.5px] font-medium text-black/55 hover:border-black/35 hover:text-black/75" style={{ display: presentasjon ? 'none' : undefined }}>
+          <div className="flex flex-wrap items-center gap-1 rounded-2xl border border-black/[0.06] bg-white p-1 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+            {selskaper.map((s) => (
+              <button key={s.id} onClick={() => setValgtId(s.id)} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-[13.5px] font-medium transition-all duration-200 ${valgtId === s.id ? 'bg-[#151310] text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.5)]' : 'text-black/60 hover:bg-black/[0.04] hover:text-black'}`}>
+                <Building2 className="h-3.5 w-3.5" strokeWidth={2} /> {s.navn}
+                <span className={`ml-0.5 rounded-full px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-[0.06em] ${valgtId === s.id ? 'bg-white/15 text-white/80' : 'bg-black/[0.05] text-black/45'}`}>{s.env === 'production' || s.env === 'prod' ? 'Prod' : 'Demo'}</span>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setVisInnstillinger(true)} className="flex items-center gap-1.5 rounded-2xl border border-dashed border-black/20 px-4 py-2.5 text-[13.5px] font-medium text-black/55 transition hover:border-black/35 hover:text-black/80" style={{ display: presentasjon ? 'none' : undefined }}>
             <Plus className="h-3.5 w-3.5" /> Legg til selskap
           </button>
         </div>
@@ -287,15 +300,20 @@ export default function RegnskapModul({ apiKey, presentasjon = false }) {
 
       {/* Tilkoblingsstatus for valgt selskap */}
       {valgt && (
-        <div className="rounded-2xl border border-black/[0.06] bg-white px-5 py-3.5">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-black/[0.06] bg-white px-5 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
           {statusLaster ? (
             <div className="flex items-center gap-2 text-[13px] text-black/50"><Loader2 className="h-4 w-4 animate-spin" /> Kobler til {valgt.navn} …</div>
           ) : status?.ok ? (
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px]">
-              <span className="flex items-center gap-1.5 font-medium text-emerald-600"><CheckCircle2 className="h-4 w-4" /> Tilkoblet</span>
-              <span className="text-black/60"><span className="text-black/40">PowerOffice-klient:</span> {status.klient?.klientNavn}</span>
-              <span className="text-black/60"><span className="text-black/40">Tilganger:</span> {status.klient?.gyldigePrivilegier} · lesetilgang hovedbok {status.klient?.lesetilgangHovedbok ? 'ja' : 'nei'}</span>
-            </div>
+            <>
+              <span className="flex items-center gap-2 text-[13px] font-semibold text-emerald-700">
+                <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" /></span>
+                Tilkoblet
+              </span>
+              <span className="hidden h-4 w-px bg-black/10 sm:block" />
+              <span className="text-[13px] text-black/65"><span className="text-black/40">PowerOffice-klient</span> · {status.klient?.klientNavn}</span>
+              <span className="hidden h-4 w-px bg-black/10 sm:block" />
+              <span className="text-[13px] text-black/65"><span className="text-black/40">Tilganger</span> · {status.klient?.gyldigePrivilegier} · hovedbok {status.klient?.lesetilgangHovedbok ? <span className="text-emerald-700">lesetilgang</span> : <span className="text-red-600">ingen tilgang</span>}</span>
+            </>
           ) : (
             <div className="flex items-center gap-2 text-[13px] text-red-600"><AlertCircle className="h-4 w-4" /> {status?.feil || 'Tilkobling feilet'}</div>
           )}
@@ -305,29 +323,35 @@ export default function RegnskapModul({ apiKey, presentasjon = false }) {
       {/* Faner + data (kun når selskap valgt og tilkoblet) */}
       {valgt && status?.ok && (
         <>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex gap-1 rounded-xl border border-black/[0.06] bg-black/[0.02] p-1 w-fit">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex w-fit gap-1 rounded-2xl border border-black/[0.06] bg-white p-1 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
               {[{ k: 'resultat', l: 'Resultat', icon: BarChart3 }, { k: 'balanse', l: 'Balanse', icon: Scale }].map((f) => (
-                <button key={f.k} onClick={() => setFane(f.k)} className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-[13.5px] font-medium transition ${fane === f.k ? 'bg-white text-black shadow-sm' : 'text-black/50 hover:text-black/70'}`}>
-                  <f.icon className="h-3.5 w-3.5" /> {f.l}
+                <button key={f.k} onClick={() => setFane(f.k)} className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-[13.5px] font-medium transition-all duration-200 ${fane === f.k ? 'bg-[#151310] text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.5)]' : 'text-black/55 hover:bg-black/[0.04] hover:text-black'}`}>
+                  <f.icon className="h-3.5 w-3.5" strokeWidth={2} /> {f.l}
                 </button>
               ))}
             </div>
-            <button onClick={() => { hentStatus(valgtId); hentResultat(valgtId, ar); if (fane === 'balanse') hentBalanse(valgtId, balDato); }} className="flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-[13px] font-medium text-black/70 hover:bg-black/[0.03]">
-              <RefreshCw className={`h-3.5 w-3.5 ${resLaster || balLaster ? 'animate-spin' : ''}`} /> Oppdater
-            </button>
+            <div className="flex items-center gap-2">
+              {fane === 'resultat' && (
+                <div className="flex items-center gap-1 rounded-2xl border border-black/[0.06] bg-white p-1 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                  {[naaAar - 1, naaAar, naaAar + 1].map((y) => (
+                    <button key={y} onClick={() => setAar(y)} className={`rounded-xl px-3 py-1.5 text-[13px] font-medium tabular-nums transition-all duration-200 ${ar === y ? 'bg-black/[0.06] text-black' : 'text-black/50 hover:text-black'}`}>{y}</button>
+                  ))}
+                  <select value={ar} onChange={(e) => setAar(Number(e.target.value))} className="rounded-xl bg-transparent px-2 py-1.5 text-[12.5px] text-black/50 outline-none" aria-label="Velg år">
+                    {[naaAar + 2, naaAar + 1, naaAar, naaAar - 1, naaAar - 2, naaAar - 3, naaAar - 4].map((y) => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+              )}
+              <button onClick={() => { hentStatus(valgtId); hentResultat(valgtId, ar); if (fane === 'balanse') hentBalanse(valgtId, balDato); }} className="flex items-center gap-1.5 rounded-2xl border border-black/10 bg-white px-3.5 py-2 text-[13px] font-medium text-black/70 transition hover:border-black/25 hover:bg-black/[0.02]">
+                <RefreshCw className={`h-3.5 w-3.5 ${resLaster || balLaster ? 'animate-spin' : ''}`} /> Oppdater
+              </button>
+            </div>
           </div>
 
           {/* RESULTAT */}
           {fane === 'resultat' && (
             <div className="space-y-6">
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] text-black/45">Regnskapsår</span>
-                <select value={ar} onChange={(e) => setAar(Number(e.target.value))} className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-[13.5px] font-medium">
-                  {[naaAar + 1, naaAar, naaAar - 1, naaAar - 2, naaAar - 3].map((y) => <option key={y} value={y}>{y}</option>)}
-                </select>
-                {res ? <span className="text-[12.5px] text-black/40">{res.antallTransaksjoner} posteringer · {valgt.navn}</span> : null}
-              </div>
+              {res ? <p className="text-[12.5px] text-black/40">{res.antallTransaksjoner} posteringer i {ar} · {valgt.navn}</p> : null}
 
               {resLaster ? (
                 <div className="flex items-center gap-2 py-10 text-[14px] text-black/50"><Loader2 className="h-5 w-5 animate-spin" /> Henter resultat …</div>
@@ -338,27 +362,48 @@ export default function RegnskapModul({ apiKey, presentasjon = false }) {
                   <div className="grid gap-4 sm:grid-cols-3">
                     <Kort ikon={TrendingUp} etikett="Inntekter" verdi={kr(res.sum.inntekt)} under={`${ar}`} />
                     <Kort ikon={TrendingDown} etikett="Kostnader" verdi={kr(res.sum.kostnad)} under={`${ar}`} />
-                    <Kort ikon={Wallet} etikett="Resultat" verdi={kr(res.sum.resultat)} farge={res.sum.resultat >= 0 ? '#047857' : '#b3261e'} under={res.sum.resultat >= 0 ? 'Overskudd' : 'Underskudd'} />
+                    <Kort ikon={Wallet} etikett="Resultat" verdi={kr(res.sum.resultat)} farge={res.sum.resultat >= 0 ? '#047857' : '#b3261e'} under={res.sum.resultat >= 0 ? 'Overskudd' : 'Underskudd'} aksent={res.sum.resultat >= 0 ? 'rgba(4,120,87,0.7)' : 'rgba(179,38,30,0.7)'} />
                   </div>
 
-                  <div className="rounded-2xl border border-black/[0.06] bg-white p-5">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-[15px] font-semibold">Måned for måned</h3>
-                      <div className="flex items-center gap-4 text-[12px] text-black/50">
-                        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-[#7a3fa8]" /> Inntekt</span>
-                        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-black/25" /> Kostnad</span>
+                  <div className="rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-[14.5px] font-semibold">Måned for måned</h3>
+                        <p className="text-[12px] text-black/45">Inntekt mot kostnad · {ar}</p>
+                      </div>
+                      <div className="flex items-center gap-4 text-[12px] text-black/55">
+                        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: 'linear-gradient(180deg,#a56cd6,#7a3fa8)' }} /> Inntekt</span>
+                        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-black/25" /> Kostnad</span>
+                        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border-2 border-emerald-500 bg-white" /> Resultat</span>
                       </div>
                     </div>
-                    <div className="mt-5 flex items-end justify-between gap-1.5" style={{ height: 150 }}>
-                      {res.maaneder.map((m) => (
-                        <div key={m.mnd} className="flex flex-1 flex-col items-center gap-1">
-                          <div className="flex w-full items-end justify-center gap-[3px]" style={{ height: 120 }}>
-                            <span className="w-1/2 max-w-[10px] rounded-t bg-[#7a3fa8]" style={{ height: `${(m.inntekt / maksMnd) * 100}%` }} title={`Inntekt ${kr(m.inntekt)}`} />
-                            <span className="w-1/2 max-w-[10px] rounded-t bg-black/25" style={{ height: `${(m.kostnad / maksMnd) * 100}%` }} title={`Kostnad ${kr(m.kostnad)}`} />
-                          </div>
-                          <span className="text-[10px] text-black/40">{MND[m.mnd - 1]}</span>
+                    <div className="relative mt-5" style={{ height: 176 }}>
+                      {/* rutenett */}
+                      {[0, 25, 50, 75, 100].map((p) => (
+                        <div key={p} className="absolute inset-x-0 flex items-center gap-2" style={{ bottom: `calc(${p}% * 0.82 + 22px)` }}>
+                          <span className="w-12 shrink-0 text-right text-[10px] tabular-nums text-black/30">{p === 0 ? '0' : kr(Math.round((maksMnd * p) / 100)).replace(' kr', '')}</span>
+                          <span className="h-px flex-1" style={{ background: p === 0 ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.05)' }} />
                         </div>
                       ))}
+                      {/* stolper */}
+                      <div className="absolute inset-y-0 left-14 right-0 flex items-end justify-between gap-1.5" style={{ paddingBottom: 22 }}>
+                        {res.maaneder.map((m) => {
+                          const hI = (m.inntekt / maksMnd) * 100;
+                          const hK = (m.kostnad / maksMnd) * 100;
+                          const hR = Math.max(0, Math.min(100, ((m.resultat + maksMnd) / (2 * maksMnd)) * 100));
+                          const aktivMnd = m.inntekt || m.kostnad;
+                          return (
+                            <div key={m.mnd} className="group relative flex h-full flex-1 flex-col items-center justify-end" title={`${MND[m.mnd - 1]}: inntekt ${kr(m.inntekt)} · kostnad ${kr(m.kostnad)} · resultat ${kr(m.resultat)}`}>
+                              <div className="flex w-full items-end justify-center gap-[3px]" style={{ height: '82%' }}>
+                                <span className="w-1/2 max-w-[14px] rounded-t-[4px] transition-[height] duration-700" style={{ height: `${hI}%`, background: 'linear-gradient(180deg,#a56cd6,#7a3fa8)', boxShadow: hI > 0 ? '0 6px 14px -8px rgba(122,63,168,0.6)' : 'none' }} />
+                                <span className="w-1/2 max-w-[14px] rounded-t-[4px] bg-black/20 transition-[height] duration-700" style={{ height: `${hK}%` }} />
+                              </div>
+                              {aktivMnd ? <span className="pointer-events-none absolute left-1/2 h-2 w-2 -translate-x-1/2 rounded-full border-2 bg-white" style={{ bottom: `calc(${hR}% * 0.82 + 22px - 4px)`, borderColor: m.resultat >= 0 ? '#10b981' : '#ef4444' }} /> : null}
+                              <span className={`absolute -bottom-0 text-[10.5px] ${aktivMnd ? 'font-semibold text-black/70' : 'text-black/35'}`}>{MND[m.mnd - 1]}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                     <div className="mt-5 overflow-x-auto">
                       <table className="w-full min-w-[520px] text-[13px]">

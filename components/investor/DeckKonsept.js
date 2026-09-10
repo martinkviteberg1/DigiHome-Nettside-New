@@ -24,7 +24,7 @@ import HeroScene from '@/components/forside/v4/HeroScene';
 import HeroStage, { FILM as HERO_FILM } from '@/components/forside/v4/HeroStage';
 import LosningFilm from '@/components/investor/LosningFilm';
 import Leieforhold from '@/components/admin/Leieforhold';
-import RegnskapModul from '@/components/admin/RegnskapModul';
+import RegnskapFilm from '@/components/investor/RegnskapFilm';
 import {
   beregnInvestorModell, beregnTech, beregnKonsernSammenstilling, rensModellDrivere, rensTechDrivere, rensTechFakta, skalerVekst,
 } from '@/lib/budsjett-modell';
@@ -645,7 +645,7 @@ const TEAM = [
   { n: 'Sarah Sleeman', r: 'Daglig leder · styremedlem', kort: 'Daglig leder', img: '/team-sarah.webp', pos: '50% 20%', s: 'Eiendomsmegler, seks år i rådgivende roller i DNB. Leder kundeakkvisisjon og forvaltning. Styremedlem i begge selskaper.' },
   { n: 'Martin C. Kviteberg', r: 'Produktsjef · styremedlem', kort: 'Produktsjef', img: '/team/martin-kviteberg-face.jpg', pos: 'top', s: 'Gründer av BnbSpesialisten – en av Norges første profesjonelle utleieforvaltere. 10 år i Adonis AS frem mot exit. Styremedlem i begge selskaper.' },
   { n: 'Erik Hoffmann-Dahl', r: 'Styreleder · begge selskaper', kort: 'Styreleder', img: '/team-erik.webp', pos: 'top', s: 'Advokat og partner i Hoffmann Thinn. Tegnet selskapsstrukturen som skal bære vekst og emisjon.' },
-  { n: 'Kevin Ha', r: 'AI-rådgiver', kort: 'AI-rådgiver', img: '/team/kevin-ai.jpg', pos: '50% 16%', s: 'Analytiker i DNB, siviløkonom NHH. Bygger og automatiserer plattformen med AI-drevet utvikling.' },
+  { n: 'Kevin Ha', r: 'AI-rådgiver', kort: 'AI-rådgiver', img: '/team/kevin-ai-v2.webp', pos: '50% 22%', s: 'Analytiker i DNB, siviløkonom NHH. Bygger og automatiserer plattformen med AI-drevet utvikling.' },
   { n: 'Jens-Petter Glittenberg', r: 'Styremedlem · begge selskaper', kort: 'Styremedlem', img: '/team/jens-petter-glittenberg.webp', pos: '50% 30%', s: 'Styremedlem i Digihome AS og Digihome Tech AS.' },
 ];
 function Person({ p, liten = false, rolle }) {
@@ -662,22 +662,28 @@ function Person({ p, liten = false, rolle }) {
     </div>
   );
 }
-/* Stort, redaksjonelt portrettkort: foto med navn/rolle brent inn nederst + én drepende referanse under.
-   zoom + zoomPos lar oss croppe tettere på ansiktet (matche innramming på tvers av bilder). */
-function PortrettKort({ p, rolle, cred, zoom = 1, zoomPos = '50% 24%' }) {
+/* Moderne portrettflis: mørk flis på lys flate, ett felles fototrykk (gråtone som løftes til
+   farge ved hover — samler blandingen av farge/sort-hvitt-bilder til ett kull), navn/rolle brent
+   inn nederst og én drepende referanse under. zoom/zoomPos finjusterer innramming per bilde. */
+function PortrettKort({ p, rolle, cred, idx = 0, zoom = 1, zoomPos = '50% 24%' }) {
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-[20px] bg-white" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 24px 50px -28px rgba(21,19,15,0.3)` }}>
-      <div className="relative aspect-[4/5] w-full overflow-hidden" style={{ background: T.charcoal }}>
-        {p.img
-          ? <img src={p.img} alt={p.n} className="h-full w-full object-cover" style={{ objectPosition: p.pos, transform: zoom !== 1 ? `scale(${zoom})` : undefined, transformOrigin: zoomPos }} loading="lazy" />
-          : <span className="flex h-full w-full items-center justify-center text-[28px] font-semibold" style={{ color: T.offwhite }}>{p.n.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join('')}</span>}
-        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-2/5" style={{ background: 'linear-gradient(180deg, transparent, rgba(17,15,12,0.72))' }} />
-        <div className="absolute inset-x-0 bottom-0 p-4">
-          <p className="text-[16.5px] font-semibold leading-tight text-white">{p.n}</p>
-          <p className="mt-0.5 text-[12px] font-medium tracking-[0.01em]" style={{ color: 'rgba(255,255,255,0.85)' }}>{rolle || p.r}</p>
+    <div className="deck-portrett-kort group relative flex h-full flex-col overflow-hidden rounded-[22px]" style={{ background: T.charcoal, boxShadow: `inset 0 0 0 1px rgba(244,241,234,0.06), 0 30px 60px -34px rgba(21,19,15,0.5)` }}>
+      <div className="relative aspect-[4/5] w-full overflow-hidden">
+        <div className="absolute inset-0 transition-transform duration-[1100ms] ease-out group-hover:scale-[1.045]">
+          {p.img
+            ? <img src={p.img} alt={p.n} className="deck-portrett h-full w-full object-cover" style={{ objectPosition: p.pos, transform: zoom !== 1 ? `scale(${zoom})` : undefined, transformOrigin: zoomPos, '--pf-delay': `${idx * 1.5}s` }} loading="lazy" />
+            : <span className="flex h-full w-full items-center justify-center text-[30px] font-semibold" style={{ color: T.offwhite }}>{p.n.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join('')}</span>}
+        </div>
+        <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,19,15,0) 46%, rgba(15,13,11,0.5) 74%, rgba(13,11,9,0.9) 100%)' }} />
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-4">
+          <div className="min-w-0">
+            <p className="truncate text-[16.5px] font-semibold leading-tight text-white">{p.n}</p>
+            <p className="mt-0.5 text-[11.5px] font-medium tracking-[0.02em]" style={{ color: T.lilla }}>{rolle || p.r}</p>
+          </div>
+          <span aria-hidden="true" className="mb-0.5 h-1.5 w-1.5 flex-none rounded-full opacity-0 transition-opacity duration-500 group-hover:opacity-100" style={{ background: T.lilla }} />
         </div>
       </div>
-      <p className="flex-1 px-4 py-3.5 text-[12.5px] leading-[1.5]" style={{ color: DIM }}>{cred || p.s}</p>
+      <p className="flex-1 px-4 pb-4 pt-3.5 text-[12.5px] leading-[1.5]" style={{ color: 'rgba(244,241,234,0.66)' }}>{cred || p.s}</p>
     </div>
   );
 }
@@ -1531,6 +1537,17 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-side[data-aktiv="1"] .deck-stolpe { transform: scaleY(1); }
         .deck-side .deck-stolpe-tekst { opacity: 0; transform: translateY(6px); transition: opacity 420ms ${EASE}, transform 420ms ${EASE}; transition-delay: calc(var(--i, 0) * 80ms + 720ms); }
         .deck-side[data-aktiv="1"] .deck-stolpe-tekst { opacity: 1; transform: none; }
+        /* Teamveggen · portrettene ligger i gråtone og «blar gjennom» i farge én og én (kinematisk sveip),
+           og den man holder over blir stående i farge. Kun på aktiv slide (ytelse). */
+        .deck-portrett { filter: grayscale(1) contrast(1.03); will-change: filter; }
+        @keyframes deck-portrett-farge {
+          0%, 5% { filter: grayscale(1) contrast(1.03); }
+          11%, 17% { filter: grayscale(0) contrast(1); }
+          23%, 100% { filter: grayscale(1) contrast(1.03); }
+        }
+        .deck-side[data-aktiv="1"] .deck-portrett { animation: deck-portrett-farge 12s ${EASE} var(--pf-delay, 0s) infinite; }
+        .deck-portrett-kort:hover .deck-portrett { animation: none !important; filter: grayscale(0) contrast(1) !important; transition: filter 500ms ${EASE}; }
+
         /* Slide 02 · «Autopilot AV» – kul, subtil bevegelse (kun på aktiv slide, av hensyn til ytelse):
            toggelen prøver å slå seg PÅ og faller tilbake til AV, og fotoet får en langsom kinematisk zoom. */
         .deck-hv-foto { transform: scale(1); will-change: transform; }
@@ -1662,7 +1679,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         .deck-side[data-aktiv="1"] .deck-cover-strek { transform: scaleX(1); }
         /* Coverens scene: forsidens HeroStage, men som sceneteppe – kant til kant, uten kortets radius/skygge/høydetak. */
         .deck-cover-scene .dh-hero-scene { max-height: none !important; border-radius: 0 !important; box-shadow: none !important; }
-        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-side .deck-inn[data-strek]::before { transform: scaleX(1); transition: none; } .deck-side .deck-rad, .deck-side .deck-stolpe, .deck-side .deck-stolpe-tekst { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring, .deck-hjul-rot, .deck-hjul-tegn, .deck-hjul-orbit, .deck-hjul-lisens, .deck-spk-knott, .deck-spk-skinne, .deck-live-dot, .deck-eier-v, .deck-eier-h, .deck-eier-p { animation: none !important; } .deck-eier-v, .deck-eier-h, .deck-eier-p { transform: none !important; opacity: 1 !important; } .deck-hjul-tegn { stroke-dashoffset: 0 !important; } .deck-hjul-chev, .deck-hjul-orbit { opacity: 1 !important; } .deck-spk-skinne { transform: scaleX(1) !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
+        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-side .deck-inn[data-strek]::before { transform: scaleX(1); transition: none; } .deck-side .deck-rad, .deck-side .deck-stolpe, .deck-side .deck-stolpe-tekst { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring, .deck-hjul-rot, .deck-hjul-tegn, .deck-hjul-orbit, .deck-hjul-lisens, .deck-spk-knott, .deck-spk-skinne, .deck-live-dot, .deck-eier-v, .deck-eier-h, .deck-eier-p { animation: none !important; } .deck-eier-v, .deck-eier-h, .deck-eier-p { transform: none !important; opacity: 1 !important; } .deck-hjul-tegn { stroke-dashoffset: 0 !important; } .deck-hjul-chev, .deck-hjul-orbit { opacity: 1 !important; } .deck-spk-skinne { transform: scaleX(1) !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } .deck-portrett { animation: none !important; filter: grayscale(0) contrast(1) !important; } }
         @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
 
@@ -2039,11 +2056,11 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           </div>
         </div>
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5" data-testid="deck-org-portretter">
-          <Inn i={2}><PortrettKort p={TEAM[0]} rolle="Daglig leder · styremedlem" zoom={1.7} zoomPos="50% 28%" cred="Eiendomsmegler med seks år i DNB. Leder kundeakkvisisjon og forvaltning." /></Inn>
-          <Inn i={3}><PortrettKort p={TEAM[1]} rolle="Produktsjef · styremedlem" cred="Grunnla BnbSpesialisten, en av Norges første proffe utleieforvaltere. 10 år i Adonis frem mot exit." /></Inn>
-          <Inn i={4}><PortrettKort p={TEAM[3]} rolle="AI-rådgiver" zoom={2.0} zoomPos="50% 33%" cred="Analytiker i DNB, siviløkonom fra NHH. Bygger og automatiserer plattformen med AI." /></Inn>
-          <Inn i={5}><PortrettKort p={TEAM[2]} rolle="Styreleder · advokat" cred="Partner i Hoffmann Thinn. Tegnet selskapsstrukturen som skal bære vekst og emisjon." /></Inn>
-          <Inn i={6}><PortrettKort p={TEAM[4]} rolle="Styremedlem" zoom={1.18} zoomPos="51% 34%" cred="Styremedlem i Digihome AS og Digihome Tech AS." /></Inn>
+          <Inn i={2}><PortrettKort p={TEAM[0]} idx={0} rolle="Daglig leder · styremedlem" zoom={1.7} zoomPos="50% 28%" cred="Eiendomsmegler med seks år i DNB. Leder kundeakkvisisjon og forvaltning." /></Inn>
+          <Inn i={3}><PortrettKort p={TEAM[1]} idx={1} rolle="Produktsjef · styremedlem" cred="Grunnla BnbSpesialisten, en av Norges første proffe utleieforvaltere. 10 år i Adonis frem mot exit." /></Inn>
+          <Inn i={4}><PortrettKort p={TEAM[3]} idx={2} rolle="AI-rådgiver" cred="Analytiker i DNB, siviløkonom fra NHH. Bygger og automatiserer plattformen med AI." /></Inn>
+          <Inn i={5}><PortrettKort p={TEAM[2]} idx={3} rolle="Styreleder · advokat" cred="Partner i Hoffmann Thinn. Tegnet selskapsstrukturen som skal bære vekst og emisjon." /></Inn>
+          <Inn i={6}><PortrettKort p={TEAM[4]} idx={4} rolle="Styremedlem" zoom={1.18} zoomPos="51% 34%" cred="Styremedlem i Digihome AS og Digihome Tech AS." /></Inn>
         </div>
         <Inn i={7}><p className="mt-5 text-[12.5px]" style={{ color: SVAK }} data-testid="deck-org-styre">Felles styre for Digihome AS og Digihome Tech AS: Erik Hoffmann-Dahl (styreleder), Jens-Petter Glittenberg, Sarah Sleeman og Martin C. Kviteberg.</p></Inn>
       </Side>
@@ -2113,32 +2130,21 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </Side>
 
-      {/* Regnskap · faktiske tall fra PowerOffice Go (samme visning som driftsportalen) */}
-      <Side id="regnskap" pos={pos('regnskap')} aktiv={er('regnskap')} full flush>
-        <div className="mb-3 flex shrink-0 flex-wrap items-end justify-between gap-3">
-          <Kapittel nr={kap('regnskap')} navn="Regnskap" under="faktiske tall fra PowerOffice Go" />
-          <span className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: SVAK }}>
-            <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: LILLA_M }} /><span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: LILLA_M }} /></span>
-            Ført regnskap · per selskap
-          </span>
-        </div>
-        <div className="min-h-0 flex-1 overflow-hidden rounded-2xl bg-white" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 34px 80px -46px rgba(21,19,15,0.34)` }}>
-          {adminKey ? (
-            regnBesokt ? (
-              <div className="h-full overflow-y-auto overscroll-contain p-5 sm:p-6">
-                <RegnskapModul apiKey={adminKey} presentasjon />
-              </div>
-            ) : (
-              <div className="flex h-full items-center justify-center text-[13px]" style={{ color: SVAK }}>Laster regnskapet …</div>
-            )
+      {/* Regnskap · faktiske tall fra PowerOffice Go, som en ren investorpresentasjon (ingen tilkoblingsinfo) */}
+      <Side id="regnskap" pos={pos('regnskap')} aktiv={er('regnskap')} full>
+        <Kapittel nr={kap('regnskap')} navn="Regnskap" under="ført · direkte fra PowerOffice Go" />
+        <Inn i={1}><H2 maks="20ch">Ikke prognoser. Ført regnskap, hentet live.</H2></Inn>
+        {adminKey ? (
+          regnBesokt ? (
+            <RegnskapFilm adminKey={adminKey} aktiv={er('regnskap')} />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
-              <Coins className="h-7 w-7" style={{ color: SVAK }} strokeWidth={1.6} />
-              <p className="text-[16px] font-semibold" style={{ color: T.ink }}>Ført regnskap</p>
-              <p className="max-w-[46ch] text-[13.5px] leading-[1.55]" style={{ color: DIM }}>Faktisk resultat og balanse per selskap – rett fra PowerOffice Go – vises når decket kjøres i presentasjonsmodus.</p>
-            </div>
-          )}
-        </div>
+            <div className="mt-10 text-[13px]" style={{ color: SVAK }}>Laster regnskapet …</div>
+          )
+        ) : (
+          <div className="mt-8 max-w-[52ch]">
+            <p className="text-[15px] leading-[1.6]" style={{ color: DIM }}>Faktisk resultat og balanse per selskap – rett fra PowerOffice Go – vises når decket kjøres i presentasjonsmodus.</p>
+          </div>
+        )}
       </Side>
 
 
