@@ -56,6 +56,8 @@ export default function KontraktPreview({ u = {}, kompakt = false }) {
             <Linje etikett="Adresse" verdi={adr} />
             <Linje etikett="Type" verdi={typeLinje} />
             <Linje etikett="Møblering" verdi={MOBLERING[b.mobilering]} />
+            {b.matrikkel_str ? <Linje etikett="Matrikkel" verdi={b.matrikkel_str} /> : null}
+            {b.bruksenhetsnummer ? <Linje etikett="Bolignr" verdi={b.bruksenhetsnummer} /> : null}
           </Para>
           <Para nr="3" tittel="Leieforhold">
             <Linje etikett="Form" verdi={v.kontraktstype === 'tidsbestemt' ? 'Tidsbestemt' : 'Tidsubestemt (løpende)'} />

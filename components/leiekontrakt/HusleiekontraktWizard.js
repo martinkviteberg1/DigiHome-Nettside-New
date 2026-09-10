@@ -8,9 +8,10 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, MailCheck, Pencil, FileText } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, MailCheck, Pencil, FileText, X, Eye, ChevronLeft } from 'lucide-react';
 import { T, display, DIM, SVAK, HAIR } from '@/components/forside/v4/tokens';
 import KontraktPreview from '@/components/leiekontrakt/KontraktPreview';
+import EiendomsOppslag from '@/components/leiekontrakt/EiendomsOppslag';
 
 const INK = T.ink; const LILLA = T.lilla; const GRONN = T.gronn;
 const STEG = ['Bolig', 'Leietaker', 'Vilkår', 'Se kontrakten', 'Opprett konto'];
@@ -66,7 +67,7 @@ function Bryter({ label, verdi, sett, av = 'Nei', pa = 'Ja', full = false }) {
 export default function HusleiekontraktWizard() {
   const [steg, setSteg] = useState(0);
   const [token, setToken] = useState('');
-  const [bolig, setBolig] = useState({ adresse: '', postnr: '', poststed: '', type: 'leilighet', sqm: '', soverom: '', mobilering: 'umoblert', royk: false, dyr: false });
+  const [bolig, setBolig] = useState({ adresse: '', postnr: '', poststed: '', type: 'leilighet', sqm: '', soverom: '', mobilering: 'umoblert', royk: false, dyr: false, matrikkel: null, seksjonsnr: '', andelsnr: '', orgnr: '', register_type: '', matrikkel_str: '', bruksenhetsnummer: '', hjemmelshaver: '', hjemmelshaver_type: '' });
   const [leietaker, setLeietaker] = useState({ kind: 'privat', navn: '', epost: '', telefon: '', org_no: '', firma: '' });
   const [vilkaar, setVilkaar] = useState({ kontraktstype: 'tidsubestemt', start: '', slutt: '', oppsigelse: '3', leie: '', forfallsdag: 1, utgifterInkludert: false, depositumType: 'konto', depositumMnd: 3, saerlige: '' });
   const [owner, setOwner] = useState({ kind: 'privat', navn: '', epost: '', telefon: '', org_no: '', firma: '' });
@@ -74,6 +75,8 @@ export default function HusleiekontraktWizard() {
   const [feil, setFeil] = useState({});
   const [sender, setSender] = useState(false);
   const [ferdig, setFerdig] = useState(null);
+  const [visForhandsvis, setVisForhandsvis] = useState(false);
+  const [lagreStatus, setLagreStatus] = useState(''); // '' | 'lagrer' | 'lagret'
   const hydrert = useRef(false);
   const rort = useRef(false);
 
@@ -104,21 +107,41 @@ export default function HusleiekontraktWizard() {
   useEffect(() => {
     if (!hydrert.current || !rort.current) return undefined;
     const h = setTimeout(async () => {
+      setLagreStatus('lagrer');
       try {
         const d = await fetch('/api/leiekontrakt/utkast', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token, bolig, leietaker, vilkaar }),
         }).then((r) => r.json());
         if (d && d.ok && d.token) { setToken(d.token); try { window.localStorage.setItem('dh_lk_token', d.token); } catch (e) {} }
-      } catch (e) { /* ignorer */ }
+        setLagreStatus('lagret');
+      } catch (e) { setLagreStatus(''); }
     }, 900);
     return () => clearTimeout(h);
   }, [bolig, leietaker, vilkaar, token]);
 
   const oppd = (setter) => (felt, val) => { rort.current = true; setter((p) => ({ ...p, [felt]: val })); };
   const sB = oppd(setBolig); const sL = oppd(setLeietaker); const sV = oppd(setVilkaar); const sO = oppd(setOwner);
+  /* Stabil patch-funksjon til EiendomsOppslag (fyller flere bolig-felt om gangen). */
+  const fyllBolig = useCallback((patch) => { rort.current = true; setBolig((p) => ({ ...p, ...(patch || {}) })); }, []);
 
-  const gaaNeste = () => setSteg((s) => Math.min(STEG.length - 1, s + 1));
+  /* Lås bakgrunnsscroll når mobil-forhåndsvisning er åpen */
+  useEffect(() => {
+    if (!visForhandsvis) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [visForhandsvis]);
+
+  const gaaNeste = () => setSteg((s) => {
+    const neste = Math.min(STEG.length - 1, s + 1);
+    // På vei til «Opprett konto»: foreslå utleier fra registrert hjemmelshaver (kan endres).
+    if (neste === 4 && bolig.hjemmelshaver && !String(owner.navn || '').trim() && !String(owner.firma || '').trim()) {
+      if (bolig.hjemmelshaver_type === 'organisasjon') setOwner((p) => ({ ...p, kind: 'bedrift', firma: bolig.hjemmelshaver }));
+      else setOwner((p) => ({ ...p, navn: bolig.hjemmelshaver }));
+    }
+    return neste;
+  });
   const gaaForrige = () => setSteg((s) => Math.max(0, s - 1));
 
   const fullfor = useCallback(async () => {
@@ -154,45 +177,79 @@ export default function HusleiekontraktWizard() {
   /* ── Ferdig: Sjekk innboksen ── */
   if (ferdig) return <SjekkInnboksen ferdig={ferdig} setFerdig={setFerdig} epost={owner.epost} />;
 
+  const pct = Math.round((steg / (STEG.length - 1)) * 100);
+  const visPreviewKnapp = steg !== 3; // steg 3 er allerede full forhåndsvisning
+
   return (
-    <main className="min-h-screen" style={{ background: T.canvas, color: INK }}>
-      {/* Slim toppbar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between px-5 py-3.5 sm:px-8" style={{ background: 'rgba(243,241,236,0.82)', backdropFilter: 'blur(14px)', borderBottom: `1px solid ${HAIR}` }}>
-        <Link href="/" className="flex items-center" aria-label="DigiHome">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/digihome-hero-logo.svg" alt="DigiHome" className="h-[21px] w-auto" />
-        </Link>
-        <span className="flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-medium" style={{ color: DIM, boxShadow: `inset 0 0 0 1px ${HAIR}` }}><ShieldCheck className="h-3.5 w-3.5" style={{ color: GRONN }} /> Gratis · Husleieloven · BankID</span>
-      </div>
+    <main className="min-h-screen pb-28" style={{ background: T.canvas, color: INK }}>
+      <style>{`
+        @keyframes lkStepIn { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+        @keyframes lkSheetIn { from { opacity: 0; transform: translateY(24px) } to { opacity: 1; transform: none } }
+        .lk-step { animation: lkStepIn .42s cubic-bezier(0.16,1,0.3,1) }
+        .lk-sheet { animation: lkSheetIn .3s cubic-bezier(0.16,1,0.3,1) }
+        @media (prefers-reduced-motion: reduce) { .lk-step, .lk-sheet { animation: none !important } }
+      `}</style>
+
+      {/* Frostet toppbar med fremdriftslinje */}
+      <header className="sticky top-0 z-30" style={{ background: 'rgba(243,241,236,0.82)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: `1px solid ${HAIR}` }}>
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3.5 sm:px-8">
+          <Link href="/utleier/husleiekontrakt" className="flex items-center" aria-label="DigiHome husleiekontrakt">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/digihome-hero-logo.svg" alt="DigiHome" className="h-[21px] w-auto" />
+          </Link>
+          <div className="flex items-center gap-2.5">
+            {lagreStatus ? (
+              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium transition-opacity" style={{ color: SVAK }}>
+                {lagreStatus === 'lagrer' ? <><Loader2 className="h-3 w-3 animate-spin" /> Lagrer …</> : <><Check className="h-3 w-3" style={{ color: GRONN }} /> Lagret</>}
+              </span>
+            ) : null}
+            <span className="hidden items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-medium sm:inline-flex" style={{ color: DIM, boxShadow: `inset 0 0 0 1px ${HAIR}` }}><ShieldCheck className="h-3.5 w-3.5" style={{ color: GRONN }} /> Gratis · Husleieloven · BankID</span>
+          </div>
+        </div>
+        <div className="h-[3px] w-full" style={{ background: 'rgba(21,19,15,0.07)' }}>
+          <div style={{ width: `${pct}%`, height: '100%', background: LILLA, borderRadius: '0 3px 3px 0', transition: 'width 420ms cubic-bezier(0.16,1,0.3,1)' }} />
+        </div>
+      </header>
 
       {/* Stegindikator */}
-      <div className="mx-auto max-w-6xl px-5 pt-7 sm:px-8">
-        <div className="flex items-center gap-2">
+      <div className="mx-auto max-w-6xl px-5 pt-6 sm:px-8 sm:pt-7">
+        {/* Desktop: segmentert stepper */}
+        <div className="hidden items-center gap-2 sm:flex">
           {STEG.map((s, i) => (
             <React.Fragment key={s}>
-              <button type="button" onClick={() => i < steg && setSteg(i)} className="flex items-center gap-2" style={{ cursor: i < steg ? 'pointer' : 'default' }}>
-                <span className="grid h-6 w-6 place-items-center rounded-full text-[11px] font-semibold tabular-nums" style={i < steg ? { background: GRONN, color: '#fff' } : i === steg ? { background: INK, color: '#fff' } : { color: SVAK, boxShadow: `inset 0 0 0 1px ${HAIR}` }}>
+              <button type="button" onClick={() => i < steg && setSteg(i)} className="group flex items-center gap-2 rounded-full" style={{ cursor: i < steg ? 'pointer' : 'default' }}>
+                <span className="grid h-6 w-6 place-items-center rounded-full text-[11px] font-semibold tabular-nums transition-colors" style={i < steg ? { background: GRONN, color: '#fff' } : i === steg ? { background: INK, color: '#fff' } : { color: SVAK, boxShadow: `inset 0 0 0 1px ${HAIR}` }}>
                   {i < steg ? <Check className="h-3.5 w-3.5" /> : i + 1}
                 </span>
-                <span className="hidden text-[12.5px] font-medium sm:inline" style={{ color: i === steg ? INK : SVAK }}>{s}</span>
+                <span className="text-[12.5px] font-medium transition-colors" style={{ color: i === steg ? INK : SVAK }}>{s}</span>
               </button>
-              {i < STEG.length - 1 ? <span className="h-px flex-1" style={{ background: HAIR }} /> : null}
+              {i < STEG.length - 1 ? <span className="h-px flex-1" style={{ background: i < steg ? GRONN : HAIR, opacity: i < steg ? 0.4 : 1, transition: 'background 300ms' }} /> : null}
             </React.Fragment>
           ))}
         </div>
+        {/* Mobil: kompakt «Steg X av Y» + forhåndsvis */}
+        <div className="flex items-center justify-between sm:hidden">
+          <span className="text-[13px] font-medium" style={{ color: INK }}>
+            Steg {steg + 1} av {STEG.length} <span style={{ color: SVAK }}>· {STEG[steg]}</span>
+          </span>
+          {visPreviewKnapp ? (
+            <button type="button" onClick={() => setVisForhandsvis(true)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-medium" style={{ color: INK, boxShadow: `inset 0 0 0 1px ${HAIR}`, background: '#fff' }}>
+              <Eye className="h-3.5 w-3.5" /> Forhåndsvis
+            </button>
+          ) : null}
+        </div>
       </div>
+
 
       {/* Innhold */}
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
         <div className={`grid gap-10 ${steg === 3 ? '' : 'lg:grid-cols-[1.05fr_0.95fr]'}`}>
           {/* Skjema / preview */}
-          <div>
+          <div key={steg} className="lk-step">
             {steg === 0 ? (
-              <Seksjon tittel="Om boligen" undertittel="Adressen og det viktigste om leieobjektet.">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Inn label="Adresse" verdi={bolig.adresse} sett={(v) => sB('adresse', v)} plassholder="Nygårdsgaten 5" />
-                  <Inn label="Postnummer" verdi={bolig.postnr} sett={(v) => sB('postnr', String(v).replace(/\D/g, '').slice(0, 4))} plassholder="5015" bred={false} inputMode="numeric" />
-                  <Inn label="Poststed" verdi={bolig.poststed} sett={(v) => sB('poststed', v)} plassholder="Bergen" bred={false} />
+              <Seksjon tittel="Om boligen" undertittel="Søk opp adressen – vi henter matrikkel og seksjon fra Eiendomsregisteret. Resten fyller du inn selv.">
+                <EiendomsOppslag bolig={bolig} onFyll={fyllBolig} />
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   <Pillrad label="Boligtype" full valg={[['leilighet', 'Leilighet'], ['enebolig', 'Enebolig'], ['rekkehus', 'Rekkehus'], ['tomannsbolig', 'Tomannsbolig'], ['hybel', 'Hybel'], ['annet', 'Annet']]} verdi={bolig.type} sett={(v) => sB('type', v)} />
                   <Inn label="Størrelse (m²)" type="number" verdi={bolig.sqm} sett={(v) => sB('sqm', v)} plassholder="62" bred={false} inputMode="numeric" />
                   <Inn label="Antall soverom" type="number" verdi={bolig.soverom} sett={(v) => sB('soverom', v)} plassholder="2" bred={false} inputMode="numeric" />
@@ -285,23 +342,41 @@ export default function HusleiekontraktWizard() {
         </div>
       </div>
 
-      {/* Sticky bunn-CTA */}
-      <div className="sticky bottom-0 z-30 mt-6 px-5 py-3.5 sm:px-8" style={{ background: 'rgba(243,241,236,0.92)', backdropFilter: 'blur(10px)', borderTop: `1px solid ${HAIR}` }}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
-          <button type="button" onClick={gaaForrige} disabled={steg === 0} className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-[14px] font-medium transition-opacity disabled:opacity-0" style={{ color: DIM, boxShadow: `inset 0 0 0 1px ${HAIR}` }}>
+      {/* Fast bunn-CTA */}
+      <div className="fixed inset-x-0 bottom-0 z-30" style={{ background: 'rgba(243,241,236,0.92)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderTop: `1px solid ${HAIR}`, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3 sm:px-8 sm:py-3.5">
+          <button type="button" onClick={gaaForrige} disabled={steg === 0} className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-[14px] font-medium transition-opacity disabled:pointer-events-none disabled:opacity-0" style={{ color: DIM, boxShadow: `inset 0 0 0 1px ${HAIR}`, background: '#fff' }}>
             <ArrowLeft className="h-4 w-4" /> Tilbake
           </button>
-          {steg < 4 ? (
-            <button type="button" onClick={gaaNeste} className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-[14.5px] font-semibold transition-transform hover:-translate-y-0.5" style={{ background: INK, color: T.offwhite }}>
-              {steg === 3 ? 'Opprett konto og signer' : 'Neste'} <ArrowRight className="h-4 w-4" />
-            </button>
-          ) : (
-            <button type="button" onClick={fullfor} disabled={sender} className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-[14.5px] font-semibold disabled:opacity-60" style={{ background: INK, color: T.offwhite }}>
-              {sender ? <><Loader2 className="h-4 w-4 animate-spin" /> Oppretter …</> : <>Opprett konto og gå til signering <ArrowRight className="h-4 w-4" /></>}
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {steg < 3 && STEG[steg + 1] ? <span className="hidden text-[13px] sm:inline" style={{ color: SVAK }}>Neste: {STEG[steg + 1]}</span> : null}
+            {steg < 4 ? (
+              <button type="button" onClick={gaaNeste} className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-[15px] font-semibold transition-transform hover:-translate-y-0.5 sm:py-2.5 sm:text-[14.5px]" style={{ background: INK, color: T.offwhite }}>
+                {steg === 3 ? 'Opprett konto og signer' : 'Neste'} <ArrowRight className="h-4 w-4" />
+              </button>
+            ) : (
+              <button type="button" onClick={fullfor} disabled={sender} className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-[15px] font-semibold transition-transform hover:-translate-y-0.5 disabled:opacity-60 sm:py-2.5 sm:text-[14.5px]" style={{ background: INK, color: T.offwhite }}>
+                {sender ? <><Loader2 className="h-4 w-4 animate-spin" /> Oppretter …</> : <><span className="sm:hidden">Opprett og signer</span><span className="hidden sm:inline">Opprett konto og gå til signering</span> <ArrowRight className="h-4 w-4" /></>}
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Mobil forhåndsvisning (bottom sheet) */}
+      {visForhandsvis ? (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden" role="dialog" aria-modal="true" aria-label="Forhåndsvisning av kontrakt">
+          <button type="button" aria-label="Lukk" onClick={() => setVisForhandsvis(false)} className="absolute inset-0" style={{ background: 'rgba(21,19,15,0.42)' }} />
+          <div className="lk-sheet relative max-h-[88vh] overflow-y-auto rounded-t-[22px] px-5 pt-4" style={{ background: T.canvas, paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))', boxShadow: '0 -24px 60px -24px rgba(21,19,15,0.5)' }}>
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full" style={{ background: HAIR }} />
+            <div className="mb-3 flex items-center justify-between">
+              <p className="flex items-center gap-1.5 text-[13px] font-medium" style={{ color: SVAK }}><FileText className="h-3.5 w-3.5" /> Forhåndsvisning</p>
+              <button type="button" onClick={() => setVisForhandsvis(false)} className="grid h-8 w-8 place-items-center rounded-full" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}`, color: DIM, background: '#fff' }}><X className="h-4 w-4" /></button>
+            </div>
+            <KontraktPreview u={u} />
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
