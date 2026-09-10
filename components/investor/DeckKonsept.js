@@ -23,7 +23,7 @@ import { T, display, EASE, DIM, SVAK, HAIR } from '@/components/forside/v4/token
 import HeroScene from '@/components/forside/v4/HeroScene';
 import HeroStage, { FILM as HERO_FILM } from '@/components/forside/v4/HeroStage';
 import LosningFilm from '@/components/investor/LosningFilm';
-import Leieforhold from '@/components/admin/Leieforhold';
+import PortefoljeData from '@/components/investor/PortefoljeData';
 import RegnskapFilm from '@/components/investor/RegnskapFilm';
 import {
   beregnInvestorModell, beregnTech, beregnKonsernSammenstilling, rensModellDrivere, rensTechDrivere, rensTechFakta, skalerVekst,
@@ -974,7 +974,7 @@ const KAPITLER = [
   { id: 'struktur', navn: 'Motoren' },
   { id: 'org', navn: 'Organisasjon' },
   { id: 'staar', navn: 'Hvor vi står' },
-  { id: 'portefolje', navn: 'Porteføljen' },
+  { id: 'portefolje', navn: 'Datadrevet' },
   { id: 'regnskap', navn: 'Regnskap' },
   { id: 'unit', navn: 'Unit economics' },
   { id: 'gtm', navn: 'Go-to-market' },
@@ -2102,32 +2102,16 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </Side>
 
-      {/* Porteføljen · live leieforhold fra plattformen (samme visning og filtre som i driftsportalen) */}
-      <Side id="portefolje" pos={pos('portefolje')} aktiv={er('portefolje')} full flush>
-        <div className="mb-3 flex shrink-0 flex-wrap items-end justify-between gap-3">
-          <Kapittel nr={kap('portefolje')} navn="Porteføljen" under="live fra plattformen" />
-          <span className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: SVAK }}>
-            <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: LILLA_M }} /><span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: LILLA_M }} /></span>
-            Sanntid · samme data som driftsteamet ser
-          </span>
+      {/* Datadrevet · DigiHome driftes på sanntidsdata. Leieforhold åpnes i fullskjerm. */}
+      <Side id="portefolje" pos={pos('portefolje')} aktiv={er('portefolje')} full>
+        <Kapittel nr={kap('portefolje')} navn="Datadrevet" under="sanntid fra driftsportalen" />
+        <div className="mt-2 grid gap-5 lg:grid-cols-12 lg:items-end lg:gap-12">
+          <div className="lg:col-span-6"><Inn i={1}><H2 maks="15ch">Vi driver på data. Ikke magefølelse.</H2></Inn></div>
+          <div className="lg:col-span-6">
+            <Inn i={2}><p className="text-[15px] leading-[1.6] sm:text-[16.5px]" style={{ color: DIM, maxWidth: '52ch' }}>Inntekter, kostnader, honorar og hvert leieforhold ligger oppdatert i driftsportalen. Beslutninger tas på faktiske tall – ikke et regneark som er utdatert i det du åpner det.</p></Inn>
+          </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-hidden rounded-2xl bg-white" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 34px 80px -46px rgba(21,19,15,0.34)` }}>
-          {adminKey ? (
-            pfBesokt ? (
-              <div className="h-full overflow-y-auto overscroll-contain">
-                <Leieforhold apiKey={adminKey} readOnly />
-              </div>
-            ) : (
-              <div className="flex h-full items-center justify-center text-[13px]" style={{ color: SVAK }}>Laster porteføljen …</div>
-            )
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
-              <Table2 className="h-7 w-7" style={{ color: SVAK }} strokeWidth={1.6} />
-              <p className="text-[16px] font-semibold" style={{ color: T.ink }}>Live portefølje</p>
-              <p className="max-w-[46ch] text-[13.5px] leading-[1.55]" style={{ color: DIM }}>Hele porteføljen – med samme filtre og nøkkeltall som driftsteamet – vises når decket kjøres i presentasjonsmodus.</p>
-            </div>
-          )}
-        </div>
+        <PortefoljeData adminKey={adminKey} aktiv={er('portefolje')} besokt={pfBesokt} enheterIDag={enheterIDag} />
       </Side>
 
       {/* Regnskap · faktiske tall fra PowerOffice Go, som en ren investorpresentasjon (ingen tilkoblingsinfo) */}
