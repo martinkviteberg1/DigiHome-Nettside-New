@@ -2117,7 +2117,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       {/* 08 · Go-to-market */}
       <Side id="gtm" pos={pos('gtm')} aktiv={er('gtm')} bred>
         <Kapittel nr={kap('gtm')} navn="Go-to-market" under="slik henter vi kundene" />
-        <Inn i={1}><H2 maks="18ch">Vi kjøper ikke vekst. Vi tjener den.</H2></Inn>
+        <Inn i={1}><H2 maks="18ch">Vekst som betaler for seg selv.</H2></Inn>
         <Inn i={1}><p className="mt-5 max-w-[64ch] text-[15px] leading-[1.6] sm:text-[16px]" style={{ color: DIM }}>Byrået betales på resultat, ikke på klikk. Forvaltningen er en kanal i seg selv: hver kunde kjenner allerede produktet, og hver enhet er en lisens. Salg til huseiere og eiendomsselskaper ligger utenfor planen – ren oppside.</p></Inn>
         <Inn i={2} className="mt-8">
           <p className="mb-3 text-[12.5px] font-medium" style={{ color: SVAK }}>S&M i perioden · {mnok((sF.sumSm || 0) + (saT?.sumSm || 0))}{saT?.cacPaybackBlended != null ? ` · blandet CAC-payback Tech ${nb(saT.cacPaybackBlended, 1)} mnd` : ''}</p>
@@ -2296,10 +2296,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
 
       {/* Nøkkeltall · planen destillert */}
       <Side id="kpi" pos={pos('kpi')} aktiv={er('kpi')} bred>
-        <Kapittel nr={kap('kpi')} navn="Nøkkeltall" under="planen destillert til tallene som teller" />
+        <Kapittel nr={kap('kpi')} navn="Nøkkeltall" under="de viktigste målene i planen" />
         <div className="mt-2 grid gap-8 lg:grid-cols-12 lg:items-center lg:gap-14">
           <div className="lg:col-span-5">
-            <Inn i={1}><H2 maks="14ch">Tallene som teller.</H2></Inn>
+            <Inn i={1}><H2 maks="14ch">Tallene vi styrer etter.</H2></Inn>
             <Ingress i={2} maks="42ch">Hele planen koker ned til dette: hva vi bygger, når det bærer seg selv, og hva det krever av kapital.</Ingress>
             <Inn i={3} className="mt-8">
               <div className="relative overflow-hidden rounded-[22px] p-6 sm:p-7" style={{ background: T.charcoal, boxShadow: '0 30px 64px -34px rgba(21,19,15,0.6)' }}>
@@ -2412,7 +2412,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       {/* 12 · Den ene variabelen */}
       <Side id="variabel" pos={pos('variabel')} aktiv={er('variabel')} bred>
         <Kapittel nr={kap('variabel')} navn="Den ene variabelen" under="hva en ny forvaltningskunde koster i media" />
-        <Inn i={1}><H2 maks="24ch">Alt hviler på ett tall: hva det koster å hente én ny kunde.</H2></Inn>
+        <Inn i={1}><H2 maks="24ch">Kostnad per kunde avgjør kapitalbehovet.</H2></Inn>
         <Inn i={2}><p className="mt-5 max-w-[68ch] text-[15px] leading-[1.55] sm:text-[16px]" style={{ color: DIM }}>Planen regner {kr0(basisF.provisjonPerNyEnhet)} kr i media per signert enhet, pluss {basisF.partner?.paa ? `${kma(basisF.partner.honorarPct)} % av honoraret i ${basisF.partner.varighetMnd} måneder` : 'ingen partner'} – til sammen {kr0(mFb.cac.fullCac)} kr, som en enhet på {kr0(mFb.cac.bruttoHonorarNy)} kr/mnd betaler tilbake på <b style={{ color: T.ink }}>{mFb.cac.bruttoHonorarNy > 0 ? nb(mFb.cac.fullCac / mFb.cac.bruttoHonorarNy, 1) : '–'} måneder</b>. Tabellen viser hva som skjer med kapitalbehovet{skattPaa ? ' etter skatt' : ''} og resultatet over {N} måneder når prisen på en kunde endrer seg – og når en andel kommer gratis.</p></Inn>
         {variabelMatrise ? (
           <Inn i={3} className="mt-8 overflow-x-auto" data-testid="deck-variabel">
@@ -2471,7 +2471,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       {/* 13 · Hva om */}
       <Side id="hvaom" pos={pos('hvaom')} aktiv={er('hvaom')} bred>
         <Kapittel nr={kap('hvaom')} navn="Hva om" under="test forutsetningene – begge selskaper" />
-        <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Endre forutsetningene. Se svaret.</H2></Inn>
+        <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Planen tåler å bli stresstestet.</H2></Inn>
         <Inn i={2} className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" data-testid="deck-presets">
           {PRESETS.filter((p) => harTech || !p.kreverTech).map((p) => {
             const aktiv = preset === p.id;
@@ -2496,8 +2496,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
 
       {/* 15 · Risiko – før de spør */}
       <Side id="risiko" pos={pos('risiko')} aktiv={er('risiko')} bred>
-        <Kapittel nr={kap('risiko')} navn="Risiko" under="de største truslene – og tiltakene mot dem" />
-        <Inn i={1}><H2 maks="22ch">Fire ting kan velte planen. Alle fire er tallfestet.</H2></Inn>
+        <Kapittel nr={kap('risiko')} navn="Risiko" under="de fire viktigste risikoene, med tiltak" />
+        <Inn i={1}><H2 maks="24ch">De største risikoene – og hvordan vi håndterer dem.</H2></Inn>
         <div className="mt-10 grid gap-x-14 gap-y-10 md:grid-cols-2">
           {(() => {
             const celle = (cac, org) => variabelMatrise?.[ORG_AKSE.indexOf(org)]?.[CAC_AKSE.indexOf(cac)];
