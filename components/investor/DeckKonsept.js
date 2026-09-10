@@ -23,6 +23,7 @@ import { T, display, EASE, DIM, SVAK, HAIR } from '@/components/forside/v4/token
 import HeroScene from '@/components/forside/v4/HeroScene';
 import HeroStage, { FILM as HERO_FILM } from '@/components/forside/v4/HeroStage';
 import LosningFilm from '@/components/investor/LosningFilm';
+import Leieforhold from '@/components/admin/Leieforhold';
 import {
   beregnInvestorModell, beregnTech, beregnKonsernSammenstilling, rensModellDrivere, rensTechDrivere, rensTechFakta, skalerVekst,
 } from '@/lib/budsjett-modell';
@@ -89,12 +90,18 @@ function usePrint() {
 /* ══════════════════════════ Primitiver ══════════════════════════ */
 /* Ett kapittel = ett lag som fyller skjermen. pos: 'aktiv' | 'over' | 'under' styrer inn/ut-bevegelsen
    (CSS i roten). Innholdet kan være høyere enn skjermen – da scroller kapitlet innvendig. */
-function Side({ id, children, morkt = false, aktiv = false, pos = 'under', bred = false, full = false }) {
+function Side({ id, children, morkt = false, aktiv = false, pos = 'under', bred = false, full = false, flush = false }) {
   return (
     <section id={`deck-${id}`} data-aktiv={aktiv ? '1' : '0'} data-pos={pos} className="deck-side" style={{ background: morkt ? T.charcoal : T.canvas, color: morkt ? T.offwhite : T.ink }} data-testid={`deck-${id}`} aria-hidden={pos === 'aktiv' ? undefined : 'true'}>
-      <div className="deck-side-indre flex min-h-full flex-col justify-center px-6 pb-24 pt-20 sm:px-10 lg:px-16">
-        <div className={`mx-auto w-full ${full ? 'max-w-[1640px]' : bred ? 'max-w-[1360px]' : 'max-w-[1180px]'}`}>{children}</div>
-      </div>
+      {flush ? (
+        <div className="deck-side-indre flex min-h-full flex-col px-4 pb-16 pt-14 sm:px-6 lg:px-8">
+          <div className="mx-auto flex min-h-0 w-full max-w-[1760px] flex-1 flex-col">{children}</div>
+        </div>
+      ) : (
+        <div className="deck-side-indre flex min-h-full flex-col justify-center px-6 pb-24 pt-20 sm:px-10 lg:px-16">
+          <div className={`mx-auto w-full ${full ? 'max-w-[1640px]' : bred ? 'max-w-[1360px]' : 'max-w-[1180px]'}`}>{children}</div>
+        </div>
+      )}
     </section>
   );
 }
@@ -960,6 +967,7 @@ const KAPITLER = [
   { id: 'struktur', navn: 'Motoren' },
   { id: 'org', navn: 'Organisasjon' },
   { id: 'staar', navn: 'Hvor vi står' },
+  { id: 'portefolje', navn: 'Porteføljen' },
   { id: 'unit', navn: 'Unit economics' },
   { id: 'gtm', navn: 'Go-to-market' },
   { id: 'plan-dh', navn: 'Planen · Digihome AS' },
@@ -1410,6 +1418,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   const er = (id) => print || sider[side] === id || (utgaaende !== null && sider[utgaaende] === id);
   const posFor = (i) => (i === side ? 'aktiv' : i < side ? 'over' : 'under');
   const pos = (id) => posFor(sider.indexOf(id));
+  // Porteføljen er en tung, interaktiv flate — monter den først når kapitlet besøkes (ytelse),
+  // og hold den montert etterpå så filtre/tilstand og cache beholdes.
+  const [pfBesokt, setPfBesokt] = useState(false);
+  useEffect(() => { if (er('portefolje')) setPfBesokt(true); }, [side, utgaaende]); // eslint-disable-line
 
   /* ── Tilstander før data ── */
   if (trengerPin !== null) {
@@ -2068,6 +2080,35 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           </div>
         </div>
       </Side>
+
+      {/* Porteføljen · live leieforhold fra plattformen (samme visning og filtre som i driftsportalen) */}
+      <Side id="portefolje" pos={pos('portefolje')} aktiv={er('portefolje')} full flush>
+        <div className="mb-3 flex shrink-0 flex-wrap items-end justify-between gap-3">
+          <Kapittel nr={kap('portefolje')} navn="Porteføljen" under="live fra plattformen" />
+          <span className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: SVAK }}>
+            <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: LILLA_M }} /><span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: LILLA_M }} /></span>
+            Sanntid · samme data som driftsteamet ser
+          </span>
+        </div>
+        <div className="min-h-0 flex-1 overflow-hidden rounded-2xl bg-white" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 34px 80px -46px rgba(21,19,15,0.34)` }}>
+          {adminKey ? (
+            pfBesokt ? (
+              <div className="h-full overflow-y-auto overscroll-contain">
+                <Leieforhold apiKey={adminKey} readOnly />
+              </div>
+            ) : (
+              <div className="flex h-full items-center justify-center text-[13px]" style={{ color: SVAK }}>Laster porteføljen …</div>
+            )
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
+              <Table2 className="h-7 w-7" style={{ color: SVAK }} strokeWidth={1.6} />
+              <p className="text-[16px] font-semibold" style={{ color: T.ink }}>Live portefølje</p>
+              <p className="max-w-[46ch] text-[13.5px] leading-[1.55]" style={{ color: DIM }}>Hele porteføljen – med samme filtre og nøkkeltall som driftsteamet – vises når decket kjøres i presentasjonsmodus.</p>
+            </div>
+          )}
+        </div>
+      </Side>
+
 
       {/* 07 · Unit economics (mørk) */}
       <Side id="unit" pos={pos('unit')} morkt aktiv={er('unit')} bred>

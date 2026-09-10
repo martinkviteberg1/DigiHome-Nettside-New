@@ -1674,3 +1674,11 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - ADMIN-UI: ny meny «Regnskap (faktisk)» i Ledelse-gruppen (/admin/regnskap), ikon Receipt. RegnskapModul importert + rendret på section==='regnskap'.
 - VERIFISERT mot ekte PowerOffice DEMO (testklient «Shd Eiendom AS»): testagent 8/8 bestått — masking, tilkoblings-validering før lagring, flerselskap-CRUD, resultat 2026 (55 500 inntekt), saldobalanse, auth 401. Merk: ar med tom/gammel data kan gi 502 (demo-API timeout) — uvesentlig.
 - GJENSTÅR: frontend-test av admin-modulen (venter på brukertillatelse). Bruker skal legge inn ekte klientnøkler for DigiHome AS + Tech AS (prod) når klart; prod-nøkler ligger allerede delvis i env-mal (må aktiveres).
+
+## Oppdatering 10. sep 2026 (20) — Porteføljen (live Leieforhold) som deck-slide
+- Bruker: «legg leieforhold-siden inn på en slide i decket, verdensklasse, skal se likt ut med samme filtervalg etc. tenk selv ikke spør».
+- LØSNING: gjenbruker den EKTE `components/admin/Leieforhold.js` (samme visning, filtre «Alle/Utleid/Fremtidig/Under signering/Annonsert/Ledig», søk, KPI-kort, tabell) inne i en ny deck-slide.
+- DeckKonsept.js: import Leieforhold; ny KAPITTEL `portefolje` (Porteføljen) etter `staar`; ny `flush`-modus på `Side` (ikke sentrert, mindre padding, fyller høyden); slide med slim kicker + live-puls + innrammet «app-vindu» (rounded, skygge) som scroller internt.
+- YTELSE: lazy-montering — `pfBesokt`-state slår på når kapitlet først besøkes, holdes montert etterpå (beholder filtre + klient-cache). Leieforhold henter `/api/admin/leieforhold*` med deckets adminKey.
+- PII/tilgang: live portefølje vises KUN i presentasjonsmodus (adminKey til stede = eier presenterer). Eksterne token-lenker (investorrom/delt) får en pen fallback («vises i presentasjonsmodus») → ingen leietaker-PII lekker til delte lenker.
+- VERIFISERT skjermbilde: desktop 1920 (full tabell, filtre, KPI honorar 35 162/mnd, leie 385 800/mnd, utleiegrad 50 %, hasTable=true, overflowY=52) + mobil 390 (Leieforholds egne kort, pageOverflowX=false). Kompilerer rent. Ingen backend-endring. IKKE brukerbekreftet visuelt.
