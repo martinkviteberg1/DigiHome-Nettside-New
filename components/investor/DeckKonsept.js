@@ -1,10 +1,10 @@
 'use client';
 /* ─────────────────────────────────────────────────────────────────────────────
-   DeckKonsept — DigiHomes investordeck for HELE konseptet, med levende budsjetter.
+   DeckKonsept – DigiHomes investordeck for HELE konseptet, med levende budsjetter.
 
    · Én URL, tre roller: presenter (admin-sesjon via ?key=), investorrom-lenke (?t=) eller
      ren ekstern lenke (/deck/<token>, låst til én plan, valgfritt passord). Samme motorer
-     som budsjettmodulen (lib/budsjett-modell.js) — alt regnes i nettleseren, ingenting lagres.
+     som budsjettmodulen (lib/budsjett-modell.js) – alt regnes i nettleseren, ingenting lagres.
    · 17 kapitler: Forside (m/ «kort fortalt») → Hvorfor → Markedet → Konseptet → For hvem →
      Strukturen → Organisasjon → Hvor vi står → Unit economics → Go-to-market → Planen Digihome AS
      → Planen Tech → Konsern (m/ skatt) → Den ene variabelen (CAC × organisk) → Hva om → Risiko
@@ -14,7 +14,7 @@
      tall teller opp, grafer bygger seg fra grunnlinjen, strømmer pulserer.
    · Navigasjon: deterministisk kapittelmotor (ikke CSS scroll-snap): én gest = ett kapittel.
      Hjul/styreflate med treghetsdeteksjon, sveip på touch, tastatur (↑↓ ←→ PgUp/PgDn Home
-     End, N = notater). Kapitler høyere enn skjermen scroller innvendig først — så byttes
+     End, N = notater). Kapitler høyere enn skjermen scroller innvendig først – så byttes
      kapittel. Fremdriftslinje øverst, kapittelvelger, #hash for dyplenke. Print = PDF.
    ───────────────────────────────────────────────────────────────────────────── */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -88,7 +88,7 @@ function usePrint() {
 
 /* ══════════════════════════ Primitiver ══════════════════════════ */
 /* Ett kapittel = ett lag som fyller skjermen. pos: 'aktiv' | 'over' | 'under' styrer inn/ut-bevegelsen
-   (CSS i roten). Innholdet kan være høyere enn skjermen — da scroller kapitlet innvendig. */
+   (CSS i roten). Innholdet kan være høyere enn skjermen – da scroller kapitlet innvendig. */
 function Side({ id, children, morkt = false, aktiv = false, pos = 'under', bred = false, full = false }) {
   return (
     <section id={`deck-${id}`} data-aktiv={aktiv ? '1' : '0'} data-pos={pos} className="deck-side" style={{ background: morkt ? T.charcoal : T.canvas, color: morkt ? T.offwhite : T.ink }} data-testid={`deck-${id}`} aria-hidden={pos === 'aktiv' ? undefined : 'true'}>
@@ -106,7 +106,7 @@ const Kapittel = ({ nr, navn, under, morkt = false }) => (
     <span className="text-[12.5px] font-medium tracking-[0.01em]" style={{ color: morkt ? LYS_SVAK : SVAK }}>{navn}{under ? <span style={{ color: morkt ? 'rgba(244,241,234,0.35)' : 'rgba(21,19,15,0.35)' }}> · {under}</span> : null}</span>
   </Inn>
 );
-/* H2 avsløres ord for ord (som forsidens hero) når kapitlet er aktivt — bare for rene tekststrenger. */
+/* H2 avsløres ord for ord (som forsidens hero) når kapitlet er aktivt – bare for rene tekststrenger. */
 const H2 = ({ children, morkt = false, maks = '16ch', className = '' }) => {
   const ord = typeof children === 'string' ? children.split(' ') : null;
   return (
@@ -134,7 +134,7 @@ function Punktfelt({ enheterPlan = 0, marked = 570000, kol = 36, rader = 10, mor
     </svg>
   );
 }
-/* Markedsfelt — markedets skala som ett felt: hver prikk ≈ 850 husholdninger. De lilla er 1 % (5 700 enheter);
+/* Markedsfelt – markedets skala som ett felt: hver prikk ≈ 850 husholdninger. De lilla er 1 % (5 700 enheter);
    den ringede, glødende prikken er planen (≈0,07 %). En myk lilla glød løfter 1 %-klyngen. Radene tones inn i takt
    når kapitlet er aktivt (.deck-inn). Poenget leses på et blunk: ambisjonen er en brøkdel av markedet. */
 function Markedsfelt({ enheterPlan = 0, marked = 570000, kol = 42, rader = 16 }) {
@@ -188,7 +188,7 @@ function MarkedLegende({ sw, ring = false, over, v, u, fremhev = false }) {
     </div>
   );
 }
-/* Bane: akkumulert kontantstrøm (etter skatt) som «rullebane» — bunnen markeres, kapitalen som hentes vises som bånd. */
+/* Bane: akkumulert kontantstrøm (etter skatt) som «rullebane» – bunnen markeres, kapitalen som hentes vises som bånd. */
 function Bane({ serie, kapital, bunnIdx, startYm, N, aktiv = true, hoyde = 220, bredde = 1000 }) {
   const mål = useMemo(() => Array.from({ length: N }, (_, i) => (aktiv ? (serie[i] || 0) : 0)), [serie, N, aktiv]);
   const v = useTween(mål, 1000);
@@ -219,7 +219,7 @@ function Bane({ serie, kapital, bunnIdx, startYm, N, aktiv = true, hoyde = 220, 
   );
 }
 const Etikett = ({ children, farge = SVAK, className = '' }) => <p className={`text-[12.5px] font-medium ${className}`} style={{ color: farge }}>{children}</p>;
-/* Ingress under H2 — samme stemme som forsidens seksjonsingresser. */
+/* Ingress under H2 – samme stemme som forsidens seksjonsingresser. */
 const Ingress = ({ children, morkt = false, i = 2, maks = '46ch', className = '' }) => <Inn i={i}><p className={`mt-6 text-[16px] leading-[1.55] sm:text-[18px] ${className}`} style={{ color: morkt ? LYS : DIM, maxWidth: maks }}>{children}</p></Inn>;
 /* Redaksjonelt oppsett som forsiden: overskrift + ingress til venstre (5/12), innholdet til høyre (7/12). Stables på mobil. */
 const Todelt = ({ venstre, children, className = '', bredHoyre = false }) => (
@@ -228,7 +228,7 @@ const Todelt = ({ venstre, children, className = '', bredHoyre = false }) => (
     <div className={bredHoyre ? 'lg:col-span-8' : 'lg:col-span-7'}>{children}</div>
   </div>
 );
-/* Hårlinje-kolonne som forsidens «veiskille»: ikon, tittel i display, tekst, hårlinjerader. Ingen boks — luft og hårlinjer. */
+/* Hårlinje-kolonne som forsidens «veiskille»: ikon, tittel i display, tekst, hårlinjerader. Ingen boks – luft og hårlinjer. */
 const Kolonne = ({ i = 0, ikon: Ikon, over, tittel, tekst, rader = [], morkt = false, fot, className = '', testid }) => (
   <Inn i={i} className={`border-t pt-5 ${className}`} style={{ borderColor: morkt ? LYS_HAIR : HAIR }} data-testid={testid}>
     {(Ikon || over) ? <p className="flex items-center gap-2 text-[12.5px] font-medium" style={{ color: morkt ? T.lilla : LILLA_M }}>{Ikon ? <Ikon className="h-4 w-4" /> : null}{over}</p> : null}
@@ -349,7 +349,7 @@ function LagGraf({ lag, kost, beIdx, startYm, N, hoyde = 340, bredde = 1000, kom
   const [hov, setHov] = useState(null);
   const W = bredde; const H = hoyde; const padL = 52; const padR = 12; const padT = 26; const padB = 30;
   const topp = Array.from({ length: N }, (_, i) => serier.reduce((s, sr) => s + (sr[i] || 0), 0));
-  // Aksen følger de reelle verdiene (ikke de tweenede) — søylene vokser mot en stabil skala
+  // Aksen følger de reelle verdiene (ikke de tweenede) – søylene vokser mot en stabil skala
   const toppReell = Array.from({ length: N }, (_, i) => lag.reduce((s, l) => s + Math.max(0, l.serie[i] || 0), 0));
   const maks = Math.max(1, ...toppReell, ...kost) * 1.12;
   const x = (i) => padL + ((W - padL - padR) * (i + 0.5)) / N;
@@ -417,7 +417,7 @@ function Payback({ mnd, maks = 24, cacDeler, bidrag, ltvCac, morkt = true, aktiv
         <span className="absolute inset-y-0 right-2 flex items-center text-[11px]" style={{ color: morkt ? LYS_SVAK : SVAK }}>{maks} mnd</span>
       </div>
       <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12px]">
-        <span className="text-[18px] font-medium" style={{ ...display, letterSpacing: '-0.02em', color: morkt ? T.offwhite : T.ink }}>{mnd ? `${nb(mnd, 1)} mnd` : '—'}</span>
+        <span className="text-[18px] font-medium" style={{ ...display, letterSpacing: '-0.02em', color: morkt ? T.offwhite : T.ink }}>{mnd ? `${nb(mnd, 1)} mnd` : '–'}</span>
         <span style={{ color: morkt ? LYS_SVAK : SVAK }}>bidrag {kr(bidrag)}/mnd</span>
         {cacDeler.map((d) => <span key={d.l} className="flex items-center gap-1.5" style={{ color: morkt ? LYS_SVAK : SVAK }}><span className="h-2 w-2 rounded-[2px]" style={{ background: d.f }} />{d.l} {kr(d.v)}</span>)}
       </div>
@@ -482,8 +482,8 @@ function Strukturdiagram({ basisT, basisF, prisHuseier }) {
       <Inn i={2}>
         <Node tittel="Plattformkunder" under="Huseiere og eiendomsselskaper" ikon={Home} barn={
           <dl className="mt-3 border-t" style={{ borderColor: HAIR }}>
-            <DlRad l="Huseier · selvbetjent" v={prisHuseier || '—'} />
-            <DlRad l="Eiendomsselskap · per enhet" v={basisT ? `${kr(basisT.bedrift.pris)}/mnd` : '—'} />
+            <DlRad l="Huseier · selvbetjent" v={prisHuseier || '–'} />
+            <DlRad l="Eiendomsselskap · per enhet" v={basisT ? `${kr(basisT.bedrift.pris)}/mnd` : '–'} />
           </dl>
         } />
       </Inn>
@@ -552,7 +552,7 @@ function Svinghjul() {
         <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" fill="none" aria-hidden="true">
           {/* 1) ringen tegner seg inn når kapitlet åpnes */}
           <circle className="deck-hjul-tegn" cx="50" cy="50" r={R} stroke="rgba(122,63,168,0.22)" strokeWidth="1.3" strokeLinecap="round" strokeDasharray="226.2" vectorEffect="non-scaling-stroke" />
-          {/* 2) stiplet ring som ruller — hjulet går */}
+          {/* 2) stiplet ring som ruller – hjulet går */}
           <circle className="deck-hjul-rot" cx="50" cy="50" r={R} stroke={LILLA_M} strokeWidth="1.3" strokeLinecap="round" strokeDasharray="0.6 6" vectorEffect="non-scaling-stroke" />
           {/* retning: med klokka */}
           {chevrons.map((a) => {
@@ -615,13 +615,14 @@ function Person({ p, liten = false, rolle }) {
     </div>
   );
 }
-/* Stort, redaksjonelt portrettkort: foto med navn/rolle brent inn nederst + én drepende referanse under. */
-function PortrettKort({ p, rolle, cred }) {
+/* Stort, redaksjonelt portrettkort: foto med navn/rolle brent inn nederst + én drepende referanse under.
+   zoom + zoomPos lar oss croppe tettere på ansiktet (matche innramming på tvers av bilder). */
+function PortrettKort({ p, rolle, cred, zoom = 1, zoomPos = '50% 24%' }) {
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-[20px] bg-white" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 24px 50px -28px rgba(21,19,15,0.3)` }}>
       <div className="relative aspect-[4/5] w-full overflow-hidden" style={{ background: T.charcoal }}>
         {p.img
-          ? <img src={p.img} alt={p.n} className="h-full w-full object-cover" style={{ objectPosition: p.pos }} loading="lazy" />
+          ? <img src={p.img} alt={p.n} className="h-full w-full object-cover" style={{ objectPosition: p.pos, transform: zoom !== 1 ? `scale(${zoom})` : undefined, transformOrigin: zoomPos }} loading="lazy" />
           : <span className="flex h-full w-full items-center justify-center text-[28px] font-semibold" style={{ color: T.offwhite }}>{p.n.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join('')}</span>}
         <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-2/5" style={{ background: 'linear-gradient(180deg, transparent, rgba(17,15,12,0.72))' }} />
         <div className="absolute inset-x-0 bottom-0 p-4">
@@ -643,7 +644,7 @@ function OrgKart({ aarsverkStart, aarsverkSlutt, utviklingPerMnd, enheterPerAars
   );
   return (
     <div className="relative mx-auto max-w-[1080px]" data-testid="deck-orgkart">
-      {/* Styret — felles for begge selskaper: Erik (leder), Jens-Petter, Sarah, Martin */}
+      {/* Styret – felles for begge selskaper: Erik (leder), Jens-Petter, Sarah, Martin */}
       <Inn i={2} className="mx-auto max-w-[1000px]">
         <Boks testid="deck-org-styret">
           <p className="flex items-baseline justify-between text-[11.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: SVAK }}>Styret <span className="font-medium normal-case tracking-normal" style={{ color: LILLA_M }}>felles for Digihome AS og Digihome Tech AS</span></p>
@@ -703,7 +704,7 @@ function OrgKart({ aarsverkStart, aarsverkSlutt, utviklingPerMnd, enheterPerAars
 }
 
 /* ══════════════════════════ Slide 02 · problemet (DigiHome-stil) ══════════════════════════ */
-/* Bygget som motstykket til «Utleie på autopilot»: ett varmt, kinematisk bolig-foto med ett rolig, elegant overlay —
+/* Bygget som motstykket til «Utleie på autopilot»: ett varmt, kinematisk bolig-foto med ett rolig, elegant overlay –
    Autopilot står AV, alt gjøres for hånd. Ingen busy kort/lister eller mørke paneler; nydelig foto, ett glass-kort,
    deckets lilla-signatur. Detaljene (begge segmenter, AI, kostnaden) bæres i teksten til venstre. Rolig entré. */
 function ManueltIDag() {
@@ -781,7 +782,7 @@ function KjerneStage({ domener, core, height, chipMobil = false, variant = 'losn
   );
 }
 /* ══════════════════════════ Slide 03 · løsningen (DigiHome-stil) ══════════════════════════ */
-/* «AI-motoren» — sitt helt egne konsept (ikke foto+toggle). De fire driftsområdene strømmer inn i én glødende,
+/* «AI-motoren» – sitt helt egne konsept (ikke foto+toggle). De fire driftsområdene strømmer inn i én glødende,
    pulserende DigiHome AI-kjerne (lys som flyter langs linjene). Viser «ett AI-drevet system som driver alt», og er
    den visuelle motsetningen til fragmenteringen på Hvorfor. Bue-inn på desktop, kompakt ring på mobil. */
 function LosningKjerne() {
@@ -794,8 +795,8 @@ function LosningKjerne() {
     </div>
   );
 }
-/* Slide 02 · problemet — «Utleie mangler et system». Det direkte motstykket til Løsningen: de fire driftsområdene
-   (Leietakere, Kontrakter, Husleie, Drift) lever i hvert sitt frakoblede, manuelle verktøy — og det eneste som binder
+/* Slide 02 · problemet – «Utleie mangler et system». Det direkte motstykket til Løsningen: de fire driftsområdene
+   (Leietakere, Kontrakter, Husleie, Drift) lever i hvert sitt frakoblede, manuelle verktøy – og det eneste som binder
    dem sammen er DU. Manuelle (stiplede) tråder løper fra verktøyene inn til et slitent «Du er systemet»-nav i midten.
    Der Løsningen har en glødende AI-kjerne, har Hvorfor et menneske som må gjøre alt for hånd. */
 function FragStage({ domener, core, height, kompakt = false, aktiv = false, id = 'd' }) {
@@ -817,7 +818,7 @@ function FragStage({ domener, core, height, kompakt = false, aktiv = false, id =
   const c = P(core);
   const bane = (d) => { const a = P(d); return `M ${a.x} ${a.y} C ${a.x} ${(a.y + c.y) / 2}, ${c.x} ${(a.y + c.y) / 2}, ${c.x} ${c.y}`; };
   const kjerne = kompakt ? 102 : 136;
-  const DUR = 3.0; const STEG = 0.75;   // én oppgave lander hvert 0,75 s — jevnt, uten pause
+  const DUR = 3.0; const STEG = 0.75;   // én oppgave lander hvert 0,75 s – jevnt, uten pause
   return (
     <div ref={ref} className="relative w-full" style={{ height }} data-testid="deck-fragment">
       {W > 0 ? (
@@ -825,7 +826,7 @@ function FragStage({ domener, core, height, kompakt = false, aktiv = false, id =
           {domener.map((d, i) => (
             <path key={d.navn} id={`frag-${id}-${i}`} className="deck-frag-trad" d={bane(d)} stroke="rgba(21,19,15,0.2)" strokeWidth="1.4" strokeLinecap="round" />
           ))}
-          {/* Oppgavene som lander på deg: små varme punkter glir langs trådene inn til navet — hele tiden, én etter én.
+          {/* Oppgavene som lander på deg: små varme punkter glir langs trådene inn til navet – hele tiden, én etter én.
               Kun når sliden er aktiv (ytelse). */}
           {aktiv ? domener.map((d, i) => (
             <g key={`${d.navn}-p`} data-testid="deck-frag-oppgave">
@@ -841,7 +842,7 @@ function FragStage({ domener, core, height, kompakt = false, aktiv = false, id =
           )) : null}
         </svg>
       ) : null}
-      {/* Verktøy-brikker — hvert driftsområde i sitt eget frakoblede verktøy */}
+      {/* Verktøy-brikker – hvert driftsområde i sitt eget frakoblede verktøy */}
       {domener.map((d) => (
         <div key={d.navn} className="deck-inn absolute" style={{ '--i': 3, left: `${d.x}%`, top: `${d.y}%`, transform: 'translate(-50%,-50%)' }}>
           <span className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 18px 42px rgba(21,19,15,0.10)` }}>
@@ -853,7 +854,7 @@ function FragStage({ domener, core, height, kompakt = false, aktiv = false, id =
           </span>
         </div>
       ))}
-      {/* Navet i dag: deg — mennesket som kobler alt sammen for hånd. Rolig, ren node (ikke alarm-rød). */}
+      {/* Navet i dag: deg – mennesket som kobler alt sammen for hånd. Rolig, ren node (ikke alarm-rød). */}
       <div className="deck-inn absolute" style={{ '--i': 4, left: `${core.x}%`, top: `${core.y}%`, transform: 'translate(-50%,-50%)' }}>
         <div className="flex flex-col items-center text-center">
           <div className="relative flex items-center justify-center">
@@ -862,8 +863,8 @@ function FragStage({ domener, core, height, kompakt = false, aktiv = false, id =
               <User style={{ height: kompakt ? 30 : 40, width: kompakt ? 30 : 40, color: T.ink }} strokeWidth={1.4} />
             </div>
           </div>
-          <p className="mt-5 text-[15.5px] font-semibold" style={{ color: T.ink }}>Alt havner hos deg</p>
-          <p className="mt-1 text-[12.5px]" style={{ color: SVAK, maxWidth: '26ch' }}>du kobler verktøyene sammen manuelt</p>
+          <p className="mt-5 text-[15.5px] font-semibold" style={{ color: T.ink }}>Alt havner hos utleieren</p>
+          <p className="mt-1 text-[12.5px]" style={{ color: SVAK, maxWidth: '26ch' }}>som kobler verktøyene sammen manuelt</p>
         </div>
       </div>
     </div>
@@ -893,7 +894,7 @@ function FragmentKjerne({ aktiv = false }) {
 
 
 /* ══════════════════════════ DigiHome-merket (offisiell logo) ══════════════════════════ */
-/* Lilla squircle med de åtte strøkene — brukt i den cinematiske introen. Strøkene toner inn ett og ett (kun opacity,
+/* Lilla squircle med de åtte strøkene – brukt i den cinematiske introen. Strøkene toner inn ett og ett (kun opacity,
    så SVG-matrisen på hver rect beholdes). */
 const DH_STROK = [[45.0359, 36.7341], [42.5159, 51.0244], [47.5559, 22.4436], [18.6284, 36.7341], [29.3123, 51.0244], [34.3521, 22.4436], [16.1084, 51.0244], [21.1484, 22.4436]];
 function DhIkon({ px = 88, className = '', style, animer = false }) {
@@ -916,7 +917,8 @@ const KAPITLER = [
   { id: 'marked', navn: 'Markedet' },
   { id: 'konsept', navn: 'Konseptet' },
   { id: 'hvem', navn: 'For hvem' },
-  { id: 'struktur', navn: 'Strukturen' },
+  { id: 'eier', navn: 'Strukturen' },
+  { id: 'struktur', navn: 'Motoren' },
   { id: 'org', navn: 'Organisasjon' },
   { id: 'staar', navn: 'Hvor vi står' },
   { id: 'unit', navn: 'Unit economics' },
@@ -924,6 +926,8 @@ const KAPITLER = [
   { id: 'plan-dh', navn: 'Planen · Digihome AS' },
   { id: 'plan-tech', navn: 'Planen · Tech' },
   { id: 'konsern', navn: 'Konsern' },
+  { id: 'kpi', navn: 'Nøkkeltall' },
+  { id: 'budsjett', navn: 'Budsjett' },
   { id: 'variabel', navn: 'Den ene variabelen' },
   { id: 'hvaom', navn: 'Hva om' },
   { id: 'risiko', navn: 'Risiko' },
@@ -935,6 +939,7 @@ const NOTATER = {
   losning: 'Svaret på forrige slide: ett AI-drevet system tar over hele driften. «Autopilot AV» blir «Autopilot PÅ». Høyt nivå her – detaljene kommer i Konseptet.',
   konsept: 'La scenen spille. Pek på at eieren bare trykker én gang – resten skjer.',
   hvem: 'To kundegrupper, samme system. Den private eieren velger selv eller forvalter; eiendomsselskapet får hele porteføljen på én plattform – per enhet.',
+  eier: 'Enkelt: Digihome Group AS eier begge selskapene 100 %. Digihome AS er forvaltningen (mennesker, margin), Digihome Tech AS er programvaren (skalerer). Lisensen mellom dem nulles ut i konsernregnskapet.',
   struktur: 'Poenget: forvaltningen er Techs største kunde i dag, og et salgsapparat for plattformen i morgen. Lisensen telles én gang i konsernet.',
   org: 'Fire fagfelt kjent fra innsiden. Bemanningen i forvaltningen vokser med porteføljen – ikke før.',
   staar: 'Fakta fra signerte kontrakter – oppdateres hver gang decket åpnes.',
@@ -1112,7 +1117,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
     return () => mq.removeEventListener('change', oppd);
   }, []);
 
-  /* Cinematisk intro: DigiHome-merket + «Utleie på autopilot.» på lys flate — så MORFER tittelen (FLIP: måles og reiser
+  /* Cinematisk intro: DigiHome-merket + «Utleie på autopilot.» på lys flate – så MORFER tittelen (FLIP: måles og reiser
      med translate+scale) rett til sin plass på forsiden, mens lyset toner til mørke, merket «skyves gjennom» og
      kamera trekker seg rolig tilbake i scenen. Tittelen lander → resten av forsiden bygger seg rundt den.
      Én gang, kun når man åpner på forsiden. Hopp over ved print, dyplenke eller redusert bevegelse. Klikk/tast hopper.
@@ -1135,7 +1140,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
         el.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${s.toFixed(4)})`;
       });
-    } catch (e) { /* morph er kosmetisk — la resten kjøre uansett */ }
+    } catch (e) { /* morph er kosmetisk – la resten kjøre uansett */ }
     setIntroUt(true);
     window.setTimeout(() => setVisIntro(false), 1200);
   }, []);
@@ -1250,7 +1255,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
     setUtgaaende(naa); setSide(ny);
   }, [sider, seksjon]);
   useEffect(() => { if (utgaaende === null) return undefined; const t = window.setTimeout(() => setUtgaaende(null), 880); return () => window.clearTimeout(t); }, [utgaaende, side]);
-  /* Dyplenke: #kapittel i URL — leses ved start, oppdateres ved bytte, og følges ved hashchange. */
+  /* Dyplenke: #kapittel i URL – leses ved start, oppdateres ved bytte, og følges ved hashchange. */
   useEffect(() => {
     if (!data) return undefined;
     const h = (window.location.hash || '').replace('#', ''); const i = sider.indexOf(h);
@@ -1280,7 +1285,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   }, [gaaTil, sider, data?.presenter, visDeling]);
   /* Hjul/styreflate: én gest = ett kapittel. Treghets-halen (avtagende delta, tette hendelser) gjenkjennes og
      ignoreres; en ny gest starter når det har vært stille i 160 ms ELLER delta plutselig øker igjen.
-     Er kapitlet høyere enn skjermen, scroller det innvendig til kanten først — og en gest som har scrollet
+     Er kapitlet høyere enn skjermen, scroller det innvendig til kanten først – og en gest som har scrollet
      innvendig bytter aldri kapittel (ny gest kreves). */
   useEffect(() => {
     const rot = rotRef.current; if (!rot || !data) return undefined;
@@ -1373,8 +1378,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       <div className="flex min-h-[100svh] items-center justify-center px-6" style={{ background: T.canvas, color: T.ink }}>
         <form onSubmit={sendPin} className="w-full max-w-[380px]" data-testid="deck-pin">
           <p className="flex items-center gap-2 text-[13.5px] font-medium" style={{ color: SVAK }}><Lock className="h-3.5 w-3.5" /> Konfidensielt</p>
-          <h1 className="mt-3 text-[36px]" style={{ ...display, color: T.ink }}>DigiHome — planen{trengerPin ? <span className="block text-[20px]" style={{ color: DIM, letterSpacing: '-0.01em', lineHeight: 1.3 }}>for {trengerPin}</span> : null}</h1>
-          <p className="mt-4 text-[15px]" style={{ color: DIM }}>Lenken er personlig og passordbeskyttet. Passordet er sendt deg separat.</p>
+          <h1 className="mt-3 text-[36px]" style={{ ...display, color: T.ink }}>DigiHome – planen{trengerPin ? <span className="block text-[20px]" style={{ color: DIM, letterSpacing: '-0.01em', lineHeight: 1.3 }}>for {trengerPin}</span> : null}</h1>
+          <p className="mt-4 text-[15px]" style={{ color: DIM }}>Lenken er personlig og passordbeskyttet. Passordet er sendt separat.</p>
           <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="Passord" autoFocus data-testid="deck-pin-input" className="mt-6 h-[52px] w-full rounded-[14px] px-5 text-[16px] outline-none" style={{ background: '#FBFAF8', boxShadow: `inset 0 0 0 1px ${HAIR}`, color: T.ink }} />
           {pinFeil ? <p className="mt-2 text-[13px]" style={{ color: FARGE.kost }} data-testid="deck-pin-feil">{pinFeil}</p> : null}
           <button type="submit" className="mt-3 flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] text-[15px] font-medium" style={{ background: T.ink, color: T.offwhite }} data-testid="deck-pin-send">Åpne decket <ArrowRight className="h-4 w-4" strokeWidth={1.8} /></button>
@@ -1428,6 +1433,16 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   ].filter((d) => d.v > 0);
   const aarsverk = (t) => ((mF.budsjettertPct?.[t] || 0) / 100);
   const konsernLag = [{ navn: 'Digihome AS', serie: k.digihome.inntekt, farge: FARGE.dh }, { navn: 'Tech · ekstern', serie: k.tech.inntekt.map((v, i) => Math.max(0, v - (k.lisens[i] || 0))), farge: FARGE.tech }];
+  const enheterSlutt = Math.round(mF.enheter[N - 1] || 0);
+  const kpiGrid = [
+    { l: `boliger under forvaltning ved utgang – fra ${nb(enheterIDag)} i dag`, tall: enheterSlutt, format: (v) => nb(v) },
+    { l: 'konsernet går i pluss', tekst: be(sK.breakEvenIdx) },
+    { l: `kapital å hente – behov ${mnok(kapReell)} + 30 % buffer`, tall: kapBuffer, format: mnok },
+    { l: `driftsresultat${skattPaa ? ' etter skatt' : ''} over ${N} måneder`, tall: resReell, format: mnok, farge: resReell < 0 ? FARGE.kost : T.ink },
+    ...(saT?.bruttoMarginPct != null ? [{ l: 'bruttomargin i plattformen (Tech)', tekst: pct(saT.bruttoMarginPct) }] : []),
+    ...(uF?.paybackMnd != null ? [{ l: 'tilbakebetalt per ny forvaltet enhet', tekst: `${nb(uF.paybackMnd, 1)} mnd` }]
+      : (uT?.huseier?.ltvCac ? [{ l: 'LTV / CAC – selvbetjente huseiere', tekst: `${nb(uT.huseier.ltvCac, 1)}×` }] : [])),
+  ];
   const kap = (id) => KAPITLER.findIndex((c) => c.id === id) + 1;
 
   const ekstern = Boolean(token); // delt lenke (investorrom eller ren deck-lenke): ingen admin-valg
@@ -1436,17 +1451,17 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       <style>{`
         .deck-rot { position: fixed; inset: 0; overflow: hidden; overscroll-behavior: none; }
         .deck-side { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(21,19,15,0.18) transparent;
-          opacity: 0; visibility: hidden; pointer-events: none; transform: translate3d(0, var(--dy, 9vh), 0); will-change: opacity, transform;
-          transition: opacity 620ms ${EASE}, transform 840ms ${EASE}, visibility 0s linear 840ms; }
-        .deck-side[data-pos="over"] { --dy: -9vh; }
-        .deck-side[data-pos="under"] { --dy: 9vh; }
-        .deck-side[data-pos="aktiv"] { --dy: 0px; opacity: 1; visibility: visible; pointer-events: auto; z-index: 2; transition-delay: 0s, 0s, 0s; }
+          opacity: 0; visibility: hidden; pointer-events: none; transform: translate3d(0, var(--dy, 9vh), 0) scale(var(--sc, .982)); will-change: opacity, transform;
+          transition: opacity 640ms ${EASE}, transform 920ms ${EASE}, visibility 0s linear 920ms; }
+        .deck-side[data-pos="over"] { --dy: -8vh; }
+        .deck-side[data-pos="under"] { --dy: 8vh; }
+        .deck-side[data-pos="aktiv"] { --dy: 0px; --sc: 1; opacity: 1; visibility: visible; pointer-events: auto; z-index: 2; transition-delay: 0s, 0s, 0s; }
         .dh-slider { -webkit-appearance: none; appearance: none; height: 2px; background: rgba(21,19,15,0.14); border-radius: 2px; outline: none; }
         .dh-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: ${T.ink}; border: 3px solid ${T.offwhite}; box-shadow: 0 0 0 1px rgba(21,19,15,0.2); cursor: pointer; }
         .dh-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: ${T.ink}; border: 3px solid ${T.offwhite}; cursor: pointer; }
-        .deck-side .deck-inn { opacity: 0; transform: translateY(22px); transition: opacity 800ms ${EASE}, transform 800ms ${EASE}; transition-delay: calc(var(--i, 0) * 90ms + 120ms); }
+        .deck-side .deck-inn { opacity: 0; transform: translateY(26px) scale(.985); transition: opacity 900ms ${EASE}, transform 900ms ${EASE}; transition-delay: calc(var(--i, 0) * 100ms + 140ms); }
         .deck-side[data-aktiv="1"] .deck-inn { opacity: 1; transform: none; }
-        /* Slide 02 · «Autopilot AV» — kul, subtil bevegelse (kun på aktiv slide, av hensyn til ytelse):
+        /* Slide 02 · «Autopilot AV» – kul, subtil bevegelse (kun på aktiv slide, av hensyn til ytelse):
            toggelen prøver å slå seg PÅ og faller tilbake til AV, og fotoet får en langsom kinematisk zoom. */
         .deck-hv-foto { transform: scale(1); will-change: transform; }
         .deck-side[data-aktiv="1"] .deck-hv-foto { animation: deck-hv-foto 15s ${EASE} forwards; }
@@ -1455,7 +1470,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         @keyframes deck-hv-knob { 0%,55% { transform: translateX(0); } 72% { transform: translateX(22px); } 80% { transform: translateX(19px); } 92%,100% { transform: translateX(0); } }
         .deck-side[data-aktiv="1"] .deck-hv-spor { animation: deck-hv-spor 4.8s ${EASE} 900ms infinite; }
         @keyframes deck-hv-spor { 0%,55% { background-color: rgba(21,19,15,0.16); } 72% { background-color: rgba(139,92,246,0.5); } 80% { background-color: rgba(139,92,246,0.4); } 92%,100% { background-color: rgba(21,19,15,0.16); } }
-        /* Slide 03 · «AI-motoren» — driftsområdene strømmer inn i én glødende AI-kjerne. Lys flyter langs linjene, og
+        /* Slide 03 · «AI-motoren» – driftsområdene strømmer inn i én glødende AI-kjerne. Lys flyter langs linjene, og
            kjernen pulserer rolig. Kun på aktiv slide (ytelse). */
         .deck-los-stream { stroke-dasharray: 4 8; }
         .deck-side[data-aktiv="1"] .deck-los-stream { animation: deck-los-stream 1s linear infinite; }
@@ -1465,7 +1480,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         @keyframes deck-los-gloed { 0%,100% { opacity: .5; transform: scale(1); } 50% { opacity: .85; transform: scale(1.14); } }
 
         /* Hvorfor: trådene er statiske, stiplede (manuelle koblinger). Navet «Du» pulserer slitent. Oppgave-punktene
-           som glir inn til deg animeres i SVG (animateMotion) — kun rendret når sliden er aktiv. */
+           som glir inn til deg animeres i SVG (animateMotion) – kun rendret når sliden er aktiv. */
         .deck-frag-trad { stroke-dasharray: 2 5; }
         .deck-side[data-aktiv="1"] .deck-frag-puls { animation: deck-frag-puls 3.8s ${EASE} infinite; }
         @keyframes deck-frag-puls { 0%,100% { opacity: .5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
@@ -1496,22 +1511,32 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         @keyframes deck-spk-skinne { to { transform: scaleX(1); } }
         .deck-side[data-aktiv="1"] .deck-live-dot { animation: deck-live 1.8s ${EASE} infinite; }
         @keyframes deck-live { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.6); } }
+        /* Strukturen (konsern): linjene tegner seg fra mor til de to selskapene */
+        .deck-eier-v { transform: scaleY(0); transform-origin: top; }
+        .deck-eier-h { transform: scaleX(0); transform-origin: center; }
+        .deck-eier-p { opacity: 0; transform: scale(0); }
+        .deck-side[data-aktiv="1"] .deck-eier-v { animation: deck-eier-v .45s ${EASE} var(--d, 0s) both; }
+        .deck-side[data-aktiv="1"] .deck-eier-h { animation: deck-eier-h .5s ${EASE} var(--d, 0s) both; }
+        .deck-side[data-aktiv="1"] .deck-eier-p { animation: deck-eier-p .4s ${EASE} var(--d, 0s) both; }
+        @keyframes deck-eier-v { to { transform: scaleY(1); } }
+        @keyframes deck-eier-h { to { transform: scaleX(1); } }
+        @keyframes deck-eier-p { to { opacity: 1; transform: scale(1); } }
 
         .deck-side .deck-linje { --l: 0; transition: transform 700ms ${EASE} 500ms; }
         .deck-side[data-aktiv="1"] .deck-linje { --l: 1; }
-        .deck-ord { display: inline-block; opacity: 0; transform: translateY(0.35em); transition: opacity 700ms ${EASE}, transform 700ms ${EASE}; transition-delay: calc(var(--o, 0) * 70ms + 260ms); }
+        .deck-ord { display: inline-block; opacity: 0; transform: translateY(0.55em); transition: opacity 760ms ${EASE}, transform 760ms ${EASE}; transition-delay: calc(var(--o, 0) * 60ms + 260ms); }
         .deck-side[data-aktiv="1"] .deck-ord { opacity: 1; transform: none; }
         @keyframes deck-strom { to { stroke-dashoffset: -28; } }
         .deck-strom { stroke-dasharray: 6 8; animation: deck-strom 1.6s linear infinite; }
         @keyframes deck-nikk { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
         .deck-nikk { animation: deck-nikk 1.6s ${EASE} infinite; }
-        /* Toppverktøyene (PDF, Del, planvalg): rene, skjult i ro — de svever inn først når du hovrer over dem øverst
+        /* Toppverktøyene (PDF, Del, planvalg): rene, skjult i ro – de svever inn først når du hovrer over dem øverst
            til høyre (eller tab-fokuserer). På berøring (ingen hover) står de alltid fremme. */
         .deck-verktoy { opacity: 0; transform: translateY(-8px); transition: opacity 460ms ${EASE}, transform 460ms ${EASE}; pointer-events: none; }
         .deck-topp-group:hover .deck-verktoy, .deck-topp-group:focus-within .deck-verktoy { opacity: 1; transform: none; pointer-events: auto; }
         @media (hover: none) { .deck-verktoy { opacity: 1; transform: none; pointer-events: auto; } }
         /* Verktøyvifta (slide 02): løftede kort med dybde, viftet med små skjeve vinkler og overlapp. Hylsteret bærer
-           entré-animasjonen (deck-inn), kortet bærer rotasjonen — så de aldri kolliderer på samme transform. */
+           entré-animasjonen (deck-inn), kortet bærer rotasjonen – så de aldri kolliderer på samme transform. */
         .deck-kortvifte { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 6px; }
         .deck-kort-hylster { display: inline-flex; }
         .deck-kort { display: inline-flex; align-items: center; gap: 9px; padding: 9px 14px 9px 9px; border-radius: 15px; background: #FFFFFF; border: 1px solid rgba(21,19,15,0.06); box-shadow: 0 14px 30px -12px rgba(21,19,15,0.22), 0 2px 6px -2px rgba(21,19,15,0.08); transform: rotate(var(--rot, 0deg)); }
@@ -1551,23 +1576,23 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         }
 
         /* YTELSE: kun det aktive kapitlet skal «leve». Alle evige animasjoner i inaktive/skjulte slides stanses
-           (video pauses i JS). Uten dette dekoder cover-videoen og Konsept-scenen samtidig — det lagget. */
+           (video pauses i JS). Uten dette dekoder cover-videoen og Konsept-scenen samtidig – det lagget. */
         .deck-side:not([data-pos="aktiv"]), .deck-side:not([data-pos="aktiv"]) * { animation-play-state: paused !important; }
 
         /* Intro-hold på forsiden: forsidens tittel og innhold holdes tilbake til morphen har landet; scenen zoomer rolig ut (kamera). */
         .deck-rot[data-intro="1"] .deck-cover-tittel, .deck-rot[data-intro="ut"] .deck-cover-tittel { opacity: 0 !important; }
-        .deck-rot[data-intro="1"] .deck-side[data-aktiv="1"] .deck-inn, .deck-rot[data-intro="ut"] .deck-side[data-aktiv="1"] .deck-inn { opacity: 0; transform: translateY(22px); transition: none; }
+        .deck-rot[data-intro="1"] .deck-side[data-aktiv="1"] .deck-inn, .deck-rot[data-intro="ut"] .deck-side[data-aktiv="1"] .deck-inn { opacity: 0; transform: translateY(26px) scale(.985); transition: none; }
         .deck-cover-scene { transition: transform 1600ms cubic-bezier(0.22, 1, 0.36, 1); transform-origin: 62% 50%; }
         .deck-rot[data-intro="1"] .deck-cover-scene { transform: scale(1.06); }
         /* Coveren: merkets signaturbilde (eieren hjemme om kvelden), speilet så han står til høyre for teksten.
-           Et knapt merkbart, langsomt skyv innover mens kapitlet er aktivt — kino, ikke slideshow. */
+           Et knapt merkbart, langsomt skyv innover mens kapitlet er aktivt – kino, ikke slideshow. */
         .deck-cover-foto { transform: scaleX(-1) scale(1.02); transform-origin: 50% 50%; transition: transform 16s linear; filter: saturate(0.92); }
         .deck-side[data-aktiv="1"] .deck-cover-foto { transform: scaleX(-1) scale(1.08); }
         .deck-cover-strek { transform: scaleX(0); transform-origin: 0 50%; transition: transform 1200ms ${EASE} 900ms; }
         .deck-side[data-aktiv="1"] .deck-cover-strek { transform: scaleX(1); }
-        /* Coverens scene: forsidens HeroStage, men som sceneteppe — kant til kant, uten kortets radius/skygge/høydetak. */
+        /* Coverens scene: forsidens HeroStage, men som sceneteppe – kant til kant, uten kortets radius/skygge/høydetak. */
         .deck-cover-scene .dh-hero-scene { max-height: none !important; border-radius: 0 !important; box-shadow: none !important; }
-        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring, .deck-hjul-rot, .deck-hjul-tegn, .deck-hjul-orbit, .deck-hjul-lisens, .deck-spk-knott, .deck-spk-skinne, .deck-live-dot { animation: none !important; } .deck-hjul-tegn { stroke-dashoffset: 0 !important; } .deck-hjul-chev, .deck-hjul-orbit { opacity: 1 !important; } .deck-spk-skinne { transform: scaleX(1) !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
+        @media (prefers-reduced-motion: reduce) { .deck-side { transition: opacity 200ms linear, visibility 0s linear 200ms; transform: none !important; } .deck-side .deck-inn, .deck-ord { opacity: 1; transform: none; transition: none; } .deck-strom, .deck-nikk, .deck-hv-foto, .deck-hv-knob, .deck-hv-spor, .deck-los-stream, .deck-los-gloed, .deck-mkt-glow, .deck-mkt-ring, .deck-hjul-rot, .deck-hjul-tegn, .deck-hjul-orbit, .deck-hjul-lisens, .deck-spk-knott, .deck-spk-skinne, .deck-live-dot, .deck-eier-v, .deck-eier-h, .deck-eier-p { animation: none !important; } .deck-eier-v, .deck-eier-h, .deck-eier-p { transform: none !important; opacity: 1 !important; } .deck-hjul-tegn { stroke-dashoffset: 0 !important; } .deck-hjul-chev, .deck-hjul-orbit { opacity: 1 !important; } .deck-spk-skinne { transform: scaleX(1) !important; } .deck-side .deck-linje { --l: 1; transition: none; } .deck-cover-foto { transition: none; transform: scaleX(-1) scale(1.04); } .deck-cover-strek { transition: none; transform: scaleX(1); } }
         @media print { .deck-rot { position: static !important; overflow: visible !important; height: auto !important; } .deck-side { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; overflow: visible !important; page-break-after: always; } .deck-side-indre { min-height: auto !important; padding: 32px !important; } .deck-side .deck-inn, .deck-ord { opacity: 1 !important; transform: none !important; } .deck-side .deck-linje { --l: 1; } .deck-skjul-print { display: none !important; } }
       `}</style>
 
@@ -1595,7 +1620,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         <div className="h-full" style={{ width: `${((side + 1) / sider.length) * 100}%`, background: morkSide ? T.lilla : T.ink, transition: `width 600ms ${EASE}, background 500ms` }} />
       </div>
 
-      {/* Toppstripe: kapittel (alle) + handlinger (kun presenter) — skjules ved ro i presenter */}
+      {/* Toppstripe: kapittel (alle) + handlinger (kun presenter) – skjules ved ro i presenter */}
       <div className="deck-skjul-print pointer-events-none fixed inset-x-0 top-0 z-20 flex items-center justify-between px-5 pt-5 sm:px-8" style={{ opacity: musAktiv || side === 0 ? 1 : 0, transition: `opacity 500ms ${EASE}` }}>
         <button onClick={() => setVisKapitler((v) => !v)} className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-500" style={{ background: morkSide ? 'rgba(244,241,234,0.08)' : 'rgba(21,19,15,0.05)', color: morkSide ? T.offwhite : T.ink, backdropFilter: 'blur(16px) saturate(160%)', WebkitBackdropFilter: 'blur(16px) saturate(160%)', boxShadow: morkSide ? 'inset 0 0 0 1px rgba(244,241,234,0.14)' : 'inset 0 0 0 1px rgba(21,19,15,0.08)' }} data-testid="deck-kapitler" aria-label={`Kapitler · ${side + 1} av ${sider.length}`} title="Kapitler">
           <Menu className="h-[18px] w-[18px]" strokeWidth={1.7} />
@@ -1655,20 +1680,20 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </div>
 
-      {/* 01 · Forside — coveren. Full-bleed video (sofa-loopen, speilvendt så han sitter til høyre) bak et rolig sløret
-          lys — og oppå: pushvarselet som åpner appen + chat-boblene (gjenbruk av Telefonstrom, speilvendt). Ikke veggkort,
-          ikke kart. Løftet står til venstre. Ingen innholdsfortegnelse. Resten av decket er lyst — coveren er sceneteppet. */}
+      {/* 01 · Forside – coveren. Full-bleed video (sofa-loopen, speilvendt så han sitter til høyre) bak et rolig sløret
+          lys – og oppå: pushvarselet som åpner appen + chat-boblene (gjenbruk av Telefonstrom, speilvendt). Ikke veggkort,
+          ikke kart. Løftet står til venstre. Ingen innholdsfortegnelse. Resten av decket er lyst – coveren er sceneteppet. */}
       <Side id="forside" pos={pos('forside')} aktiv={er('forside')} morkt bred>
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden" data-testid="deck-cover-bak">
-          {/* Selve forsidescenen, uendret — video-loopen med pushvarselet som åpner appen og chat-boblene. Uten kart/adressekort, uten «pil»/lystråd. */}
+          {/* Selve forsidescenen, uendret – video-loopen med pushvarselet som åpner appen og chat-boblene. Uten kart/adressekort, uten «pil»/lystråd. */}
           <div className="deck-cover-scene absolute inset-0 flex items-center" data-testid="deck-cover-scene">
             <div className="w-full"><HeroStage eiendom={null} bilde="stue" film={HERO_FILM} utenVegg speil utenPil hold={visIntro} /></div>
           </div>
-          {/* Kino-scrim: dyp ro til venstre der løftet står, klarner rolig mot ham til høyre — ingen grøt i midten. */}
+          {/* Kino-scrim: dyp ro til venstre der løftet står, klarner rolig mot ham til høyre – ingen grøt i midten. */}
           <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(17,14,11,0.97) 0%, rgba(17,14,11,0.9) 20%, rgba(17,14,11,0.58) 42%, rgba(17,14,11,0.2) 62%, rgba(17,14,11,0.04) 82%, rgba(17,14,11,0) 100%)' }} />
-          {/* Topp for kontrollene, bunn for nøkkeltallene — begge svært mykt, aldri en hard kant. */}
+          {/* Topp for kontrollene, bunn for nøkkeltallene – begge svært mykt, aldri en hard kant. */}
           <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(17,14,11,0.5) 0%, rgba(17,14,11,0) 15%, rgba(17,14,11,0) 60%, rgba(17,14,11,0.34) 82%, rgba(17,14,11,0.72) 100%)' }} />
-          {/* Et varmt lilla åndedrag bak ham — merkets farge i rommet, nedtonet. */}
+          {/* Et varmt lilla åndedrag bak ham – merkets farge i rommet, nedtonet. */}
           <div className="absolute" style={{ right: '-6%', top: '-20%', width: '54%', height: '82%', background: 'radial-gradient(circle, rgba(212,150,255,0.1) 0%, rgba(212,150,255,0.03) 44%, rgba(212,150,255,0) 70%)' }} />
         </div>
 
@@ -1683,24 +1708,24 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             <span className="block"><span className="deck-ord mr-[0.2em]" data-ord="0" style={{ '--o': 0 }}>Utleie</span><span className="deck-ord" data-ord="1" style={{ '--o': 1 }}>på</span></span>
             <span className="block"><span className="deck-ord" data-ord="2" style={{ '--o': 2 }}>autopilot<span style={{ color: T.lilla }}>.</span></span></span>
           </h1>
-          <Inn i={3}><p className="mt-7 max-w-[42ch] text-[16.5px] leading-[1.6] sm:text-[18.5px]" style={{ color: 'rgba(244,241,234,0.86)' }}>Programvaren som driver utleieboligen – for private huseiere og eiendomsselskaper med hele porteføljer. Og forvaltningen for dem som ikke vil gjøre jobben selv. <span style={{ color: T.offwhite }}>To selskaper, én plattform.</span></p></Inn>
+          <Inn i={3}><p className="mt-7 max-w-[42ch] text-[16.5px] leading-[1.6] sm:text-[18.5px]" style={{ color: 'rgba(244,241,234,0.86)' }}>Programvaren som driver utleieboligen – for private huseiere og for eiendomsselskaper med hele porteføljer. Og forvaltningen for dem som heller vil overlate driften. <span style={{ color: T.offwhite }}>To selskaper, én plattform.</span></p></Inn>
           <Inn i={5} className="deck-skjul-print mt-12 flex items-center gap-2.5 text-[11px] font-medium uppercase" style={{ letterSpacing: '0.16em', color: 'rgba(244,241,234,0.42)' }}>Bla videre <ChevronDown className="deck-nikk h-3.5 w-3.5" /></Inn>
         </div>
       </Side>
 
-      {/* 02 · Hvorfor — PROBLEMET, motstykket til Løsningen. Venstre: «Utleie mangler et system» + kostnaden (manuell drift
-          skalerer med lønn — vist som en bemanningstrapp). Høyre: de fire driftsområdene i frakoblede verktøy, manuelle
-          tråder inn til «Du er systemet». Rolig og konkret — ingen busy lister eller mørke paneler. */}
+      {/* 02 · Hvorfor – PROBLEMET, motstykket til Løsningen. Venstre: «Utleie mangler et system» + kostnaden (manuell drift
+          skalerer med lønn – vist som en bemanningstrapp). Høyre: de fire driftsområdene i frakoblede verktøy, manuelle
+          tråder inn til «Du er systemet». Rolig og konkret – ingen busy lister eller mørke paneler. */}
       <Side id="hvorfor" pos={pos('hvorfor')} aktiv={er('hvorfor')} bred>
-        <Kapittel nr={kap('hvorfor')} navn="Hvorfor" under="uten autopilot" />
+        <Kapittel nr={kap('hvorfor')} navn="Hvorfor" under="manuell drift som ikke skalerer" />
         <Todelt className="lg:items-center" venstre={<>
           <Inn i={1}><H2 maks="16ch">Utleie mangler et system.</H2></Inn>
-          <Ingress maks="42ch">Annonsering, kontrakter, husleie og drift håndteres manuelt i frakoblede verktøy – for både privatpersoner og eiendomsselskaper. Ingen løsning automatiserer driften med AI.</Ingress>
+          <Ingress maks="44ch">Annonsering, kontrakter, husleie og drift håndteres manuelt i frakoblede verktøy – for både privatpersoner og eiendomsselskaper. Ingen har bygget ett system som driver hele boligen.</Ingress>
           <Inn i={5} className="mt-9 border-l-2 pl-5" style={{ borderColor: FARGE.kost }}>
             <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: FARGE.kost }}><AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} /> Kostnaden</p>
             <p className="mt-3 text-[24px] sm:text-[30px]" style={{ ...display, letterSpacing: '-0.025em', lineHeight: 1.08, color: T.ink }}>Manuell drift skalerer med lønn.</p>
             <p className="mt-3 text-[14.5px] leading-[1.55]" style={{ color: DIM, maxWidth: '42ch' }}>For eiendomsselskaper øker bemanningsbehovet i takt med porteføljen. Hver enhet legger på manuelle timer som belaster marginen.</p>
-            {/* Bemanningstrappen — kostnaden gjort synlig: flere enheter → flere manuelle timer → flere folk */}
+            {/* Bemanningstrappen – kostnaden gjort synlig: flere enheter → flere manuelle timer → flere folk */}
             <div className="mt-5 flex items-end gap-[6px]" data-testid="deck-kost-trapp">
               {[12, 18, 26, 36, 48, 62].map((h, i) => (
                 <span key={h} aria-hidden="true" className="deck-inn w-[9px] rounded-t-[3px]" style={{ '--i': 6 + i * 0.3, height: h, background: i < 2 ? 'rgba(21,19,15,0.16)' : i < 4 ? 'rgba(179,38,30,0.38)' : FARGE.kost }} />
@@ -1713,17 +1738,17 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </Todelt>
       </Side>
 
-      {/* 03 · Løsningen — produktet som en NYDELIG EDITORIAL full-bleed bakgrunn (forsidens kino-filmer: foto +
+      {/* 03 · Løsningen – produktet som en NYDELIG EDITORIAL full-bleed bakgrunn (forsidens kino-filmer: foto +
           editorial tittel), ikke et kort. Stegene (Annonse→Kontrakt→Drift→Økonomi) spiller som bevis, styrt av
-          decket (spiller kun når sliden er fremme — ytelse). LosningFilm eier hele det full-bleed oppsettet. */}
+          decket (spiller kun når sliden er fremme – ytelse). LosningFilm eier hele det full-bleed oppsettet. */}
       <Side id="losning" pos={pos('losning')} aktiv={er('losning')} bred full>
         <LosningFilm aktiv={er('losning')} nr={kap('losning')} />
       </Side>
 
 
-      {/* 03 · Markedet — stort, fragmentert, privat */}
+      {/* 03 · Markedet – stort, fragmentert, privat */}
       <Side id="marked" pos={pos('marked')} aktiv={er('marked')} bred>
-        <Kapittel nr={kap('marked')} navn="Markedet" under="stort nok til å ikke være spørsmålet" />
+        <Kapittel nr={kap('marked')} navn="Markedet" under="stort, privat og fragmentert" />
         <div className="mt-2 grid gap-10 lg:grid-cols-12 lg:gap-16">
           {/* Venstre: fortellingen + de to segmentene */}
           <div className="lg:col-span-5">
@@ -1736,7 +1761,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
               </div>
             </Inn>
             <div className="mt-9 border-t" style={{ borderColor: HAIR }}>
-              {[['Private eiere', 'Én til noen få enheter — uten system, uten forvalter, med fullt juridisk ansvar.', 'Selvbetjening og forvaltning'], ['Profesjonelle og forvaltere', 'Lokalt og manuelt: mange små aktører, regneark og e-post. Ingen har bygget både programvaren og driften.', 'Eiendomsselskaper og forvaltere']].map(([t, u, tag], i) => (
+              {[['Private eiere', 'Én til noen få enheter – uten system, uten forvalter, med fullt juridisk ansvar.', 'Selvbetjening og forvaltning'], ['Profesjonelle og forvaltere', 'Lokalt og manuelt: mange små aktører, regneark og e-post. Ingen har bygget både programvaren og driften.', 'Eiendomsselskaper og forvaltere']].map(([t, u, tag], i) => (
                 <Inn key={t} i={4 + i} className="border-b py-4" style={{ borderColor: HAIR }}>
                   <div className="flex items-baseline justify-between gap-4">
                     <p className="text-[16px] font-medium tracking-[-0.01em]" style={{ color: T.ink }}>{t}</p>
@@ -1748,7 +1773,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
               ))}
             </div>
           </div>
-          {/* Høyre: skalaen som bevis — markedet mot ambisjonen */}
+          {/* Høyre: skalaen som bevis – markedet mot ambisjonen */}
           <div className="lg:col-span-7">
             <Inn i={2} className="lg:pt-1.5">
               <div className="flex items-baseline justify-between gap-4">
@@ -1762,30 +1787,30 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
                 <MarkedLegende ring fremhev over="Planen" v={`${nb((Math.round(mF.enheter[N - 1] || 0) / 570000) * 100, 2)} %`} u={`≈ ${nb(Math.round(mF.enheter[N - 1] || 0))} enheter · ${mndLabel(plan.startYm, N - 1, false)}`} />
               </div>
               <Inn i={5}>
-                <p className="mt-6 max-w-[62ch] text-[13.5px] leading-[1.6]" style={{ color: DIM }}>Vi starter i Bergen og 60 km rundt — stort nok for planen, lite nok til å eie kvaliteten. Programvaren har ingen geografi. <span style={{ color: SVAK }}>SSB, boforhold (avrundet).</span></p>
+                <p className="mt-6 max-w-[62ch] text-[13.5px] leading-[1.6]" style={{ color: DIM }}>Vi starter i Bergen og 60 km rundt – stort nok for planen, lite nok til å eie kvaliteten. Programvaren har ingen geografi. <span style={{ color: SVAK }}>SSB, boforhold (avrundet).</span></p>
               </Inn>
             </Inn>
           </div>
         </div>
       </Side>
 
-      {/* 04 · Konseptet — forsidens levende scene */}
+      {/* 04 · Konseptet – forsidens levende scene */}
       <Side id="konsept" pos={pos('konsept')} aktiv={er('konsept')} bred>
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,4.7fr)_minmax(0,7fr)] lg:gap-14">
           <div>
             <Kapittel nr={kap('konsept')} navn="Konseptet" under="slik ser en dag ut" />
             <Inn i={1}><H2 maks="15ch">Systemet driver boligen. Eieren har siste ord.</H2></Inn>
-            <Inn i={2}><p className="mt-5 max-w-[42ch] text-[16px] leading-[1.55] sm:text-[17px]" style={{ color: DIM }}>Ett døgn i en utleiebolig. Husleie, kontrakt og leietakerens spørsmål ordner seg selv — helt til noe krever et menneske. Da, og bare da, venter systemet på deg.</p></Inn>
+            <Inn i={2}><p className="mt-5 max-w-[42ch] text-[16px] leading-[1.55] sm:text-[17px]" style={{ color: DIM }}>Ett døgn i en utleiebolig. Husleie, kontrakt og leietakerens spørsmål ordner seg selv – helt til noe krever et menneske. Da, og bare da, venter systemet på eieren.</p></Inn>
             <Inn i={3} className="mt-7">
               <div className="relative pl-5">
                 <span aria-hidden="true" className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full" style={{ background: `linear-gradient(180deg, ${LILLA_M}, rgba(122,63,168,0.14))` }} />
-                <p className="text-[19px] leading-[1.34] sm:text-[22px]" style={{ ...display, letterSpacing: '-0.02em', color: T.ink }}>Alt går av seg selv.<br /><span style={{ color: LILLA_M }}>Det ene som er ditt, venter på ett trykk.</span></p>
+                <p className="text-[19px] leading-[1.34] sm:text-[22px]" style={{ ...display, letterSpacing: '-0.02em', color: T.ink }}>Alt går av seg selv.<br /><span style={{ color: LILLA_M }}>Den ene beslutningen venter på eieren – ett trykk.</span></p>
               </div>
             </Inn>
             <Inn i={4} className="mt-7 border-t pt-5" style={{ borderColor: HAIR }}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: SVAK }}>Dagens fasit</p>
               <div className="mt-3.5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4" data-testid="deck-konsept-fasit">
-                {[['8/8', 'husleier betalt', T.gronn], ['1', 'kontrakt signert', T.gronn], ['1', 'sak løst av seg selv', T.gronn], ['1', 'beslutning — din', LILLA_M]].map(([v, u, c]) => (
+                {[['8/8', 'husleier betalt', T.gronn], ['1', 'kontrakt signert', T.gronn], ['1', 'sak løst automatisk', T.gronn], ['1', 'beslutning – eierens', LILLA_M]].map(([v, u, c]) => (
                   <div key={u}>
                     <p className="text-[28px] sm:text-[32px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.ink }}>{v}</p>
                     <p className="mt-2 flex items-start gap-1.5 text-[12px] leading-[1.35]" style={{ color: SVAK }}><span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: c }} />{u}</p>
@@ -1800,19 +1825,19 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </Side>
 
-      {/* 04 · For hvem — samme system, to kundegrupper (+ forvaltning som tjeneste) */}
+      {/* 04 · For hvem – samme system, to kundegrupper (+ forvaltning som tjeneste) */}
       <Side id="hvem" pos={pos('hvem')} aktiv={er('hvem')} bred>
-        <Kapittel nr={kap('hvem')} navn="For hvem" under="fra én leilighet til hele porteføljen" />
+        <Kapittel nr={kap('hvem')} navn="For hvem" under="B2C, B2B og forvaltning – på én plattform" />
         <div className="mt-2 grid gap-6 lg:grid-cols-12 lg:items-end lg:gap-12">
-          <div className="lg:col-span-7"><Inn i={1}><H2 maks="17ch">Én plattform. Du bestemmer hvor mye du gjør selv.</H2></Inn></div>
-          <div className="lg:col-span-5"><Inn i={2}><p className="text-[15px] leading-[1.6] sm:text-[16.5px]" style={{ color: DIM, maxWidth: '46ch' }}>Samme system fra første leilighet til tusen. Gjør alt selv — eller la Digihome ta jobben. Én kodebase og én prisliste under alt.</p></Inn></div>
+          <div className="lg:col-span-7"><Inn i={1}><H2 maks="17ch">Én plattform. Tre inntektsstrømmer.</H2></Inn></div>
+          <div className="lg:col-span-5"><Inn i={2}><p className="text-[15px] leading-[1.6] sm:text-[16.5px]" style={{ color: DIM, maxWidth: '46ch' }}>Private utleiere (B2C), eiendomsselskaper (B2B) og forvaltning for eiere som overlater driften. Samme kodebase og prisliste – fra én leilighet til tusen.</p></Inn></div>
         </div>
         <div className="mt-10" data-testid="deck-hvem-spekter">
           <div className="grid gap-5 sm:grid-cols-3">
             {[
-              { ikon: Home, over: 'Private huseiere', niva: 'Gjør det selv', tekst: 'Leietakere, kontrakt med BankID, husleie og drift — rett fra mobilen. Hele Norge, ingen binding.', pris: prisHuseier || '—', prisU: 'pris', trak: nb(plEnheterIDag), trakU: 'boliger i dag' },
-              { ikon: Building2, over: 'Eiendomsselskaper', niva: 'Drift i skala', tekst: 'Ett system for hele teamet: leietakere, betaling, saker og leverandører — med roller, rapportering og API.', pris: basisT ? `${kr(basisT.bedrift.pris)}` : '—', prisU: 'per enhet/mnd', trak: nb(bedriftIDag), trakU: 'selskaper i dag' },
-              { ikon: Link2, over: 'Forvaltning', niva: 'Vi gjør alt', tekst: 'En fast forvalter på nøyaktig samme plattform. Du følger alt live. Bergen og 60 km rundt.', pris: pct(basisF.honorarPctNye, 1), prisU: 'av leien, inkl. mva', trak: nb(enheterIDag), trakU: 'boliger i dag' },
+              { ikon: Home, over: 'Private utleiere · B2C', niva: 'Selvbetjent', tekst: 'Leietakere, kontrakt med BankID, husleie og drift – styrt fra mobilen. Hele Norge, ingen binding.', pris: prisHuseier || '–', prisU: 'pris', trak: nb(plEnheterIDag), trakU: 'boliger i dag' },
+              { ikon: Building2, over: 'Eiendomsselskaper · B2B', niva: 'Drift i skala', tekst: 'Ett system for hele organisasjonen: leietakere, betaling, saker og leverandører – med roller, rapportering og API.', pris: basisT ? `${kr(basisT.bedrift.pris)}` : '–', prisU: 'per enhet/mnd', trak: nb(bedriftIDag), trakU: 'selskaper i dag' },
+              { ikon: Link2, over: 'Forvaltning', niva: 'Fullt forvaltet', tekst: 'En fast forvalter fra Digihome på samme plattform. Eieren følger alt live. Bergen og 60 km rundt.', pris: pct(basisF.honorarPctNye, 1), prisU: 'av leien, inkl. mva', trak: nb(enheterIDag), trakU: 'boliger i dag' },
             ].map((s, i) => (
               <Inn key={s.over} i={2 + i}>
                 <div className="flex h-full flex-col rounded-[18px] bg-white p-5" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 18px 40px -22px rgba(21,19,15,0.2)` }}>
@@ -1836,11 +1861,11 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             <div className="relative mt-1 h-[6px] w-full overflow-hidden rounded-full" style={{ background: 'rgba(122,63,168,0.12)' }}>
               <span className="deck-spk-skinne absolute inset-0 rounded-full" style={{ background: `linear-gradient(90deg, rgba(122,63,168,0.4), ${LILLA_M})` }} />
             </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.1em]"><span style={{ color: SVAK }}>Du gjør det selv</span><span style={{ color: LILLA_M }}>Vi gjør alt</span></div>
+            <div className="mt-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.1em]"><span style={{ color: SVAK }}>Selvbetjent</span><span style={{ color: LILLA_M }}>Fullt forvaltet</span></div>
           </Inn>
           <Inn i={6} className="mt-6">
             <div className="flex flex-col gap-3 rounded-[16px] px-6 py-4 sm:flex-row sm:items-center sm:justify-between" style={{ background: '#F6F0FB', boxShadow: 'inset 0 0 0 1px rgba(122,63,168,0.22)' }} data-testid="deck-hvem-plattform">
-              <p className="text-[13.5px] leading-snug" style={{ color: T.ink }}><span className="font-semibold" style={{ color: LILLA_M }}>Én plattform — Digihome Tech.</span> Samme kode og prisliste under alle tre.</p>
+              <p className="text-[13.5px] leading-snug" style={{ color: T.ink }}><span className="font-semibold" style={{ color: LILLA_M }}>Én plattform – Digihome Tech.</span> Samme kode og prisliste under alle tre.</p>
               <div className="flex flex-wrap gap-1.5">
                 {['Roller', 'Rapportering', 'API', 'BankID', 'Regnskap'].map((c) => <span key={c} className="rounded-full px-2.5 py-1 text-[11.5px] font-medium" style={{ background: 'rgba(122,63,168,0.1)', color: LILLA_M }}>{c}</span>)}
               </div>
@@ -1849,27 +1874,76 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </Side>
 
-      {/* 04 · Strukturen */}
+      {/* Strukturen · konsernet: Digihome Group AS eier Digihome AS og Digihome Tech AS */}
+      <Side id="eier" pos={pos('eier')} aktiv={er('eier')} bred>
+        <Kapittel nr={kap('eier')} navn="Strukturen" under="ett konsern, to selskaper, én plattform" />
+        <div className="mx-auto max-w-[760px] text-center">
+          <Inn i={1}><H2 maks="24ch" className="mx-auto !text-[30px] sm:!text-[40px] lg:!text-[46px]">Ett konsern. To selskaper. Én plattform.</H2></Inn>
+          <Inn i={2}><p className="mx-auto mt-3 max-w-[58ch] text-[14.5px] leading-[1.55] sm:text-[16px]" style={{ color: DIM }}>Digihome Group AS eier begge selskapene fullt ut. Forvaltningen tjener penger i dag; programvaren skalerer uten grenser. De deler én kodebase.</p></Inn>
+        </div>
+        <div className="relative mx-auto mt-6 w-full max-w-[880px]" data-testid="deck-eier">
+          {/* Morselskapet */}
+          <Inn i={3} className="mx-auto w-full max-w-[340px]">
+            <div className="relative overflow-hidden rounded-[18px] px-7 py-4 text-center" style={{ background: T.charcoal, boxShadow: '0 26px 54px -30px rgba(21,19,15,0.55)' }} data-testid="deck-eier-mor">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'rgba(212,150,255,0.85)' }}>Morselskap</p>
+              <p className="mt-1 text-[22px] font-semibold tracking-[-0.02em] text-white sm:text-[24px]" style={display}>Digihome Group AS</p>
+              <p className="mt-0.5 text-[12px]" style={{ color: 'rgba(244,241,234,0.72)' }}>Eier og styrer 100 % av begge selskapene</p>
+            </div>
+          </Inn>
+          {/* Linjene tegner seg ned: stamme → tverrlinje → to grener */}
+          <div aria-hidden="true" className="relative mx-auto hidden h-[46px] w-full sm:block">
+            <span className="deck-eier-v absolute top-0 h-[23px] w-px" style={{ left: 'calc(50% - 0.5px)', background: 'linear-gradient(180deg, rgba(122,63,168,0.6), rgba(122,63,168,0.42))', '--d': '.6s' }} />
+            <span className="deck-eier-h absolute top-[23px] h-px" style={{ left: '25%', right: '25%', background: 'rgba(122,63,168,0.42)', '--d': '.95s' }} />
+            <span className="deck-eier-v absolute top-[23px] h-[23px] w-px" style={{ left: 'calc(25% - 0.5px)', background: 'rgba(122,63,168,0.42)', '--d': '1.3s' }} />
+            <span className="deck-eier-v absolute top-[23px] h-[23px] w-px" style={{ left: 'calc(75% - 0.5px)', background: 'rgba(122,63,168,0.42)', '--d': '1.3s' }} />
+            <span className="deck-eier-p absolute h-1.5 w-1.5 rounded-full" style={{ left: 'calc(50% - 3px)', top: '20px', background: LILLA_M, '--d': '.9s' }} />
+          </div>
+          <div className="mt-5 grid gap-5 sm:mt-0 sm:grid-cols-2">
+            {[
+              { over: 'Forvaltningen', navn: 'Digihome AS', Ikon: Building2, tekst: 'Drifter boliger for eiere som overlater jobben – fast forvalter, honorar av leien.', metrikk: `${nb(enheterIDag)} boliger i drift i dag`, tag: 'Margin', i: 20 },
+              { over: 'Programvaren', navn: 'Digihome Tech AS', Ikon: Sparkles, tekst: 'Plattformen for private utleiere (B2C), eiendomsselskaper (B2B) og forvaltningen selv.', metrikk: 'Én kodebase · én prisliste', tag: 'Skala', i: 21 },
+            ].map((s) => (
+              <Inn key={s.navn} i={s.i}>
+                <div className="flex h-full flex-col rounded-[18px] bg-white p-5" style={{ boxShadow: `inset 0 0 0 1px ${HAIR}, 0 20px 44px -30px rgba(21,19,15,0.22)` }}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.13em]" style={{ color: LILLA_M }}><s.Ikon className="h-3.5 w-3.5" strokeWidth={1.9} />{s.over}</span>
+                    <span className="rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold" style={{ background: 'rgba(122,63,168,0.1)', color: LILLA_M }}>100 %</span>
+                  </div>
+                  <p className="mt-1.5 text-[21px] font-semibold tracking-[-0.02em] sm:text-[23px]" style={{ ...display, color: T.ink }}>{s.navn}</p>
+                  <p className="mt-2 text-[13px] leading-[1.5]" style={{ color: DIM }}>{s.tekst}</p>
+                  <div className="mt-3 flex items-center justify-between gap-3 border-t pt-2.5" style={{ borderColor: HAIR }}>
+                    <span className="text-[12px] font-medium" style={{ color: T.ink }}>{s.metrikk}</span>
+                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.09em]" style={{ color: SVAK }}>{s.tag}</span>
+                  </div>
+                </div>
+              </Inn>
+            ))}
+          </div>
+          <Inn i={22}><p className="mx-auto mt-5 max-w-[64ch] text-center text-[12.5px] leading-[1.5]" style={{ color: SVAK }}>Lisensen Digihome AS betaler til Digihome Tech AS nulles ut i konsernregnskapet – marginen blir værende i konsernet.</p></Inn>
+        </div>
+      </Side>
+
+      {/* Motoren · to selskaper som forsterker hverandre */}
       <Side id="struktur" pos={pos('struktur')} aktiv={er('struktur')} bred>
-        <Kapittel nr={kap('struktur')} navn="Strukturen" under="to selskaper som forsterker hverandre" />
+        <Kapittel nr={kap('struktur')} navn="Motoren" under="to selskaper som forsterker hverandre" />
         <div className="mt-2 grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
           <div className="lg:col-span-5">
             <Inn i={1}><H2 maks="14ch">To selskaper. Én motor.</H2></Inn>
-            <Ingress i={2} maks="44ch">Programvaren skalerer uten grenser. Forvaltningen tjener penger allerede i dag — og er samtidig plattformens største kunde, beste selger og strengeste testpilot. Hver av dem gjør den andre sterkere.</Ingress>
+            <Ingress i={2} maks="44ch">Programvaren skalerer uten grenser. Forvaltningen tjener penger allerede i dag – og er samtidig plattformens største kunde, beste selger og strengeste testpilot. Hver av dem gjør den andre sterkere.</Ingress>
             <Inn i={3} className="mt-8">
               <div className="relative pl-5">
                 <span aria-hidden="true" className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full" style={{ background: `linear-gradient(180deg, ${LILLA_M}, rgba(122,63,168,0.14))` }} />
-                <p className="text-[19px] leading-[1.34] sm:text-[22px]" style={{ ...display, letterSpacing: '-0.02em', color: T.ink }}>Hver bolig vi forvalter er også en lisens.<br /><span style={{ color: LILLA_M }}>Internt nuller den seg ut — marginen blir i konsernet.</span></p>
+                <p className="text-[19px] leading-[1.34] sm:text-[22px]" style={{ ...display, letterSpacing: '-0.02em', color: T.ink }}>Hver bolig vi forvalter er også en lisens.<br /><span style={{ color: LILLA_M }}>Internt nuller den seg ut – marginen blir i konsernet.</span></p>
               </div>
             </Inn>
             <Inn i={4} className="mt-8 grid grid-cols-2 gap-6 border-t pt-6" style={{ borderColor: HAIR }} data-testid="deck-struktur-selskaper">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: LILLA_M }}>Digihome Tech AS</p>
-                <p className="mt-2 text-[13.5px] leading-[1.55]" style={{ color: DIM }}>Programvaren. Én prisliste for alle. Vi tjener på kode — ikke på timer.</p>
+                <p className="mt-2 text-[13.5px] leading-[1.55]" style={{ color: DIM }}>Programvaren. Én prisliste for alle. Vi tjener på kode – ikke på timer.</p>
               </div>
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: T.ink }}>Digihome AS</p>
-                <p className="mt-2 text-[13.5px] leading-[1.55]" style={{ color: DIM }}>Forvaltningen. Ekte drift og margin — og et forsprang ingen ren SaaS har.</p>
+                <p className="mt-2 text-[13.5px] leading-[1.55]" style={{ color: DIM }}>Forvaltningen. Ekte drift og margin – og et forsprang ingen ren SaaS har.</p>
               </div>
             </Inn>
           </div>
@@ -1880,45 +1954,33 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       {/* 05 · Organisasjon */}
       <Side id="org" pos={pos('org')} aktiv={er('org')} bred>
         <Kapittel nr={kap('org')} navn="Organisasjon" under="et lite, senior team som allerede har bygget det" />
-        <div className="mt-2 grid gap-8 lg:grid-cols-12 lg:gap-12">
-          <div className="lg:col-span-4">
-            <Inn i={1}><H2 maks="13ch">Bygget av utleiere, for utleiere.</H2></Inn>
-            <Ingress i={2} maks="42ch">Vi bygger ikke for et marked vi har lest om — vi bygger for oss selv. Plattformen drifter allerede {nb(enheterIDag)} boliger på signerte kontrakter.</Ingress>
-            <Inn i={3} className="mt-8 space-y-3.5">
-              {[['Operatør + AI + jus', 'en sjelden kombinasjon i ett lite team'], ['Allerede bygget og i drift', 'ikke en idé på papir'], ['Felles styre', 'ett konsern, to selskaper — én retning']].map(([t, u]) => (
-                <div key={t} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full" style={{ background: 'rgba(122,63,168,0.1)', color: LILLA_M }}><Check className="h-3.5 w-3.5" strokeWidth={2.6} /></span>
-                  <span><span className="text-[14.5px] font-semibold" style={{ color: T.ink }}>{t}</span><span className="ml-1.5 text-[13px]" style={{ color: SVAK }}>· {u}</span></span>
-                </div>
+        <div className="mt-2 grid gap-5 lg:grid-cols-12 lg:items-end lg:gap-12">
+          <div className="lg:col-span-5"><Inn i={1}><H2 maks="13ch">Bygget av utleiere, for utleiere.</H2></Inn></div>
+          <div className="lg:col-span-7">
+            <Inn i={2}><p className="text-[15px] leading-[1.6] sm:text-[16.5px]" style={{ color: DIM, maxWidth: '54ch' }}>Vi bygger ikke for et marked vi har lest om – vi bygger for oss selv. Plattformen drifter allerede {nb(enheterIDag)} boliger på signerte kontrakter.</p></Inn>
+            <Inn i={3} className="mt-4 flex flex-wrap gap-x-7 gap-y-2.5">
+              {[['Operatør + AI + jus', 'sjelden kombinasjon'], ['Bygget og i drift', 'ikke en idé på papir'], ['Felles styre', 'ett konsern, én retning']].map(([t, u]) => (
+                <span key={t} className="inline-flex items-center gap-2">
+                  <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full" style={{ background: 'rgba(122,63,168,0.1)', color: LILLA_M }}><Check className="h-3 w-3" strokeWidth={2.8} /></span>
+                  <span className="text-[14px] font-semibold" style={{ color: T.ink }}>{t}</span><span className="text-[12.5px]" style={{ color: SVAK }}>· {u}</span>
+                </span>
               ))}
             </Inn>
           </div>
-          <div className="lg:col-span-8">
-            <div className="grid gap-5 sm:grid-cols-3" data-testid="deck-org-portretter">
-              <Inn i={2}><PortrettKort p={TEAM[0]} rolle="Daglig leder" cred="Eiendomsmegler med seks år i DNB. Leder kundeakkvisisjon og forvaltning — og sitter i styret." /></Inn>
-              <Inn i={3}><PortrettKort p={TEAM[1]} rolle="Produktsjef" cred="Grunnla BnbSpesialisten, en av Norges første proffe utleieforvaltere. 10 år i Adonis frem mot exit." /></Inn>
-              <Inn i={4}><PortrettKort p={TEAM[3]} rolle="AI-rådgiver" cred="Analytiker i DNB, siviløkonom fra NHH. Bygger og automatiserer plattformen med AI-drevet utvikling." /></Inn>
-            </div>
-            <Inn i={5} className="mt-5 flex flex-col gap-4 rounded-[18px] px-6 py-5 sm:flex-row sm:items-center sm:justify-between" style={{ background: '#FBFAF8', boxShadow: `inset 0 0 0 1px ${HAIR}` }} data-testid="deck-org-styre">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: SVAK }}>Felles styre — Digihome AS og Digihome Tech AS</p>
-                <p className="mt-1.5 text-[13.5px] leading-[1.5]" style={{ color: DIM }}><b style={{ color: T.ink }}>Erik Hoffmann-Dahl</b> (styreleder, advokat) · Jens-Petter Glittenberg · Sarah Sleeman · Martin C. Kviteberg.</p>
-              </div>
-              <div className="flex -space-x-2.5">
-                {[TEAM[2], TEAM[4], TEAM[0], TEAM[1]].map((pp) => (
-                  <span key={pp.n} className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full" style={{ boxShadow: `0 0 0 2px #FBFAF8, 0 0 0 3px ${HAIR}`, background: pp.img ? undefined : T.charcoal }}>
-                    {pp.img ? <img src={pp.img} alt={pp.n} className="h-full w-full object-cover" style={{ objectPosition: pp.pos }} loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[12px] font-semibold" style={{ color: T.offwhite }}>{pp.n.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join('')}</span>}
-                  </span>
-                ))}
-              </div>
-            </Inn>
-          </div>
         </div>
+        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5" data-testid="deck-org-portretter">
+          <Inn i={2}><PortrettKort p={TEAM[0]} rolle="Daglig leder · styremedlem" zoom={1.7} zoomPos="50% 28%" cred="Eiendomsmegler med seks år i DNB. Leder kundeakkvisisjon og forvaltning." /></Inn>
+          <Inn i={3}><PortrettKort p={TEAM[1]} rolle="Produktsjef · styremedlem" cred="Grunnla BnbSpesialisten, en av Norges første proffe utleieforvaltere. 10 år i Adonis frem mot exit." /></Inn>
+          <Inn i={4}><PortrettKort p={TEAM[3]} rolle="AI-rådgiver" zoom={2.0} zoomPos="50% 33%" cred="Analytiker i DNB, siviløkonom fra NHH. Bygger og automatiserer plattformen med AI." /></Inn>
+          <Inn i={5}><PortrettKort p={TEAM[2]} rolle="Styreleder · advokat" cred="Partner i Hoffmann Thinn. Tegnet selskapsstrukturen som skal bære vekst og emisjon." /></Inn>
+          <Inn i={6}><PortrettKort p={TEAM[4]} rolle="Styremedlem" zoom={1.18} zoomPos="51% 34%" cred="Styremedlem i Digihome AS og Digihome Tech AS." /></Inn>
+        </div>
+        <Inn i={7}><p className="mt-5 text-[12.5px]" style={{ color: SVAK }} data-testid="deck-org-styre">Felles styre for Digihome AS og Digihome Tech AS: Erik Hoffmann-Dahl (styreleder), Jens-Petter Glittenberg, Sarah Sleeman og Martin C. Kviteberg.</p></Inn>
       </Side>
 
       {/* 06 · Hvor vi står */}
       <Side id="staar" pos={pos('staar')} aktiv={er('staar')} bred>
-        <Kapittel nr={kap('staar')} navn="Hvor vi står" under="live fra plattformen — ikke løfter" />
+        <Kapittel nr={kap('staar')} navn="Hvor vi står" under="live fra plattformen – ikke løfter" />
         <div className="mt-2 grid gap-8 lg:grid-cols-12 lg:items-center lg:gap-14">
           <div className="lg:col-span-5">
             <Inn i={1}>
@@ -1927,7 +1989,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
               </span>
             </Inn>
             <Inn i={2} className="mt-4"><H2 maks="12ch">Vi starter ikke fra null.</H2></Inn>
-            <Ingress i={3} maks="44ch">Tallene hentes fra signerte leiekontrakter når decket åpnes. Alt som følger er en plan bygget på disse — og på drivere du kan skru på selv.</Ingress>
+            <Ingress i={3} maks="44ch">Tallene hentes fra signerte leiekontrakter når decket åpnes. Alt som følger er en plan bygget på disse – og på drivere som kan justeres direkte i decket.</Ingress>
           </div>
           <div className="lg:col-span-7">
             <Inn i={2}>
@@ -1944,10 +2006,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             <div className="mt-5 grid gap-x-8 gap-y-6 sm:grid-cols-3">
               <Inn i={3} className="border-t pt-4" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={honorarIDag * 12} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>årlig honorarinntekt i dag (eks. mva)</p></Inn>
               <Inn i={4} className="border-t pt-4" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={enheterIDag * (basisT?.forvaltning?.pris || basisF.systemPerEnhet) * 12} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>årlig lisensinntekt i Tech fra forvaltningen</p></Inn>
-              <Inn i={5} className="border-t pt-4" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={plEnheterIDag} format={(v) => nb(v)} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>selvbetjente enheter{bedriftIDag ? ` · ${nb(bedriftIDag)} selskaper` : ''} — oppside</p></Inn>
+              <Inn i={5} className="border-t pt-4" style={{ borderColor: HAIR }}><Tall aktiv={er('staar')} verdi={plEnheterIDag} format={(v) => nb(v)} storrelse="text-[30px] lg:text-[38px]" /><p className="mt-2 text-[13px] leading-[1.45]" style={{ color: DIM }}>selvbetjente enheter{bedriftIDag ? ` · ${nb(bedriftIDag)} selskaper` : ''} – oppside</p></Inn>
             </div>
             <Inn i={6} className="mt-6 flex items-center gap-2 text-[13px]" style={{ color: SVAK }}>
-              <ArrowRight className="h-4 w-4" style={{ color: LILLA_M }} /> Dette er utgangspunktet — planen bygger videre herfra.
+              <ArrowRight className="h-4 w-4" style={{ color: LILLA_M }} /> Dette er utgangspunktet – planen bygger videre herfra.
             </Inn>
           </div>
         </div>
@@ -1956,7 +2018,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       {/* 07 · Unit economics (mørk) */}
       <Side id="unit" pos={pos('unit')} morkt aktiv={er('unit')} bred>
         <Kapittel morkt nr={kap('unit')} navn="Unit economics" under="per enhet · full CAC inkluderer performance-partner" />
-        <Inn i={1}><H2 morkt maks="16ch">Én enhet tjener seg inn — i begge selskaper.</H2></Inn>
+        <Inn i={1}><H2 morkt maks="16ch">Én enhet tjener seg inn – i begge selskaper.</H2></Inn>
         <Inn i={1}><p className="mt-5 max-w-[62ch] text-[15px] leading-[1.6] sm:text-[16px]" style={{ color: LYS }}>Payback måles i <b style={{ color: T.offwhite }}>måneder, ikke år</b>. Forvaltningen står i planen; plattformkundene er ren oppside oppå den.</p></Inn>
         <div className="mt-9 grid gap-10 md:grid-cols-3">
           <Inn i={2} className="border-t pt-5" style={{ borderColor: LYS_HAIR }}>
@@ -1976,7 +2038,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
                 <dl className="mt-4 border-t" style={{ borderColor: LYS_HAIR }}>
                   <DlRad morkt l="ARPU (eks. mva)" v={kr(uT.huseier.arpu)} />
                   <DlRad morkt l="Bruttomargin" v={`${uT.huseier.bruttoMarginPct} %`} />
-                  <DlRad morkt l="Levetid (fra churn)" v={uT.huseier.levetidMnd ? `${nb(uT.huseier.levetidMnd / 12, 1)} år` : '—'} />
+                  <DlRad morkt l="Levetid (fra churn)" v={uT.huseier.levetidMnd ? `${nb(uT.huseier.levetidMnd / 12, 1)} år` : '–'} />
                 </dl>
               </>
             ) : <p className="mt-4 text-[14px]" style={{ color: LYS_SVAK }}>Tech-budsjettet er ikke delt ennå.</p>}
@@ -1989,7 +2051,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
                 <dl className="mt-4 border-t" style={{ borderColor: LYS_HAIR }}>
                   <DlRad morkt l="Per selskap / mnd" v={`${kr(uT.bedrift.arpuSelskap)} · ${nb(basisT.bedrift.enheterPerSelskap)} enh`} />
                   <DlRad morkt l="Pris per enhet" v={`${kr(basisT.bedrift.pris)}/mnd`} />
-                  <DlRad morkt l="Levetid (fra churn)" v={uT.bedrift.levetidMnd ? `${nb(uT.bedrift.levetidMnd / 12, 1)} år` : '—'} />
+                  <DlRad morkt l="Levetid (fra churn)" v={uT.bedrift.levetidMnd ? `${nb(uT.bedrift.levetidMnd / 12, 1)} år` : '–'} />
                 </dl>
               </>
             ) : <p className="mt-4 text-[14px]" style={{ color: LYS_SVAK }}>Tech-budsjettet er ikke delt ennå.</p>}
@@ -2002,7 +2064,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       <Side id="gtm" pos={pos('gtm')} aktiv={er('gtm')} bred>
         <Kapittel nr={kap('gtm')} navn="Go-to-market" under="slik henter vi kundene" />
         <Inn i={1}><H2 maks="18ch">Vi kjøper ikke vekst. Vi tjener den.</H2></Inn>
-        <Inn i={1}><p className="mt-5 max-w-[64ch] text-[15px] leading-[1.6] sm:text-[16px]" style={{ color: DIM }}>Byrået betales på resultat, ikke på klikk. Forvaltningen er en kanal i seg selv: hver kunde kjenner allerede produktet, og hver enhet er en lisens. Salg til huseiere og eiendomsselskaper ligger utenfor planen — ren oppside.</p></Inn>
+        <Inn i={1}><p className="mt-5 max-w-[64ch] text-[15px] leading-[1.6] sm:text-[16px]" style={{ color: DIM }}>Byrået betales på resultat, ikke på klikk. Forvaltningen er en kanal i seg selv: hver kunde kjenner allerede produktet, og hver enhet er en lisens. Salg til huseiere og eiendomsselskaper ligger utenfor planen – ren oppside.</p></Inn>
         <Inn i={2} className="mt-8">
           <p className="mb-3 text-[12.5px] font-medium" style={{ color: SVAK }}>S&M i perioden · {mnok((sF.sumSm || 0) + (saT?.sumSm || 0))}{saT?.cacPaybackBlended != null ? ` · blandet CAC-payback Tech ${nb(saT.cacPaybackBlended, 1)} mnd` : ''}</p>
           <AndelBar aktiv={er('gtm')} deler={smDeler} />
@@ -2023,12 +2085,12 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </Side>
 
-      {/* 09 · Planen — Digihome AS */}
+      {/* 09 · Planen – Digihome AS */}
       <Side id="plan-dh" pos={pos('plan-dh')} aktiv={er('plan-dh')} bred>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Kapittel nr={kap('plan-dh')} navn="Planen · Digihome AS" under={`${N} måneder · ${mndLabel(plan.startYm, 0, false)} – ${mndLabel(plan.startYm, N - 1, false)}`} />
-            <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Forvaltningen{preset !== 'plan' ? <span style={{ color: LILLA_M }}> – med dine valg</span> : ''}.</H2></Inn>
+            <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Forvaltningen{preset !== 'plan' ? <span style={{ color: LILLA_M }}> – med justerte forutsetninger</span> : ''}.</H2></Inn>
           </div>
           <Inn i={2} className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12.5px]" style={{ color: DIM }}>
             <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: FARGE.dh }} /> Kontraktsfestet</span>
@@ -2052,7 +2114,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
               <p className="text-[13px] font-medium" style={{ color: T.ink }}>Skru på forvaltningen</p>
               {preset !== 'plan' ? <button onClick={nullstill} className="flex items-center gap-1 text-[12px] font-medium" style={{ color: LILLA_M }} data-testid="deck-nullstill-dh"><RotateCcw className="h-3 w-3" /> Tilbake til planen</button> : null}
             </div>
-            <p className="mt-1 text-[12.5px]" style={{ color: SVAK }}>Endringene lagres ikke – de er dine å utforske.</p>
+            <p className="mt-1 text-[12.5px]" style={{ color: SVAK }}>Endringene lagres ikke – kun for utforsking.</p>
             <div className="mt-2 divide-y" style={{ borderColor: HAIR }}>
               <Skru label="Veksttempo" verdi={fakt.forv} basis={1} min={0.25} max={3} steg={0.25} format={(v) => `${nb(v * 100)} %`} hint={fakserie()} onChange={(v) => skruTempo('forv', v)} onFerdig={skruFerdig('veksttempo forvaltning')} testid="deck-skru-nye" />
               <Skru label="Honorar" verdi={drivF.honorarPctNye} basis={basisF.honorarPctNye} min={4} max={15} steg={0.5} format={(v) => `${nb(v, 1)} %`} onChange={(v) => skruF('honorarPctNye', v)} onFerdig={skruFerdig('honorar')} />
@@ -2063,12 +2125,12 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </Side>
 
-      {/* 10 · Planen — Digihome Tech AS */}
+      {/* 10 · Planen – Digihome Tech AS */}
       <Side id="plan-tech" pos={pos('plan-tech')} aktiv={er('plan-tech')} bred>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Kapittel nr={kap('plan-tech')} navn="Planen · Digihome Tech AS" under={techPlan ? `${NT} måneder · ${mndLabel(techPlan.startYm, 0, false)} – ${mndLabel(techPlan.startYm, NT - 1, false)}` : undefined} />
-            <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Plattformen{preset !== 'plan' ? <span style={{ color: LILLA_M }}> – med dine valg</span> : ''}.</H2></Inn>
+            <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Plattformen{preset !== 'plan' ? <span style={{ color: LILLA_M }}> – med justerte forutsetninger</span> : ''}.</H2></Inn>
           </div>
           {mT ? (
             <Inn i={2} className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12.5px]" style={{ color: DIM }}>
@@ -2101,7 +2163,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
                 <p className="text-[13px] font-medium" style={{ color: T.ink }}>Skru på plattformen</p>
                 {preset !== 'plan' ? <button onClick={nullstill} className="flex items-center gap-1 text-[12px] font-medium" style={{ color: LILLA_M }} data-testid="deck-nullstill-tech"><RotateCcw className="h-3 w-3" /> Tilbake til planen</button> : null}
               </div>
-              <p className="mt-1 text-[12.5px]" style={{ color: SVAK }}>Endringene lagres ikke – de er dine å utforske.</p>
+              <p className="mt-1 text-[12.5px]" style={{ color: SVAK }}>Endringene lagres ikke – kun for utforsking.</p>
               <div className="mt-2 divide-y" style={{ borderColor: HAIR }}>
                 {basisT.huseier.modus === 'kunder' || (basisT.huseier.annonsePerMnd === 0 && !(basisT.huseier.vekstplan || []).length) ? (
                   <Skru label="Selvbetjente huseiere / mnd" verdi={(drivT.huseier.kunderPlan || []).length ? Math.max(...drivT.huseier.kunderPlan.map((x) => Number(x.nyePerMnd) || 0)) : 0} basis={(basisT.huseier.kunderPlan || []).length ? Math.max(...basisT.huseier.kunderPlan.map((x) => Number(x.nyePerMnd) || 0)) : 0} min={0} max={40} steg={1} format={(v) => nb(v)} hint={`betalt via annonser · ${kr(drivT.huseier.cacPerEnhet)} per aktivert enhet`} onChange={(v) => { setPreset('egen'); setOver((c) => ({ ...c, tech: { ...c.tech, huseier: { ...(c.tech.huseier || {}), modus: 'kunder', kunderPlan: v > 0 ? [{ fraMnd: 1, nyePerMnd: v }] : [] } } })); }} onFerdig={skruFerdig('selvbetjente huseiere')} testid="deck-skru-huseiere" />
@@ -2128,7 +2190,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Kapittel nr={kap('konsern')} navn="Konsern" under="Digihome AS + Tech · intern lisens eliminert" />
-            <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Samlet{preset !== 'plan' ? <span style={{ color: LILLA_M }}> – med dine valg</span> : ''}.</H2></Inn>
+            <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Samlet{preset !== 'plan' ? <span style={{ color: LILLA_M }}> – med justerte forutsetninger</span> : ''}.</H2></Inn>
           </div>
           <Inn i={2} className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12.5px]" style={{ color: DIM }}>
             <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: FARGE.dh }} /> Digihome AS</span>
@@ -2173,16 +2235,123 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
                 </div>
               );
             })()}
-            <p className="mt-3 text-[12px] leading-[1.5]" style={{ color: SVAK }}>{sK.andelTechEksternPct != null && sK.andelTechEksternPct > 0 ? `${sK.andelTechEksternPct} % av konserninntekten kommer fra eksterne plattformkunder ved slutten av perioden. ` : 'Ingen eksterne plattformkunder i planen – all inntekt er forvaltning. '}Break-even per selskap: Digihome AS {be(k.digihome.breakEvenIdx)}, Tech {harTech ? be(k.tech.breakEvenIdx) : '—'}.{skattPaa && !basisF.skatt.konsernbidrag && k.skatt.fremforbart.tech > 0 ? ` Tech bygger ${mnok(k.skatt.fremforbart.tech)} i fremførbart underskudd – en skattefordel som realiseres med konsernbidrag eller når Tech tjener penger.` : ''}</p>
+            <p className="mt-3 text-[12px] leading-[1.5]" style={{ color: SVAK }}>{sK.andelTechEksternPct != null && sK.andelTechEksternPct > 0 ? `${sK.andelTechEksternPct} % av konserninntekten kommer fra eksterne plattformkunder ved slutten av perioden. ` : 'Ingen eksterne plattformkunder i planen – all inntekt er forvaltning. '}Break-even per selskap: Digihome AS {be(k.digihome.breakEvenIdx)}, Tech {harTech ? be(k.tech.breakEvenIdx) : '–'}.{skattPaa && !basisF.skatt.konsernbidrag && k.skatt.fremforbart.tech > 0 ? ` Tech bygger ${mnok(k.skatt.fremforbart.tech)} i fremførbart underskudd – en skattefordel som realiseres med konsernbidrag eller når Tech tjener penger.` : ''}</p>
           </Inn>
         </div>
       </Side>
+
+      {/* Nøkkeltall · planen destillert */}
+      <Side id="kpi" pos={pos('kpi')} aktiv={er('kpi')} bred>
+        <Kapittel nr={kap('kpi')} navn="Nøkkeltall" under="planen destillert til tallene som teller" />
+        <div className="mt-2 grid gap-8 lg:grid-cols-12 lg:items-center lg:gap-14">
+          <div className="lg:col-span-5">
+            <Inn i={1}><H2 maks="14ch">Tallene som teller.</H2></Inn>
+            <Ingress i={2} maks="42ch">Hele planen koker ned til dette: hva vi bygger, når det bærer seg selv, og hva det krever av kapital.</Ingress>
+            <Inn i={3} className="mt-8">
+              <div className="relative overflow-hidden rounded-[22px] p-6 sm:p-7" style={{ background: T.charcoal, boxShadow: '0 30px 64px -34px rgba(21,19,15,0.6)' }}>
+                <span aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full" style={{ background: 'radial-gradient(circle, rgba(122,63,168,0.4), transparent 70%)' }} />
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'rgba(212,150,255,0.9)' }}>Omsetningstakt ved utgang</p>
+                <div className="mt-2"><Tall aktiv={er('kpi')} verdi={sK.arrExit} farge={T.offwhite} storrelse="text-[52px] lg:text-[68px]" /></div>
+                <p className="mt-2 text-[13px] leading-[1.5]" style={{ color: LYS }}>årlig omsetningstakt {mndLabel(plan.startYm, N - 1, false)}{sK.andelTechEksternPct != null && sK.andelTechEksternPct > 0 ? ` · ${sK.andelTechEksternPct} % fra eksterne plattformkunder` : ' · bygget uten én ekstern plattformkunde'}</p>
+              </div>
+            </Inn>
+          </div>
+          <div className="lg:col-span-7">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-7 sm:grid-cols-3">
+              {kpiGrid.map((kp, i) => (
+                <Inn key={kp.l} i={4 + i} className="border-t pt-4" style={{ borderColor: HAIR }}>
+                  {kp.tall !== undefined
+                    ? <Tall aktiv={er('kpi')} verdi={kp.tall} format={kp.format} storrelse="text-[28px] lg:text-[36px]" farge={kp.farge || T.ink} />
+                    : <p className="text-[28px] lg:text-[36px]" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: kp.farge || T.ink }}>{kp.tekst}</p>}
+                  <p className="mt-2 text-[12.5px] leading-[1.45]" style={{ color: DIM }}>{kp.l}</p>
+                </Inn>
+              ))}
+            </div>
+            <Inn i={12} className="mt-8 flex items-start gap-2 text-[12.5px]" style={{ color: SVAK }}>
+              <Sparkles className="mt-[1px] h-4 w-4 shrink-0" style={{ color: LILLA_M }} /> Alle tall regnes live fra planen og de signerte kontraktene – juster driverne, og nøkkeltallene følger med.
+            </Inn>
+          </div>
+        </div>
+      </Side>
+
+      {/* Budsjett · konsern år for år */}
+      <Side id="budsjett" pos={pos('budsjett')} aktiv={er('budsjett')} bred>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <Kapittel nr={kap('budsjett')} navn="Budsjett" under={`konsern · ${N} måneder · eks. mva`} />
+            <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Hele budsjettet på én side.</H2></Inn>
+          </div>
+          <Inn i={2} className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12.5px]" style={{ color: DIM }}>
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: FARGE.dh }} /> Digihome AS</span>
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: FARGE.tech }} /> Tech · ekstern</span>
+          </Inn>
+        </div>
+        <Inn i={3} className="mt-7 overflow-x-auto" data-testid="deck-budsjett">
+          {(() => {
+            const yrs = k.aar;
+            const arrAt = (i) => (k.inntekt[i] || 0) * 12;
+            const enhAt = (i) => Math.round(mF.enheter?.[i] || 0);
+            const extTech = (a) => a.tech.inntekt - a.eliminert;
+            const flyt = [
+              { l: 'Konserninntekt', fet: true, vals: yrs.map((a) => a.inntekt), sum: k.sammendrag.sumInntekt },
+              { l: 'Digihome AS · forvaltning', indent: true, vals: yrs.map((a) => a.digihome.inntekt), sum: sum(k.digihome.inntekt) },
+              { l: 'Digihome Tech AS · ekstern', indent: true, vals: yrs.map((a) => extTech(a)), sum: sum(k.tech.inntekt) - k.sammendrag.eliminert },
+              { l: 'Driftskostnader', neg: true, vals: yrs.map((a) => a.kost), sum: k.sammendrag.sumKost },
+              { l: skattPaa ? 'Driftsresultat før skatt' : 'Driftsresultat', fet: true, res: true, vals: yrs.map((a) => a.resultat), sum: k.sammendrag.resultat },
+            ];
+            const stock = [
+              { l: 'Boliger under forvaltning · ved utgang', fmt: (v) => nb(v), vals: yrs.map((a) => enhAt(a.tilIdx)), sum: enhAt(N - 1) },
+              { l: 'Omsetningstakt · ved utgang', vals: yrs.map((a) => arrAt(a.tilIdx)), sum: arrAt(N - 1) },
+            ];
+            const num = (v, o = {}) => {
+              const neg = o.neg || (o.res && v < 0);
+              const farge = o.res ? (v >= 0 ? T.gronn : FARGE.kost) : (o.neg ? DIM : T.ink);
+              const txt = mnok(Math.abs(v));
+              return <span style={{ color: farge }}>{neg ? '− ' : ''}{txt}</span>;
+            };
+            const th = 'px-3 py-2.5 text-right text-[11.5px] font-semibold uppercase tracking-[0.06em]';
+            const td = 'px-3 py-2.5 text-right tabular-nums whitespace-nowrap text-[14px]';
+            return (
+              <table className="w-full min-w-[640px]" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+                <thead>
+                  <tr>
+                    <th className="px-3 py-2.5 text-left text-[11.5px] font-semibold uppercase tracking-[0.06em]" style={{ color: SVAK }}>Konsern</th>
+                    {yrs.map((a) => (
+                      <th key={a.nr} className={th} style={{ color: T.ink }}>År {a.nr}<span className="block text-[10.5px] font-normal normal-case tracking-normal" style={{ color: SVAK }}>{mndLabel(plan.startYm, a.fraIdx)} – {mndLabel(plan.startYm, a.tilIdx)}</span></th>
+                    ))}
+                    <th className={th} style={{ color: LILLA_M }}>Hele perioden<span className="block text-[10.5px] font-normal normal-case tracking-normal" style={{ color: SVAK }}>{N} mnd</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {flyt.map((r) => (
+                    <tr key={r.l} style={{ background: r.res ? 'rgba(122,63,168,0.05)' : 'transparent' }}>
+                      <td className={`px-3 py-2.5 text-[13.5px] ${r.fet ? 'font-semibold' : ''} ${r.indent ? 'pl-6' : ''}`} style={{ borderTop: `1px solid ${HAIR}`, color: r.indent ? DIM : T.ink }}>{r.l}</td>
+                      {r.vals.map((v, i) => <td key={i} className={`${td} ${r.fet ? 'font-semibold' : 'font-medium'}`} style={{ borderTop: `1px solid ${HAIR}` }}>{num(v, r)}</td>)}
+                      <td className={`${td} ${r.fet ? 'font-semibold' : 'font-medium'}`} style={{ borderTop: `1px solid ${HAIR}`, color: LILLA_M }}>{num(r.sum, r)}</td>
+                    </tr>
+                  ))}
+                  <tr><td colSpan={yrs.length + 2} className="pt-3" /></tr>
+                  {stock.map((r) => (
+                    <tr key={r.l}>
+                      <td className="px-3 py-2.5 text-[13.5px]" style={{ borderTop: `1px solid ${HAIR}`, color: T.ink }}>{r.l}</td>
+                      {r.vals.map((v, i) => <td key={i} className={`${td} font-medium`} style={{ borderTop: `1px solid ${HAIR}`, color: T.ink }}>{r.fmt ? r.fmt(v) : mnok(v)}</td>)}
+                      <td className={`${td} font-semibold`} style={{ borderTop: `1px solid ${HAIR}`, color: LILLA_M }}>{r.fmt ? r.fmt(r.sum) : mnok(r.sum)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            );
+          })()}
+        </Inn>
+        <Inn i={4}><p className="mt-4 max-w-[82ch] text-[12px] leading-[1.5]" style={{ color: SVAK }}>Konserntall etter at intern lisens mellom selskapene er eliminert{k.sammendrag.eliminert ? ` (${mnok(k.sammendrag.eliminert)} over perioden)` : ''}. «Ved utgang» = siste måned i hvert år. {skattPaa ? 'Tallene er før skatt – skatt og kapitalbehov etter skatt vises under Det vi trenger.' : 'Full plan per selskap ligger under Planen · Digihome AS og Planen · Tech.'}</p></Inn>
+      </Side>
+
 
       {/* 12 · Den ene variabelen */}
       <Side id="variabel" pos={pos('variabel')} aktiv={er('variabel')} bred>
         <Kapittel nr={kap('variabel')} navn="Den ene variabelen" under="hva en ny forvaltningskunde koster i media" />
         <Inn i={1}><H2 maks="24ch">Alt hviler på ett tall: hva det koster å hente én ny kunde.</H2></Inn>
-        <Inn i={2}><p className="mt-5 max-w-[68ch] text-[15px] leading-[1.55] sm:text-[16px]" style={{ color: DIM }}>Planen regner {kr0(basisF.provisjonPerNyEnhet)} kr i media per signert enhet, pluss {basisF.partner?.paa ? `${kma(basisF.partner.honorarPct)} % av honoraret i ${basisF.partner.varighetMnd} måneder` : 'ingen partner'} – til sammen {kr0(mFb.cac.fullCac)} kr, som en enhet på {kr0(mFb.cac.bruttoHonorarNy)} kr/mnd betaler tilbake på <b style={{ color: T.ink }}>{mFb.cac.bruttoHonorarNy > 0 ? nb(mFb.cac.fullCac / mFb.cac.bruttoHonorarNy, 1) : '—'} måneder</b>. Tabellen viser hva som skjer med kapitalbehovet{skattPaa ? ' etter skatt' : ''} og resultatet over {N} måneder når prisen på en kunde endrer seg – og når en andel kommer gratis.</p></Inn>
+        <Inn i={2}><p className="mt-5 max-w-[68ch] text-[15px] leading-[1.55] sm:text-[16px]" style={{ color: DIM }}>Planen regner {kr0(basisF.provisjonPerNyEnhet)} kr i media per signert enhet, pluss {basisF.partner?.paa ? `${kma(basisF.partner.honorarPct)} % av honoraret i ${basisF.partner.varighetMnd} måneder` : 'ingen partner'} – til sammen {kr0(mFb.cac.fullCac)} kr, som en enhet på {kr0(mFb.cac.bruttoHonorarNy)} kr/mnd betaler tilbake på <b style={{ color: T.ink }}>{mFb.cac.bruttoHonorarNy > 0 ? nb(mFb.cac.fullCac / mFb.cac.bruttoHonorarNy, 1) : '–'} måneder</b>. Tabellen viser hva som skjer med kapitalbehovet{skattPaa ? ' etter skatt' : ''} og resultatet over {N} måneder når prisen på en kunde endrer seg – og når en andel kommer gratis.</p></Inn>
         {variabelMatrise ? (
           <Inn i={3} className="mt-8 overflow-x-auto" data-testid="deck-variabel">
             <table className="w-full min-w-[720px] text-[13.5px]" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
@@ -2218,7 +2387,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
           // Avledede fakta fra matrisen – aldri statiske påstander
           const celle = (cac, org) => variabelMatrise[ORG_AKSE.indexOf(org)]?.[CAC_AKSE.indexOf(cac)];
           const c5 = celle(5000, 0); const c6 = celle(6000, 0); const c10 = celle(10000, 0); const c5o = celle(5000, 30);
-          const payback = (cac) => (mFb.cac.bruttoHonorarNy > 0 ? nb((cac + mFb.cac.partnerPerEnhet) / mFb.cac.bruttoHonorarNy, 1) : '—');
+          const payback = (cac) => (mFb.cac.bruttoHonorarNy > 0 ? nb((cac + mFb.cac.partnerPerEnhet) / mFb.cac.bruttoHonorarNy, 1) : '–');
           const kort = [
             c5 && c6 ? ['+1 000 kr per kunde', `koster ${mnok(c6.kapital - c5.kapital)} mer i kapital og ${mnok(c5.resultat - c6.resultat)} i resultat over perioden. Dette er den dyreste tusenlappen i budsjettet.`] : null,
             c5 && c5o ? ['30 % organisk', `sparer ${mnok(c5.kapital - c5o.kapital)} i kapitalbehov og løfter resultatet ${mnok(c5o.resultat - c5.resultat)}. Referral fra fornøyde eiere og forvaltningens egen kanal er derfor budsjettets viktigste gratisarbeid.`] : null,
@@ -2239,8 +2408,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
 
       {/* 13 · Hva om */}
       <Side id="hvaom" pos={pos('hvaom')} aktiv={er('hvaom')} bred>
-        <Kapittel nr={kap('hvaom')} navn="Hva om" under="ett trykk, ett svar – gjelder begge selskaper" />
-        <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Spørsmål fra salen.</H2></Inn>
+        <Kapittel nr={kap('hvaom')} navn="Hva om" under="test forutsetningene – begge selskaper" />
+        <Inn i={1}><H2 className="!text-[34px] sm:!text-[44px] lg:!text-[48px]">Endre forutsetningene. Se svaret.</H2></Inn>
         <Inn i={2} className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" data-testid="deck-presets">
           {PRESETS.filter((p) => harTech || !p.kreverTech).map((p) => {
             const aktiv = preset === p.id;
@@ -2263,10 +2432,10 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
         </div>
       </Side>
 
-      {/* 15 · Risiko — før de spør */}
+      {/* 15 · Risiko – før de spør */}
       <Side id="risiko" pos={pos('risiko')} aktiv={er('risiko')} bred>
-        <Kapittel nr={kap('risiko')} navn="Risiko" under="det vi er mest redde for – og hva vi gjør med det" />
-        <Inn i={1}><H2 maks="22ch">Fire ting kan velte planen. Alle fire er regnet på.</H2></Inn>
+        <Kapittel nr={kap('risiko')} navn="Risiko" under="de største truslene – og tiltakene mot dem" />
+        <Inn i={1}><H2 maks="22ch">Fire ting kan velte planen. Alle fire er tallfestet.</H2></Inn>
         <div className="mt-10 grid gap-x-14 gap-y-10 md:grid-cols-2">
           {(() => {
             const celle = (cac, org) => variabelMatrise?.[ORG_AKSE.indexOf(org)]?.[CAC_AKSE.indexOf(cac)];
@@ -2276,7 +2445,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
               { t: 'Kundekost', tall: c5 && c8 ? `+${mnok(c8.kapital - c5.kapital)}` : null, tallU: 'mer kapital ved 8 000 kr', r: `Planen regner ${kr(basisF.provisjonPerNyEnhet)} i media per ny forvaltningskunde. ${c5 && c8 ? `Ved 8 000 kr øker kapitalbehovet med ${mnok(c8.kapital - c5.kapital)}.` : ''}`, m: `Performance-avtalen (${basisF.partner?.paa ? `${kma(basisF.partner.honorarPct)} % i ${basisF.partner.varighetMnd} mnd` : 'resultatbasert'}) flytter risiko til byrået. Forvaltningens egne kunder og referral er kanalen som koster null. Vi bremser veksten før vi finansierer dyre kunder.`, kap: 'variabel' },
               { t: 'Én kodebase, få hoder', tall: utv ? kr(utv) : null, tallU: 'per måned i utvikling', r: `Tech bygger AI-native uten utviklerteam${utv ? ` – ${kr(utv)}/mnd i utvikling` : ''}. Nøkkelperson- og leverandørrisiko er reell.`, m: 'Kode, data og infrastruktur eies av Digihome Tech AS – ikke av leverandøren. Arkitektur og prosesser er dokumentert. Kapasitet kan kjøpes måned for måned, ikke ansettes i panikk.', kap: 'org' },
               { t: 'Jus og regulering', tall: nb(Math.round(mF.enheter[N - 1] || 0)), tallU: 'enheter treffes samtidig av én malfeil', r: 'Husleieloven regulerer depositum, oppsigelse og regulering i detalj. Én systematisk feil i kontraktsmal eller frist treffer hele porteføljen samtidig.', m: 'Styreleder er advokat med selskaps- og kontraktsrett som fag. Kontrakter, depositum og signering er standardisert i programvaren – én rettelse gjelder alle enheter.', kap: 'org' },
-              { t: 'Churn og bemanning', tall: `${kma(basisF.aarligChurnPct)} %`, tallU: 'årlig churn i planen – test 10 % i Hva om', r: `Planen antar ${kma(basisF.aarligChurnPct)} % årlig churn og en bemanningstrapp fra ${basisF.bemanningstrinn?.[0]?.prosent ?? 30} % til ${basisF.bemanningstrinn?.[basisF.bemanningstrinn.length - 1]?.prosent ?? '—'} % stilling ved ${nb(basisF.bemanningstrinn?.[basisF.bemanningstrinn.length - 1]?.fraEnheter ?? 0)} enheter.`, m: 'Forvaltningsavtaler er trege å si opp midt i et leieforhold. Modellen varsler når enheter per årsverk passerer grensen, og «Hva om» viser hva dobbel churn og halv vekst gjør med kapitalbehovet – før noen andre spør.', kap: 'hvaom' },
+              { t: 'Churn og bemanning', tall: `${kma(basisF.aarligChurnPct)} %`, tallU: 'årlig churn i planen – test 10 % i Hva om', r: `Planen antar ${kma(basisF.aarligChurnPct)} % årlig churn og en bemanningstrapp fra ${basisF.bemanningstrinn?.[0]?.prosent ?? 30} % til ${basisF.bemanningstrinn?.[basisF.bemanningstrinn.length - 1]?.prosent ?? '–'} % stilling ved ${nb(basisF.bemanningstrinn?.[basisF.bemanningstrinn.length - 1]?.fraEnheter ?? 0)} enheter.`, m: 'Forvaltningsavtaler er trege å si opp midt i et leieforhold. Modellen varsler når enheter per årsverk passerer grensen, og «Hva om» viser hva dobbel churn og halv vekst gjør med kapitalbehovet – før noen andre spør.', kap: 'hvaom' },
             ].map((x, i) => (
               <Inn key={x.t} i={2 + i} className="border-t pt-5" style={{ borderColor: HAIR }}>
                 <div className="flex items-start justify-between gap-4">
@@ -2296,11 +2465,11 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
 
       {/* 16 · Det vi trenger (mørk) */}
       <Side id="trenger" pos={pos('trenger')} morkt aktiv={er('trenger')} bred>
-        <Kapittel morkt nr={kap('trenger')} navn="Det vi trenger" under={`avledet av planen${preset !== 'plan' ? ' – med dine valg' : ''}`} />
+        <Kapittel morkt nr={kap('trenger')} navn="Det vi trenger" under={`avledet av planen${preset !== 'plan' ? ' – med justerte forutsetninger' : ''}`} />
         <Inn i={1}><H2 morkt maks="18ch">Kapital til break‑even – med margin.</H2></Inn>
         <div className="mt-10 grid gap-8 sm:grid-cols-3">
           <Inn i={2}><Tall aktiv={er('trenger')} verdi={kapBuffer} farge={T.offwhite} /><p className="mt-3 text-[14px] leading-[1.5]" style={{ color: LYS }}>å hente – kapitalbehov{skattPaa ? ' etter skatt' : ''} {mnok(kapReell)}{kapReellIdx !== null && kapReellIdx !== undefined ? ` (bunnen nås ${mndLabel(plan.startYm, kapReellIdx, false)})` : ''} pluss 30 % buffer for dyrere kunder, dårlige måneder og juridiske overraskelser</p></Inn>
-          <Inn i={3}><p className="whitespace-nowrap text-[40px] lg:text-[54px]" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 1, color: T.offwhite }}>{be(sK.breakEvenIdx)}</p><p className="mt-3 text-[14px] leading-[1.5]" style={{ color: LYS }}>konsernet går i pluss – Digihome AS {be(k.digihome.breakEvenIdx)}, Tech {harTech ? be(k.tech.breakEvenIdx) : '—'}</p></Inn>
+          <Inn i={3}><p className="whitespace-nowrap text-[40px] lg:text-[54px]" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 1, color: T.offwhite }}>{be(sK.breakEvenIdx)}</p><p className="mt-3 text-[14px] leading-[1.5]" style={{ color: LYS }}>konsernet går i pluss – Digihome AS {be(k.digihome.breakEvenIdx)}, Tech {harTech ? be(k.tech.breakEvenIdx) : '–'}</p></Inn>
           <Inn i={4}><Tall aktiv={er('trenger')} verdi={sK.arrExit} farge={T.offwhite} /><p className="mt-3 text-[14px] leading-[1.5]" style={{ color: LYS }}>årlig omsetningstakt ved slutten av perioden{sK.andelTechEksternPct != null ? ` – ${sK.andelTechEksternPct} % fra eksterne plattformkunder` : ''}</p></Inn>
         </div>
         <Inn i={5} className="mt-10">
@@ -2345,7 +2514,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
             <form onSubmit={spor} className="deck-skjul-print mt-10 max-w-[760px]" data-testid="deck-qa">
               <p className="text-[12.5px] font-medium" style={{ color: LYS_SVAK }}>Spør oss – svaret kommer i investorrommet</p>
               <div className="mt-3 flex gap-2">
-                <input value={sporsmal} onChange={(e) => setSporsmal(e.target.value)} placeholder="Hva lurer du på?" className="h-12 flex-1 rounded-[12px] px-4 text-[15px] outline-none" style={{ background: 'rgba(244,241,234,0.08)', color: T.offwhite, boxShadow: 'inset 0 0 0 1px rgba(244,241,234,0.16)' }} />
+                <input value={sporsmal} onChange={(e) => setSporsmal(e.target.value)} placeholder="Spørsmål til teamet" className="h-12 flex-1 rounded-[12px] px-4 text-[15px] outline-none" style={{ background: 'rgba(244,241,234,0.08)', color: T.offwhite, boxShadow: 'inset 0 0 0 1px rgba(244,241,234,0.16)' }} />
                 <button type="submit" className="flex h-12 items-center gap-2 rounded-[12px] px-4 text-[14px] font-medium" style={{ background: T.offwhite, color: T.ink }}>{spurt ? <Check className="h-4 w-4" /> : <Send className="h-4 w-4" />} {spurt ? 'Sendt' : 'Send'}</button>
               </div>
             </form>

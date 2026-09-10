@@ -1,7 +1,7 @@
 'use client';
 
 /* ─────────────────────────────────────────────────────────────────────────────────────
-   LosningFilm — Løsningen-sliden (verdensklasse, innenfor viewport, ingen scroll).
+   LosningFilm – Løsningen-sliden (verdensklasse, innenfor viewport, ingen scroll).
 
    Sliden FORTELLER løsningen og lar forsidens ekte produktanimasjon være beviset.
    Filmene rendres uten hvit ramme (`naken`), rett på slidens bakgrunn; de lyse
@@ -10,7 +10,7 @@
    Passform: på desktop er hele sliden en flex-kolonne med fast høyde (viewport
    minus deckets marger). Overskrift + stegindeks ligger øverst; filmen får resten
    av høyden og SKALERES presist for å fylle den (samme skarpe skala-teknikk som
-   forsidens full-stage) — så alt får plass på én skjerm uten scroll. På mobil
+   forsidens full-stage) – så alt får plass på én skjerm uten scroll. På mobil
    flyter den naturlig (Kompakt-varianten).
 
    Deck-styrt: `aktiv` = sliden er fremme. Filmene spiller kun da og pauser ellers.
@@ -28,9 +28,9 @@ const OkonomiFilm = dynamic(() => import('@/components/forside/v4/produkt/Okonom
 const H_FILM = 660;   // filmenes designhøyde (desktop)
 const LILLA = '#7A3FA8';
 const KAP = [
-  { id: 'annonse', navn: 'Annonse', linje: 'Fra adressen til utleid — annonsen skriver seg selv og legges ut på FINN.' },
+  { id: 'annonse', navn: 'Annonse', linje: 'Fra adressen til utleid – annonsen skriver seg selv og legges ut på FINN.' },
   { id: 'kontrakt', navn: 'Kontrakt', linje: 'Kontrakt og depositum, signert med BankID og dokumentert i protokoll.' },
-  { id: 'drift', navn: 'Drift', linje: 'Leietaker melder — håndverker foreslår tid og pris, du godkjenner med ett trykk.' },
+  { id: 'drift', navn: 'Drift', linje: 'Leietaker melder – håndverker foreslår tid og pris, eieren godkjenner med ett trykk.' },
   { id: 'okonomi', navn: 'Økonomi', linje: 'Husleie inn, purringer på Vipps, regnskapet fører seg selv.' },
 ];
 const REKKE = KAP.map((k) => k.id);
@@ -116,20 +116,20 @@ export default function LosningFilm({ aktiv = false, nr = 3 }) {
   return (
     <div
       className={`relative w-full ${bred ? 'h-[calc(100svh-150px)]' : ''}`}
-      style={bred ? { marginBottom: -34 } : undefined}   /* gjenvinner litt av slidens bunnmarg — filmen kan gå lenger ned, uten scroll */
+      style={bred ? { marginBottom: -34 } : undefined}   /* gjenvinner litt av slidens bunnmarg – filmen kan gå lenger ned, uten scroll */
       data-testid="deck-losning-film"
       data-kapittel={kap}
     >
       {/* Forsidens film-rammer (v4-*-scene) kappes til max-w min(1400px, 86vw). Inne i decket skal filmen fylle den
-          skalerte flaten NØYAKTIG — ellers blir skygge-/hjørneflaten bredere enn kartet → synlige «rammebånd» på
+          skalerte flaten NØYAKTIG – ellers blir skygge-/hjørneflaten bredere enn kartet → synlige «rammebånd» på
           sidene. Vi opphever derfor bredde-kappingen på alle fire kapittel-rammene. Scoped til denne sliden. */}
       <style>{`@media (min-width: 1024px) { [data-testid="deck-losning-film"] [data-testid$="-scene"] { max-width: none !important; width: 100% !important; } }`}</style>
 
-      {/* Filmen står som en rammeløs, «svevende» flate med myke hjørner og en myk skygge — skarp som på forsiden,
+      {/* Filmen står som en rammeløs, «svevende» flate med myke hjørner og en myk skygge – skarp som på forsiden,
           tydelig adskilt fra tidslinjen (ikke «klistret»), uten hvit kant/ramme. */}
 
       <div className={`relative ${bred ? 'flex h-full flex-col' : ''}`}>
-        {/* FORTELLINGEN — én rolig, redaksjonell linje som rammer filmen som «Løsningen». */}
+        {/* FORTELLINGEN – én rolig, redaksjonell linje som rammer filmen som «Løsningen». */}
         <div className="deck-inn mx-auto flex w-full max-w-[860px] shrink-0 flex-col items-center text-center" style={{ '--i': 0 }}>
           <div className="inline-flex items-center gap-2.5">
             <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: LILLA }} />
@@ -140,7 +140,7 @@ export default function LosningFilm({ aktiv = false, nr = 3 }) {
           </h2>
         </div>
 
-        {/* TIDSLINJE — leieforholdets fire steg på én linje: ett system. Lilla fyll rykker frem mens filmen spiller. */}
+        {/* TIDSLINJE – leieforholdets fire steg på én linje: ett system. Lilla fyll rykker frem mens filmen spiller. */}
         <div className="deck-inn mx-auto mt-5 w-full max-w-[620px] shrink-0 lg:mt-6" style={{ '--i': 1 }}>
           <div role="tablist" aria-label="Kapitler i løsningen" className="relative grid grid-cols-4">
             <span aria-hidden="true" className="absolute bottom-[4px] left-[12.5%] right-[12.5%] h-px" style={{ background: 'rgba(21,19,15,0.14)' }} />
@@ -183,7 +183,7 @@ export default function LosningFilm({ aktiv = false, nr = 3 }) {
           </div>
         </div>
 
-        {/* BEVISET — forsidens film er helten: full størrelse, sentrert, rammeløs med myke hjørner (skaleres kun på lave skjermer). */}
+        {/* BEVISET – forsidens film er helten: full størrelse, sentrert, rammeløs med myke hjørner (skaleres kun på lave skjermer). */}
         <FilmSkala skaler={bred}>{scene}</FilmSkala>
       </div>
     </div>

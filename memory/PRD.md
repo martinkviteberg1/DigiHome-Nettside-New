@@ -1634,3 +1634,12 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - gtm (11): ny H2 «Vi kjøper ikke vekst. Vi tjener den.» + skarp lead (byrå betalt på resultat, forvaltning som egen kanal, plattformkunder = oppside). AndelBar/Kolonne urørt.
 - BEVISST IKKE rørt (fungerende interaktive dashboards — høy risiko): plan-dh, plan-tech, konsern (LagGraf + KPI + Skru-slidere), variabel (matrise), hvaom (presets), trenger (raise/Q&A). risiko-sliden er allerede sterk. Kun ramme/tekst-løft der det ga verdi uten å røre logikk.
 - Verifisert: kompilerer; desktop overflowY=0 begge; mobil off=0 begge; ingen page-errors.
+
+## Oppdatering 10. sep 2026 (16) — Konsern-struktur løftet + TO nye slides (Nøkkeltall + Budsjett)
+- Bruker: «løft strukturen-sliden (ett konsern etc)», «forbedre ALLE slides verdensklasse investor deck», «legg til budsjett-slide (tabell, oversiktlig)» + «KPI-slide med de viktigste tallene».
+- KAPITLER: satt inn `kpi` (Nøkkeltall) + `budsjett` (Budsjett) rett etter `konsern` (nå 21 kapitler).
+- STRUKTUREN (`eier`): rebygget kompakt + premium og FIKSET overflow (var 106px). Mindre H2 (30/40/46), kortere connectors (46px), rikere datterkort (ikon + rolle + 100%-chip + live-metrikk «31 boliger i drift» / «Én kodebase · én prisliste» + tag Margin/Skala). Beholdt deck-eier-v/h/p connector-anim. Verifisert desktop 1920 overflowY=0.
+- NØKKELTALL (`kpi`, NY): charcoal hero «Omsetningstakt ved utgang» (Tall count-up) + 3×2 grid (boliger i dag→utgang, break-even, kapital å hente, driftsresultat, bruttomargin Tech, payback/LTV·CAC). kpiGrid-const lagt før `const kap`. Verifisert desktop overflowY=0.
+- BUDSJETT (`budsjett`, NY): ren år-for-år tabell fra k.aar (Konserninntekt → Digihome AS / Tech ekstern → Driftskostnader → Driftsresultat, + Boliger/Omsetningstakt ved utgang, kolonner per år + «Hele perioden»). overflow-x-auto på mobil (min-w-640). Verifisert desktop overflowY=0; mobil tabellen scroller horisontalt i egen container (page overflow-x hidden).
+- Alt kompilerer rent (2427 moduler). Norsk copy, ingen du/deg/din, B2C+B2B, – ikke —. IKKE brukerbekreftet ennå.
+- GJENSTÅR (ikke gjort ennå): bred «moderne animasjoner på ALLE slides»-sweep — venter på brukerbekreftelse på batch 1 før jeg fortsetter.
