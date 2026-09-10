@@ -1258,6 +1258,8 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
   // Kapittellisten som driver navigasjon/velger. Presenter får det interaktive
   // modell-kapitlet lagt til på slutten (uten å forskyve nummereringen ellers).
   const synligeKapitler = useMemo(() => (internPresenter ? [...KAPITLER, MODELL_KAP] : KAPITLER), [internPresenter]);
+  // Hvilket selskaps budsjett den interaktive modell-sliden viser: 'dh' | 'tech' | 'begge'.
+  const [modellVisning, setModellVisning] = useState('dh');
   const N = plan ? Math.min(36, Math.max(1, Number(plan.antallMnd) || 12)) : 12;
   const NT = techPlan ? Math.min(36, Math.max(1, Number(techPlan.antallMnd) || 12)) : N;
   const basisF = useMemo(() => (plan ? rensModellDrivere(plan.drivere || {}) : null), [plan]);
@@ -2531,22 +2533,38 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </Side>
 
 
-      {/* Internt · interaktiv modell (kun presenter) — det levende verktøyet på en slide */}
+      {/* Internt · interaktiv modell (kun presenter) — det levende verktøyet på en slide, med selskapsbytter */}
       {internPresenter ? (
         <Side id="modell" pos={pos('modell')} aktiv={er('modell')} full>
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <Kapittel navn="Modellen · interaktiv" under="samme motor som budsjettmodulen · endre forutsetningene live · ingenting lagres" />
-              <Inn i={1}><H2 className="!text-[30px] sm:!text-[38px] lg:!text-[42px]">Dra i forutsetningene. Se break-even flytte seg.</H2></Inn>
+          <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+            <div className="min-w-0">
+              <Kapittel navn="Modellen · interaktiv" under="hva-om på scenen · ingenting lagres" />
+              <Inn i={1}><H2 maks="30ch" className="!text-[30px] sm:!text-[38px] lg:!text-[42px]">Den levende modellen.</H2></Inn>
+              <Inn i={2}><p className="mt-2 max-w-[64ch] text-[14px] leading-[1.5] sm:text-[15px]" style={{ color: DIM }}>Samme motor som budsjettmodulen. Endre én forutsetning og se break-even, kapitalbehov og ARR flytte seg i sanntid.</p></Inn>
             </div>
-            <Inn i={2}>
+            <Inn i={2} className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1 rounded-full p-1" style={{ background: 'rgba(21,19,15,0.06)' }} data-testid="deck-modell-bytter">
+                {[{ k: 'dh', l: 'Digihome AS' }, ...((techPlan?.id || techId) ? [{ k: 'tech', l: 'Digihome Tech AS' }, { k: 'begge', l: 'Begge' }] : [])].map((o) => (
+                  <button key={o.k} onClick={() => setModellVisning(o.k)} className="rounded-full px-3.5 py-1.5 text-[12.5px] font-medium transition-colors" style={{ background: modellVisning === o.k ? T.ink : 'transparent', color: modellVisning === o.k ? T.offwhite : T.ink }} data-testid={`deck-modell-${o.k}`}>{o.l}</button>
+                ))}
+              </div>
               <span className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-medium" style={{ background: 'rgba(122,63,168,0.12)', color: LILLA_M }}>
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: LILLA_M }} /> Internt · presenter
               </span>
             </Inn>
           </div>
-          <Inn i={3} className="mt-6 min-w-0" data-deck-overlay>
-            <ModellPresentasjon apiKey={adminKey} planId={plan?.id || planId} aktiv={er('modell')} />
+          {/* Begge modellene holdes montert (bevarer hva-om-tilstand); den som ikke er valgt skjules. */}
+          <Inn i={3} className="mt-5 min-w-0 space-y-6" data-deck-overlay>
+            <div className={modellVisning === 'tech' ? 'hidden' : ''}>
+              {modellVisning === 'begge' ? <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: LILLA_M }}>Digihome AS · forvaltningen</p> : null}
+              <ModellPresentasjon apiKey={adminKey} planId={plan?.id || planId} aktiv={er('modell') && modellVisning !== 'tech'} />
+            </div>
+            {(techPlan?.id || techId) ? (
+              <div className={modellVisning === 'dh' ? 'hidden' : ''}>
+                {modellVisning === 'begge' ? <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: LILLA_M }}>Digihome Tech AS · plattformen</p> : null}
+                <ModellPresentasjon apiKey={adminKey} planId={techPlan?.id || techId} aktiv={er('modell') && modellVisning !== 'dh'} />
+              </div>
+            ) : null}
           </Inn>
         </Side>
       ) : null}

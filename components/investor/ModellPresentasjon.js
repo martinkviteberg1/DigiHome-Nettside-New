@@ -13,6 +13,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Loader2, SlidersHorizontal } from 'lucide-react';
 import BudsjettModell from '@/components/admin/BudsjettModell';
+import TechModell from '@/components/admin/TechModell';
 
 export default function ModellPresentasjon({ apiKey = '', planId = '', aktiv = false }) {
   const api = useCallback(async (path, opts = {}) => {
@@ -65,9 +66,12 @@ export default function ModellPresentasjon({ apiKey = '', planId = '', aktiv = f
       </div>
     );
   }
+  const erTech = plan.selskap === 'tech' || plan.type === 'tech';
   return (
-    <div className="rounded-[20px] bg-[#f7f6f3] p-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)] sm:p-4">
-      <BudsjettModell key={plan.id} plan={plan} api={api} apiKey={apiKey} presentasjon />
+    <div className="rounded-[20px] bg-[#f7f6f3] p-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)] sm:p-4" data-testid={`modell-presentasjon-${erTech ? 'tech' : 'dh'}`}>
+      {erTech
+        ? <TechModell key={plan.id} plan={plan} api={api} apiKey={apiKey} presentasjon />
+        : <BudsjettModell key={plan.id} plan={plan} api={api} apiKey={apiKey} presentasjon />}
     </div>
   );
 }

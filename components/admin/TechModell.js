@@ -159,7 +159,7 @@ function TechGraf({ m, startYm }) {
   );
 }
 
-export default function TechModell({ plan, api, apiKey, readOnly = false, onTilbake, onEndret }) {
+export default function TechModell({ plan, api, apiKey, readOnly = false, presentasjon = false, onTilbake, onEndret }) {
   const N = plan.antallMnd;
   const [navn, setNavn] = useState(plan.navn);
   const [tech, setTech] = useState(() => rensTechDrivere(plan.tech || {}));
@@ -231,7 +231,7 @@ export default function TechModell({ plan, api, apiKey, readOnly = false, onTilb
     <div className="w-full" data-testid="tech-modell">
       <ModellTopplinje
         selskap="tech" testPrefix="tech"
-        navn={navn} onNavn={(v) => { setNavn(v); setSkittent(true); }} readOnly={readOnly} onTilbake={onTilbake}
+        navn={navn} onNavn={(v) => { setNavn(v); setSkittent(true); }} readOnly={readOnly || presentasjon} presentasjon={presentasjon} onTilbake={onTilbake}
         startYm={plan.startYm} antallMnd={antallMnd} onHorisont={endreHorisont} horisontBusy={endrerHorisont}
         horisontHint="Lisensvolumet (enheter under forvaltning) hentes på nytt for hele perioden når kilden er et Digihome AS-budsjett."
         status={status} onStatus={(v) => { setStatus(v); lagre({ status: v }); }}
