@@ -282,27 +282,38 @@ function ContentsBar({ kapitler, aktiv }) {
   );
 }
 
-// ── Full-bredde rapport-nav (masthead · handlinger · editorial TOC) ─────────
+// ── Full-bredde rapport-nav (som root) — masthead · handlinger · editorial TOC
 function RapportNav({ kapitler, aktiv, handlinger }) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    let raf = 0;
+    const f = () => { raf = 0; setScrolled((typeof window !== 'undefined' ? window.scrollY : 0) > 6); };
+    const on = () => { if (!raf) raf = requestAnimationFrame(f); };
+    f();
+    window.addEventListener('scroll', on, { passive: true });
+    return () => { window.removeEventListener('scroll', on); if (raf) cancelAnimationFrame(raf); };
+  }, []);
+  const inner = 'mx-auto w-full max-w-[1600px] px-5 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0';
   return (
-    <header className="dh-sr-noprint sticky top-0 z-40 w-full border-b" style={{ borderColor: C.line, background: 'rgba(243,241,236,0.82)', backdropFilter: 'saturate(180%) blur(14px)', WebkitBackdropFilter: 'saturate(180%) blur(14px)' }}>
-      {/* Rad 1 — masthead og handlinger */}
-      <div className="mx-auto flex h-[60px] w-full max-w-[1320px] items-center gap-3 px-5 sm:px-8 lg:px-12">
+    <header
+      className="dh-sr-noprint sticky top-0 z-40 w-full transition-[border-color] duration-300"
+      style={{ borderBottom: `1px solid ${scrolled ? C.line : 'transparent'}`, background: 'rgba(243,241,236,0.80)', backdropFilter: 'saturate(180%) blur(14px)', WebkitBackdropFilter: 'saturate(180%) blur(14px)' }}
+    >
+      {/* Rad 1 — masthead (én logo) og handlinger */}
+      <div className={`${inner} flex h-[64px] items-center gap-3`}>
         <div className="flex min-w-0 shrink-0 items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/digihome-hero-logo.svg" alt="DigiHome" className="h-[19px] w-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          <img src="/digihome-hero-logo.svg" alt="DigiHome" className="h-5 w-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           <span className="hidden h-4 w-px sm:block" style={{ background: C.line2 }} aria-hidden />
           <span className="hidden text-[11px] font-semibold uppercase tracking-[0.2em] sm:inline" style={{ color: C.ink3 }}>Styrerapport</span>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">{handlinger}</div>
       </div>
       {/* Rad 2 — editorial innholdslinje, full bredde. Sentrert med plass, scroller ellers. */}
-      <div className="border-t" style={{ borderColor: C.line }}>
-        <div className="mx-auto max-w-[1320px] px-3 sm:px-8 lg:px-10">
-          <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="mx-auto w-max">
-              <ContentsBar kapitler={kapitler} aktiv={aktiv} />
-            </div>
+      <div className={`${inner} pb-1.5`}>
+        <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="mx-auto w-max">
+            <ContentsBar kapitler={kapitler} aktiv={aktiv} />
           </div>
         </div>
       </div>
@@ -392,8 +403,8 @@ export default function StyrerapportVisning({
   const felt = 'w-full rounded-[10px] border bg-white px-4 py-3 text-[15px] outline-none transition focus:border-[#0A0A0A] focus:shadow-[0_0_0_3px_rgba(10,10,10,0.06)]';
   const feltStyle = { borderColor: C.line2, color: C.ink };
   const btnEd = 'inline-flex items-center gap-2 h-11 px-4 rounded-[8px] border text-[13.5px] font-semibold transition-colors';
-  const secBase = 'border-t';
-  const secStyle = { borderColor: C.line, scrollMarginTop: 116, paddingTop: 'clamp(44px,5.6vw,92px)', paddingBottom: 'clamp(44px,5.6vw,92px)' };
+  const secBase = '';
+  const secStyle = { scrollMarginTop: 116, paddingTop: 'clamp(60px,7.4vw,124px)' };
 
   const coverKpis = [
     { l: 'Honorar · MRR', v: mrr, f: kr, s: 'per måned', d: <Delta now={mrr} prev={forrigeMrr} suffix="" /> },
@@ -410,14 +421,12 @@ export default function StyrerapportVisning({
       <RapportNav kapitler={kapitler} aktiv={aktiv} handlinger={handlinger} />
 
       {/* ── INNHOLD ───────────────────────────────────────────────────────── */}
-      <div className="mx-auto w-full max-w-[1320px] px-5 pb-28 sm:px-8 lg:px-12">
+      <div className="mx-auto w-full max-w-[1600px] px-5 pb-28 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0">
         {/* ── COVER (lys, super-editorial masthead — ingen boks) ──────────── */}
         <section id="sr-cover" className="pt-9 sm:pt-14" style={{ scrollMarginTop: 116 }}>
           <Reveal>
             <div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/digihome-hero-logo.svg" alt="DigiHome" className="h-6 w-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                 <span className="inline-flex items-center gap-1.5 rounded-[6px] border px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ borderColor: C.line2, color: C.ink3 }}><ShieldCheck className="h-3.5 w-3.5" style={{ color: C.accent }} /> Konfidensiell · Intern</span>
                 {lenke?.label && <span className="rounded-[6px] border px-2.5 py-1 text-[10.5px] font-semibold" style={{ borderColor: C.line2, color: C.ink3 }}>{lenke.label}</span>}
               </div>

@@ -1787,3 +1787,11 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - LYS SUPER-EDITORIAL (root-canvas): Byttet hele rapporten til nettsidens varme stein-canvas #F3F1EC (samme som forsiden), varm ink #15130F. FJERNET alle mørke bokser: cover er nå en boksløs masthead (stor display-tittel clamp→116px, hårfin regel, 4-kolonners KPI-stripe m/ vertikale hårfine skiller), break-even = lys highlight-tile (paper2), prognose-basecase = hvit kort m/ lilla kantutheving, «Til beslutning»-finale = lys editorial (hvite ask-kort m/ mørk tallbadge). Hvite kort m/ hårfine kanter på stein-canvas gir redaksjonell kontrast.
 - FOLIO-KONSISTENS: Seksjonsnummer utledes nå fra synlige kapitler (`folio(id)`), så TOC og seksjonshoder alltid stemmer — også når tomme kapitler skjules i delt visning.
 - STATUS: Kompilerer rent; skjermbilde-verifisert (desktop 1920) admin (cover/resultat/prognose/beslutning) + offentlig delt lenke — ingen svarte bokser, ingen horisontal overflow, tall rene (36 362 kr). Data/API/delingslenker uendret. IKKE deployet / ikke sluttbekreftet av bruker.
+
+## Oppdatering 11. sep 2026 (3) — Styrerapport: full-bredde nav (root-ramme) + luftigere
+- Bruker: «enda mer moderne layout og navigasjon, mindre dividerlinjer mellom seksjoner» + «dobbelt opp med logoer i toppen» + «navbar skal være FULLBREDDE som på root».
+- DIVIDERLINJER FJERNET: Seksjonene har ikke lenger `border-t`-skiller — kun whitespace (paddingTop clamp 60→124px) + folio-hodet («01 —— TRAKSJON») skiller dem. Mye luftigere/moderne.
+- ÉN LOGO: Fjernet logoen i cover-mastheaden (var duplikat av nav-logoen). Cover starter nå rett på Konfidensiell-brikken.
+- SCROLL-BEVISST NAV: Frostet bakgrunn (canvas-blur) alltid; hårfin bunn-ramme vises kun ved scroll (som root NavV4). rAF-throttlet scroll-lytter i `RapportNav`.
+- FULL-BREDDE (eksakt root-ramme): Både navbaren OG innholdet bruker nå `mx-auto w-full max-w-[1600px] px-5 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0` — samme formel som forsidens NavV4/scene. Verifisert måling (1920): logo.left = cover.left = 160, cover.right = 1760 → logo flukter med innhold, alt spenner hele 1600-rammen. Ingen horisontal overflow.
+- STATUS: Kompilerer rent; skjermbilde-/målingsverifisert på delt lenke (topp + scrollet). IKKE deployet / ikke sluttbekreftet.
