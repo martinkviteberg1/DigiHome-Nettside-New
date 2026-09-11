@@ -633,6 +633,7 @@ export default function TilbudClient({ tilbud, slug }) {
   const harAnnonse = Boolean(tilbud?.annonse);
   const grunnlag = tilbud?.grunnlag || null;
   const vurdertDato = fmtDato(tilbud?.vurdert);
+  const [heroFeil, setHeroFeil] = useState(false);
 
   // Avsenderen — tildelt selger, ellers DigiHomes generiske kontaktperson
   const avsender = tilbud?.selger?.navn
@@ -642,6 +643,16 @@ export default function TilbudClient({ tilbud, slug }) {
 
   // «Slik ville vi gjort det»-kortet bruker beste tilgjengelige bilde: stylet → original
   const dhBilde = stylet.length ? `/api/tilbud/bilde?id=${stylet[0].id}` : originalBilde;
+
+  // HELTEBILDE — sterkest mulig «dette er laget for MEG»: vi leder med DigiHomes
+  // klargjorte versjon av boligen NÅR den finnes som ekte optimalisering (ikke en
+  // AI-møblert illustrasjon — det ville vært misvisende som helt). Ellers eierens
+  // ekte annonsebilde, og til slutt et kuratert Bergen-cover som trygg reserve.
+  const heroStylet = stylet.find((s) => ['optimal', 'lysloft'].includes(s.stil));
+  const heroBilde = heroFeil
+    ? COVER_URL
+    : (heroStylet ? `/api/tilbud/bilde?id=${heroStylet.id}` : (originalBilde || galleri[0] || COVER_URL));
+  const heroPersonlig = heroBilde !== COVER_URL;
 
   const intervall = useMemo(() => {
     if (!anbefalt) return null;
@@ -737,8 +748,8 @@ export default function TilbudClient({ tilbud, slug }) {
         {/* Lag 1 — kuratert Bergen-cover med Ken Burns (alltid til stede, alltid kontrollert) */}
         <div className="absolute inset-0 overflow-hidden" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={COVER_URL} alt="" fetchPriority="high" className="h-full w-full object-cover"
-            style={{ objectPosition: 'center 42%', animation: reduserMotion() ? 'none' : 'dh-kenburns 28s ease-in-out infinite alternate' }} />
+          <img src={heroBilde} onError={() => setHeroFeil(true)} alt="" fetchPriority="high" className="h-full w-full object-cover"
+            style={{ objectPosition: heroPersonlig ? 'center 50%' : 'center 42%', animation: reduserMotion() ? 'none' : 'dh-kenburns 28s ease-in-out infinite alternate' }} />
           <div className="absolute inset-0" style={{ backgroundColor: 'rgba(10,9,8,0.22)' }} />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(8,7,6,0.95) 0%, rgba(8,7,6,0.88) 18%, rgba(8,7,6,0.56) 42%, rgba(8,7,6,0.18) 68%, rgba(8,7,6,0.32) 100%)' }} />
           <div className="absolute inset-x-0 top-0" style={{ height: 180, background: 'linear-gradient(to bottom, rgba(8,7,6,0.52), transparent)' }} />
@@ -777,16 +788,17 @@ export default function TilbudClient({ tilbud, slug }) {
               Vi har laget en konkret vurdering av utleiepotensialet — {[...fakta].slice(0, 2).join(' · ') || 'boligen din'}{tilbud.postnr ? ` · ${tilbud.postnr} Bergen` : ' · Bergen'}.
             </p>
 
-            {/* Hero-meta: nøkkeltall skilt med hårlinjer */}
-            <div className="mt-9 flex flex-wrap items-start gap-x-10 gap-y-5">
+            {/* Hero-meta: nøkkeltall i et frostet panel — leselig og premium over ethvert boligbilde */}
+            <div className="mt-9 inline-flex max-w-full flex-wrap items-start gap-x-8 gap-y-5 rounded-2xl px-6 py-5"
+              style={{ backgroundColor: 'rgba(12,10,9,0.44)', backdropFilter: 'blur(15px)', WebkitBackdropFilter: 'blur(15px)', border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 22px 64px rgba(0,0,0,0.36)' }}>
               {[
                 anbefalt > 0 ? ['Anbefalt leie', `${tall(anbefalt)} kr/mnd`] : null,
                 netto > 0 ? ['Til deg etter honorar', `${tall(netto)} kr/mnd`] : null,
                 grunnlag ? ['Vurdert mot', `${grunnlag.antallILeide} leieforhold`] : null,
               ].filter(Boolean).map(([l, v], i) => (
-                <div key={l} className={i > 0 ? 'pl-10' : ''} style={i > 0 ? { borderLeft: '1px solid rgba(255,255,255,0.18)' } : undefined}>
-                  <p className="mb-1.5 font-medium uppercase" style={{ ...body, fontSize: 10.5, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.74)', textShadow: '0 1px 14px rgba(0,0,0,0.55)' }}>{l}</p>
-                  <p className="font-light tabular-nums tracking-[-0.02em]" style={{ ...head, fontSize: 'clamp(22px, 2.4vw, 27px)', color: '#fff', textShadow: '0 2px 22px rgba(0,0,0,0.5)' }}>{v}</p>
+                <div key={l} className={i > 0 ? 'pl-8' : ''} style={i > 0 ? { borderLeft: '1px solid rgba(255,255,255,0.18)' } : undefined}>
+                  <p className="mb-1.5 font-medium uppercase" style={{ ...body, fontSize: 10.5, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.74)' }}>{l}</p>
+                  <p className="font-light tabular-nums tracking-[-0.02em]" style={{ ...head, fontSize: 'clamp(22px, 2.4vw, 27px)', color: '#fff' }}>{v}</p>
                 </div>
               ))}
             </div>

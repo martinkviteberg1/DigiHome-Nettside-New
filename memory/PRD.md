@@ -1738,3 +1738,12 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - Admin (auth: modulAuthed 'i-leads'): `GET /api/admin/leads/spam` (liste+total+siste7), `DELETE /api/admin/leads/spam?id=` (eller tøm), `POST /api/admin/leads/spam/gjenopprett {id}` (false-positive → ekte lead+forward+e-post).
 - Frontend: `components/forside/v4/SpamGuard.js` (`useSpamGuard` → 1×1 usynlig honeypot + elapsed_ms). Koblet inn i 5 skjemaer: StartV4, LeadFormPro, KontaktForm, KontaktV4, BookMoteV4.
 - VERIFISERT: backend testagent 100% (spam-gate karantene, admin-auth 401, bogus-id 404, opprydding, ingen 500 — ingen ekte leads/e-post/forward). Honeypot usynlig, `scrollWidth===clientWidth` (ingen overflow) desktop+mobil. Ingen admin-UI ennå (backend-API klart) — foreslått som neste steg.
+
+## Oppdatering 11. sep 2026 — Tilbud: heltebilde personalisert (WOW-løft)
+- Bruker: «løft ALT med tilbudet til verdensklasse … skal virkelig være WOOOOOW» (tenk som eier).
+- `app/tilbud/[slug]/TilbudClient.js`: heltebildet (hero) brukte et generisk Bergen-cover. NÅ en ærlig «laget for MEG»-stige:
+  1) DigiHomes klargjorte bilde av boligen NÅR det finnes som ekte optimalisering (stil 'optimal'/'lysloft' — aldri AI-møblert illustrasjon som helt, ville vært misvisende),
+  2) eierens ekte annonsebilde (originalBilde/galleri[0]),
+  3) kuratert Bergen-cover som trygg reserve. `onError` → cover-fallback (heroFeil).
+- Nøkkeltallene i heroen ligger nå i et **frostet glass-panel** (blur + translucent + hårlinje) → leselig og premium over ethvert boligbilde.
+- VERIFISERT (slug KzpBomXTwKM?preview=1): desktop 1920 + mobil 390 viser eierens egen bolig (Skuteviken) i kinomatisk innramming, frostet tallpanel, ingen horisontal overflow (scrollWidth===clientWidth). HTTP 200. IKKE deployet, ikke brukerbekreftet.
