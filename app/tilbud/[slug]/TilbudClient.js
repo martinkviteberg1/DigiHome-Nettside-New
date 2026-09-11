@@ -578,6 +578,7 @@ export default function TilbudClient({ tilbud, slug }) {
   const [dodeBilder, setDodeBilder] = useState([]); // galleri-bilder som 404-er (FINN CDN)
   const coverRef = useRef(null);
   const morkRef = useRef(null);                    // scroll-drevet formørkning av coveret
+  const heroImgRef = useRef(null);                 // scroll-drevet parallax på coverbildet
 
   // Toppbar forbi coveret + sticky bunn-CTA (mobil) + cover-formørkning
   useEffect(() => {
@@ -590,6 +591,10 @@ export default function TilbudClient({ tilbud, slug }) {
       setScrollet(window.scrollY > vh * 0.72);
       // Coveret trekker seg inn i blekk etter hvert som dokumentet avdekkes over det
       if (morkRef.current) morkRef.current.style.opacity = String(Math.min(0.62, (window.scrollY / vh) * 0.62));
+      // Subtil parallax: coverbildet driver saktere enn scroll → dybde (respekterer redusert bevegelse)
+      if (heroImgRef.current && !reduserMotion()) {
+        heroImgRef.current.style.transform = `translate3d(0, ${Math.min(vh * 0.08, window.scrollY * 0.08)}px, 0)`;
+      }
     };
     const paScroll = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(sjekk); };
     window.addEventListener('scroll', paScroll, { passive: true });
@@ -747,9 +752,12 @@ export default function TilbudClient({ tilbud, slug }) {
         <style>{`@keyframes dh-kenburns{from{transform:scale(1.06)}to{transform:scale(1.13)}}@keyframes dh-cue{0%{transform:translateY(-14px)}100%{transform:translateY(44px)}}`}</style>
         {/* Lag 1 — kuratert Bergen-cover med Ken Burns (alltid til stede, alltid kontrollert) */}
         <div className="absolute inset-0 overflow-hidden" aria-hidden>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={heroBilde} onError={() => setHeroFeil(true)} alt="" fetchPriority="high" className="h-full w-full object-cover"
-            style={{ objectPosition: heroPersonlig ? 'center 50%' : 'center 42%', animation: reduserMotion() ? 'none' : 'dh-kenburns 28s ease-in-out infinite alternate' }} />
+          {/* Parallax-lag — bevisst overdimensjonert (top -8%, høyde 116%) så translasjon aldri avslører kant */}
+          <div ref={heroImgRef} className="absolute inset-x-0 will-change-transform" style={{ top: '-8%', height: '116%' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={heroBilde} onError={() => setHeroFeil(true)} alt="" fetchPriority="high" className="h-full w-full object-cover"
+              style={{ objectPosition: heroPersonlig ? 'center 50%' : 'center 42%', animation: reduserMotion() ? 'none' : 'dh-kenburns 28s ease-in-out infinite alternate' }} />
+          </div>
           <div className="absolute inset-0" style={{ backgroundColor: 'rgba(10,9,8,0.22)' }} />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(8,7,6,0.95) 0%, rgba(8,7,6,0.88) 18%, rgba(8,7,6,0.56) 42%, rgba(8,7,6,0.18) 68%, rgba(8,7,6,0.32) 100%)' }} />
           <div className="absolute inset-x-0 top-0" style={{ height: 180, background: 'linear-gradient(to bottom, rgba(8,7,6,0.52), transparent)' }} />

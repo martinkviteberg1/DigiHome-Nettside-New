@@ -1747,3 +1747,10 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   3) kuratert Bergen-cover som trygg reserve. `onError` → cover-fallback (heroFeil).
 - Nøkkeltallene i heroen ligger nå i et **frostet glass-panel** (blur + translucent + hårlinje) → leselig og premium over ethvert boligbilde.
 - VERIFISERT (slug KzpBomXTwKM?preview=1): desktop 1920 + mobil 390 viser eierens egen bolig (Skuteviken) i kinomatisk innramming, frostet tallpanel, ingen horisontal overflow (scrollWidth===clientWidth). HTTP 200. IKKE deployet, ikke brukerbekreftet.
+
+## Oppdatering 11. sep 2026 — Tilbud: layout/design + super-responsiv
+- Bruker: «gjøre layout design etc mye bedre i tilbudet .. tenk super responsivt».
+- VERIFISERT super-responsiv: overflow-sveip ga scrollWidth===clientWidth på 390/768/1440 (ingen reell horisontal overflow; kun hero-img + grain flagget, begge klippet i overflow-hidden). Fluid clamp()-typografi + kort som stabler.
+- NYTT: hero-parallax — coverbildet lagt i et bevisst overdimensjonert lag (top -8%, høyde 116%) som drives saktere enn scroll (translateY, faktor 0.08, cap 8% av vh) → dybde uten kant/gap. Kombineres med eksisterende Ken Burns. Respekterer reduserMotion(). Verifisert: translateY 30px ved 380px scroll, lag-top −56 (≤0), lag-bunn 1197 (≥vh) → ingen gap; «Hei.»-brevet glir over coveret.
+- (Samme økt: personalisert hero-bilde-stige + frostet tallpanel — se forrige oppdatering.)
+- IKKE deployet, ikke brukerbekreftet.
