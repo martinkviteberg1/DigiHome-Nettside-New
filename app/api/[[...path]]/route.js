@@ -3406,10 +3406,54 @@ async function handleRoute(request, { params }) {
       const SR_ID = 'styrerapport';
       const srTekst = (v, maks) => String(v == null ? '' : v).replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').slice(0, maks);
       const srLinje = (v, maks) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, maks);
-      const SR_BLOKK_TYPER = ['tekst', 'tall', 'liste'];
+      const SR_BLOKK_TYPER = ['tekst', 'tall', 'liste', 'rik'];
+      // Rik seksjon (Tiptap-doc): streng hvitelisting av noder/marks, trygge lenker, tak på dybde/størrelse.
+      const SR_RIK_NODER = new Set(['doc', 'paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'blockquote', 'horizontalRule', 'hardBreak', 'text', 'callout']);
+      const SR_RIK_MARKS = new Set(['bold', 'italic', 'underline', 'strike', 'code', 'highlight', 'link']);
+      const SR_RIK_LAYOUT = ['standard', 'magasin', 'sidestilt'];
+      const SR_RIK_ANKER = ['start', 'sammendrag', 'nokkeltall', 'resultat', 'regnskap', 'kunder', 'prognose', 'slutt'];
+      const srRensDoc = (doc) => {
+        let antall = 0;
+        const rens = (n, dybde) => {
+          if (!n || typeof n !== 'object' || dybde > 14 || antall > 3000) return null;
+          const type = String(n.type || '');
+          if (!SR_RIK_NODER.has(type)) return null;
+          antall += 1;
+          if (type === 'text') {
+            const text = String(n.text == null ? '' : n.text).slice(0, 5000);
+            if (!text) return null;
+            const marks = (Array.isArray(n.marks) ? n.marks : []).map((m) => {
+              const mt = String((m && m.type) || '');
+              if (!SR_RIK_MARKS.has(mt)) return null;
+              if (mt === 'link') {
+                const href = String((m.attrs && m.attrs.href) || '').trim().slice(0, 1000);
+                if (!/^(https?:\/\/|mailto:)/i.test(href)) return null;
+                return { type: 'link', attrs: { href, target: '_blank', rel: 'noopener noreferrer nofollow' } };
+              }
+              return { type: mt };
+            }).filter(Boolean);
+            return marks.length ? { type, text, marks } : { type, text };
+          }
+          const ut = { type };
+          if (type === 'heading') ut.attrs = { level: [2, 3].includes(Number(n.attrs && n.attrs.level)) ? Number(n.attrs.level) : 2 };
+          if (type === 'callout') ut.attrs = { variant: ['vedtak', 'risiko', 'info'].includes(n.attrs && n.attrs.variant) ? n.attrs.variant : 'info' };
+          if (type === 'orderedList') { const st = Number(n.attrs && n.attrs.start); ut.attrs = { start: Number.isFinite(st) && st > 0 && st < 1000 ? st : 1 }; }
+          if (type !== 'horizontalRule' && type !== 'hardBreak') {
+            const content = (Array.isArray(n.content) ? n.content : []).slice(0, 400).map((c) => rens(c, dybde + 1)).filter(Boolean);
+            if (content.length) ut.content = content;
+          }
+          return ut;
+        };
+        const r = rens(doc && doc.type === 'doc' ? doc : { type: 'doc', content: [] }, 0);
+        const ut = r && r.type === 'doc' ? r : { type: 'doc' };
+        if (!ut.content || !ut.content.length) ut.content = [{ type: 'paragraph' }];
+        if (JSON.stringify(ut).length > 150000) return { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '(Innholdet var for stort og ble ikke lagret.)' }] }] };
+        return ut;
+      };
       const srRensBlokker = (arr) => (Array.isArray(arr) ? arr : []).slice(0, 40).map((b) => {
         const type = SR_BLOKK_TYPER.includes(b && b.type) ? b.type : 'tekst';
         const grunn = { id: srLinje(b && b.id, 40) || uuidv4(), type, tittel: srLinje(b && b.tittel, 120) };
+        if (type === 'rik') return { ...grunn, kicker: srLinje(b && b.kicker, 80), layout: SR_RIK_LAYOUT.includes(b && b.layout) ? b.layout : 'standard', etter: SR_RIK_ANKER.includes(b && b.etter) ? b.etter : 'slutt', doc: srRensDoc(b && b.doc) };
         if (type === 'tall') return { ...grunn, tall: (Array.isArray(b && b.tall) ? b.tall : []).slice(0, 8).map((t) => ({ etikett: srLinje(t && t.etikett, 60), verdi: srLinje(t && t.verdi, 40), notat: srLinje(t && t.notat, 90) })).filter((t) => t.etikett || t.verdi) };
         if (type === 'liste') return { ...grunn, punkter: (Array.isArray(b && b.punkter) ? b.punkter : []).slice(0, 30).map((p) => srLinje(p, 400)).filter(Boolean) };
         return { ...grunn, tekst: srTekst(b && b.tekst, 6000) };

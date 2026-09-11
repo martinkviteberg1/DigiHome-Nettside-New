@@ -59,7 +59,7 @@ export default function DeltRapport({ token }) {
     periodeLabel: r.periodeLabel || '',
     sammendrag: r.sammendrag || '',
     askRaw: (r.ask || []).join('\n'),
-    blokker: (r.blokker || []).map((b) => ({ id: b.id, type: b.type, tittel: b.tittel || '', raw: blokkTilRaw(b) })),
+    blokker: (r.blokker || []).map((b) => ({ ...b, tittel: b.tittel || '', raw: blokkTilRaw(b) })),
   };
   const visRegnskap = payload.lenke?.inkluderRegnskap !== false && !!payload.regnskap;
 

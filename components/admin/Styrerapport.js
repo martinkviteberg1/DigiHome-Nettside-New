@@ -11,7 +11,7 @@ import {
   Loader2, RefreshCw, Pencil, Check, Printer, Maximize2, X, Receipt, Share2,
   Plus, Copy, Link2, Eye, Ban, RotateCcw, Trash2, ExternalLink,
 } from 'lucide-react';
-import StyrerapportVisning, { blokkTilRaw, rawTilBlokk, nyBlokkRaw } from '@/components/admin/StyrerapportVisning';
+import StyrerapportVisning, { blokkTilRaw, rawTilBlokk, nyBlokkRaw, migrerBlokk } from '@/components/admin/StyrerapportVisning';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -59,7 +59,8 @@ export default function Styrerapport({ apiKey }) {
     setPeriodeLabel(r?.periodeLabel || '');
     setSammendrag(r?.sammendrag || '');
     setAskRaw((r?.ask || []).join('\n'));
-    setBlokker((r?.blokker || []).map((b) => ({ id: b.id, type: b.type, tittel: b.tittel || '', raw: blokkTilRaw(b) })));
+    // Behold alle felt (rik: doc/kicker/layout/etter) og løft gamle «tekst»-blokker til rike seksjoner.
+    setBlokker((r?.blokker || []).map((b) => migrerBlokk({ ...b, tittel: b.tittel || '', raw: blokkTilRaw(b) })));
   }, []);
 
   const load = useCallback(async () => {
@@ -108,7 +109,12 @@ export default function Styrerapport({ apiKey }) {
     oppdaterBlokk: (id, patch) => setBlokker((bs) => bs.map((b) => (b.id === id ? { ...b, ...patch } : b))),
     flyttBlokk: (id, retning) => setBlokker((bs) => { const i = bs.findIndex((b) => b.id === id); if (i < 0) return bs; const j = i + retning; if (j < 0 || j >= bs.length) return bs; const k = [...bs]; const [x] = k.splice(i, 1); k.splice(j, 0, x); return k; }),
     slettBlokk: (id) => setBlokker((bs) => bs.filter((b) => b.id !== id)),
-    leggTilBlokk: (type) => setBlokker((bs) => [...bs, nyBlokkRaw(type)]),
+    leggTilBlokk: (type, extra) => {
+      const ny = nyBlokkRaw(type, extra);
+      setBlokker((bs) => [...bs, ny]);
+      // Rike seksjoner blir egne kapitler — scroll dit så du kan begynne å skrive med én gang.
+      if (type === 'rik') setTimeout(() => { const el = document.getElementById(`sr-rik-${ny.id}`); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 140);
+    },
   };
 
   // Delingslenker

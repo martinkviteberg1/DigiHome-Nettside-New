@@ -9,11 +9,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
   ArrowUpRight, ArrowDownRight, ShieldCheck, Type, Hash, List,
-  ChevronUp, ChevronDown, Trash2, Loader2,
+  ChevronUp, ChevronDown, Trash2, Loader2, Plus, PenLine,
 } from 'lucide-react';
+import { RikInnhold, RikStil, TOM_DOC, RIK_LAYOUTS, RIK_ANKERE, tekstTilDoc } from './RikRenderer';
+
+// Tiptap-editoren lastes kun i redigeringsmodus (holder delingslenken lett, ingen SSR).
+const RikEditor = dynamic(() => import('./RikEditor'), { ssr: false, loading: () => <div className="e-meta py-6">Laster editor …</div> });
 
 // Redaksjonell palett — nå på nettsidens varme «stein»-canvas (#F3F1EC) som forsiden
 const C = { ink: '#15130F', ink2: '#3A3733', ink3: '#6F6A60', line: '#E4DFD6', line2: '#D6CFC4', canvas: '#F3F1EC', paper: '#FDFCFB', paper2: '#EFEBE3', flate: '#EAE6DE', accent: '#7C3AED', pos: '#1B7A46', neg: '#C0362C' };
@@ -55,8 +60,12 @@ export const PRINT_CSS = `
 `;
 
 // ── Blokk-konvertering (redigerbar «raw» ⇄ lagret struktur) ────────────────
+// Typer: rik (Tiptap-doc, eget kapittel m/ plassering + layout), tall, liste, tekst (legacy).
+const RIK_ANKER_IDS = RIK_ANKERE.map((a) => a.id);
+const RIK_LAYOUT_IDS = RIK_LAYOUTS.map((l) => l.id);
 export function blokkTilRaw(b) {
   if (!b) return '';
+  if (b.type === 'rik') return '';
   if (b.type === 'liste') return (b.punkter || []).join('\n');
   if (b.type === 'tall') return (b.tall || []).map((t) => [t.etikett, t.verdi, t.notat].filter(Boolean).join(' | ')).join('\n');
   return b.tekst || '';
@@ -64,11 +73,18 @@ export function blokkTilRaw(b) {
 export function rawTilBlokk(b) {
   const grunn = { id: b.id, type: b.type, tittel: (b.tittel || '').trim() };
   const raw = b.raw || '';
+  if (b.type === 'rik') return { ...grunn, kicker: (b.kicker || '').trim(), layout: RIK_LAYOUT_IDS.includes(b.layout) ? b.layout : 'standard', etter: RIK_ANKER_IDS.includes(b.etter) ? b.etter : 'slutt', doc: b.doc && b.doc.type === 'doc' ? b.doc : TOM_DOC };
   if (b.type === 'liste') return { ...grunn, punkter: raw.split('\n').map((s) => s.trim()).filter(Boolean) };
   if (b.type === 'tall') return { ...grunn, tall: raw.split('\n').map((line) => { const [etikett, verdi, notat] = line.split('|').map((s) => (s || '').trim()); return { etikett: etikett || '', verdi: verdi || '', notat: notat || '' }; }).filter((t) => t.etikett || t.verdi) };
   return { ...grunn, tekst: raw };
 }
-export const nyBlokkRaw = (type) => ({ id: `b_${Math.random().toString(36).slice(2, 10)}`, type, tittel: '', raw: '' });
+export const nyBlokkRaw = (type, extra = {}) => ({
+  id: `b_${Math.random().toString(36).slice(2, 10)}`, type, tittel: '', raw: '',
+  ...(type === 'rik' ? { kicker: '', layout: 'standard', etter: 'slutt', doc: TOM_DOC } : {}),
+  ...extra,
+});
+// Gamle «tekst»-blokker løftes til rike seksjoner (ingenting går tapt).
+export const migrerBlokk = (b) => (b && b.type === 'tekst' ? { ...b, type: 'rik', kicker: '', layout: 'standard', etter: 'slutt', doc: tekstTilDoc(b.tekst || b.raw || '') } : b);
 
 // ── Bevegelse (rolig, respekterer reduced-motion) ───────────────────────────
 function Reveal({ children, delay = 0, className = '' }) {
@@ -126,6 +142,17 @@ function Kpi({ label, value, fmt = (v) => v, sub, delta, tone, size = 'md', clas
     </Panel>
   );
 }
+// «+ Ny seksjon her» — vises mellom kapitler i redigeringsmodus
+function InsertRad({ onClick }) {
+  return (
+    <div className="dh-sr-noprint mt-12 flex items-center gap-4">
+      <span className="h-px flex-1" style={{ background: C.line }} aria-hidden />
+      <button type="button" onClick={onClick} className="inline-flex h-9 items-center gap-2 rounded-full border border-dashed px-4 text-[12.5px] font-semibold transition-colors hover:border-[#15130F] hover:text-[#15130F]" style={{ borderColor: C.line2, color: C.ink3 }}><Plus className="h-4 w-4" /> Ny seksjon her</button>
+      <span className="h-px flex-1" style={{ background: C.line }} aria-hidden />
+    </div>
+  );
+}
+
 function SectionHead({ index, overline, title, lead, right }) {
   return (
     <div className="mb-8 sm:mb-12 flex flex-wrap items-end justify-between gap-5">
@@ -391,16 +418,34 @@ export default function StyrerapportVisning({
   const visSammendrag = !!edit || visning === 'admin' || sammendragAvsnitt.length > 0;
   const visAsk = !!edit || visning === 'admin' || askPunkter.length > 0;
 
-  const kapitler = useMemo(() => [
-    ...(visSammendrag ? [{ id: 'sammendrag', label: 'Sammendrag' }] : []),
-    { id: 'nokkeltall', label: 'Nøkkeltall' },
-    { id: 'resultat', label: 'Resultat' },
-    ...(visRegnskap ? [{ id: 'regnskap', label: 'Regnskap' }] : []),
-    { id: 'kunder', label: 'Kunder' },
-    ...(fc?.scenarios ? [{ id: 'prognose', label: 'Prognose' }] : []),
-    ...((blokker.length || edit) ? [{ id: 'egne', label: 'Egne' }] : []),
-    ...(visAsk ? [{ id: 'ask', label: 'Beslutning' }] : []),
-  ], [visRegnskap, fc, blokker.length, edit, visSammendrag, visAsk]);
+  // Rike seksjoner (Tiptap) blir egne kapitler, plassert etter valgt anker.
+  // Enkle blokker (tall/liste) samles fortsatt under «Egne seksjoner».
+  const rike = blokker.filter((b) => b.type === 'rik');
+  const enkle = blokker.filter((b) => b.type !== 'rik');
+  const synligAnker = { start: true, sammendrag: visSammendrag, nokkeltall: true, resultat: true, regnskap: visRegnskap, kunder: true, prognose: !!fc?.scenarios, slutt: true };
+  // Rike seksjoner som peker på et skjult anker flyttes til nærmeste synlige anker foran.
+  const etterMap = useMemo(() => {
+    const m = {}; let sist = 'start';
+    RIK_ANKER_IDS.forEach((a) => { if (synligAnker[a]) { sist = a; m[a] = m[a] || []; } m[sist] = m[sist] || []; m[sist].push(...rike.filter((b) => (RIK_ANKER_IDS.includes(b.etter) ? b.etter : 'slutt') === a)); });
+    return m;
+  }, [rike, visSammendrag, visRegnskap, fc]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rikKap = (b) => ({ id: `rik-${b.id}`, label: (b.tittel || '').trim() || 'Ny seksjon' });
+
+  const kapitler = useMemo(() => {
+    const k = [];
+    const rikePaa = (a) => (etterMap[a] || []).forEach((b) => k.push(rikKap(b)));
+    rikePaa('start');
+    if (visSammendrag) { k.push({ id: 'sammendrag', label: 'Sammendrag' }); rikePaa('sammendrag'); }
+    k.push({ id: 'nokkeltall', label: 'Nøkkeltall' }); rikePaa('nokkeltall');
+    k.push({ id: 'resultat', label: 'Resultat' }); rikePaa('resultat');
+    if (visRegnskap) { k.push({ id: 'regnskap', label: 'Regnskap' }); rikePaa('regnskap'); }
+    k.push({ id: 'kunder', label: 'Kunder' }); rikePaa('kunder');
+    if (fc?.scenarios) { k.push({ id: 'prognose', label: 'Prognose' }); rikePaa('prognose'); }
+    rikePaa('slutt');
+    if (enkle.length || edit) k.push({ id: 'egne', label: 'Egne' });
+    if (visAsk) k.push({ id: 'ask', label: 'Beslutning' });
+    return k;
+  }, [visRegnskap, fc, enkle.length, edit, visSammendrag, visAsk, etterMap]);
   const aktiv = useAktivtKapittel(kapitler.map((k) => k.id));
   // Folio brukes både i TOC og i seksjonshodene, så nummereringen alltid stemmer
   // (også når tomme kapitler skjules i delt visning).
@@ -412,6 +457,73 @@ export default function StyrerapportVisning({
   const secBase = '';
   const secStyle = { scrollMarginTop: 116, paddingTop: 'clamp(60px,7.4vw,124px)' };
 
+  // ── Rik seksjon: eget kapittel med folio, plassering og layout ────────────
+  const rikSeksjon = (b) => {
+    const bs = rawTilBlokk(b);
+    const id = `sr-rik-${b.id}`;
+    const f = folio(`rik-${b.id}`);
+    const idx = blokker.findIndex((x) => x.id === b.id);
+    if (edit) {
+      const sel = 'h-9 rounded-[8px] border bg-white px-2.5 text-[12.5px] font-medium outline-none focus:border-[#15130F]';
+      return (
+        <section key={b.id} id={id} style={secStyle}>
+          <div className="rounded-[18px] border bg-white p-5 sm:p-7" style={{ borderColor: C.line2 }}>
+            <div className="mb-5 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-[6px] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide" style={{ background: C.paper2, color: C.ink3 }}><PenLine className="h-3 w-3" /> Rik seksjon · {f}</span>
+              <select className={sel} style={{ borderColor: C.line2, color: C.ink2 }} value={bs.etter} onChange={(e) => edit.oppdaterBlokk(b.id, { etter: e.target.value })} title="Plassering i rapporten">
+                {RIK_ANKERE.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+              </select>
+              <select className={sel} style={{ borderColor: C.line2, color: C.ink2 }} value={bs.layout} onChange={(e) => edit.oppdaterBlokk(b.id, { layout: e.target.value })} title="Layout">
+                {RIK_LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.label} — {l.hint}</option>)}
+              </select>
+              <div className="ml-auto flex items-center gap-1">
+                <button type="button" className="rounded-[8px] p-2 hover:bg-black/[0.04] disabled:opacity-30" onClick={() => edit.flyttBlokk(b.id, -1)} disabled={idx <= 0} title="Flytt opp"><ChevronUp className="h-4 w-4" /></button>
+                <button type="button" className="rounded-[8px] p-2 hover:bg-black/[0.04] disabled:opacity-30" onClick={() => edit.flyttBlokk(b.id, 1)} disabled={idx >= blokker.length - 1} title="Flytt ned"><ChevronDown className="h-4 w-4" /></button>
+                <button type="button" className="rounded-[8px] p-2 hover:bg-black/[0.04]" style={{ color: C.neg }} onClick={() => { if (window.confirm('Slette denne seksjonen?')) edit.slettBlokk(b.id); }} title="Slett"><Trash2 className="h-4 w-4" /></button>
+              </div>
+            </div>
+            <input className="mb-2 w-full bg-transparent text-[11.5px] font-bold uppercase tracking-[0.16em] outline-none placeholder:font-medium placeholder:normal-case placeholder:tracking-normal placeholder:text-[#B5AFA4]" style={{ color: C.accent }} value={b.kicker || ''} onChange={(e) => edit.oppdaterBlokk(b.id, { kicker: e.target.value })} placeholder="Kicker / overlinje — f.eks. Marked, Produkt, Organisasjon" />
+            <input className="mb-6 w-full bg-transparent font-bold outline-none placeholder:font-semibold placeholder:text-[#C9C3B8]" style={{ ...H, color: C.ink, fontSize: 'clamp(26px,3vw,38px)', lineHeight: 1.1, letterSpacing: '-0.03em' }} value={b.tittel || ''} onChange={(e) => edit.oppdaterBlokk(b.id, { tittel: e.target.value })} placeholder="Overskrift på seksjonen" />
+            <RikEditor doc={b.doc} onChange={(doc) => edit.oppdaterBlokk(b.id, { doc })} />
+          </div>
+        </section>
+      );
+    }
+    const hode = (
+      <>
+        <div className="mb-4 flex items-center gap-3">
+          <span className="text-[13px] font-bold tabular-nums" style={{ ...H, color: C.accent }}>{f}</span>
+          <span className="h-px w-9" style={{ background: C.line2 }} aria-hidden />
+          <span className="e-label">{bs.kicker || 'Egen seksjon'}</span>
+        </div>
+        <h2 className="e-h2">{bs.tittel || 'Ny seksjon'}</h2>
+      </>
+    );
+    return (
+      <section key={b.id} id={id} style={secStyle}>
+        <Reveal>
+          {bs.layout === 'sidestilt' ? (
+            <div className="grid gap-8 lg:grid-cols-12 lg:gap-14">
+              <div className="lg:col-span-4"><div className="lg:sticky lg:top-24">{hode}</div></div>
+              <div className="lg:col-span-8"><RikInnhold doc={bs.doc} layout="standard" /></div>
+            </div>
+          ) : (
+            <>
+              <div className="mb-8 sm:mb-10">{hode}</div>
+              <RikInnhold doc={bs.doc} layout={bs.layout} />
+            </>
+          )}
+        </Reveal>
+      </section>
+    );
+  };
+  const rikGruppe = (anker) => (
+    <React.Fragment key={`gruppe-${anker}`}>
+      {(etterMap[anker] || []).map((b) => rikSeksjon(b))}
+      {edit && synligAnker[anker] && <InsertRad onClick={() => edit.leggTilBlokk('rik', { etter: anker })} />}
+    </React.Fragment>
+  );
+
   const coverKpis = [
     { l: 'Honorar · MRR', v: mrr, f: kr, s: 'per måned', d: <Delta now={mrr} prev={forrigeMrr} suffix="" /> },
     { l: 'ARR', v: arr, f: kr, s: 'årlig recurring', d: aarSidenMrr ? <Delta now={mrr} prev={aarSidenMrr} suffix="" /> : null },
@@ -422,6 +534,7 @@ export default function StyrerapportVisning({
   return (
     <div className="dh-sr-print" style={{ background: C.canvas }}>
       <style dangerouslySetInnerHTML={{ __html: PRINT_CSS }} />
+      <RikStil />
 
       {/* ── FULL-BREDDE NAV + TOC ─────────────────────────────────────────── */}
       <RapportNav kapitler={kapitler} aktiv={aktiv} handlinger={handlinger} />
@@ -475,6 +588,8 @@ export default function StyrerapportVisning({
           </Reveal>
         </section>
 
+        {rikGruppe('start')}
+
         {/* ── 01 SAMMENDRAG ─────────────────────────────────────────────── */}
         {visSammendrag && (
         <section id="sr-sammendrag" className={secBase} style={secStyle}>
@@ -494,6 +609,8 @@ export default function StyrerapportVisning({
           </Reveal>
         </section>
         )}
+
+        {rikGruppe('sammendrag')}
 
         {/* ── 02 NØKKELTALL ─────────────────────────────────────────────── */}
         <section id="sr-nokkeltall" className={secBase} style={secStyle}>
@@ -520,6 +637,8 @@ export default function StyrerapportVisning({
             </div>
           )}
         </section>
+
+        {rikGruppe('nokkeltall')}
 
         {/* ── 03 RESULTAT & LIKVIDITET ──────────────────────────────────── */}
         <section id="sr-resultat" className={secBase} style={secStyle}>
@@ -593,6 +712,8 @@ export default function StyrerapportVisning({
           )}
         </section>
 
+        {rikGruppe('resultat')}
+
         {/* ── 04 REGNSKAP ───────────────────────────────────────────────── */}
         {visRegnskap && (
           <section id="sr-regnskap" className={secBase} style={secStyle}>
@@ -615,6 +736,8 @@ export default function StyrerapportVisning({
           </section>
         )}
 
+        {rikGruppe('regnskap')}
+
         {/* ── 05 KUNDER ─────────────────────────────────────────────────── */}
         <section id="sr-kunder" className={secBase} style={secStyle}>
           <Reveal><SectionHead index={folio('kunder')} overline="Portefølje" title="Kunder" lead="Utleiere under forvaltning — betalende kunder. Leietakere er ikke kunder og inngår ikke her." /></Reveal>
@@ -635,6 +758,8 @@ export default function StyrerapportVisning({
             </div>
           )}
         </section>
+
+        {rikGruppe('kunder')}
 
         {/* ── 06 PROGNOSE ───────────────────────────────────────────────── */}
         {fc?.scenarios && (
@@ -659,19 +784,22 @@ export default function StyrerapportVisning({
           </section>
         )}
 
+        {rikGruppe('prognose')}
+        {rikGruppe('slutt')}
+
         {/* ── 07 EGNE SEKSJONER ─────────────────────────────────────────── */}
-        {(blokker.length > 0 || edit) && (
+        {(enkle.length > 0 || edit) && (
           <section id="sr-egne" className={secBase} style={secStyle}>
-            <Reveal><SectionHead index={folio('egne')} overline="Fritt innhold" title="Egne seksjoner" lead="Legg til hva som helst — tekst, egne tall eller punktlister. Alt lagres og gjenbrukes til neste møte." right={edit ? (
+            <Reveal><SectionHead index={folio('egne')} overline="Hurtigblokker" title="Egne seksjoner" lead="Raske nøkkeltall-rader og punktlister. For fri tekst med overskrifter, sitater og vedtaksbokser — bruk «Rik seksjon», som blir et eget kapittel i rapporten." right={edit ? (
               <div className="flex flex-wrap items-center gap-2">
-                <button type="button" className={btnEd} style={{ borderColor: C.line2, background: '#fff', color: C.ink2 }} onClick={() => edit.leggTilBlokk('tekst')}><Type className="h-4 w-4" /> Tekst</button>
+                <button type="button" className={btnEd} style={{ borderColor: C.ink, background: C.ink, color: '#fff' }} onClick={() => edit.leggTilBlokk('rik', { etter: 'slutt' })}><PenLine className="h-4 w-4" /> Rik seksjon</button>
                 <button type="button" className={btnEd} style={{ borderColor: C.line2, background: '#fff', color: C.ink2 }} onClick={() => edit.leggTilBlokk('tall')}><Hash className="h-4 w-4" /> Tall</button>
                 <button type="button" className={btnEd} style={{ borderColor: C.line2, background: '#fff', color: C.ink2 }} onClick={() => edit.leggTilBlokk('liste')}><List className="h-4 w-4" /> Liste</button>
               </div>
             ) : null} /></Reveal>
-            {blokker.length === 0 && edit && <Panel className="border-dashed p-8"><p className="e-meta">Ingen egne seksjoner ennå — legg til med knappene over.</p></Panel>}
+            {enkle.length === 0 && edit && <Panel className="border-dashed p-8"><p className="e-meta">Ingen hurtigblokker ennå — legg til Tall eller Liste over, eller trykk «Rik seksjon» / «Ny seksjon her» for fritekst.</p></Panel>}
             <div className="space-y-3">
-              {blokker.map((b, idx) => {
+              {enkle.map((b, idx) => {
                 if (edit) {
                   return (
                     <Panel key={b.id} className="p-5 sm:p-6">
@@ -679,7 +807,7 @@ export default function StyrerapportVisning({
                         <span className="inline-flex items-center gap-1.5 rounded-[6px] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide" style={{ background: C.paper2, color: C.ink3 }}>{b.type === 'tall' ? <Hash className="h-3 w-3" /> : b.type === 'liste' ? <List className="h-3 w-3" /> : <Type className="h-3 w-3" />}{b.type === 'tall' ? 'Tall' : b.type === 'liste' ? 'Liste' : 'Tekst'}</span>
                         <div className="ml-auto flex items-center gap-1">
                           <button type="button" className="rounded-[8px] p-2 hover:bg-black/[0.04] disabled:opacity-30" onClick={() => edit.flyttBlokk(b.id, -1)} disabled={idx === 0}><ChevronUp className="h-4 w-4" /></button>
-                          <button type="button" className="rounded-[8px] p-2 hover:bg-black/[0.04] disabled:opacity-30" onClick={() => edit.flyttBlokk(b.id, 1)} disabled={idx === blokker.length - 1}><ChevronDown className="h-4 w-4" /></button>
+                          <button type="button" className="rounded-[8px] p-2 hover:bg-black/[0.04] disabled:opacity-30" onClick={() => edit.flyttBlokk(b.id, 1)} disabled={idx === enkle.length - 1}><ChevronDown className="h-4 w-4" /></button>
                           <button type="button" className="rounded-[8px] p-2" style={{ color: C.neg }} onClick={() => edit.slettBlokk(b.id)}><Trash2 className="h-4 w-4" /></button>
                         </div>
                       </div>
