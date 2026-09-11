@@ -469,6 +469,102 @@ function AnnonsePreview({ tilbud, r }) {
   );
 }
 
+/* ── Flytende kapittelnavigasjon (desktop) — premium dokument-orientering.
+   Translucent hvit pille slik at den er lesbar OVER både lyse og mørke kapitler.
+   Aktivt kapittel spores via IntersectionObserver mot seksjonenes id-er. ── */
+function KapittelNav({ kapitler, vis }) {
+  const [aktiv, setAktiv] = useState(kapitler[0]?.id || '');
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const els = kapitler.map((k) => document.getElementById(k.id)).filter(Boolean);
+    if (!els.length) return;
+    const io = new IntersectionObserver((entries) => {
+      const synlige = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      if (synlige[0]) setAktiv(synlige[0].target.id);
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [kapitler]);
+  const gaTil = (id) => { if (typeof document !== 'undefined') document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  return (
+    <nav aria-label="Innhold i tilbudet"
+      className={`fixed left-5 top-1/2 z-40 hidden -translate-y-1/2 transition-opacity duration-500 min-[1400px]:block ${vis ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
+      <div className="flex flex-col gap-0.5 rounded-2xl p-2"
+        style={{ backgroundColor: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(14px)', border: `1px solid ${C.hairline}`, boxShadow: '0 12px 34px rgba(24,20,16,0.12)' }}>
+        {kapitler.map((k) => {
+          const on = aktiv === k.id;
+          return (
+            <button key={k.id} type="button" onClick={() => gaTil(k.id)} data-testid={`tilbud-nav-${k.id}`}
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors duration-300 hover:bg-black/[0.035]"
+              style={on ? { backgroundColor: C.ink } : undefined}>
+              <span className="tabular-nums" style={{ ...body, fontSize: 10, letterSpacing: '0.06em', width: 15, color: on ? 'rgba(255,255,255,0.55)' : C.faint }}>{k.nr}</span>
+              <span className="whitespace-nowrap font-medium" style={{ ...body, fontSize: 12.5, color: on ? '#fff' : C.sub }}>{k.navn}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+/* ── Interaktiv regnestykke-utforsker — dra i leien, se hva du sitter igjen med.
+   Rent klientsidig, bruker det ekte honoraret (honorarPct). Autoritative tall
+   bor i den statiske tabellen over; dette er verktøyet som gjør åpenheten levende. ── */
+function RentExplorer({ anbefalt, honorarPct }) {
+  const pct = Number(honorarPct) || 0;
+  const rund = (x) => Math.round(x / 100) * 100;
+  const lo = rund(anbefalt * 0.9);
+  const hi = rund(anbefalt * 1.12);
+  const [leie, setLeie] = useState(anbefalt);
+  const honorar = Math.round((leie * pct) / 100);
+  const netto = leie - honorar;
+  const posPct = Math.min(100, Math.max(0, ((leie - lo) / Math.max(1, hi - lo)) * 100));
+  const erAnbefalt = Math.abs(leie - anbefalt) < 60;
+  const spor = `linear-gradient(to right, ${C.ink} 0%, ${C.ink} ${posPct}%, ${C.line} ${posPct}%, ${C.line} 100%)`;
+  return (
+    <div className="mx-auto mt-4 overflow-hidden rounded-[28px]" style={{ maxWidth: 880, backgroundColor: C.subtle, border: `1px solid ${C.line}` }} data-testid="tilbud-utforsker">
+      <style>{`.dh-range{-webkit-appearance:none;appearance:none;height:6px;border-radius:9999px;outline:none;cursor:pointer}.dh-range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;height:26px;width:26px;border-radius:9999px;background:${C.ink};border:3px solid #fff;box-shadow:0 3px 12px rgba(10,10,10,0.34);cursor:grab;transition:transform .15s ease}.dh-range:active::-webkit-slider-thumb{cursor:grabbing;transform:scale(1.08)}.dh-range::-moz-range-thumb{height:22px;width:22px;border-radius:9999px;background:${C.ink};border:3px solid #fff;box-shadow:0 3px 12px rgba(10,10,10,0.34);cursor:grab}`}</style>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-7 pt-7 sm:px-10">
+        <div>
+          <p className="font-semibold uppercase" style={{ ...head, fontSize: 11, letterSpacing: '0.16em', color: C.faint }}>Utforsk selv</p>
+          <p className="mt-1.5" style={{ fontSize: 14, color: C.sub }}>Dra i leien og se hva du sitter igjen med.</p>
+        </div>
+        <button type="button" onClick={() => setLeie(anbefalt)} disabled={erAnbefalt} data-testid="tilbud-utforsker-reset"
+          className="rounded-full px-4 py-2 font-semibold transition-all duration-200 disabled:opacity-0"
+          style={{ fontSize: 12.5, color: C.ink, backgroundColor: C.bg, border: `1px solid ${C.line}` }}>
+          Tilbake til vår anbefaling
+        </button>
+      </div>
+      <div className="px-7 pb-8 pt-6 sm:px-10">
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            ['Månedsleie', tall(leie), C.ink],
+            [`Honorar · ${pct} %`, `−${tall(honorar)}`, C.sub],
+            ['Til deg', tall(netto), C.success],
+          ].map(([l, v, col]) => (
+            <div key={l}>
+              <p style={{ fontSize: 11.5, color: C.faint }}>{l}</p>
+              <p className="mt-1 font-light tabular-nums tracking-[-0.02em]" style={{ ...head, fontSize: 'clamp(21px, 3vw, 30px)', color: col }}>{v}</p>
+            </div>
+          ))}
+        </div>
+        <input type="range" min={lo} max={hi} step={100} value={leie} onChange={(e) => setLeie(Number(e.target.value))}
+          aria-label="Juster månedsleie" className="dh-range mt-7 w-full" style={{ background: spor }} data-testid="tilbud-utforsker-slider" />
+        <div className="mt-2.5 flex items-center justify-between tabular-nums" style={{ fontSize: 12, color: C.faint }}>
+          <span>{tall(lo)} kr</span>
+          <span className="font-semibold" style={{ fontSize: 11.5, color: erAnbefalt ? C.success : C.faint }}>
+            {erAnbefalt ? 'Vår anbefaling' : `${leie > anbefalt ? '+' : '−'}${tall(Math.abs(leie - anbefalt))} kr mot anbefalt`}
+          </span>
+          <span>{tall(hi)} kr</span>
+        </div>
+        <p className="mt-6" style={{ fontSize: 12.5, lineHeight: 1.6, color: C.faint }}>
+          Over 12 måneder blir det <span className="font-semibold tabular-nums" style={{ color: C.ink }}>{tall(netto * 12)} kr</span> til deg. Veiledende — endelig leie settes alltid sammen med deg.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function TilbudClient({ tilbud, slug }) {
   const [feil, setFeil] = useState('');
   const [skjema, setSkjema] = useState({ telefon: '', melding: '' });
@@ -576,6 +672,18 @@ export default function TilbudClient({ tilbud, slug }) {
   }, [dagens, anbefalt, nyTittel, stylet.length, harAnnonse, tilbud]);
   const visSammenligning = dagens > 0 && (harAnnonse || stylet.length > 0);
 
+  /* Kapitler for den flytende navigasjonen — kun seksjoner som faktisk rendres,
+     med samme faste numre som Overline-indeksene i seksjonene under. */
+  const kapitler = useMemo(() => {
+    const ut = [];
+    if (valgtStylet) ut.push({ id: 'bilder', nr: '01', navn: 'Bildene' });
+    ut.push({ id: 'hvorfor', nr: '02', navn: 'Vurderingen' });
+    if (visSammenligning) ut.push({ id: 'annonsen', nr: '03', navn: 'Annonsen' });
+    ut.push({ id: 'regnestykke', nr: '04', navn: 'Økonomien' });
+    ut.push({ id: 'kontakt', nr: '\u00B7', navn: 'Ta kontakt' });
+    return ut;
+  }, [valgtStylet, visSammenligning]);
+
   const brev = tilbud?.tekst?.heroIntro
     || 'Vi har sett nærmere på boligen din og laget en konkret vurdering: hva den bør leies ut for, hvordan vi ville presentert den — og hva du sitter igjen med hvis vi gjør hele jobben for deg.';
   const potensialTekst = tilbud?.tekst?.potensialTekst || '';
@@ -601,6 +709,7 @@ export default function TilbudClient({ tilbud, slug }) {
   return (
     <div style={{ ...body, backgroundColor: C.black, color: C.ink }} className="min-h-screen" data-testid="tilbud-side">
       <ScrollProgress />
+      <KapittelNav kapitler={kapitler} vis={scrollet} />
       {/* Filmkorn over hele siden */}
       <div className="pointer-events-none fixed inset-0 z-[58]" aria-hidden style={{ backgroundImage: GRAIN_URL, opacity: 0.035, mixBlendMode: 'multiply' }} />
 
@@ -995,6 +1104,11 @@ export default function TilbudClient({ tilbud, slug }) {
                 </div>
               </div>
             </Reveal>
+            {anbefalt > 0 && r.honorarPct != null && (
+              <Reveal delay={0.05}>
+                <RentExplorer anbefalt={anbefalt} honorarPct={r.honorarPct} />
+              </Reveal>
+            )}
             <p className="mt-6 text-center" style={{ fontSize: 12, color: C.faint }}>
               Alt arbeid er inkludert i honoraret: annonse, visninger, screening, kontrakt, depositum og oppfølging. Estimat — ikke et regnskap.
             </p>
