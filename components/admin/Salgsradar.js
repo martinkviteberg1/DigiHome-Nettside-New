@@ -1866,7 +1866,26 @@ export default function Salgsradar({ apiKey }) {
 
       {feil && <p className="mb-3 rounded-lg bg-[#fdf0ef] px-4 py-3 text-[13px] text-[#c2413b]" data-testid="radar-feil">{feil}</p>}
 
-      {/* Innsikten bor nå i verktøylinjen («I spill») — egen KPI-rad er fjernet for en lav, supermoderne topp */}
+      {/* Dashboard-stripe — oversikt på ett blikk (erstatter den kryptiske «I spill»).
+         Hvert kort filtrerer tabellen når du trykker. */}
+      {!laster && leads.length > 0 && (
+        <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3" data-testid="radar-dashboard">
+          {[
+            { l: 'I pipeline', v: innsikt.pipeline, s: 'aktive annonser', klikk: () => setStatusValg(['analysert', 'kontaktet', 'dialog', 'tilbud']) },
+            { l: 'Potensiell MRR', v: kr(innsikt.honorarPipeline), s: 'hvis alle vinnes', aksent: true, klikk: () => setStatusValg(['analysert', 'kontaktet', 'dialog', 'tilbud']) },
+            { l: 'Åpne tilbud', v: innsikt.harApnet, s: 'har åpnet tilbudet', klikk: () => setStatusValg(['tilbud']) },
+            { l: 'Vunnet', v: innsikt.vunnet, s: `${kr(innsikt.honorarVunnet)}/mnd`, klikk: () => setStatusValg(['vunnet']) },
+          ].map((k) => (
+            <button key={k.l} type="button" onClick={k.klikk} data-testid={`radar-kpi-${k.l}`}
+              className="group flex flex-col items-start rounded-[14px] border border-black/[0.06] bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(28,25,23,0.08)]"
+              style={k.aksent ? { boxShadow: 'inset 0 0 0 1.5px rgba(212,150,255,0.45)' } : undefined}>
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.11em] text-[#b3aea6]">{k.l}</span>
+              <span className="mt-1.5 text-[23px] leading-none" style={{ ...heading, color: k.aksent ? '#6D3A99' : '#171717' }}>{k.v}</span>
+              <span className="mt-1 text-[11.5px] text-[#8a857c]">{k.s}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Verktøylinje / bulk-linje — mobil: søk+kontroller øverst, filtre som scrollerad */}
       {utvalg.size === 0 ? (
@@ -2007,14 +2026,6 @@ export default function Salgsradar({ apiKey }) {
             </div>
           )}
           <span className="order-2 ml-auto flex shrink-0 items-center gap-1.5 sm:order-5">
-            {innsikt.honorarPipeline > 0 && (
-              <button onClick={() => setStatusValg([])} data-testid="radar-innsikt-pipeline"
-                title="Samlet månedshonorar hvis alle aktive leads vinnes (analysert + kontaktet + dialog + tilbud)"
-                className="mr-1 hidden items-baseline gap-1.5 whitespace-nowrap rounded-full px-2 py-1 transition-colors hover:bg-[#f7f6f3] xl:flex">
-                <span className="text-[11.5px] text-[#8a857c]">I spill</span>
-                <span className="text-[12.5px] font-bold text-[#171717]" style={heading}>{kr(innsikt.honorarPipeline)}<span className="font-medium text-[#a8a29a]">/mnd</span></span>
-              </button>
-            )}
             <span className="flex overflow-hidden rounded-full border border-black/[0.07] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
               <button onClick={() => setVisning('tabell')} data-testid="radar-visning-tabell" title="Tabell — oversikt og sortering"
                 className={`flex h-[30px] w-9 items-center justify-center transition-colors ${visning === 'tabell' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
@@ -2068,6 +2079,26 @@ export default function Salgsradar({ apiKey }) {
               Avbryt
             </button>
           </span>
+        </div>
+      )}
+
+      {/* Statusribbe — pipeline-stadiene med antall, som filtreringsfaner over tabellen */}
+      {!laster && leads.length > 0 && (
+        <div className="no-scrollbar -mx-1 mt-3 flex items-center gap-1.5 overflow-x-auto px-1 pb-0.5" data-testid="radar-status-ribbon">
+          <button type="button" onClick={() => setStatusValg([])}
+            className={`flex h-[30px] shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium transition-all active:scale-[0.97] ${statusValg.length === 0 ? 'border-transparent bg-[#1c1917] text-white shadow-[0_2px_8px_rgba(28,25,23,0.22)]' : 'border-black/[0.08] bg-white text-[#57534e] hover:border-black/25'}`}>
+            Alle <span className={statusValg.length === 0 ? 'text-white/50' : 'text-[#b3aea6]'}>{leads.length}</span>
+          </button>
+          {STATUSER.map((s) => {
+            const pa = statusValg.includes(s.k);
+            return (
+              <button key={s.k} type="button" onClick={() => veksleStatus(s.k)} data-testid={`radar-ribbon-${s.k}`}
+                className={`flex h-[30px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[12.5px] font-medium transition-all active:scale-[0.97] ${pa ? 'border-transparent bg-[#1c1917] text-white shadow-[0_2px_8px_rgba(28,25,23,0.22)]' : 'border-black/[0.08] bg-white text-[#57534e] hover:border-black/25'}`}>
+                <span className="h-[6px] w-[6px] rounded-full" style={{ background: pa ? '#fff' : s.farge }} />
+                {s.l} <span className={pa ? 'text-white/50' : 'text-[#b3aea6]'}>{antall[s.k] || 0}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 

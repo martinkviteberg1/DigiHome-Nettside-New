@@ -16,22 +16,24 @@
    annonse-preview. Åpninger spores (spor=1). Kontakt → Dialog + varsler. */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { T as TOK, display as DISPLAY, DIM as TOK_DIM, SVAK as TOK_SVAK, HAIR as TOK_HAIR } from '@/components/forside/v4/tokens';
 
-/* ── Palett — identisk med hovedtilbudet ── */
+/* ── Palett — låst til nettsidens designsystem (components/forside/v4/tokens)
+   slik at tilbudet og digihome.no er ett og samme merke. ── */
 const C = {
-  ink: '#0A0A0A', inkDeep: '#1F1F1F', black: '#0A0A0A', sub: '#5E5D5A', faint: '#9A968F',
-  bg: '#FFFFFF', page: '#FEFBFA', subtle: '#F0EFEB', warm: '#FAF9F7', line: '#E9E7E4', hairline: '#F0EFEC',
-  purple: '#D298FF', purpleDeep: '#7C3FD6',
-  success: '#2F7D52',
+  ink: TOK.ink, inkDeep: TOK.charcoal, black: TOK.ink, sub: TOK_DIM, faint: TOK_SVAK,
+  bg: '#FFFFFF', page: TOK.canvas, subtle: TOK.flate, warm: TOK.offwhite, line: TOK_HAIR, hairline: 'rgba(21,19,15,0.08)',
+  purple: TOK.lilla, purpleDeep: '#6D3A99',
+  success: TOK.gronn,
 };
 const D = { chip: 'rgba(255,255,255,0.07)', chipLine: 'rgba(255,255,255,0.1)', icon: 'rgba(255,255,255,0.92)', soft: 'rgba(255,255,255,0.62)', faint: 'rgba(255,255,255,0.42)' };
-const head = { fontFamily: 'var(--font-heading)' };
+/* Display-stemmen fra nettsiden (PP Right Grotesk, tight sporing). */
+const head = { fontFamily: DISPLAY.fontFamily, letterSpacing: '-0.025em' };
 const body = { fontFamily: 'var(--font-body)' };
 
-/* Mørk flate: samme ikon som merkevaren (lilla + mørk H) + hvitt ordmerke.
-   Lys flate: ink-ordmerket med identisk ikon. */
-const LOGO_WHITE = '/digihome-logo-natt.svg';
-const LOGO_INK = '/digihome-wordmark-ink.svg';
+/* Ekte DigiHome-logo — identisk med nettsidens nav/footer. Hvit variant på mørk flate. */
+const LOGO_WHITE = '/digihome-hero-logo-white.svg';
+const LOGO_INK = '/digihome-hero-logo.svg';
 /* Kuratert cover — Bergen i skumring. Ett kontrollert verdensklasse-førsteinntrykk
    for ALLE tilbud, uavhengig av annonsens bildekvalitet. Kundens egne bilder
    debuterer i «Bildene»-seksjonen der før/etter-løftet er selve poenget. */

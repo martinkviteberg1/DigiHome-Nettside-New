@@ -50,9 +50,9 @@ export async function generateMetadata({ params }) {
 
 function IkkeFunnet() {
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#FEFBFA', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: 24 }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#F3F1EC', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: 24 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/digihome-wordmark-ink.svg" alt="DigiHome" style={{ height: 24, opacity: 0.9 }} />
+      <img src="/digihome-hero-logo.svg" alt="DigiHome" style={{ height: 24, opacity: 0.9 }} />
       <p style={{ fontSize: 14, color: '#9A968F', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
         Fant ikke tilbudet. Lenken kan være utløpt — ta kontakt med oss, så sender vi en ny.
       </p>
