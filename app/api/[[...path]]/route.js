@@ -48,6 +48,7 @@ import { listMeldinger as chatList, nyMelding as chatNy, slettMelding as chatSle
 import { byggInvestorpakke } from '@/lib/datarom-excel';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
+import { vurderLeadSpam } from '@/lib/spamvern';
 import { renderFinnBanners, FINN_THEMES } from '@/lib/finn-banners';
 import {
   DD_SECTIONS, DD_CATEGORIES,
@@ -7841,6 +7842,61 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ ok: true, partials: rows, convertedCount: converted }));
     }
 
+    // Admin: filtrert spam (karantene) — innsyn i hva spamvernet stoppet.
+    if (route === '/admin/leads/spam' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const rows = await db.collection('spam_leads')
+        .find({ status: { $ne: 'recovered' } }, { projection: { _id: 0 } })
+        .sort({ createdAt: -1 }).limit(200).toArray();
+      const total = await db.collection('spam_leads').countDocuments({ status: { $ne: 'recovered' } });
+      const siste7 = await db.collection('spam_leads').countDocuments({ status: { $ne: 'recovered' }, createdAt: { $gte: new Date(Date.now() - 7 * 864e5).toISOString() } });
+      return cors(NextResponse.json({ ok: true, spam: rows, total, siste7 }));
+    }
+
+    // Admin: slett karantene-oppføring(er). ?id=<id> for én, ellers tøm alt.
+    if (route === '/admin/leads/spam' && method === 'DELETE') {
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const idQ = new URL(request.url).searchParams.get('id');
+      if (idQ) await db.collection('spam_leads').deleteOne({ id: idQ });
+      else await db.collection('spam_leads').deleteMany({ status: { $ne: 'recovered' } });
+      return cors(NextResponse.json({ ok: true }));
+    }
+
+    // Admin: gjenopprett en feilklassifisert lead → normalt lead-løp
+    // (insert i leads + videresending + e-post). For false-positives.
+    if (route === '/admin/leads/spam/gjenopprett' && method === 'POST') {
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const sid = String(body.id || '');
+      const s = await db.collection('spam_leads').findOne({ id: sid });
+      if (!s) return cors(NextResponse.json({ ok: false, error: 'Fant ikke oppføringen' }, { status: 404 }));
+      const nowIso = new Date().toISOString();
+      const lead = {
+        id: uuidv4(),
+        name: s.name || '', email: s.email || '', phone: s.phone || '', address: s.address || '',
+        lead_type: s.lead_type || 'huseier', notes: s.notes || '',
+        source: 'gjenopprettet_spam', attribution: s.attribution || null,
+        lead_source_type: (s.attribution && s.attribution.lead_source_type) || 'direct',
+        is_paid: !!(s.attribution && s.attribution.is_paid),
+        status: 'new', forwarded: false, forward_attempts: 0,
+        recovered_from_spam: true, spam_score: s.score, spam_reasons: s.reasons,
+        createdAt: nowIso, last_activity_at: nowIso,
+      };
+      await db.collection('leads').insertOne(lead);
+      let fwd = { ok: false };
+      try {
+        fwd = await forwardToDigiHome('/api/leads', {
+          external_ref: lead.id, source_system: 'digihome-marketing-recovered',
+          name: lead.name, email: lead.email, phone: lead.phone, address: lead.address,
+          lead_type: lead.lead_type, notes: lead.notes, attribution: lead.attribution || undefined,
+        });
+      } catch (e) { fwd = { ok: false }; }
+      try { await db.collection('leads').updateOne({ id: lead.id }, { $set: { ...forwardAuditFields(fwd) } }); } catch (e) { /* best-effort */ }
+      try { await fireLeadEmails(lead, { kind: 'huseier' }); } catch (e) { /* best-effort */ }
+      await db.collection('spam_leads').updateOne({ id: sid }, { $set: { status: 'recovered', recovered_lead_id: lead.id, recovered_at: nowIso } });
+      return cors(NextResponse.json({ ok: true, leadId: lead.id, forwarded: fwd.ok }));
+    }
+
     if (route === '/leads' && method === 'POST') {
       // Offentlig skjema — beskytt mot spam/mailbombing: per-IP-tak + per-mottaker-tak.
       if (!rateLimit(`leads:${clientIp(request)}`, 12, 60000)) {
@@ -7858,6 +7914,40 @@ async function handleRoute(request, { params }) {
       if (!hasSomething) {
         return cors(NextResponse.json({ success: false, error: 'Mangler kontaktinformasjon' }, { status: 400 }));
       }
+
+      // SPAMVERN (Lag 1) — honeypot, engangs-/testdomener, innsendingstid,
+      // innhold og nettleser-metadata gir en samlet score. Over terskel:
+      // stille karantene i «spam_leads» (INGEN e-postvarsling, INGEN videre-
+      // sending til plattformen) og et nøytralt «ok»-svar, så boten ikke
+      // lærer at den ble blokkert. Ekte kunder scorer ~0 og går uberørt videre.
+      try {
+        const _spam = vurderLeadSpam(body, { ip: clientIp(request), userAgent: request.headers.get('user-agent') || '' });
+        if (_spam.spam) {
+          try {
+            await db.collection('spam_leads').insertOne({
+              id: uuidv4(),
+              name: String(body.name || '').slice(0, 200),
+              email: String(body.email || '').slice(0, 200),
+              phone: String(body.phone || '').slice(0, 60),
+              address: String(body.address || '').slice(0, 300),
+              lead_type: String(body.lead_type || 'huseier').slice(0, 40),
+              notes: String(body.notes || body.message || '').slice(0, 1000),
+              source: String(body.source || 'nettside').slice(0, 60),
+              tier: String(body.tier || '').slice(0, 40) || null,
+              score: _spam.score,
+              reasons: _spam.reasons,
+              ip: clientIp(request),
+              ua: (request.headers.get('user-agent') || '').slice(0, 240),
+              attribution: sanitizeAttribution(body.attribution),
+              status: 'quarantined',
+              createdAt: new Date().toISOString(),
+            });
+          } catch (e) { /* karantene er best-effort — aldri velt svaret */ }
+          console.warn(`[SPAMVERN] blokkert lead score=${_spam.score} epost=${String(body.email || '').slice(0, 80)} grunner=${_spam.reasons.join(',')}`);
+          // Nøytralt «suksess»-svar (ingen konto, ingen redirect for bots).
+          return cors(NextResponse.json({ success: true, ok: true, data: { id: uuidv4() } }, { status: 201 }));
+        }
+      } catch (e) { /* aldri blokker en ekte kunde fordi spamvernet feilet */ }
 
       const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
       const _attr = sanitizeAttribution(body.attribution);

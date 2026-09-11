@@ -10,6 +10,7 @@ import { T, display } from '../motion';
 import { Segment, StegKnapp, TekstFelt } from '../start/Felt';
 import { DIM, HAIR, Punkt, SVAK, TekstOmrade } from './deler';
 import { SARAH } from '../forvaltning/ForvaltningDeler';
+import { useSpamGuard } from '@/components/forside/v4/SpamGuard';
 
 /* ---------------------------------------------------------------------------
    BookMoteV4 — /book-mote. Én samtale, ett skjema.
@@ -55,6 +56,7 @@ export default function BookMoteV4({ emneStart = 'forvaltning' }) {
   const [form, setForm] = useState({ navn: '', epost: '', telefon: '', melding: '' });
   const [status, setStatus] = useState('klar'); // klar | sender | sendt | feil
   const [rort, setRort] = useState({});
+  const { honeypot, getSpamFields } = useSpamGuard();
   const sett = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const feilNavn = rort.navn && !form.navn.trim() ? 'Skriv inn navnet ditt.' : '';
@@ -77,6 +79,7 @@ export default function BookMoteV4({ emneStart = 'forvaltning' }) {
           name: form.navn.trim(), email: form.epost.trim(), phone: form.telefon.trim(),
           notes: `Ønsker samtale · ${EMNE_TEKST[emne]}${form.melding.trim() ? ` — ${form.melding.trim()}` : ''}`,
           source: 'book-mote', lead_type: 'motebooking', attribution,
+          ...getSpamFields(),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -129,6 +132,7 @@ export default function BookMoteV4({ emneStart = 'forvaltning' }) {
               </div>
             ) : (
               <form onSubmit={send} className="flex flex-col gap-5 rounded-[20px] p-6 sm:p-8" style={{ background: T.flate }} noValidate data-testid="mote-skjema">
+                {honeypot}
                 <Segment label="Hva gjelder det?" verdi={emne} onChange={setEmne} valg={EMNER} testId="bm-emne" />
                 <TekstFelt id="mote-navn" label="Navn" value={form.navn} onChange={sett('navn')} onBlur={() => setRort((r) => ({ ...r, navn: true }))} autoComplete="name" placeholder="Ola Nordmann" feil={feilNavn} ok={!!form.navn.trim()} />
                 <div className="grid gap-5 sm:grid-cols-2">

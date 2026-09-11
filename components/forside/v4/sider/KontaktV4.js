@@ -11,6 +11,7 @@ import { getClickIds } from '@/lib/gtag';
 import { T, display } from '../motion';
 import { StegKnapp, TekstFelt } from '../start/Felt';
 import { Avsloring, DIM, HAIR, Innledning, Punkt, SVAK, TekstOmrade } from './deler';
+import { useSpamGuard } from '@/components/forside/v4/SpamGuard';
 
 /* ---------------------------------------------------------------------------
    KontaktV4 — /kontakt. Kontaktinfo på hårlinjer til venstre, skjema til høyre.
@@ -34,6 +35,7 @@ function Skjema() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
   const [status, setStatus] = useState('idle');
   const [rort, setRort] = useState({});
+  const { honeypot, getSpamFields } = useSpamGuard();
   const sett = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const kontaktOk = form.email.trim() || form.phone.trim();
   const feilNavn = rort.name && !form.name.trim() ? 'Skriv inn navnet ditt.' : '';
@@ -49,7 +51,7 @@ function Skjema() {
       try { attribution = { ...getLeadAttribution(), ...getClickIds() }; } catch (err) { /* ok */ }
       const res = await fetch('/api/leads', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), notes: form.message.trim(), lead_type: 'kontakt', source: 'kontakt', attribution }),
+        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), notes: form.message.trim(), lead_type: 'kontakt', source: 'kontakt', attribution, ...getSpamFields() }),
       });
       if (res.ok) {
         let data = {};
@@ -72,6 +74,7 @@ function Skjema() {
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-5 rounded-[20px] p-6 sm:p-8" style={{ background: T.flate }} data-testid="kontakt-skjema">
+      {honeypot}
       <TekstFelt id="kontakt-navn" label="Navn" value={form.name} onChange={sett('name')} onBlur={() => setRort((r) => ({ ...r, name: true }))} autoComplete="name" placeholder="Ola Nordmann" feil={feilNavn} ok={!!form.name.trim()} />
       <div className="grid gap-5 sm:grid-cols-2">
         <TekstFelt id="kontakt-epost" label="E-post" type="email" value={form.email} onChange={sett('email')} onBlur={() => setRort((r) => ({ ...r, email: true }))} autoComplete="email" inputMode="email" placeholder="ola@epost.no" ok={/^\S+@\S+\.\S+$/.test(form.email)} />

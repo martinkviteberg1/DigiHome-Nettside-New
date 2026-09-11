@@ -14,6 +14,7 @@ import SelskapSok from './SelskapSok';
 import AvtaleArk from './AvtaleArk';
 import { AVTALE_VERSJON } from '@/lib/avtale-selvforvaltning';
 import { Avkryssing, Segment, StegKnapp, TekstFelt, TelefonFelt } from './Felt';
+import { useSpamGuard } from '@/components/forside/v4/SpamGuard';
 
 /* ---------------------------------------------------------------------------
    StartV4 — «fortsettelsen av heroen». /bli-utleier/start.
@@ -269,6 +270,7 @@ export default function StartV4() {
   const [endreLaster, setEndreLaster] = useState(false);
   const [endreFeil, setEndreFeil] = useState('');
   const [eksisterendeKonto, setEksisterendeKonto] = useState(null); // {email_masked, login_url} — e-posten finnes allerede
+  const { honeypot, getSpamFields } = useSpamGuard();
 
   const stegIndex = STEG.findIndex((s) => s.id === steg);
   const gate = gateAv(form.address, form.postalCode, form.city);
@@ -524,7 +526,7 @@ export default function StartV4() {
       ].filter(Boolean).join(' '),
     };
     try {
-      const r = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const r = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, ...getSpamFields() }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || (!d.success && !d.ok)) throw new Error('submit_failed');
       const acc = d?.account || d?.data?.account || null;
@@ -868,6 +870,7 @@ export default function StartV4() {
                 />
 
                 <form onSubmit={send} className="mt-6 flex flex-col gap-4" noValidate>
+                  {honeypot}
                   <Segment
                     inline
                     label="Jeg registrerer som"

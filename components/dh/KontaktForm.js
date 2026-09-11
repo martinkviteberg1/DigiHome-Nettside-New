@@ -4,11 +4,13 @@ import React, { useState, useRef } from 'react';
 import { Loader2, CheckCircle2, Send } from 'lucide-react';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLeadStart, getClickIds } from '@/lib/gtag';
+import { useSpamGuard } from '@/components/forside/v4/SpamGuard';
 
 export default function KontaktForm() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
   const [status, setStatus] = useState('idle'); // idle | sending | done | error
   const startedRef = useRef(false);
+  const { honeypot, getSpamFields } = useSpamGuard();
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const handleStart = () => {
@@ -28,6 +30,7 @@ export default function KontaktForm() {
           name: form.name, email: form.email, phone: form.phone,
           notes: form.message, lead_type: 'kontakt', source: 'kontakt',
           attribution: { ...getLeadAttribution(), ...getClickIds() },
+          ...getSpamFields(),
         }),
       });
       if (res.ok) {
@@ -52,6 +55,7 @@ export default function KontaktForm() {
 
   return (
     <form onSubmit={submit} onFocus={handleStart} className="bg-white rounded-3xl p-7 sm:p-9 shadow-[0_18px_60px_-26px_rgba(0,0,0,0.18)] space-y-4">
+      {honeypot}
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-[12.5px] font-semibold text-[#666] mb-1.5">Navn *</label>

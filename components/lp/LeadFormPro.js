@@ -12,6 +12,7 @@ import { site } from '@/lib/site';
 import { getLeadAttribution, track } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 import { useAddressAutocomplete } from '@/components/lp/lp-shared';
+import { useSpamGuard } from '@/components/forside/v4/SpamGuard';
 
 const PHONE_RE = /^(?:\+47)?\s?(?:\d\s?){8}$/;
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
@@ -40,6 +41,7 @@ export default function LeadFormPro({ cfg }) {
   const calcRef = useRef(null); // valgt kalkulator-estimat (om brukt)
   const nameRef = useRef(null);
   const ac = useAddressAutocomplete();
+  const { honeypot, getSpamFields } = useSpamGuard();
   const set = (k) => (e) => { setForm((f) => ({ ...f, [k]: e.target.value })); setFieldErr((fe) => ({ ...fe, [k]: '' })); };
 
   // Lytt på leiekalkulatoren — beriker leadet med estimatet brukeren så.
@@ -165,6 +167,7 @@ export default function LeadFormPro({ cfg }) {
           lead_type: 'huseier', source: cfg.source,
           notes,
           attribution: { ...getLeadAttribution(), ...getClickIds() },
+          ...getSpamFields(),
         }),
       });
       if (!res.ok) throw new Error('api');
@@ -295,6 +298,7 @@ export default function LeadFormPro({ cfg }) {
   /* -------------------------------- Steg 2 -------------------------------- */
   return (
     <form onSubmit={submit} onFocus={handleStart} className="relative space-y-4 rounded-[20px] p-5 sm:p-7" style={{ background: FLATE }} data-testid="lp-form-step2">
+      {honeypot}
       <div>
         <div className="flex items-center justify-between gap-3">
           <p className="text-[24px] sm:text-[28px]" style={{ ...display, color: INK }}>Nesten ferdig — hvor når vi deg<span style={{ color: LILLA }}>?</span></p>
