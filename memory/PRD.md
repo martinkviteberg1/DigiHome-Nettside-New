@@ -1799,3 +1799,8 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 ## Oppdatering 11. sep 2026 (4) — Styrerapport: full-bredde KUN på navbar
 - Bruker: «hele layouten ble fucket — full bredde skulle bare være navbar».
 - FIKS: Innholdet satt tilbake til sentrert redaksjonell spalte `max-w-[1320px] px-5 sm:px-8 lg:px-12` (synlig ~1224px). Navbaren beholder full-bredde root-rammen `max-w-[1600px] lg:w-[calc(100%-64px)] lg:px-0`. Måling (1920): nav-logo.left=160 (full-bredde), cover-innhold 348→1572 (sentrert smalere), begge sentrert på 960. Ingen overflow.
+
+## Oppdatering 11. sep 2026 (5) — Styrerapport: én-linjes nav + animert pille-TOC
+- Bruker: «finn en mer moderne måte å vise tab-menyen på» + «navbar unødvendig høy på scroll» + «tabsene bør vise i navbar på linje med logo».
+- ÉN-LINJES NAV (som forsidens NavV4): logo (venstre) · tabs sentrert i midtfeltet (flex-1, sentrert m/ plass / scroller ellers) · handlinger (høyre). Nav-høyde nå ~61px (var ~106px i to rader). Verifisert: admin (7 tabs + 5 knapper) og delt (1 knapp) på én linje, ingen overlapp/overflow.
+- MODERNE TOC: `ContentsBar` bruker nå en animert glidende pille (framer-motion `layoutId="sr-toc-pille"`, spring) — aktivt kapittel = mørk ink-pille m/ hvit tekst + lilla folio; glir mykt mellom kapitlene på scroll. Scroll-bevisst hårfin bunn-ramme beholdt.

@@ -255,10 +255,10 @@ function useAktivtKapittel(ids) {
 }
 const gaaTil = (id) => { const el = document.getElementById(`sr-${id}`); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 
-// ── Innholdslinje (editorial TOC) — folio + tittel + aktiv-merke ────────────
+// ── Innholdslinje (moderne TOC) — animert glidende pille (framer layoutId) ──
 function ContentsBar({ kapitler, aktiv }) {
   return (
-    <div role="tablist" aria-label="Innhold" className="flex items-stretch gap-0.5">
+    <div role="tablist" aria-label="Innhold" className="flex items-center gap-0.5">
       {kapitler.map((k, i) => {
         const er = aktiv === k.id;
         return (
@@ -268,13 +268,21 @@ function ContentsBar({ kapitler, aktiv }) {
             role="tab"
             aria-selected={er}
             onClick={() => gaaTil(k.id)}
-            className="group flex shrink-0 flex-col items-center gap-[7px] whitespace-nowrap px-2.5 pt-2 pb-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/30 sm:px-3.5"
+            className="relative inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/30"
+            style={{ background: 'transparent' }}
+            onMouseEnter={(e) => { if (!er) e.currentTarget.style.background = 'rgba(21,19,15,0.05)'; }}
+            onMouseLeave={(e) => { if (!er) e.currentTarget.style.background = 'transparent'; }}
           >
-            <span className="flex items-baseline gap-1.5 text-[13px] transition-colors" style={{ color: er ? C.ink : C.ink3 }}>
-              <span className="text-[10px] font-bold tabular-nums" style={{ ...H, color: er ? C.accent : C.line2 }}>{String(i + 1).padStart(2, '0')}</span>
-              <span style={{ fontWeight: er ? 600 : 500, letterSpacing: '-0.005em' }}>{k.label}</span>
-            </span>
-            <span className="h-[2px] rounded-full transition-all duration-300" style={{ width: er ? 22 : 0, background: C.accent }} />
+            {er && (
+              <motion.span
+                layoutId="sr-toc-pille"
+                className="absolute inset-0 rounded-full"
+                style={{ background: C.ink }}
+                transition={{ type: 'spring', stiffness: 520, damping: 44 }}
+              />
+            )}
+            <span className="relative z-[1] text-[10px] font-bold tabular-nums transition-colors" style={{ ...H, color: er ? '#c9a9ff' : C.line2 }}>{String(i + 1).padStart(2, '0')}</span>
+            <span className="relative z-[1] text-[13px] transition-colors" style={{ color: er ? '#fff' : C.ink3, fontWeight: er ? 600 : 500, letterSpacing: '-0.005em' }}>{k.label}</span>
           </button>
         );
       })}
@@ -299,23 +307,21 @@ function RapportNav({ kapitler, aktiv, handlinger }) {
       className="dh-sr-noprint sticky top-0 z-40 w-full transition-[border-color] duration-300"
       style={{ borderBottom: `1px solid ${scrolled ? C.line : 'transparent'}`, background: 'rgba(243,241,236,0.80)', backdropFilter: 'saturate(180%) blur(14px)', WebkitBackdropFilter: 'saturate(180%) blur(14px)' }}
     >
-      {/* Rad 1 — masthead (én logo) og handlinger */}
-      <div className={`${inner} flex h-[64px] items-center gap-3`}>
-        <div className="flex min-w-0 shrink-0 items-center gap-3">
+      {/* Én linje: merke · tabs (sentrert) · handlinger — som forsidens NavV4 */}
+      <div className={`${inner} flex h-[60px] items-center gap-3 sm:gap-4`}>
+        <div className="flex shrink-0 items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/digihome-hero-logo.svg" alt="DigiHome" className="h-5 w-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-          <span className="hidden h-4 w-px sm:block" style={{ background: C.line2 }} aria-hidden />
-          <span className="hidden text-[11px] font-semibold uppercase tracking-[0.2em] sm:inline" style={{ color: C.ink3 }}>Styrerapport</span>
+          <span className="hidden h-4 w-px lg:block" style={{ background: C.line2 }} aria-hidden />
+          <span className="hidden text-[11px] font-semibold uppercase tracking-[0.2em] lg:inline" style={{ color: C.ink3 }}>Styrerapport</span>
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">{handlinger}</div>
-      </div>
-      {/* Rad 2 — editorial innholdslinje, full bredde. Sentrert med plass, scroller ellers. */}
-      <div className={`${inner} pb-1.5`}>
-        <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Tabs midt i linja — sentrert når det er plass, scroller ellers */}
+        <div className="min-w-0 flex-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="mx-auto w-max">
             <ContentsBar kapitler={kapitler} aktiv={aktiv} />
           </div>
         </div>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">{handlinger}</div>
       </div>
     </header>
   );
