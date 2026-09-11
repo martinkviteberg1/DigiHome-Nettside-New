@@ -44,6 +44,34 @@ Ukjente felt skal ignoreres trygt (nettsiden virker allerede uten dette).
 ```
 Dette mapper 1:1 til deres `LeaseCreate` / kontraktsmal (Husleieloven).
 
+**NYTT (additivt, valgfritt) — `property.registry`** (satt når brukeren slo opp
+boligen i Eiendomsregisteret i wizarden; `null` ved manuell adresse):
+```json
+"property": {
+  "...": "feltene over",
+  "registry": {
+    "source": "infotorg_edr",
+    "kommunenr": "4601", "gaardsnr": "165", "bruksnr": "96",
+    "seksjonsnr": "12",          // eierseksjon (null hvis ikke seksjonert)
+    "andelsnr": null,            // borettslag-andel (null hvis ikke borettslag)
+    "orgnr": null,               // borettslagets org.nr (kun borettslag)
+    "matrikkel": "4601-165/96/12",
+    "unit_no": "H0301",          // bruksenhetsnummer / bolignr
+    "building_type": "sameie|borettslag|enebolig|tomannsbolig|rekkehus",
+    "registered_owner": { "name": "Ola Nordmann", "type": "person|organisasjon" }
+  }
+}
+```
+Bruk `registry` til å forhåndsutfylle matrikkel/seksjon/andel/bolignr i den
+autoritative kontrakten, og `registered_owner` som forslag til utleier-part
+(brukeren kan ha endret det i wizarden — `owner` i broen er alltid fasit).
+Ukjente felt ignoreres trygt; eldre payloads uten `registry` er fortsatt gyldige.
+
+> **Infotorg/Eiendomsregisteret: INGEN endring nødvendig i appen.** Nettsiden har
+> sin egen Infotorg-klient (`/api/infotorg/*`, rate-limitet) og gjør oppslaget
+> selv. Tidligere idé om å åpne appens `/api/infotorg/*` for bro-token er
+> **frafalt** — ignorer den om den ble nevnt.
+
 ### 2) Magic-link åpner utkastet ferdig utfylt
 Når en bruker bekrefter e-posten via magic-link og kontoen har et lagret
 `lease_draft`: send dem rett inn i signeringswizarden med feltene
