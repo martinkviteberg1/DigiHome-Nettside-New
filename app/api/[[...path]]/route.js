@@ -3286,6 +3286,60 @@ async function handleRoute(request, { params }) {
       }
     }
 
+    // ═══════════════ STYRERAPPORT: intern, delbar styrerapport («nydelig scrollbar nettside») ═══════════════
+    // Samler LIVE nøkkeltall fra økonomimotoren (board-pack + kunder + selskap) og
+    // REDIGERBART innhold (sammendrag, egne blokker, ask til styret) i én payload.
+    // PowerOffice-regnskapet hentes separat fra klienten (tregt/kan feile) via
+    // /admin/regnskap/konsern. Kun admin/eier (adminAuthed). Ingen tall fabrikkeres —
+    // feiler en kilde returneres null slik at UI-et kan vise «utilgjengelig».
+    if (route.startsWith('/admin/styrerapport')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const srKoll = db.collection('styrerapport');
+      const SR_ID = 'styrerapport';
+      const srTekst = (v, maks) => String(v == null ? '' : v).replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').slice(0, maks);
+      const srLinje = (v, maks) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, maks);
+      const SR_BLOKK_TYPER = ['tekst', 'tall', 'liste'];
+      const srRensBlokker = (arr) => (Array.isArray(arr) ? arr : []).slice(0, 40).map((b) => {
+        const type = SR_BLOKK_TYPER.includes(b && b.type) ? b.type : 'tekst';
+        const grunn = { id: srLinje(b && b.id, 40) || uuidv4(), type, tittel: srLinje(b && b.tittel, 120) };
+        if (type === 'tall') return { ...grunn, tall: (Array.isArray(b && b.tall) ? b.tall : []).slice(0, 8).map((t) => ({ etikett: srLinje(t && t.etikett, 60), verdi: srLinje(t && t.verdi, 40), notat: srLinje(t && t.notat, 90) })).filter((t) => t.etikett || t.verdi) };
+        if (type === 'liste') return { ...grunn, punkter: (Array.isArray(b && b.punkter) ? b.punkter : []).slice(0, 30).map((p) => srLinje(p, 400)).filter(Boolean) };
+        return { ...grunn, tekst: srTekst(b && b.tekst, 6000) };
+      });
+
+      if (route === '/admin/styrerapport' && method === 'GET') {
+        const rapport = await srKoll.findOne({ id: SR_ID }, { projection: { _id: 0 } });
+        const trygt = async (fn) => { try { return await fn(); } catch (e) { return null; } };
+        // Board-pack er tung (KPI + ev. live annonsekall) → gjenbruk 5-min prosess-cache (delt med decket).
+        const gg = globalThis;
+        const SR_CACHE_MS = 5 * 60 * 1000;
+        let boardPack = null;
+        if (gg.__ddBoardPack && (Date.now() - gg.__ddBoardPack.at) < SR_CACHE_MS) boardPack = gg.__ddBoardPack.data;
+        else { boardPack = await trygt(() => computeBoardPack(db)); if (boardPack) gg.__ddBoardPack = { at: Date.now(), data: boardPack }; }
+        const [customers, selskap] = await Promise.all([
+          trygt(async () => (await computePlatformCustomers(db)) || (await computeCustomers(db))),
+          trygt(() => computeSelskap(db)),
+        ]);
+        return cors(NextResponse.json({ ok: true, rapport: rapport || null, boardPack, customers, selskap, generatedAt: new Date().toISOString() }));
+      }
+
+      if (route === '/admin/styrerapport' && method === 'POST') {
+        let srBody = {}; try { srBody = await request.json(); } catch (e) { srBody = {}; }
+        const doc = {
+          id: SR_ID,
+          tittel: srLinje(srBody.tittel, 120) || 'Styrerapport',
+          motedato: srLinje(srBody.motedato, 50),
+          periodeLabel: srLinje(srBody.periodeLabel, 60),
+          sammendrag: srTekst(srBody.sammendrag, 8000),
+          ask: (Array.isArray(srBody.ask) ? srBody.ask : []).slice(0, 20).map((p) => srLinje(p, 400)).filter(Boolean),
+          blokker: srRensBlokker(srBody.blokker),
+          oppdatert: new Date().toISOString(),
+        };
+        await srKoll.updateOne({ id: SR_ID }, { $set: doc }, { upsert: true });
+        return cors(NextResponse.json({ ok: true, rapport: doc }));
+      }
+    }
+
     // ═══════════════ REGNSKAP: PowerOffice Go (faktiske regnskapstall, les-only, FLERSELSKAP) ═══════════════
     // App-/abonnementsnøkkel er delt (.env). Hvert selskap (DigiHome AS, DigiHome Tech AS, …)
     // har sin egen klientnøkkel, lagret i db-kolleksjonen `regnskap_selskaper`, og sitt eget regnskap.

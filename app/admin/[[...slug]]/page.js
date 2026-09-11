@@ -8,7 +8,7 @@ import {
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
   ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User, Eye, EyeOff,
-  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar, Network, BookMarked, Camera, Presentation, Receipt, Tags,
+  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar, Network, BookMarked, Camera, Presentation, Receipt, Tags, FileBarChart,
 } from 'lucide-react';
 import Brukere from '@/components/admin/Brukere';
 import Salgsradar from '@/components/admin/Salgsradar';
@@ -27,6 +27,7 @@ import HistoryTab from '@/components/admin/HistoryTab';
 import InvestorRoomTab from '@/components/admin/InvestorRoomTab';
 import DeckModul from '@/components/admin/DeckModul';
 import RegnskapModul from '@/components/admin/RegnskapModul';
+import Styrerapport from '@/components/admin/Styrerapport';
 import PrisModul from '@/components/admin/PrisModul';
 import SeoAeoTab from '@/components/admin/SeoAeoTab';
 import TasksTab from '@/components/admin/TasksTab';
@@ -103,6 +104,7 @@ const NAV = [
   {
     group: 'Investor',
     items: [
+      { k: 'styrerapport', l: 'Styrerapport', icon: FileBarChart, desc: 'Intern styremøterapport — live nøkkeltall, regnskap, kunder og egne seksjoner i én scrollbar side' },
       { k: 'dr-oversikt', datarom: 'oversikt', l: 'Oversikt', icon: Landmark, desc: 'Investorrommets forside — nøkkeltall, drift, pipeline og investorpakke' },
       { k: 'deck', l: 'Deck', icon: Presentation, desc: 'Investordecket — velg plan, presenter, del lenker og se hvem som åpnet' },
       { k: 'investorrom', l: 'Tilgang & Q&A', icon: ShieldCheck, desc: 'Levende DD-rom — tilgangslenker, dokumenthvelv & investorspørsmål' },
@@ -148,6 +150,7 @@ const SECTION_TITLES = {
   nokkeltall: { t: 'Nøkkeltall', s: 'Investorklare KPIer · CAC · LTV · tid til kunde · konvertering' },
   investorrom: { t: 'Investor-rom', s: 'Levende DD-rom — del tilgangslenker, administrer dokumenthvelv og svar på investorspørsmål. All aktivitet logges' },
   deck: { t: 'Deck', s: 'Investordecket — velg planen decket viser, presenter, del rene lenker og se hvem som åpnet' },
+  styrerapport: { t: 'Styrerapport', s: 'Intern styremøterapport — live nøkkeltall, regnskap, kunder og egne seksjoner · presentasjon & PDF' },
   playbook: { t: 'Playbook', s: 'Head of Marketing-strategi · Utleiemegleren-analyse · 90-dagersplan · budsjettmatematikk' },
   innsikt: { t: 'Analyse & vekst', s: 'Trafikk · leads · annonser · trakt · konkurrenter · ytelse · AI — førsteparts, cookieless, GDPR-trygt' },
   okonomi: { t: 'Økonomi', s: 'Resultat & likviditet · honorar (prosent av leie) · burn rate & runway' },
@@ -217,6 +220,7 @@ const SLUG_TIL_SEKSJON = {
   brukere: { section: 'brukere' },
   investorrom: { section: 'investorrom' },
   deck: { section: 'deck' },
+  styrerapport: { section: 'styrerapport' },
   playbook: { section: 'playbook' },
   kunder: { section: 'kunder' },
   salgsradar: { section: 'salgsradar' },
@@ -864,7 +868,7 @@ export default function AdminPage({ params }) {
             raden pga. hamburgermenyen. Samme énrads-prinsipp for Leieforhold og
             Enhetsøkonomi: modulene har egen overskrift, så den globale raden
             (med søkefeltet) skjules på desktop. */}
-        <div className={`sticky top-0 z-30 bg-[#f7f6f4]/85 backdrop-blur-md border-b border-black/[0.05] ${section === 'budsjett' || section === 'leieforhold' || section === 'salgsradar' || (section === 'datarom' && (dataromTab === 'enheter' || dataromTab === 'organisasjon')) ? 'lg:hidden' : ''}`}>
+        <div className={`sticky top-0 z-30 bg-[#f7f6f4]/85 backdrop-blur-md border-b border-black/[0.05] ${section === 'budsjett' || section === 'leieforhold' || section === 'salgsradar' || section === 'styrerapport' || (section === 'datarom' && (dataromTab === 'enheter' || dataromTab === 'organisasjon')) ? 'lg:hidden' : ''}`}>
           <div className="h-12 px-4 sm:px-6 flex items-center gap-3">
             <button onClick={() => setSidebarOpen(true)} aria-label="Åpne meny" data-testid="admin-menu-open" className="lg:hidden h-8 w-8 rounded-lg bg-white shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex items-center justify-center text-[#444]"><Menu className="w-4 h-4" /></button>
             <h1
@@ -892,10 +896,11 @@ export default function AdminPage({ params }) {
           </div>
         </div>
 
-        <div key={section} className={`dh-fade ${section === 'leieforhold' || section === 'datarom' || section === 'salgsradar' || section === 'budsjett' ? 'max-w-none px-4 py-3 sm:px-6' : 'max-w-[1440px] px-4 py-6 sm:px-8'}`}>
+        <div key={section} className={`dh-fade ${section === 'leieforhold' || section === 'datarom' || section === 'salgsradar' || section === 'budsjett' || section === 'styrerapport' ? 'max-w-none px-4 py-3 sm:px-6' : 'max-w-[1440px] px-4 py-6 sm:px-8'}`}>
           {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
           {section === 'investorrom' && <InvestorRoomTab apiKey={token} />}
           {section === 'deck' && <DeckModul apiKey={token} />}
+          {section === 'styrerapport' && <Styrerapport apiKey={token} />}
           {section === 'playbook' && <PlaybookTab apiKey={token} />}
           {section === 'nyhetsbrev' && <NewsletterTab apiKey={token} />}
           {section === 'landingssider' && <LandingPagesTab apiKey={token} />}
