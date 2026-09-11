@@ -126,8 +126,8 @@ function PotensialBadge({ p, id, stor = false, taus = false }) {
     <ScoreRing
       verdi={p.score}
       forelopig={p.forelopig}
-      storrelse={stor ? 56 : 40}
-      strek={stor ? 4.5 : 3.5}
+      storrelse={stor ? 56 : 46}
+      strek={stor ? 4.5 : 4}
       id={id ? `radar-potensial-${id}` : undefined}
       tittel={taus ? undefined : (p.forelopig ? `Foreløpig potensial ${p.score}/100 — kjør AI-analyse for full score` : `Potensial ${p.score}/100 · annonsekvalitet ${p.annonseScore}/100`)}
     />
@@ -2167,13 +2167,13 @@ export default function Salgsradar({ apiKey }) {
                       return (
                         <tr key={l.id} onClick={() => { setValgtId(l.id); setSletteBekreft(false); }} data-testid={`radar-lead-${l.id}`}
                           className={`cursor-pointer border-b border-black/[0.04] transition-colors last:border-0 ${erValgt ? 'bg-[#faf9f7]' : 'hover:bg-[#fbfaf9]'}`}>
-                          <td className="px-3.5 py-2">
+                          <td className="px-3.5 py-3">
                             <button onClick={(e) => { e.stopPropagation(); veksleValg(l.id); }} data-testid={`radar-velg-${l.id}`} aria-label="Marker"
                               className={`rounded-md p-0.5 transition-colors ${erValgt ? 'text-[#1c1917]' : 'text-[#ddd8d0] hover:text-[#a8a29a]'}`}>
                               {erValgt ? <CheckSquare className="h-[16px] w-[16px]" /> : <Square className="h-[16px] w-[16px]" />}
                             </button>
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-3">
                             <span className="flex items-center gap-2.5">
                               {(l.bilder || []).find((b) => !dodeBilder.has(b))
                                 // eslint-disable-next-line @next/next/no-img-element
@@ -2191,7 +2191,7 @@ export default function Salgsradar({ apiKey }) {
                               </span>
                             </span>
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-3">
                             {(() => {
                               const byd = bydelFraPostnr(l.postnr);
                               return (byd || l.postnr) ? (
@@ -2202,7 +2202,7 @@ export default function Salgsradar({ apiKey }) {
                               ) : <span className="text-[12px] text-[#ddd8d0]">–</span>;
                             })()}
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-3">
                             <span className="block min-w-0" data-testid={`radar-tabell-kontakt-${l.id}`}>
                               <AnnonsorBadge annonsor={l.annonsor} liten />
                               {erMeglerLead(l) ? (
@@ -2221,7 +2221,7 @@ export default function Salgsradar({ apiKey }) {
                               {!l.annonsor && !l.kontaktNavn && !l.kontaktTlf ? <span className="text-[12px] text-[#ddd8d0]">–</span> : null}
                             </span>
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-3">
                             {l.auto && ['analyserer', 'styler'].includes(l.auto.status) ? (
                               <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#6f6a61]">
                                 <Loader2 className="h-3 w-3 animate-spin text-[#8b5cf6]" />
@@ -2236,10 +2236,10 @@ export default function Salgsradar({ apiKey }) {
                               </span>
                             )}
                           </td>
-                          <td className="px-2 py-2 text-center"><PotensialCelle lead={l} /></td>
-                          <td className="px-2 py-2 text-right text-[12.5px] font-semibold text-[#44403c]" style={heading}>{tall(l.pris)}</td>
-                          <td className="px-2 py-2 text-right text-[12.5px] text-[#78716c]" style={heading}>{l.analyse?.anbefaltLeie ? tall(l.analyse.anbefaltLeie) : '–'}</td>
-                          <td className="px-3.5 py-2 text-right text-[12.5px] text-[#0e7490]">{l.aapninger || 0}</td>
+                          <td className="px-2 py-3 text-center"><PotensialCelle lead={l} /></td>
+                          <td className="px-2 py-3 text-right text-[12.5px] font-semibold text-[#44403c]" style={heading}>{tall(l.pris)}</td>
+                          <td className="px-2 py-3 text-right text-[12.5px] text-[#78716c]" style={heading}>{l.analyse?.anbefaltLeie ? tall(l.analyse.anbefaltLeie) : '–'}</td>
+                          <td className="px-3.5 py-3 text-right text-[12.5px] text-[#0e7490]">{l.aapninger || 0}</td>
                         </tr>
                       );
                     })}

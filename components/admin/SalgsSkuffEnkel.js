@@ -39,6 +39,51 @@ const nesteFredag = () => { const t = new Date(); const diff = (5 - t.getDay() +
 const STOR_KNAPP = 'group flex h-12 w-full items-center justify-center gap-2 rounded-[12px] px-4 text-[14px] font-semibold transition-all duration-150 hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.995] disabled:opacity-50 disabled:hover:translate-y-0';
 const STILLE = 'rounded-[7px] px-2 py-1 text-[12.5px] font-medium text-[#8a857c] transition-colors hover:bg-black/[0.04] hover:text-[#1c1917]';
 
+/* ── Score & anbefaling — «hvorfor denne leaden betyr noe» på ett blikk.
+   Potensial-ring (fargekodet) + dagens leie → anbefalt (m/ gevinst) → DigiHome-honorar.
+   Samme regnestykke som tabellen (anbefaltLeie × honorarPct, standard 8 %). ── */
+const scoreTone = (s) => (s >= 70 ? { c: '#1F9D55', l: 'Høyt potensial' } : s >= 40 ? { c: '#C9821A', l: 'Middels potensial' } : { c: '#a8a29a', l: 'Lavt potensial' });
+function ScoreStripe({ lead }) {
+  const score = Number(lead.potensial?.score) || 0;
+  const forelopig = Boolean(lead.potensial?.forelopig);
+  const anbefalt = Number(lead.analyse?.anbefaltLeie) || 0;
+  const pct = Number(lead.analyse?.honorarPct) || 8;
+  const honorar = Math.round((anbefalt * pct) / 100);
+  const gevinst = lead.pris && anbefalt ? anbefalt - lead.pris : null;
+  if (!score && !anbefalt) return null;
+  const tone = scoreTone(score);
+  const r = 22; const omkrets = 2 * Math.PI * r; const fyll = omkrets * (1 - Math.min(1, score / 100));
+  return (
+    <div className="mb-3 flex items-center gap-4 rounded-[14px] border border-black/[0.05] bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(28,25,23,0.03)]" data-testid="skuff-score-stripe">
+      <div className="relative grid h-[58px] w-[58px] shrink-0 place-items-center" title={forelopig ? 'Foreløpig score — analysen kjører' : tone.l}>
+        <svg width="58" height="58" viewBox="0 0 58 58" className="-rotate-90">
+          <circle cx="29" cy="29" r={r} fill="none" stroke="rgba(21,19,15,0.07)" strokeWidth="4" />
+          <circle cx="29" cy="29" r={r} fill="none" stroke={tone.c} strokeWidth="4" strokeLinecap="round" strokeDasharray={omkrets} strokeDashoffset={fyll} style={{ transition: 'stroke-dashoffset 700ms cubic-bezier(0.16,1,0.3,1)', opacity: forelopig ? 0.45 : 1 }} />
+        </svg>
+        <span className="absolute text-[16px] font-bold tabular-nums" style={{ ...heading, color: '#1c1917' }}>{score || '–'}</span>
+      </div>
+      <div className="grid min-w-0 flex-1 grid-cols-3 gap-3">
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#b3aea6]">Dagens leie</p>
+          <p className="mt-0.5 truncate text-[15px] font-bold tabular-nums text-[#1c1917]" style={heading}>{lead.pris ? kr(lead.pris) : '–'}</p>
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#b3aea6]">Anbefalt</p>
+          <p className="mt-0.5 truncate text-[15px] font-bold tabular-nums text-[#1c1917]" style={heading}>{anbefalt ? kr(anbefalt) : '–'}</p>
+          {gevinst != null && gevinst !== 0 ? (
+            <p className="text-[11px] font-semibold tabular-nums" style={{ color: gevinst > 0 ? '#1F9D55' : '#c2413b' }}>{gevinst > 0 ? '+' : ''}{tall(gevinst)} kr/mnd</p>
+          ) : null}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#b3aea6]">Honorar</p>
+          <p className="mt-0.5 truncate text-[15px] font-bold tabular-nums" style={{ ...heading, color: '#6D3A99' }}>{honorar ? kr(honorar) : '–'}</p>
+          {honorar ? <p className="text-[11px] text-[#a8a29a]">{pct} % · per mnd</p> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Selger-avatar: profilbilde hvis det finnes, ellers initialer på gradient ── */
 export function SelgerAvatar({ selger, storrelse = 32 }) {
   if (!selger) {
@@ -359,6 +404,9 @@ export default function SalgsSkuffEnkel({
               <button onClick={() => onsketStatus(lead, 'tapt')} className="shrink-0 text-[12.5px] font-semibold text-[#c2413b] hover:underline">Merk som tapt</button>
             </div>
           )}
+
+          {/* Score & anbefaling — hvorfor leaden betyr noe, før neste steg */}
+          <ScoreStripe lead={lead} />
 
           {/* NESTE STEG / auto / utfall */}
           {autoAktiv ? (
