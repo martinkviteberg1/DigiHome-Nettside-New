@@ -2574,6 +2574,19 @@ async function handleRoute(request, { params }) {
     // --- STYRERAPPORT: ekstern delingslenke (offentlig, token-basert, les-only) ---
     // Token = uuid v4 (ugjettbar). Lenken kan utløpe og trekkes tilbake av admin.
     // Hver åpning telles (visninger, sistApnet, siste 100 åpninger m/ anonymisert IP-hash).
+    // Offentlig bilde-servering for rike seksjoner (ingen auth — trengs på delingslenken).
+    if (route.startsWith('/styrerapport/bilde/') && method === 'GET') {
+      const bid = decodeURIComponent(route.slice('/styrerapport/bilde/'.length)).trim();
+      if (!/^[A-Za-z0-9-]{16,80}$/.test(bid)) return cors(new NextResponse(null, { status: 404 }));
+      try {
+        const bdb = await getDb();
+        const bilde = await bdb.collection('styrerapport_bilder').findOne({ id: bid }, { projection: { _id: 0, mime: 1, b64: 1 } });
+        if (!bilde || !bilde.b64) return cors(new NextResponse(null, { status: 404 }));
+        const buf = Buffer.from(bilde.b64, 'base64');
+        return cors(new NextResponse(buf, { status: 200, headers: { 'Content-Type': bilde.mime || 'image/png', 'Cache-Control': 'public, max-age=31536000, immutable' } }));
+      } catch (e) { return cors(new NextResponse(null, { status: 404 })); }
+    }
+
     if (route.startsWith('/styrerapport/del/') && method === 'GET') {
       const token = decodeURIComponent(route.slice('/styrerapport/del/'.length)).trim();
       const svar = (obj, status) => { const r = NextResponse.json(obj, { status }); r.headers.set('Cache-Control', 'no-store'); return cors(r); };
@@ -2585,7 +2598,20 @@ async function handleRoute(request, { params }) {
       if (lenke.aktiv === false) return svar({ ok: false, feil: 'trukket' }, 410);
       if (lenke.utloper && new Date(lenke.utloper).getTime() < Date.now()) return svar({ ok: false, feil: 'utlopt' }, 410);
 
-      const rapport = await sdb.collection('styrerapport').findOne({ id: 'styrerapport' }, { projection: { _id: 0 } });
+      const srKoll2 = sdb.collection('styrerapport');
+      // Peker lenken på en BESTEMT møte-rapport som er slettet → 410 «fjernet».
+      // Fall ALDRI tilbake til gjeldende her: en trukket/slettet rapport skal
+      // aldri lekke en annen rapport til styremedlemmene.
+      let rapport = null;
+      if (lenke.rapportId) {
+        rapport = await srKoll2.findOne({ id: lenke.rapportId }, { projection: { _id: 0 } });
+        if (!rapport) return svar({ ok: false, feil: 'fjernet' }, 410);
+      } else {
+        rapport = await srKoll2.findOne({ gjeldende: true }, { projection: { _id: 0 } })
+          || await srKoll2.findOne({ id: 'styrerapport' }, { projection: { _id: 0 } });
+      }
+      if (!rapport) return svar({ ok: false, feil: 'fjernet' }, 410);
+      if (rapport.status === 'utkast') return svar({ ok: false, feil: 'ikke_publisert' }, 410);
       const payload = await styrerapportPayload(sdb, { inkluderRegnskap: lenke.inkluderRegnskap !== false, regnskapAar: lenke.regnskapAar });
       try {
         const ip = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() || request.headers.get('x-real-ip') || '';
@@ -3406,9 +3432,17 @@ async function handleRoute(request, { params }) {
       const SR_ID = 'styrerapport';
       const srTekst = (v, maks) => String(v == null ? '' : v).replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').slice(0, maks);
       const srLinje = (v, maks) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, maks);
-      const SR_BLOKK_TYPER = ['tekst', 'tall', 'liste', 'rik'];
+      const SR_BLOKK_TYPER = ['tekst', 'tall', 'liste', 'rik', 'budsjett'];
+      const SR_SELSKAP = ['digihome', 'tech'];
+      const SR_PLANTYPE = ['modell', 'tech'];
+      // Budsjett-øyeblikksbilde: inn-verdiene (fakta/drivere/tech) fryses ved
+      // tilknytning/oppdatering, så en historisk styrerapport alltid viser tallene
+      // fra det møtet. Motoren (lib/budsjett-modell) sanerer verdiene ved beregning.
+      const srRensObjekt = (o, maks = 80000) => {
+        try { const s = JSON.stringify(o == null ? {} : o); if (!s || s.length > maks) return {}; return JSON.parse(s); } catch (e) { return {}; }
+      };
       // Rik seksjon (Tiptap-doc): streng hvitelisting av noder/marks, trygge lenker, tak på dybde/størrelse.
-      const SR_RIK_NODER = new Set(['doc', 'paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'blockquote', 'horizontalRule', 'hardBreak', 'text', 'callout']);
+      const SR_RIK_NODER = new Set(['doc', 'paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'blockquote', 'horizontalRule', 'hardBreak', 'text', 'callout', 'image', 'table', 'tableRow', 'tableHeader', 'tableCell', 'taskList', 'taskItem', 'details', 'detailsSummary', 'detailsContent', 'kolonner', 'kolonne', 'codeBlock']);
       const SR_RIK_MARKS = new Set(['bold', 'italic', 'underline', 'strike', 'code', 'highlight', 'link']);
       const SR_RIK_LAYOUT = ['standard', 'magasin', 'sidestilt'];
       const SR_RIK_ANKER = ['start', 'sammendrag', 'nokkeltall', 'resultat', 'regnskap', 'kunder', 'prognose', 'slutt'];
@@ -3435,10 +3469,29 @@ async function handleRoute(request, { params }) {
             return marks.length ? { type, text, marks } : { type, text };
           }
           const ut = { type };
-          if (type === 'heading') ut.attrs = { level: [2, 3].includes(Number(n.attrs && n.attrs.level)) ? Number(n.attrs.level) : 2 };
-          if (type === 'callout') ut.attrs = { variant: ['vedtak', 'risiko', 'info'].includes(n.attrs && n.attrs.variant) ? n.attrs.variant : 'info' };
+          const srJust = (a) => (['left', 'center', 'right', 'justify'].includes(a) ? a : null);
+          if (type === 'paragraph') { const ta = srJust(n.attrs && n.attrs.textAlign); if (ta && ta !== 'left') ut.attrs = { textAlign: ta }; }
+          if (type === 'heading') { const ta = srJust(n.attrs && n.attrs.textAlign); ut.attrs = { level: [2, 3].includes(Number(n.attrs && n.attrs.level)) ? Number(n.attrs.level) : 2, ...(ta && ta !== 'left' ? { textAlign: ta } : {}) }; }
+          if (type === 'callout') ut.attrs = { variant: ['vedtak', 'risiko', 'info', 'tips', 'suksess'].includes(n.attrs && n.attrs.variant) ? n.attrs.variant : 'info' };
+          if (type === 'taskItem') ut.attrs = { checked: !!(n.attrs && n.attrs.checked) };
+          if (type === 'details') ut.attrs = { open: !!(n.attrs && n.attrs.open) };
+          if (type === 'kolonner') ut.attrs = { kolonner: [2, 3].includes(Number(n.attrs && n.attrs.kolonner)) ? Number(n.attrs.kolonner) : 2 };
           if (type === 'orderedList') { const st = Number(n.attrs && n.attrs.start); ut.attrs = { start: Number.isFinite(st) && st > 0 && st < 1000 ? st : 1 }; }
-          if (type !== 'horizontalRule' && type !== 'hardBreak') {
+          if (type === 'image') {
+            // Kun trygge kilder: intern bilde-API eller https. data:/http: avvises (for store / usikre).
+            const src = String((n.attrs && n.attrs.src) || '').trim().slice(0, 2000);
+            if (!/^(https:\/\/|\/api\/styrerapport\/bilde\/)/i.test(src)) return null;
+            const wRaw = Number(n.attrs && n.attrs.width);
+            const al = ['left', 'center', 'right', 'full'].includes(n.attrs && n.attrs.align) ? n.attrs.align : 'center';
+            ut.attrs = { src, alt: String((n.attrs && n.attrs.alt) || '').slice(0, 300), width: Number.isFinite(wRaw) && wRaw >= 40 && wRaw <= 2000 ? Math.round(wRaw) : null, align: al };
+            return ut; // bilde er en leaf-node (uten innhold)
+          }
+          if (type === 'tableCell' || type === 'tableHeader') {
+            const cs = Number(n.attrs && n.attrs.colspan); const rs = Number(n.attrs && n.attrs.rowspan);
+            const cw = (n.attrs && Array.isArray(n.attrs.colwidth)) ? n.attrs.colwidth.slice(0, 12).map((x) => { const v = Number(x); return Number.isFinite(v) && v > 0 && v < 2000 ? Math.round(v) : null; }) : null;
+            ut.attrs = { colspan: Number.isFinite(cs) && cs > 0 && cs <= 20 ? cs : 1, rowspan: Number.isFinite(rs) && rs > 0 && rs <= 20 ? rs : 1, colwidth: cw && cw.some((x) => x) ? cw : null };
+          }
+          if (type !== 'horizontalRule' && type !== 'hardBreak' && type !== 'image') {
             const content = (Array.isArray(n.content) ? n.content : []).slice(0, 400).map((c) => rens(c, dybde + 1)).filter(Boolean);
             if (content.length) ut.content = content;
           }
@@ -3454,15 +3507,99 @@ async function handleRoute(request, { params }) {
         const type = SR_BLOKK_TYPER.includes(b && b.type) ? b.type : 'tekst';
         const grunn = { id: srLinje(b && b.id, 40) || uuidv4(), type, tittel: srLinje(b && b.tittel, 120) };
         if (type === 'rik') return { ...grunn, kicker: srLinje(b && b.kicker, 80), layout: SR_RIK_LAYOUT.includes(b && b.layout) ? b.layout : 'standard', etter: SR_RIK_ANKER.includes(b && b.etter) ? b.etter : 'slutt', doc: srRensDoc(b && b.doc) };
+        if (type === 'budsjett') return {
+          ...grunn,
+          kicker: srLinje(b && b.kicker, 80),
+          etter: SR_RIK_ANKER.includes(b && b.etter) ? b.etter : 'slutt',
+          planId: srLinje(b && b.planId, 40),
+          planNavn: srLinje(b && b.planNavn, 120),
+          selskap: SR_SELSKAP.includes(b && b.selskap) ? b.selskap : 'digihome',
+          planType: SR_PLANTYPE.includes(b && b.planType) ? b.planType : 'modell',
+          startYm: /^\d{4}-\d{2}$/.test(b && b.startYm) ? b.startYm : '',
+          antallMnd: Math.min(60, Math.max(1, Math.round(Number(b && b.antallMnd) || 12))),
+          fakta: srRensObjekt(b && b.fakta),
+          drivere: srRensObjekt(b && b.drivere),
+          tech: (b && b.tech) ? srRensObjekt(b.tech) : null,
+          vis: { graf: !(b && b.vis && b.vis.graf === false), aar: !(b && b.vis && b.vis.aar === false), unit: !(b && b.vis && b.vis.unit === false) },
+          oppdatertAt: srLinje(b && b.oppdatertAt, 40) || new Date().toISOString(),
+        };
         if (type === 'tall') return { ...grunn, tall: (Array.isArray(b && b.tall) ? b.tall : []).slice(0, 8).map((t) => ({ etikett: srLinje(t && t.etikett, 60), verdi: srLinje(t && t.verdi, 40), notat: srLinje(t && t.notat, 90) })).filter((t) => t.etikett || t.verdi) };
         if (type === 'liste') return { ...grunn, punkter: (Array.isArray(b && b.punkter) ? b.punkter : []).slice(0, 30).map((p) => srLinje(p, 400)).filter(Boolean) };
         return { ...grunn, tekst: srTekst(b && b.tekst, 6000) };
       });
 
+      // ── Multi-rapport: én styrerapport per møte (arkiv) ───────────────────
+      const SR_STATUS = ['utkast', 'publisert'];
+      const srMeta = (r) => ({ id: r.id, tittel: r.tittel || 'Styrerapport', motedato: r.motedato || '', periodeLabel: r.periodeLabel || '', status: SR_STATUS.includes(r.status) ? r.status : 'utkast', gjeldende: !!r.gjeldende, opprettet: r.opprettet || r.oppdatert || null, oppdatert: r.oppdatert || null, antallSeksjoner: Array.isArray(r.blokker) ? r.blokker.length : 0, antallRike: Array.isArray(r.blokker) ? r.blokker.filter((b) => b && b.type === 'rik').length : 0, harSammendrag: !!(r.sammendrag && String(r.sammendrag).trim()), antallAsk: Array.isArray(r.ask) ? r.ask.length : 0 });
+      const srSorter = (a, b) => (String(b.motedato || '').localeCompare(String(a.motedato || ''))) || (String(b.oppdatert || '').localeCompare(String(a.oppdatert || '')));
+      const srSikreArkiv = async () => {
+        const alle = await srKoll.find({}, { projection: { _id: 0 } }).toArray();
+        if (!alle.length) return [];
+        const naa = new Date().toISOString();
+        for (const r of alle) {
+          const patch = {};
+          if (!SR_STATUS.includes(r.status)) patch.status = (r.id === SR_ID ? 'publisert' : 'utkast');
+          if (!r.opprettet) patch.opprettet = r.oppdatert || naa;
+          if (Object.keys(patch).length) { Object.assign(r, patch); await srKoll.updateOne({ id: r.id }, { $set: patch }); }
+        }
+        if (!alle.some((r) => r.gjeldende)) {
+          const valgt = alle.find((r) => r.id === SR_ID) || [...alle].sort(srSorter)[0];
+          if (valgt) { valgt.gjeldende = true; await srKoll.updateOne({ id: valgt.id }, { $set: { gjeldende: true } }); }
+        }
+        return alle;
+      };
+      const srGjeldendeId = (alle) => { const g = (alle || []).find((r) => r.gjeldende); return g ? g.id : ((alle && alle.length) ? [...alle].sort(srSorter)[0].id : null); };
+
+      if (route === '/admin/styrerapport/rapporter' && method === 'GET') {
+        const alle = await srSikreArkiv();
+        return cors(NextResponse.json({ ok: true, rapporter: [...alle].sort(srSorter).map(srMeta), gjeldendeId: srGjeldendeId(alle) }));
+      }
+      if (route === '/admin/styrerapport/rapporter' && method === 'POST') {
+        let nb = {}; try { nb = await request.json(); } catch (e) { nb = {}; }
+        const alle = await srSikreArkiv();
+        const fra = nb.fraId ? alle.find((r) => r.id === srLinje(nb.fraId, 40)) : null;
+        const naa = new Date().toISOString();
+        const doc = {
+          id: uuidv4(),
+          tittel: srLinje(nb.tittel, 120) || (fra ? `Kopi av ${fra.tittel || 'Styrerapport'}` : 'Styrerapport'),
+          motedato: srLinje(nb.motedato, 50),
+          periodeLabel: srLinje(nb.periodeLabel, 60),
+          sammendrag: fra ? (fra.sammendrag || '') : '',
+          ask: (fra && Array.isArray(fra.ask)) ? fra.ask.slice(0, 20) : [],
+          blokker: fra ? srRensBlokker((fra.blokker || []).map((b) => ({ ...b, id: uuidv4() }))) : [],
+          status: 'utkast', gjeldende: !alle.length, opprettet: naa, oppdatert: naa,
+        };
+        await srKoll.insertOne({ ...doc });
+        return cors(NextResponse.json({ ok: true, rapport: doc, meta: srMeta(doc) }));
+      }
+      if (route.startsWith('/admin/styrerapport/rapporter/') && (method === 'POST' || method === 'DELETE')) {
+        const rid = srLinje(route.slice('/admin/styrerapport/rapporter/'.length).split('/')[0], 40);
+        const eksist = await srKoll.findOne({ id: rid }, { projection: { _id: 0 } });
+        if (!eksist) return cors(NextResponse.json({ ok: false, feil: 'Ukjent rapport' }, { status: 404 }));
+        if (method === 'DELETE') {
+          await srKoll.deleteOne({ id: rid });
+          await srSikreArkiv();
+          const igjen = await srKoll.find({}, { projection: { _id: 0 } }).toArray();
+          return cors(NextResponse.json({ ok: true, gjeldendeId: srGjeldendeId(igjen) }));
+        }
+        let mb = {}; try { mb = await request.json(); } catch (e) { mb = {}; }
+        const patch = { oppdatert: new Date().toISOString() };
+        if (typeof mb.tittel === 'string') patch.tittel = srLinje(mb.tittel, 120) || 'Styrerapport';
+        if (typeof mb.motedato === 'string') patch.motedato = srLinje(mb.motedato, 50);
+        if (typeof mb.periodeLabel === 'string') patch.periodeLabel = srLinje(mb.periodeLabel, 60);
+        if (SR_STATUS.includes(mb.status)) patch.status = mb.status;
+        if (mb.gjeldende === true) { await srKoll.updateMany({ gjeldende: true }, { $set: { gjeldende: false } }); patch.gjeldende = true; }
+        await srKoll.updateOne({ id: rid }, { $set: patch });
+        const oppdatert = await srKoll.findOne({ id: rid }, { projection: { _id: 0 } });
+        return cors(NextResponse.json({ ok: true, rapport: oppdatert, meta: srMeta(oppdatert) }));
+      }
+
       if (route === '/admin/styrerapport' && method === 'GET') {
-        const rapport = await srKoll.findOne({ id: SR_ID }, { projection: { _id: 0 } });
+        const alle = await srSikreArkiv();
+        const idQ = srLinje(new URL(request.url).searchParams.get('id') || '', 40);
+        const rapport = (idQ && alle.find((r) => r.id === idQ)) || alle.find((r) => r.gjeldende) || null;
         const payload = await styrerapportPayload(db, { inkluderRegnskap: false });
-        return cors(NextResponse.json({ ok: true, rapport: rapport || null, ...payload }));
+        return cors(NextResponse.json({ ok: true, rapport: rapport || null, gjeldendeId: srGjeldendeId(alle), ...payload }));
       }
 
       // --- Delingslenker (eksterne, les-only) ---
@@ -3470,6 +3607,7 @@ async function handleRoute(request, { params }) {
       const baseUrl = String(process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
       const offentligLenke = (l) => ({
         id: l.id, token: l.token, label: l.label || '', opprettet: l.opprettet, opprettetAv: l.opprettetAv || null,
+        rapportId: l.rapportId || null,
         utloper: l.utloper || null, aktiv: l.aktiv !== false, inkluderRegnskap: l.inkluderRegnskap !== false, regnskapAar: l.regnskapAar || null,
         visninger: l.visninger || 0, sistApnet: l.sistApnet || null, sisteApninger: Array.isArray(l.apninger) ? l.apninger.slice(-5).reverse().map((a) => ({ t: a.t, ua: a.ua || '' })) : [],
         url: `${baseUrl}/styrerapport/${l.token}`,
@@ -3478,15 +3616,20 @@ async function handleRoute(request, { params }) {
 
       if (route === '/admin/styrerapport/lenker' && method === 'GET') {
         const liste = await lenkeKoll.find({}, { projection: { _id: 0 } }).sort({ opprettet: -1 }).limit(50).toArray();
-        return cors(NextResponse.json({ ok: true, lenker: liste.map(offentligLenke) }));
+        const alleR = await srKoll.find({}, { projection: { _id: 0, id: 1, tittel: 1, motedato: 1, status: 1 } }).toArray();
+        const tittelFor = (rid) => { const r = alleR.find((x) => x.id === rid); return r ? { tittel: r.tittel || 'Styrerapport', motedato: r.motedato || '', status: r.status || 'publisert' } : null; };
+        return cors(NextResponse.json({ ok: true, lenker: liste.map((l) => ({ ...offentligLenke(l), rapport: tittelFor(l.rapportId) })) }));
       }
       if (route === '/admin/styrerapport/lenker' && method === 'POST') {
         let lb = {}; try { lb = await request.json(); } catch (e) { lb = {}; }
         const dager = Number(lb.utloperDager);
         const utloper = Number.isFinite(dager) && dager > 0 ? new Date(Date.now() + Math.min(dager, 3650) * 86400000).toISOString() : null;
         const aar = Number(lb.regnskapAar);
+        const alle = await srSikreArkiv();
+        const rid = srLinje(lb.rapportId, 40);
+        const rapportId = (rid && alle.some((r) => r.id === rid)) ? rid : srGjeldendeId(alle);
         const doc = {
-          id: uuidv4(), token: uuidv4(), label: srLinje(lb.label, 80) || 'Styrerapport',
+          id: uuidv4(), token: uuidv4(), label: srLinje(lb.label, 80) || 'Styremøte', rapportId,
           opprettet: new Date().toISOString(), opprettetAv: sesjonEpost(), utloper, aktiv: true,
           inkluderRegnskap: lb.inkluderRegnskap !== false,
           regnskapAar: Number.isFinite(aar) && aar > 2000 && aar < 2100 ? aar : new Date().getFullYear(),
@@ -3506,20 +3649,75 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: true, lenke: offentligLenke(l) }));
       }
 
+      // ── Bilde-opplasting til rike seksjoner (admin) ──────────────────────
+      // Lagres i egen kolleksjon; serveres offentlig via /api/styrerapport/bilde/<id>
+      // så delingslenken kan vise bildet uten innlogging. Kun trygge bildetyper.
+      if (route === '/admin/styrerapport/bilde' && method === 'POST') {
+        let bb = {}; try { bb = await request.json(); } catch (e) { bb = {}; }
+        const dataUrl = String(bb.dataUrl || '');
+        const m = dataUrl.match(/^data:(image\/(png|jpe?g|gif|webp));base64,([A-Za-z0-9+/=]+)$/);
+        if (!m) return cors(NextResponse.json({ ok: false, feil: 'Ugyldig bilde (bruk PNG, JPG, GIF eller WEBP)' }, { status: 400 }));
+        const b64 = m[3];
+        if (b64.length > 8000000) return cors(NextResponse.json({ ok: false, feil: 'Bildet er for stort (maks ~6 MB)' }, { status: 413 }));
+        const id = uuidv4();
+        await db.collection('styrerapport_bilder').insertOne({ id, mime: m[1], b64, alt: srLinje(bb.alt, 300), opprettet: new Date().toISOString(), opprettetAv: sesjonEpost() });
+        return cors(NextResponse.json({ ok: true, id, url: `${baseUrl}/api/styrerapport/bilde/${id}` }));
+      }
+
+      // ── AI-assistert innhold til rik seksjon (admin) ─────────────────────
+      // Returnerer ren, semantisk HTML (kun tillatte tagger) som Tiptap parser
+      // til doc-JSON på klienten. Reduserer «tomt ark»-friksjon i rapporten.
+      if (route === '/admin/styrerapport/ai' && method === 'POST') {
+        let ab = {}; try { ab = await request.json(); } catch (e) { ab = {}; }
+        const prompt = srTekst(ab.prompt, 2000).trim();
+        if (!prompt) return cors(NextResponse.json({ ok: false, feil: 'Skriv hva du vil at AI-en skal lage' }, { status: 400 }));
+        const kontekst = srTekst(ab.kontekst, 2500).trim();
+        const modus = ['seksjon', 'forbedre', 'oppsummer', 'tabell'].includes(ab.modus) ? ab.modus : 'seksjon';
+        const system = [
+          'Du er en erfaren norsk økonomisjef/CFO som skriver innhold til en STYRERAPPORT for et norsk selskap.',
+          'Skriv på norsk bokmål: presist, nøkternt og styremodent — ingen svulstig markedsspråk, ingen emojis.',
+          'Returner KUN ren, semantisk HTML — ingen <html>/<body>/<script>/<style>, ingen markdown-kodegjerder.',
+          'Tillatte tagger: <h2> <h3> <p> <ul> <ol> <li> <strong> <em> <u> <blockquote> <hr> <table> <thead> <tbody> <tr> <th> <td>.',
+          'Bruk <h2> for en seksjonstittel bare hvis det er naturlig; bruk <table> når tall skal sammenlignes.',
+          'Ikke dikt opp konkrete tall som ikke står i konteksten — skriv «[fyll inn]» hvis et tall mangler.',
+        ].join(' ');
+        const intro = modus === 'tabell' ? 'Lag en ryddig HTML-tabell for følgende:'
+          : modus === 'oppsummer' ? 'Lag et kort, styremodent sammendrag av følgende:'
+          : modus === 'forbedre' ? 'Forbedre og stram opp denne teksten (behold meningen, gjør den styremoden):'
+          : 'Skriv en styrerapport-seksjon om følgende:';
+        const bruker = `${intro}\n\n${prompt}${kontekst ? `\n\nRELEVANTE, EKTE TALL DU KAN BRUKE (ikke endre dem):\n${kontekst}` : ''}`;
+        try {
+          const raw = await chatLLM({ messages: [{ role: 'system', content: system }, { role: 'user', content: bruker }], model: 'gpt-4o', temperature: 0.4, maxTokens: 1600, feature: 'styrerapport' });
+          let html = String(raw || '').trim().replace(/^```(?:html)?\s*/i, '').replace(/\s*```$/i, '').trim();
+          if (!html) return cors(NextResponse.json({ ok: false, feil: 'Tomt svar fra AI' }, { status: 502 }));
+          return cors(NextResponse.json({ ok: true, html }));
+        } catch (e) {
+          return cors(NextResponse.json({ ok: false, feil: `AI utilgjengelig: ${(e && e.message) || 'ukjent'}` }, { status: 502 }));
+        }
+      }
+
       if (route === '/admin/styrerapport' && method === 'POST') {
         let srBody = {}; try { srBody = await request.json(); } catch (e) { srBody = {}; }
+        const alle = await srSikreArkiv();
+        const idQ = srLinje(new URL(request.url).searchParams.get('id') || srBody.id || '', 40);
+        const malId = (idQ && alle.some((r) => r.id === idQ)) ? idQ : srGjeldendeId(alle);
+        const eksist = malId ? await srKoll.findOne({ id: malId }, { projection: { _id: 0 } }) : null;
         const doc = {
-          id: SR_ID,
+          id: malId || uuidv4(),
           tittel: srLinje(srBody.tittel, 120) || 'Styrerapport',
           motedato: srLinje(srBody.motedato, 50),
           periodeLabel: srLinje(srBody.periodeLabel, 60),
           sammendrag: srTekst(srBody.sammendrag, 8000),
           ask: (Array.isArray(srBody.ask) ? srBody.ask : []).slice(0, 20).map((p) => srLinje(p, 400)).filter(Boolean),
           blokker: srRensBlokker(srBody.blokker),
+          status: eksist && SR_STATUS.includes(eksist.status) ? eksist.status : (malId === SR_ID ? 'publisert' : 'utkast'),
+          gjeldende: eksist ? !!eksist.gjeldende : !alle.length,
+          opprettet: (eksist && eksist.opprettet) ? eksist.opprettet : new Date().toISOString(),
           oppdatert: new Date().toISOString(),
         };
-        await srKoll.updateOne({ id: SR_ID }, { $set: doc }, { upsert: true });
-        return cors(NextResponse.json({ ok: true, rapport: doc }));
+        await srKoll.updateOne({ id: doc.id }, { $set: doc }, { upsert: true });
+        if (doc.gjeldende) await srKoll.updateMany({ id: { $ne: doc.id }, gjeldende: true }, { $set: { gjeldende: false } });
+        return cors(NextResponse.json({ ok: true, rapport: doc, meta: srMeta(doc) }));
       }
     }
 

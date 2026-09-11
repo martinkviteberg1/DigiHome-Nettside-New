@@ -13,9 +13,10 @@ import dynamic from 'next/dynamic';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
   ArrowUpRight, ArrowDownRight, ShieldCheck, Type, Hash, List,
-  ChevronUp, ChevronDown, Trash2, Loader2, Plus, PenLine,
+  ChevronUp, ChevronDown, Trash2, Loader2, Plus, PenLine, Wallet,
 } from 'lucide-react';
 import { RikInnhold, RikStil, TOM_DOC, RIK_LAYOUTS, RIK_ANKERE, tekstTilDoc } from './RikRenderer';
+import StyrerapportBudsjett from './StyrerapportBudsjett';
 
 // Tiptap-editoren lastes kun i redigeringsmodus (holder delingslenken lett, ingen SSR).
 const RikEditor = dynamic(() => import('./RikEditor'), { ssr: false, loading: () => <div className="e-meta py-6">Laster editor …</div> });
@@ -65,7 +66,7 @@ const RIK_ANKER_IDS = RIK_ANKERE.map((a) => a.id);
 const RIK_LAYOUT_IDS = RIK_LAYOUTS.map((l) => l.id);
 export function blokkTilRaw(b) {
   if (!b) return '';
-  if (b.type === 'rik') return '';
+  if (b.type === 'rik' || b.type === 'budsjett') return '';
   if (b.type === 'liste') return (b.punkter || []).join('\n');
   if (b.type === 'tall') return (b.tall || []).map((t) => [t.etikett, t.verdi, t.notat].filter(Boolean).join(' | ')).join('\n');
   return b.tekst || '';
@@ -74,6 +75,22 @@ export function rawTilBlokk(b) {
   const grunn = { id: b.id, type: b.type, tittel: (b.tittel || '').trim() };
   const raw = b.raw || '';
   if (b.type === 'rik') return { ...grunn, kicker: (b.kicker || '').trim(), layout: RIK_LAYOUT_IDS.includes(b.layout) ? b.layout : 'standard', etter: RIK_ANKER_IDS.includes(b.etter) ? b.etter : 'slutt', doc: b.doc && b.doc.type === 'doc' ? b.doc : TOM_DOC };
+  if (b.type === 'budsjett') return {
+    ...grunn,
+    kicker: (b.kicker || '').trim(),
+    etter: RIK_ANKER_IDS.includes(b.etter) ? b.etter : 'slutt',
+    planId: (b.planId || '').trim(),
+    planNavn: (b.planNavn || '').trim(),
+    selskap: b.selskap === 'tech' ? 'tech' : 'digihome',
+    planType: b.planType === 'tech' ? 'tech' : 'modell',
+    startYm: /^\d{4}-\d{2}$/.test(b.startYm) ? b.startYm : '',
+    antallMnd: Math.min(60, Math.max(1, Math.round(Number(b.antallMnd) || 12))),
+    fakta: b.fakta && typeof b.fakta === 'object' ? b.fakta : {},
+    drivere: b.drivere && typeof b.drivere === 'object' ? b.drivere : {},
+    tech: b.tech && typeof b.tech === 'object' ? b.tech : null,
+    vis: b.vis && typeof b.vis === 'object' ? b.vis : { graf: true, aar: true, unit: true },
+    oppdatertAt: b.oppdatertAt || '',
+  };
   if (b.type === 'liste') return { ...grunn, punkter: raw.split('\n').map((s) => s.trim()).filter(Boolean) };
   if (b.type === 'tall') return { ...grunn, tall: raw.split('\n').map((line) => { const [etikett, verdi, notat] = line.split('|').map((s) => (s || '').trim()); return { etikett: etikett || '', verdi: verdi || '', notat: notat || '' }; }).filter((t) => t.etikett || t.verdi) };
   return { ...grunn, tekst: raw };
@@ -143,11 +160,12 @@ function Kpi({ label, value, fmt = (v) => v, sub, delta, tone, size = 'md', clas
   );
 }
 // «+ Ny seksjon her» — vises mellom kapitler i redigeringsmodus
-function InsertRad({ onClick }) {
+function InsertRad({ onRik, onBudsjett }) {
   return (
-    <div className="dh-sr-noprint mt-12 flex items-center gap-4">
+    <div className="dh-sr-noprint mt-12 flex items-center gap-3">
       <span className="h-px flex-1" style={{ background: C.line }} aria-hidden />
-      <button type="button" onClick={onClick} className="inline-flex h-9 items-center gap-2 rounded-full border border-dashed px-4 text-[12.5px] font-semibold transition-colors hover:border-[#15130F] hover:text-[#15130F]" style={{ borderColor: C.line2, color: C.ink3 }}><Plus className="h-4 w-4" /> Ny seksjon her</button>
+      <button type="button" onClick={onRik} className="inline-flex h-9 items-center gap-2 rounded-full border border-dashed px-4 text-[12.5px] font-semibold transition-colors hover:border-[#15130F] hover:text-[#15130F]" style={{ borderColor: C.line2, color: C.ink3 }}><Plus className="h-4 w-4" /> Ny seksjon her</button>
+      {onBudsjett && <button type="button" onClick={onBudsjett} className="inline-flex h-9 items-center gap-2 rounded-full border border-dashed px-4 text-[12.5px] font-semibold transition-colors hover:border-[#15130F] hover:text-[#15130F]" style={{ borderColor: C.line2, color: C.ink3 }}><Wallet className="h-4 w-4" /> Budsjett</button>}
       <span className="h-px flex-1" style={{ background: C.line }} aria-hidden />
     </div>
   );
@@ -412,24 +430,44 @@ export default function StyrerapportVisning({
   const sammendragAvsnitt = (inn.sammendrag || '').split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean);
   const askPunkter = (inn.askRaw || '').split('\n').map((s) => s.trim()).filter(Boolean);
   const blokker = inn.blokker || [];
+  // Kompakt, ekte tallkontekst som følger med AI-forespørsler fra rik-editoren,
+  // så modellen aldri dikter opp tall — den bruker rapportens faktiske nøkkeltall.
+  const srKontekst = useMemo(() => {
+    const L = [];
+    if (inn.tittel) L.push(`Rapport: ${inn.tittel}`);
+    if (inn.periodeLabel) L.push(`Periode: ${inn.periodeLabel}`);
+    if (mrr != null) L.push(`Honorar/MRR: ${kr(mrr)} pr mnd`);
+    if (arr != null) L.push(`ARR: ${kr(arr)}`);
+    if (enheter != null) L.push(`Enheter under forvaltning: ${antall(enheter)}`);
+    if (aktiveKunder != null) L.push(`Aktive kunder: ${antall(aktiveKunder)}`);
+    if (arpa != null) L.push(`ARPA: ${kr(arpa)}`);
+    if (okono?.inntekt != null) L.push(`Inntekt pr mnd: ${kr(okono.inntekt)}`);
+    if (okono?.kost != null) L.push(`Kostnad pr mnd: ${kr(okono.kost)}`);
+    if (okono?.resultat != null) L.push(`Resultat pr mnd: ${kr(okono.resultat)}${okono.margin != null ? ` (margin ${pct(okono.margin)})` : ''}`);
+    if (kontanter != null) L.push(`Kontanter: ${kr(kontanter)}`);
+    if (runway != null) L.push(`Runway: ${mndTxt(runway)}`);
+    return L.join('\n');
+  }, [inn.tittel, inn.periodeLabel, mrr, arr, enheter, aktiveKunder, arpa, okono, kontanter, runway]);
   const genDato = data?.generatedAt ? new Date(data.generatedAt) : null;
   // I delt (offentlig) visning skjules tomme seksjoner helt, så rapporten alltid
   // ser ferdig ut. I admin vises plassholdere som en oppfordring til å fylle inn.
   const visSammendrag = !!edit || visning === 'admin' || sammendragAvsnitt.length > 0;
   const visAsk = !!edit || visning === 'admin' || askPunkter.length > 0;
 
-  // Rike seksjoner (Tiptap) blir egne kapitler, plassert etter valgt anker.
-  // Enkle blokker (tall/liste) samles fortsatt under «Egne seksjoner».
-  const rike = blokker.filter((b) => b.type === 'rik');
-  const enkle = blokker.filter((b) => b.type !== 'rik');
+  // Rike seksjoner (Tiptap) OG budsjett-kapitler blir egne kapitler, plassert
+  // etter valgt anker. Enkle blokker (tall/liste) samles under «Egne seksjoner».
+  const kapB = blokker.filter((b) => b.type === 'rik' || b.type === 'budsjett');
+  const enkle = blokker.filter((b) => b.type !== 'rik' && b.type !== 'budsjett');
   const synligAnker = { start: true, sammendrag: visSammendrag, nokkeltall: true, resultat: true, regnskap: visRegnskap, kunder: true, prognose: !!fc?.scenarios, slutt: true };
-  // Rike seksjoner som peker på et skjult anker flyttes til nærmeste synlige anker foran.
+  // Kapittel-blokker som peker på et skjult anker flyttes til nærmeste synlige anker foran.
   const etterMap = useMemo(() => {
     const m = {}; let sist = 'start';
-    RIK_ANKER_IDS.forEach((a) => { if (synligAnker[a]) { sist = a; m[a] = m[a] || []; } m[sist] = m[sist] || []; m[sist].push(...rike.filter((b) => (RIK_ANKER_IDS.includes(b.etter) ? b.etter : 'slutt') === a)); });
+    RIK_ANKER_IDS.forEach((a) => { if (synligAnker[a]) { sist = a; m[a] = m[a] || []; } m[sist] = m[sist] || []; m[sist].push(...kapB.filter((b) => (RIK_ANKER_IDS.includes(b.etter) ? b.etter : 'slutt') === a)); });
     return m;
-  }, [rike, visSammendrag, visRegnskap, fc]); // eslint-disable-line react-hooks/exhaustive-deps
-  const rikKap = (b) => ({ id: `rik-${b.id}`, label: (b.tittel || '').trim() || 'Ny seksjon' });
+  }, [kapB, visSammendrag, visRegnskap, fc]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rikKap = (b) => (b.type === 'budsjett'
+    ? { id: `budsjett-${b.id}`, label: (b.tittel || '').trim() || (b.planNavn || 'Budsjett') }
+    : { id: `rik-${b.id}`, label: (b.tittel || '').trim() || 'Ny seksjon' });
 
   const kapitler = useMemo(() => {
     const k = [];
@@ -484,7 +522,7 @@ export default function StyrerapportVisning({
             </div>
             <input className="mb-2 w-full bg-transparent text-[11.5px] font-bold uppercase tracking-[0.16em] outline-none placeholder:font-medium placeholder:normal-case placeholder:tracking-normal placeholder:text-[#B5AFA4]" style={{ color: C.accent }} value={b.kicker || ''} onChange={(e) => edit.oppdaterBlokk(b.id, { kicker: e.target.value })} placeholder="Kicker / overlinje — f.eks. Marked, Produkt, Organisasjon" />
             <input className="mb-6 w-full bg-transparent font-bold outline-none placeholder:font-semibold placeholder:text-[#C9C3B8]" style={{ ...H, color: C.ink, fontSize: 'clamp(26px,3vw,38px)', lineHeight: 1.1, letterSpacing: '-0.03em' }} value={b.tittel || ''} onChange={(e) => edit.oppdaterBlokk(b.id, { tittel: e.target.value })} placeholder="Overskrift på seksjonen" />
-            <RikEditor doc={b.doc} onChange={(doc) => edit.oppdaterBlokk(b.id, { doc })} />
+            <RikEditor doc={b.doc} onChange={(doc) => edit.oppdaterBlokk(b.id, { doc })} apiKey={edit.apiKey || ''} kontekst={srKontekst} />
           </div>
         </section>
       );
@@ -517,10 +555,21 @@ export default function StyrerapportVisning({
       </section>
     );
   };
+  const budsjettSeksjon = (b) => (
+    <StyrerapportBudsjett
+      key={b.id}
+      blokk={b}
+      edit={edit}
+      folio={folio(`budsjett-${b.id}`)}
+      visning={visning}
+      idx={blokker.findIndex((x) => x.id === b.id)}
+      antallBlokker={blokker.length}
+    />
+  );
   const rikGruppe = (anker) => (
     <React.Fragment key={`gruppe-${anker}`}>
-      {(etterMap[anker] || []).map((b) => rikSeksjon(b))}
-      {edit && synligAnker[anker] && <InsertRad onClick={() => edit.leggTilBlokk('rik', { etter: anker })} />}
+      {(etterMap[anker] || []).map((b) => (b.type === 'budsjett' ? budsjettSeksjon(b) : rikSeksjon(b)))}
+      {edit && synligAnker[anker] && <InsertRad onRik={() => edit.leggTilBlokk('rik', { etter: anker })} onBudsjett={edit.leggTilBudsjett ? () => edit.leggTilBudsjett(anker) : undefined} />}
     </React.Fragment>
   );
 
@@ -793,6 +842,7 @@ export default function StyrerapportVisning({
             <Reveal><SectionHead index={folio('egne')} overline="Hurtigblokker" title="Egne seksjoner" lead="Raske nøkkeltall-rader og punktlister. For fri tekst med overskrifter, sitater og vedtaksbokser — bruk «Rik seksjon», som blir et eget kapittel i rapporten." right={edit ? (
               <div className="flex flex-wrap items-center gap-2">
                 <button type="button" className={btnEd} style={{ borderColor: C.ink, background: C.ink, color: '#fff' }} onClick={() => edit.leggTilBlokk('rik', { etter: 'slutt' })}><PenLine className="h-4 w-4" /> Rik seksjon</button>
+                {edit.leggTilBudsjett && <button type="button" className={btnEd} style={{ borderColor: C.line2, background: '#fff', color: C.ink2 }} onClick={() => edit.leggTilBudsjett('slutt')}><Wallet className="h-4 w-4" /> Budsjett</button>}
                 <button type="button" className={btnEd} style={{ borderColor: C.line2, background: '#fff', color: C.ink2 }} onClick={() => edit.leggTilBlokk('tall')}><Hash className="h-4 w-4" /> Tall</button>
                 <button type="button" className={btnEd} style={{ borderColor: C.line2, background: '#fff', color: C.ink2 }} onClick={() => edit.leggTilBlokk('liste')}><List className="h-4 w-4" /> Liste</button>
               </div>
