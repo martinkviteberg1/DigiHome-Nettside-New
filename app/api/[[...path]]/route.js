@@ -2404,6 +2404,88 @@ async function kanskjeSendFristDigest(db) {
 }
 
 
+// ─────────────────────────────────────────────────────────────────────────────
+// STYRERAPPORT — felles datapakke for admin-visning OG ekstern delingslenke.
+// Alle kilder hentes best-effort (én kilde som feiler → null, aldri 500).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Sammenstilt PowerOffice-regnskap (alle selskaper) for ett år. Speiler logikken i
+// /admin/regnskap/konsern (som er urørt) slik at delingslenken kan inkludere bokførte
+// tall uten admin-innlogging. 10-min prosess-cache per år — PowerOffice er tregt og
+// har kvoter; hver åpning av en delt lenke skal ikke utløse nye API-kall.
+async function beregnKonsernRegnskap(db, ar) {
+  if (!poFellesKonfigurert()) return null;
+  const g = globalThis;
+  g.__srKonsern = g.__srKonsern || new Map();
+  const c = g.__srKonsern.get(ar);
+  if (c && (Date.now() - c.at) < 10 * 60 * 1000) return c.data;
+
+  const koll = db.collection('regnskap_selskaper');
+  if ((await koll.countDocuments({})) === 0 && PO_BOOTSTRAP_CLIENT_KEY) {
+    await koll.insertOne({ id: uuidv4(), navn: 'DigiHome AS', clientKey: PO_BOOTSTRAP_CLIENT_KEY, env: PO_DEFAULT_ENV, klientNavn: null, opprettet: new Date().toISOString(), sistTestet: null });
+  }
+  const alle = await koll.find({}).sort({ opprettet: 1 }).toArray();
+  if (!alle.length) return null;
+  const dato = `${ar}-12-31`;
+  const MND = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
+  const maaneder = MND.map((navn, i) => ({ mnd: i + 1, navn, inntekt: 0, kostnad: 0, resultat: 0 }));
+  const inntektMap = new Map(); const kostnadMap = new Map();
+  const grpSum = { eiendeler: 0, egenkapital: 0, gjeld: 0 };
+  let resOk = false; let balOk = false;
+  const rader = await Promise.all(alle.map(async (s) => {
+    const rad = { id: s.id, navn: s.navn, resultatOk: false, balanseOk: false, inntekt: 0, kostnad: 0, resultat: 0, eiendeler: 0, egenkapital: 0, gjeld: 0 };
+    const [rr, rb] = await Promise.all([
+      poResultat({ ar }, { clientKey: s.clientKey, env: s.env }).then((d) => ({ ok: true, d })).catch(() => ({ ok: false })),
+      poSaldobalanse({ dato }, { clientKey: s.clientKey, env: s.env }).then((d) => ({ ok: true, d })).catch(() => ({ ok: false })),
+    ]);
+    if (rr.ok && rr.d && rr.d.ok) {
+      resOk = true; rad.resultatOk = true;
+      rad.inntekt = rr.d.sum.inntekt; rad.kostnad = rr.d.sum.kostnad; rad.resultat = rr.d.sum.resultat;
+      rr.d.maaneder.forEach((m, i) => { maaneder[i].inntekt += m.inntekt; maaneder[i].kostnad += m.kostnad; });
+      for (const k of (rr.d.inntektKontoer || [])) { const cur = inntektMap.get(k.kontonr) || { navn: k.navn, belop: 0 }; cur.belop += k.belop; inntektMap.set(k.kontonr, cur); }
+      for (const k of (rr.d.kostnadKontoer || [])) { const cur = kostnadMap.get(k.kontonr) || { navn: k.navn, belop: 0 }; cur.belop += k.belop; kostnadMap.set(k.kontonr, cur); }
+    }
+    if (rb.ok && rb.d && rb.d.ok) {
+      balOk = true; rad.balanseOk = true;
+      for (const gk of ['eiendeler', 'egenkapital', 'gjeld']) { const gr = rb.d.grupper[gk]; if (!gr) continue; grpSum[gk] += gr.sum; rad[gk] = gr.sum; }
+    }
+    return rad;
+  }));
+  for (const m of maaneder) { m.inntekt = Math.round(m.inntekt); m.kostnad = Math.round(m.kostnad); m.resultat = m.inntekt - m.kostnad; }
+  const sumInntekt = maaneder.reduce((a, m) => a + m.inntekt, 0);
+  const sumKostnad = maaneder.reduce((a, m) => a + m.kostnad, 0);
+  const listeFra = (map) => Array.from(map.entries()).map(([kontonr, v]) => ({ kontonr, navn: v.navn, belop: Math.round(v.belop) })).filter((x) => Math.abs(x.belop) >= 1).sort((a, b) => Math.abs(b.belop) - Math.abs(a.belop)).slice(0, 12);
+  const data = (resOk || balOk) ? {
+    ok: true, konsern: true, ar, dato, valuta: 'NOK',
+    resultat: resOk ? { ok: true, ar, maaneder, sum: { inntekt: Math.round(sumInntekt), kostnad: Math.round(sumKostnad), resultat: Math.round(sumInntekt - sumKostnad) }, inntektKontoer: listeFra(inntektMap), kostnadKontoer: listeFra(kostnadMap) } : null,
+    balanse: balOk ? { ok: true, dato, grupper: { eiendeler: { sum: Math.round(grpSum.eiendeler) }, egenkapital: { sum: Math.round(grpSum.egenkapital) }, gjeld: { sum: Math.round(grpSum.gjeld) } } } : null,
+    selskaper: rader.map((r) => ({ ...r, inntekt: Math.round(r.inntekt), kostnad: Math.round(r.kostnad), resultat: Math.round(r.resultat), eiendeler: Math.round(r.eiendeler), egenkapital: Math.round(r.egenkapital), gjeld: Math.round(r.gjeld) })),
+  } : null;
+  g.__srKonsern.set(ar, { at: Date.now(), data });
+  return data;
+}
+
+// Live nøkkeltall til styrerapporten: board-pack (5-min cache delt med decket), rikeste
+// kundekilde (synket plattform vs. kontrakter), selskap (leieforhold = én sannhet), og
+// valgfritt sammenstilt regnskap.
+async function styrerapportPayload(db, { inkluderRegnskap = false, regnskapAar = null } = {}) {
+  const trygt = async (fn) => { try { return await fn(); } catch (e) { return null; } };
+  const gg = globalThis;
+  let boardPack = null;
+  if (gg.__ddBoardPack && (Date.now() - gg.__ddBoardPack.at) < 5 * 60 * 1000) boardPack = gg.__ddBoardPack.data;
+  else { boardPack = await trygt(() => computeBoardPack(db)); if (boardPack) gg.__ddBoardPack = { at: Date.now(), data: boardPack }; }
+  const [customers, selskap, regnskap] = await Promise.all([
+    trygt(async () => {
+      const [plat, kontr] = await Promise.all([computePlatformCustomers(db).catch(() => null), computeCustomers(db).catch(() => null)]);
+      const score = (x) => (x && x.summary ? (Number(x.summary.payingCustomers || 0) * 1e9 + Number(x.summary.totalCustomers || 0) * 1e6 + Number(x.summary.totalMrr || 0)) : -1);
+      return score(plat) >= score(kontr) ? (plat || kontr) : (kontr || plat);
+    }),
+    trygt(() => computeSelskap(db)),
+    inkluderRegnskap ? trygt(() => beregnKonsernRegnskap(db, Number(regnskapAar) || new Date().getFullYear())) : Promise.resolve(null),
+  ]);
+  return { boardPack, customers, selskap, regnskap, generatedAt: new Date().toISOString() };
+}
+
 async function handleRoute(request, { params }) {
   const { path = [] } = params;
   let route = `/${path.join('/')}`;
@@ -2487,6 +2569,32 @@ async function handleRoute(request, { params }) {
         secure: true,
       });
       return cors(res);
+    }
+
+    // --- STYRERAPPORT: ekstern delingslenke (offentlig, token-basert, les-only) ---
+    // Token = uuid v4 (ugjettbar). Lenken kan utløpe og trekkes tilbake av admin.
+    // Hver åpning telles (visninger, sistApnet, siste 100 åpninger m/ anonymisert IP-hash).
+    if (route.startsWith('/styrerapport/del/') && method === 'GET') {
+      const token = decodeURIComponent(route.slice('/styrerapport/del/'.length)).trim();
+      const svar = (obj, status) => { const r = NextResponse.json(obj, { status }); r.headers.set('Cache-Control', 'no-store'); return cors(r); };
+      if (!/^[A-Za-z0-9-]{16,80}$/.test(token)) return svar({ ok: false, feil: 'ukjent' }, 404);
+      const sdb = await getDb();
+      const lenkeKoll = sdb.collection('styrerapport_lenker');
+      const lenke = await lenkeKoll.findOne({ token }, { projection: { _id: 0, apninger: 0 } });
+      if (!lenke) return svar({ ok: false, feil: 'ukjent' }, 404);
+      if (lenke.aktiv === false) return svar({ ok: false, feil: 'trukket' }, 410);
+      if (lenke.utloper && new Date(lenke.utloper).getTime() < Date.now()) return svar({ ok: false, feil: 'utlopt' }, 410);
+
+      const rapport = await sdb.collection('styrerapport').findOne({ id: 'styrerapport' }, { projection: { _id: 0 } });
+      const payload = await styrerapportPayload(sdb, { inkluderRegnskap: lenke.inkluderRegnskap !== false, regnskapAar: lenke.regnskapAar });
+      try {
+        const ip = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() || request.headers.get('x-real-ip') || '';
+        const ipHash = ip ? crypto.createHash('sha256').update(`dh-sr::${ip}`).digest('hex').slice(0, 16) : null;
+        const ua = String(request.headers.get('user-agent') || '').slice(0, 160);
+        const naa = new Date().toISOString();
+        await lenkeKoll.updateOne({ id: lenke.id }, { $inc: { visninger: 1 }, $set: { sistApnet: naa }, $push: { apninger: { $each: [{ t: naa, ipHash, ua }], $slice: -100 } } });
+      } catch (e) { /* sporing skal aldri stoppe visning */ }
+      return svar({ ok: true, lenke: { label: lenke.label || '', opprettet: lenke.opprettet, utloper: lenke.utloper || null, inkluderRegnskap: lenke.inkluderRegnskap !== false }, rapport: rapport || null, ...payload }, 200);
     }
 
     // --- Miljø/ruting-info (verifisering: hvilket CRM får leads herfra?) ---
@@ -3309,28 +3417,49 @@ async function handleRoute(request, { params }) {
 
       if (route === '/admin/styrerapport' && method === 'GET') {
         const rapport = await srKoll.findOne({ id: SR_ID }, { projection: { _id: 0 } });
-        const trygt = async (fn) => { try { return await fn(); } catch (e) { return null; } };
-        // Board-pack er tung (KPI + ev. live annonsekall) → gjenbruk 5-min prosess-cache (delt med decket).
-        const gg = globalThis;
-        const SR_CACHE_MS = 5 * 60 * 1000;
-        let boardPack = null;
-        if (gg.__ddBoardPack && (Date.now() - gg.__ddBoardPack.at) < SR_CACHE_MS) boardPack = gg.__ddBoardPack.data;
-        else { boardPack = await trygt(() => computeBoardPack(db)); if (boardPack) gg.__ddBoardPack = { at: Date.now(), data: boardPack }; }
-        const [customers, selskap] = await Promise.all([
-          trygt(async () => {
-            // Velg den RIKESTE kundekilden: plattform-eksport når den er synket med
-            // faktisk innhold, ellers kontrakts-avledning (finance_contracts). Unngår at
-            // en tom/utdatert plattform-rad (mrr 0) skygger for reelle kontraktstall.
-            const [plat, kontr] = await Promise.all([
-              computePlatformCustomers(db).catch(() => null),
-              computeCustomers(db).catch(() => null),
-            ]);
-            const score = (x) => (x && x.summary ? (Number(x.summary.payingCustomers || 0) * 1e9 + Number(x.summary.totalCustomers || 0) * 1e6 + Number(x.summary.totalMrr || 0)) : -1);
-            return score(plat) >= score(kontr) ? (plat || kontr) : (kontr || plat);
-          }),
-          trygt(() => computeSelskap(db)),
-        ]);
-        return cors(NextResponse.json({ ok: true, rapport: rapport || null, boardPack, customers, selskap, generatedAt: new Date().toISOString() }));
+        const payload = await styrerapportPayload(db, { inkluderRegnskap: false });
+        return cors(NextResponse.json({ ok: true, rapport: rapport || null, ...payload }));
+      }
+
+      // --- Delingslenker (eksterne, les-only) ---
+      const lenkeKoll = db.collection('styrerapport_lenker');
+      const baseUrl = String(process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+      const offentligLenke = (l) => ({
+        id: l.id, token: l.token, label: l.label || '', opprettet: l.opprettet, opprettetAv: l.opprettetAv || null,
+        utloper: l.utloper || null, aktiv: l.aktiv !== false, inkluderRegnskap: l.inkluderRegnskap !== false, regnskapAar: l.regnskapAar || null,
+        visninger: l.visninger || 0, sistApnet: l.sistApnet || null, sisteApninger: Array.isArray(l.apninger) ? l.apninger.slice(-5).reverse().map((a) => ({ t: a.t, ua: a.ua || '' })) : [],
+        url: `${baseUrl}/styrerapport/${l.token}`,
+      });
+      const sesjonEpost = () => { try { const u = new URL(request.url); const k = u.searchParams.get('key') || request.headers.get('x-admin-key') || ''; const p = k ? verifySession(k) : null; return p && (p.email || p.sub) ? String(p.email || p.sub) : null; } catch (e) { return null; } };
+
+      if (route === '/admin/styrerapport/lenker' && method === 'GET') {
+        const liste = await lenkeKoll.find({}, { projection: { _id: 0 } }).sort({ opprettet: -1 }).limit(50).toArray();
+        return cors(NextResponse.json({ ok: true, lenker: liste.map(offentligLenke) }));
+      }
+      if (route === '/admin/styrerapport/lenker' && method === 'POST') {
+        let lb = {}; try { lb = await request.json(); } catch (e) { lb = {}; }
+        const dager = Number(lb.utloperDager);
+        const utloper = Number.isFinite(dager) && dager > 0 ? new Date(Date.now() + Math.min(dager, 3650) * 86400000).toISOString() : null;
+        const aar = Number(lb.regnskapAar);
+        const doc = {
+          id: uuidv4(), token: uuidv4(), label: srLinje(lb.label, 80) || 'Styrerapport',
+          opprettet: new Date().toISOString(), opprettetAv: sesjonEpost(), utloper, aktiv: true,
+          inkluderRegnskap: lb.inkluderRegnskap !== false,
+          regnskapAar: Number.isFinite(aar) && aar > 2000 && aar < 2100 ? aar : new Date().getFullYear(),
+          visninger: 0, sistApnet: null, apninger: [],
+        };
+        await lenkeKoll.insertOne(doc);
+        return cors(NextResponse.json({ ok: true, lenke: offentligLenke(doc) }));
+      }
+      if (route.startsWith('/admin/styrerapport/lenker/') && (method === 'DELETE' || method === 'POST')) {
+        const rest = route.slice('/admin/styrerapport/lenker/'.length);
+        const id = rest.split('/')[0];
+        const reaktiver = method === 'POST' && rest.endsWith('/aktiver');
+        if (method === 'POST' && !reaktiver) return cors(NextResponse.json({ ok: false, feil: 'Ukjent handling' }, { status: 400 }));
+        const r = await lenkeKoll.updateOne({ id }, { $set: { aktiv: reaktiver, endret: new Date().toISOString() } });
+        if (!r.matchedCount) return cors(NextResponse.json({ ok: false, feil: 'Ukjent lenke' }, { status: 404 }));
+        const l = await lenkeKoll.findOne({ id }, { projection: { _id: 0 } });
+        return cors(NextResponse.json({ ok: true, lenke: offentligLenke(l) }));
       }
 
       if (route === '/admin/styrerapport' && method === 'POST') {
