@@ -260,17 +260,45 @@ export default function Styrerapport({ apiKey }) {
   const cust = data?.customers || null;
   const cs = cust?.summary || null;
   const sel = data?.selskap || null;
+  const selNaa = sel?.naa || null;
+  const selKons = selNaa?.konsern || null;
 
-  const mrr = cs?.totalMrr ?? inv?.mrrNow ?? null;
-  const arr = cs?.arr ?? inv?.arrNow ?? (mrr != null ? mrr * 12 : null);
-  const aktiveKunder = cs?.activeCustomers ?? null;
-  const betalende = cs?.payingCustomers ?? null;
-  const enheter = cs?.totalProperties ?? inv?.activeUnits ?? sel?.naa?.konsern?.enheter ?? null;
-  const arpa = cs?.arpa ?? inv?.arpa ?? null;
-  const runway = liq?.summary?.forventet?.runwayMonths ?? null;
-  const runwaySet = liq?.openingSet;
-  const burn = liq?.summary?.forventet?.burnRate ?? null;
-  const kontanter = liq?.opening ?? null;
+  const firstNum = (...xs) => { for (const x of xs) { const n = Number(x); if (x != null && Number.isFinite(n)) return n; } return null; };
+
+  // Live leieforhold (computeSelskap) er ÉN SANNHET for portefølje/honorar i denne
+  // kodebasen (samme kilde som Leieforhold, budsjett og decket) → foretrekkes for
+  // topplinjen. Faller tilbake til kunde-/kontraktsavledning når leieforhold mangler.
+  const mrr = firstNum(selKons?.inntekt, cs?.totalMrr, inv?.mrrNow);
+  const arr = mrr != null ? mrr * 12 : firstNum(cs?.arr, inv?.arrNow);
+  const enheter = firstNum(selKons?.enheter, cs?.totalProperties, inv?.activeUnits);
+  const aktiveKunder = firstNum(cs?.activeCustomers);
+  const betalende = firstNum(cs?.payingCustomers);
+  const arpa = firstNum(cs?.arpa, inv?.arpa, (mrr != null && aktiveKunder ? Math.round(mrr / aktiveKunder) : null));
+
+  // Økonomi-topplinje: foretrekk selskap (live, internt konsistent) → ellers modell (board-pack).
+  const okono = selKons ? {
+    inntekt: selKons.inntekt, kost: selKons.kost, resultat: selKons.resultat,
+    margin: selKons.inntekt > 0 ? Math.round((selKons.resultat / selKons.inntekt) * 1000) / 10 : null,
+    costBreakdown: selKons.costBreakdown || [],
+    kontant: selKons.kontant, runway: selKons.runwayMnd,
+    burn: (selKons.resultat != null && selKons.resultat < 0) ? -selKons.resultat : 0,
+    kilde: 'leieforhold',
+  } : (res ? {
+    inntekt: res.incomeForventet, kost: res.opexTotal, resultat: res.resultatForventet,
+    margin: res.marginForventet, costBreakdown: kostnadsdeling,
+    kontant: liq?.opening, runway: liq?.summary?.forventet?.runwayMonths,
+    burn: liq?.summary?.forventet?.burnRate, kilde: 'modell',
+  } : null);
+  const runway = firstNum(selKons?.runwayMnd, liq?.summary?.forventet?.runwayMonths);
+  const runwaySet = (selKons?.kontant != null) || !!liq?.openingSet;
+  const burn = okono?.burn ?? null;
+  const kontanter = firstNum(selKons?.kontant, liq?.opening);
+
+  // MRR-trend: 13-mnd tidslinje fra selskap (live) → ellers mrrHistory (board-pack).
+  const mrrTrend = (Array.isArray(sel?.tidslinje) && sel.tidslinje.length > 1)
+    ? sel.tidslinje.map((t) => ({ label: String(t.ym || '').slice(2), v: (t.konsern && t.konsern.inntekt) || 0 }))
+    : mrrHist.map((m) => ({ label: m.label, v: m.mrrForventet }));
+
   const nrr = inv?.retention?.nrr ?? null;
   const grr = inv?.retention?.grr ?? null;
   const cac = inv?.payback?.cac ?? null;
@@ -352,7 +380,7 @@ export default function Styrerapport({ apiKey }) {
               {[
                 { l: 'MRR', v: krKort(mrr), s: mrr != null ? 'kr / mnd' : 'utilgjengelig', t: 'brand' },
                 { l: 'ARR', v: krKort(arr), s: arr != null ? 'kr / år' : 'utilgjengelig' },
-                { l: 'Aktive kunder', v: antall(aktiveKunder), s: enheter != null ? `${antall(enheter)} enheter` : '' },
+                { l: 'Enheter u/forvaltning', v: antall(enheter), s: aktiveKunder != null ? `${antall(aktiveKunder)} aktive kunder` : '' },
                 { l: 'Runway', v: runwaySet ? mndTxt(runway) : '—', s: runwaySet ? 'ved dagens burn' : 'sett inngående kontanter', t: runway != null && runway < 6 ? 'neg' : 'pos' },
               ].map((x, i) => (
                 <div key={i} className="rounded-2xl bg-white/80 backdrop-blur border border-white/60 shadow-[0_2px_18px_rgba(0,0,0,0.05)] p-4">
@@ -385,7 +413,7 @@ export default function Styrerapport({ apiKey }) {
       {/* 03 · NØKKELTALL */}
       <section className="py-8 border-t border-black/[0.06]">
         <Chapter n="02" kicker="Traksjon" title="Nøkkeltall" desc="Levende tall fra plattformen og økonomimotoren — recurring inntekt, kunder, retensjon og enhetsøkonomi." />
-        {!bp && !cs ? (
+        {!bp && !cs && !selKons ? (
           <Panel className="p-7 border-dashed"><p className="text-[14px] text-[#a9a9a5]">Nøkkeltall er midlertidig utilgjengelig.</p></Panel>
         ) : (
           <>
@@ -399,36 +427,36 @@ export default function Styrerapport({ apiKey }) {
               <Stat label="CAC" value={kr(cac)} sub="Kost per ny kunde" />
               <Stat label="LTV : CAC" value={ltvCac != null ? `${nf1.format(ltvCac)}×` : '—'} sub={payback != null ? `Payback ${mndTxt(payback)}` : (ltv != null ? `LTV ${krKort(ltv)}` : '')} tone={ltvCac != null && ltvCac >= 3 ? 'pos' : undefined} />
             </div>
-            {mrrHist.length > 1 && (
+            {mrrTrend.length > 1 && (
               <Panel className="p-6 mt-3">
                 <div className="flex items-baseline justify-between mb-4">
-                  <p className="text-[13px] font-semibold text-[#0a0a0a]">MRR-utvikling (forventet, {mrrHist.length} mnd)</p>
-                  <p className="text-[12px] text-[#9b9b97]">Nå: <span className="font-semibold text-[#0a0a0a]">{kr(mrrHist[mrrHist.length - 1]?.mrrForventet)}</span></p>
+                  <p className="text-[13px] font-semibold text-[#0a0a0a]">Honorarinntekt per måned ({mrrTrend.length} mnd)</p>
+                  <p className="text-[12px] text-[#9b9b97]">Nå: <span className="font-semibold text-[#0a0a0a]">{kr(mrrTrend[mrrTrend.length - 1]?.v)}</span></p>
                 </div>
-                <TrendBars data={mrrHist} valueKey="mrrForventet" color="#cf97fc" fmt={(v) => kr(v)} />
+                <TrendBars data={mrrTrend} valueKey="v" color="#cf97fc" fmt={(v) => kr(v)} />
               </Panel>
             )}
           </>
         )}
       </section>
 
-      {/* 04 · ØKONOMI (MODELL) */}
+      {/* 04 · ØKONOMI */}
       <section className="py-8 border-t border-black/[0.06]">
-        <Chapter n="03" kicker="Modelltall" title="Resultat & likviditet" desc="Driftsmodellen basert på kontrakter og faste kostnader. Dette er styringstall — de faktiske regnskapstallene følger i kapittel 05." />
-        {!res ? (
-          <Panel className="p-7 border-dashed"><p className="text-[14px] text-[#a9a9a5]">Resultatmodellen er midlertidig utilgjengelig.</p></Panel>
+        <Chapter n="03" kicker={okono?.kilde === 'leieforhold' ? 'Live drift' : 'Modelltall'} title="Resultat & likviditet" desc={okono?.kilde === 'leieforhold' ? 'Sikret honorar fra porteføljen (leieforhold) mot faste kostnader — samme kilde som Leieforhold og budsjettet. Bokførte regnskapstall følger i kapittel 04.' : 'Driftsmodellen basert på kontrakter og faste kostnader. Bokførte regnskapstall følger i kapittel 04.'} />
+        {!okono ? (
+          <Panel className="p-7 border-dashed"><p className="text-[14px] text-[#a9a9a5]">Resultattall er midlertidig utilgjengelig.</p></Panel>
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Stat label="Inntekt (mnd)" value={kr(res.incomeForventet)} sub={res.incomeActual != null ? `Faktisk ${krKort(res.incomeActual)}` : ''} />
-              <Stat label="Driftskostnad (mnd)" value={kr(res.opexTotal)} />
-              <Stat label="Resultat (mnd)" value={kr(res.resultatForventet)} sub={res.marginForventet != null ? `Margin ${pct(res.marginForventet)}` : ''} tone={res.resultatForventet >= 0 ? 'pos' : 'neg'} />
-              <Stat label="Break-even" value={res.breakEvenContracts != null ? `${antall(res.breakEvenContracts)} avtaler` : '—'} sub={res.activeContracts != null ? `Nå: ${antall(res.activeContracts)}` : ''} />
+              <Stat label="Honorar / inntekt (mnd)" value={kr(okono.inntekt)} sub={okono.kilde === 'leieforhold' ? 'Sikret fra porteføljen' : 'Forventet'} tone="brand" />
+              <Stat label="Driftskostnad (mnd)" value={kr(okono.kost)} />
+              <Stat label="Resultat (mnd)" value={kr(okono.resultat)} sub={okono.margin != null ? `Margin ${pct(okono.margin)}` : ''} tone={(okono.resultat || 0) >= 0 ? 'pos' : 'neg'} />
+              <Stat label="Break-even" value={res && res.breakEvenContracts != null ? `${antall(res.breakEvenContracts)} avtaler` : '—'} sub={res && res.activeContracts != null ? `Nå: ${antall(res.activeContracts)}` : ''} />
             </div>
             <div className="grid md:grid-cols-2 gap-3 mt-3">
               <Panel className="p-6">
                 <p className="text-[13px] font-semibold text-[#0a0a0a] mb-4">Kostnader per kategori (mnd)</p>
-                <KontoListe items={kostnadsdeling} verdiKey="amount" tomTekst="Ingen kostnader registrert" />
+                <KontoListe items={okono.costBreakdown} verdiKey="amount" tomTekst="Ingen kostnader registrert" />
               </Panel>
               <Panel className="p-6">
                 <p className="text-[13px] font-semibold text-[#0a0a0a] mb-4">Likviditet</p>
@@ -436,7 +464,7 @@ export default function Styrerapport({ apiKey }) {
                   <div><p className="text-[11px] uppercase tracking-[0.08em] text-[#9b9b97] font-semibold">Inngående kontanter</p><p className="mt-1.5 text-[20px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{runwaySet ? kr(kontanter) : '—'}</p></div>
                   <div><p className="text-[11px] uppercase tracking-[0.08em] text-[#9b9b97] font-semibold">Burn (mnd)</p><p className="mt-1.5 text-[20px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{burn ? kr(burn) : (burn === 0 ? 'Positiv drift' : '—')}</p></div>
                   <div><p className="text-[11px] uppercase tracking-[0.08em] text-[#9b9b97] font-semibold">Runway</p><p className="mt-1.5 text-[20px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)', color: runway != null && runway < 6 ? '#dc2626' : '#0a0a0a' }}>{runwaySet ? mndTxt(runway) : '—'}</p></div>
-                  <div><p className="text-[11px] uppercase tracking-[0.08em] text-[#9b9b97] font-semibold">Bidragsmargin</p><p className="mt-1.5 text-[20px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{kr(res.contributionMargin)}</p></div>
+                  <div><p className="text-[11px] uppercase tracking-[0.08em] text-[#9b9b97] font-semibold">{res ? 'Bidragsmargin' : 'Enheter'}</p><p className="mt-1.5 text-[20px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{res ? kr(res.contributionMargin) : antall(enheter)}</p></div>
                 </div>
                 {!runwaySet && <p className="mt-4 text-[12px] text-[#b76e00] bg-[#fff7e8] rounded-lg px-3 py-2">Sett inngående kontantbeholdning i Økonomi-modulen for å beregne runway.</p>}
               </Panel>
@@ -542,7 +570,7 @@ export default function Styrerapport({ apiKey }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Stat label="Totalt kunder" value={antall(cs.totalCustomers)} sub={cs.churnedCustomers != null ? `${antall(cs.churnedCustomers)} churnet` : ''} />
               <Stat label="Aktive kunder" value={antall(cs.activeCustomers)} tone="pos" />
-              <Stat label="Enheter" value={antall(cs.totalProperties)} />
+              <Stat label="Enheter" value={antall(enheter ?? cs.totalProperties)} sub={selKons ? 'under forvaltning (live)' : ''} />
               <Stat label="Churn-rate" value={cs.churnRatePct != null ? pct(cs.churnRatePct) : '—'} sub={cs.lifetimeFees ? `Livstidshonorar ${krKort(cs.lifetimeFees)}` : ''} tone={cs.churnRatePct != null && cs.churnRatePct > 10 ? 'neg' : undefined} />
             </div>
             <div className="grid lg:grid-cols-3 gap-3 mt-3">

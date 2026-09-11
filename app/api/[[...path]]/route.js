@@ -3317,7 +3317,17 @@ async function handleRoute(request, { params }) {
         if (gg.__ddBoardPack && (Date.now() - gg.__ddBoardPack.at) < SR_CACHE_MS) boardPack = gg.__ddBoardPack.data;
         else { boardPack = await trygt(() => computeBoardPack(db)); if (boardPack) gg.__ddBoardPack = { at: Date.now(), data: boardPack }; }
         const [customers, selskap] = await Promise.all([
-          trygt(async () => (await computePlatformCustomers(db)) || (await computeCustomers(db))),
+          trygt(async () => {
+            // Velg den RIKESTE kundekilden: plattform-eksport når den er synket med
+            // faktisk innhold, ellers kontrakts-avledning (finance_contracts). Unngår at
+            // en tom/utdatert plattform-rad (mrr 0) skygger for reelle kontraktstall.
+            const [plat, kontr] = await Promise.all([
+              computePlatformCustomers(db).catch(() => null),
+              computeCustomers(db).catch(() => null),
+            ]);
+            const score = (x) => (x && x.summary ? (Number(x.summary.payingCustomers || 0) * 1e9 + Number(x.summary.totalCustomers || 0) * 1e6 + Number(x.summary.totalMrr || 0)) : -1);
+            return score(plat) >= score(kontr) ? (plat || kontr) : (kontr || plat);
+          }),
           trygt(() => computeSelskap(db)),
         ]);
         return cors(NextResponse.json({ ok: true, rapport: rapport || null, boardPack, customers, selskap, generatedAt: new Date().toISOString() }));
