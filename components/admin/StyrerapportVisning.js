@@ -420,8 +420,8 @@ export default function StyrerapportVisning({
       {/* ── FULL-BREDDE NAV + TOC ─────────────────────────────────────────── */}
       <RapportNav kapitler={kapitler} aktiv={aktiv} handlinger={handlinger} />
 
-      {/* ── INNHOLD ───────────────────────────────────────────────────────── */}
-      <div className="mx-auto w-full max-w-[1600px] px-5 pb-28 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0">
+      {/* ── INNHOLD (sentrert redaksjonell spalte — IKKE full bredde) ─────── */}
+      <div className="mx-auto w-full max-w-[1320px] px-5 pb-28 sm:px-8 lg:px-12">
         {/* ── COVER (lys, super-editorial masthead — ingen boks) ──────────── */}
         <section id="sr-cover" className="pt-9 sm:pt-14" style={{ scrollMarginTop: 116 }}>
           <Reveal>

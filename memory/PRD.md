@@ -1795,3 +1795,7 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - SCROLL-BEVISST NAV: Frostet bakgrunn (canvas-blur) alltid; hårfin bunn-ramme vises kun ved scroll (som root NavV4). rAF-throttlet scroll-lytter i `RapportNav`.
 - FULL-BREDDE (eksakt root-ramme): Både navbaren OG innholdet bruker nå `mx-auto w-full max-w-[1600px] px-5 sm:px-8 lg:w-[calc(100%-64px)] lg:px-0` — samme formel som forsidens NavV4/scene. Verifisert måling (1920): logo.left = cover.left = 160, cover.right = 1760 → logo flukter med innhold, alt spenner hele 1600-rammen. Ingen horisontal overflow.
 - STATUS: Kompilerer rent; skjermbilde-/målingsverifisert på delt lenke (topp + scrollet). IKKE deployet / ikke sluttbekreftet.
+
+## Oppdatering 11. sep 2026 (4) — Styrerapport: full-bredde KUN på navbar
+- Bruker: «hele layouten ble fucket — full bredde skulle bare være navbar».
+- FIKS: Innholdet satt tilbake til sentrert redaksjonell spalte `max-w-[1320px] px-5 sm:px-8 lg:px-12` (synlig ~1224px). Navbaren beholder full-bredde root-rammen `max-w-[1600px] lg:w-[calc(100%-64px)] lg:px-0`. Måling (1920): nav-logo.left=160 (full-bredde), cover-innhold 348→1572 (sentrert smalere), begge sentrert på 960. Ingen overflow.
