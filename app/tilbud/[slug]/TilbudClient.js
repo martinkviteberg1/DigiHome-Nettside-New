@@ -28,7 +28,7 @@ const C = {
 };
 const D = { chip: 'rgba(255,255,255,0.07)', chipLine: 'rgba(255,255,255,0.1)', icon: 'rgba(255,255,255,0.92)', soft: 'rgba(255,255,255,0.62)', faint: 'rgba(255,255,255,0.42)' };
 /* Display-stemmen fra nettsiden (PP Right Grotesk, tight sporing). */
-const head = { fontFamily: DISPLAY.fontFamily, letterSpacing: '-0.025em' };
+const head = { fontFamily: DISPLAY.fontFamily, letterSpacing: '-0.025em', textWrap: 'balance' };
 const body = { fontFamily: 'var(--font-body)' };
 
 /* Ekte DigiHome-logo — identisk med nettsidens nav/footer. Hvit variant på mørk flate. */
@@ -252,10 +252,10 @@ function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'Klargjort av DigiH
       }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={etterUrl} alt="Klargjort av DigiHome — AI-stylet illustrasjon" className="absolute inset-0 h-full w-full object-cover object-center" draggable={false} fetchPriority="high" data-testid="tilbud-hovedbilde" />
+      <img src={etterUrl} alt="Klargjort av DigiHome — AI-stylet illustrasjon" className="absolute inset-0 h-full w-full object-cover object-center" draggable={false} loading="lazy" decoding="async" data-testid="tilbud-hovedbilde" />
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={forUrl} alt="Original fra annonsen" className="absolute inset-0 h-full w-full object-cover object-center" draggable={false} fetchPriority="high" />
+        <img src={forUrl} alt="Original fra annonsen" className="absolute inset-0 h-full w-full object-cover object-center" draggable={false} loading="lazy" decoding="async" />
       </div>
       <div className="absolute inset-y-0" style={{ left: `${pos}%` }}>
         <div className="absolute inset-y-0 -ml-px w-[2px] bg-white" style={{ boxShadow: '0 0 14px rgba(0,0,0,0.35)' }} />
@@ -727,7 +727,7 @@ export default function TilbudClient({ tilbud, slug }) {
       <ScrollProgress />
       <KapittelNav kapitler={kapitler} vis={scrollet} />
       {/* Filmkorn over hele siden */}
-      <div className="pointer-events-none fixed inset-0 z-[58]" aria-hidden style={{ backgroundImage: GRAIN_URL, opacity: 0.035, mixBlendMode: 'multiply' }} />
+      <div className="pointer-events-none fixed inset-0 z-[58]" aria-hidden style={{ backgroundImage: GRAIN_URL, opacity: 0.035, mixBlendMode: 'multiply', transform: 'translateZ(0)', willChange: 'transform' }} />
 
       {/* ── Toppbar — glir inn når coveret er forbi ── */}
       <div className={`fixed inset-x-0 top-0 z-40 transition-all duration-500 ${scrollet ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-4 opacity-0'}`}
@@ -755,7 +755,7 @@ export default function TilbudClient({ tilbud, slug }) {
           {/* Parallax-lag — bevisst overdimensjonert (top -8%, høyde 116%) så translasjon aldri avslører kant */}
           <div ref={heroImgRef} className="absolute inset-x-0 will-change-transform" style={{ top: '-8%', height: '116%' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={heroBilde} onError={() => setHeroFeil(true)} alt="" fetchPriority="high" className="h-full w-full object-cover"
+            <img src={heroBilde} onError={() => setHeroFeil(true)} alt="" fetchPriority="high" decoding="async" className="h-full w-full object-cover"
               style={{ objectPosition: heroPersonlig ? 'center 50%' : 'center 42%', animation: reduserMotion() ? 'none' : 'dh-kenburns 28s ease-in-out infinite alternate' }} />
           </div>
           <div className="absolute inset-0" style={{ backgroundColor: 'rgba(10,9,8,0.22)' }} />
@@ -835,7 +835,7 @@ export default function TilbudClient({ tilbud, slug }) {
       <div id="dokument" className="relative z-20 -mt-[7vh] overflow-hidden rounded-t-[28px] md:-mt-[12vh] md:rounded-t-[44px]" style={{ backgroundColor: C.page, boxShadow: '0 -34px 80px rgba(8,7,6,0.42)' }} data-testid="document-reveal">
 
         {/* ── PERSONLIG BREV ── */}
-        <section className={`${padX} mx-auto pb-16 pt-16 lg:pb-24 lg:pt-28`} style={{ maxWidth: maxW }} data-testid="cover-letter">
+        <section className={`${padX} mx-auto pb-20 pt-16 lg:pb-28 lg:pt-28`} style={{ maxWidth: maxW }} data-testid="cover-letter">
           <Reveal className="mb-9 lg:mb-12">
             <Overline className="mb-6">Et personlig tilbud</Overline>
             <h2 className="font-light leading-[0.98] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(44px, 6.8vw, 76px)', color: C.ink }}>Hei.</h2>
@@ -891,13 +891,13 @@ export default function TilbudClient({ tilbud, slug }) {
         {/* ══ DET VI SER — dokumentets tese: dynamiske funn fra analysen.
              Hvert funn lenker ned til beviset sitt; resten av siden er dokumentasjonen. ══ */}
         {funn.length > 0 && (
-          <section className={`${padX} mx-auto pb-16 lg:pb-28`} style={{ maxWidth: maxW }} data-testid="tilbud-funn">
+          <section className={`${padX} mx-auto pb-20 lg:pb-32`} style={{ maxWidth: maxW }} data-testid="tilbud-funn">
             <Reveal className="mb-4 lg:mb-6">
               <Overline className="mb-5">Det vi ser</Overline>
               <h2 className="font-light leading-[1.0] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(34px, 5vw, 56px)', color: C.ink }}>
                 {['Ett funn', 'To funn', 'Tre funn', 'Fire funn'][funn.length - 1]} fra gjennomgangen.
               </h2>
-              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(16.5px, 1.6vw, 18px)', color: C.sub, maxWidth: 640 }}>
+              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(17px, 1.55vw, 18.5px)', color: C.sub, maxWidth: 640 }}>
                 Vi har gått gjennom annonsen slik en leietaker møter den. Dette er vurderingen vår — og alt under på siden er dokumentasjonen.
               </p>
             </Reveal>
@@ -934,11 +934,11 @@ export default function TilbudClient({ tilbud, slug }) {
 
         {/* ══ 01 · BILDENE — før/etter (Salgsradarens signaturelement) ══ */}
         {valgtStylet && (
-          <section id="bilder" className={`${padX} mx-auto scroll-mt-20 pb-16 lg:pb-28`} style={{ maxWidth: maxW }}>
+          <section id="bilder" className={`${padX} mx-auto scroll-mt-20 pb-20 lg:pb-32`} style={{ maxWidth: maxW }}>
             <Reveal className="mb-10 lg:mb-14">
               <Overline index="01" className="mb-5">Bildene</Overline>
               <h2 className="font-light leading-[1.0] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(34px, 5vw, 56px)', color: C.ink }}>Vi har allerede løftet presentasjonen.</h2>
-              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(16.5px, 1.6vw, 18px)', color: C.sub, maxWidth: 640 }}>
+              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(17px, 1.55vw, 18.5px)', color: C.sub, maxWidth: 640 }}>
                 Dra i linjen — annonsens originalbilde til venstre, vår klargjorte versjon til høyre. Det er detaljene leietakere sorterer på.
               </p>
             </Reveal>
@@ -973,7 +973,7 @@ export default function TilbudClient({ tilbud, slug }) {
 
         {/* ══ GALLERI — stille redaksjonelt mellomspill: hele grunnlaget for vurderingen ══ */}
         {galleri.length >= 2 && (
-          <section className={`${padX} mx-auto pb-16 lg:pb-28`} style={{ maxWidth: maxW }} data-testid="tilbud-galleri">
+          <section className={`${padX} mx-auto pb-20 lg:pb-32`} style={{ maxWidth: maxW }} data-testid="tilbud-galleri">
             <Reveal className="mb-7 lg:mb-9">
               <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
                 <h2 className="font-light tracking-[-0.03em]" style={{ ...head, fontSize: 'clamp(24px, 3vw, 34px)', color: C.ink }}>Boligen.</h2>
@@ -1001,7 +1001,7 @@ export default function TilbudClient({ tilbud, slug }) {
         )}
 
         {/* ══ 02 · VURDERINGEN — sentrert kjempe-tall + prislinjal (subtle-flate) ══ */}
-        <section id="hvorfor" className="scroll-mt-20 py-16 lg:py-28" style={{ backgroundColor: C.subtle }} data-testid="income-estimate">
+        <section id="hvorfor" className="scroll-mt-20 py-20 lg:py-32" style={{ backgroundColor: C.subtle }} data-testid="income-estimate">
           <div className={`${padX} mx-auto`} style={{ maxWidth: maxW }}>
             <Reveal className="mb-12 text-center lg:mb-16">
               <div className="mb-5 flex justify-center"><Overline index="02">Vurderingen</Overline></div>
@@ -1010,7 +1010,7 @@ export default function TilbudClient({ tilbud, slug }) {
                   <p className="font-light leading-[0.9] tabular-nums tracking-[-0.055em]" style={{ ...head, fontSize: 'clamp(64px, 9.5vw, 104px)', color: C.ink }}><TellOpp verdi={anbefalt} /></p>
                   <p className="mt-3 font-semibold uppercase" style={{ ...head, fontSize: 12.5, letterSpacing: '0.16em', color: C.faint }}>kr anbefalt månedsleie</p>
                   {netto > 0 && (
-                    <p className="mt-5" style={{ fontSize: 15, color: C.sub }} data-testid="tilbud-hero-netto">
+                    <p className="mt-5" style={{ fontSize: 16, color: C.sub }} data-testid="tilbud-hero-netto">
                       ≈ <span className="font-semibold tabular-nums" style={{ color: C.success }}>{tall(netto)} kr til deg</span> hver måned etter DigiHome-honorar ({r.honorarPct} % eks. mva)
                     </p>
                   )}
@@ -1019,7 +1019,7 @@ export default function TilbudClient({ tilbud, slug }) {
                 <h2 className="font-light tracking-[-0.03em]" style={{ ...head, fontSize: 'clamp(30px, 4vw, 44px)', color: C.ink }}>Vår vurdering av {pent(tilbud.adresse)}</h2>
               )}
               {potensialTekst && potensialTekst.length > 220 && (
-                <p className="mx-auto mt-5 leading-[1.7]" style={{ fontSize: 15.5, color: C.sub, maxWidth: 580 }}>{potensialTekst}</p>
+                <p className="mx-auto mt-5 leading-[1.7]" style={{ fontSize: 16.5, color: C.sub, maxWidth: 600 }}>{potensialTekst}</p>
               )}
             </Reveal>
 
@@ -1063,11 +1063,11 @@ export default function TilbudClient({ tilbud, slug }) {
         {/* ══ 03 · ANNONSEN — i dag → slik ville vi gjort det (rendyrket visuell sammenligning;
              de skriftlige funnene bor i «Det vi ser» øverst) ══ */}
         {visSammenligning && (
-          <section id="annonsen" className={`${padX} mx-auto scroll-mt-20 py-16 lg:py-28`} style={{ maxWidth: maxW }}>
+          <section id="annonsen" className={`${padX} mx-auto scroll-mt-20 py-20 lg:py-32`} style={{ maxWidth: maxW }}>
             <Reveal className="mb-10 lg:mb-14">
               <Overline index="03" className="mb-5">Annonsen</Overline>
               <h2 className="font-light leading-[1.0] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(34px, 5vw, 56px)', color: C.ink }}>I dag — og slik ville vi gjort det.</h2>
-              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(16.5px, 1.6vw, 18px)', color: C.sub, maxWidth: 660 }}>
+              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(17px, 1.55vw, 18.5px)', color: C.sub, maxWidth: 660 }}>
                 Dette handler ikke om at dagens annonse er dårlig — men om detaljene som avgjør hvem som tar kontakt, og til hvilken pris.
               </p>
             </Reveal>
@@ -1088,12 +1088,12 @@ export default function TilbudClient({ tilbud, slug }) {
         )}
 
         {/* ══ 04 · ØKONOMIEN — prisoversikt-mønsteret: ink-hode + prikkede ledere ══ */}
-        <section id="regnestykke" className="scroll-mt-20 py-16 lg:py-28" style={{ backgroundColor: C.page }}>
+        <section id="regnestykke" className="scroll-mt-20 py-20 lg:py-32" style={{ backgroundColor: C.page }}>
           <div className={`${padX} mx-auto`} style={{ maxWidth: maxW }} data-testid="tilbud-kpi">
             <Reveal className="mb-10 lg:mb-14">
               <Overline index="04" className="mb-5">Økonomien</Overline>
               <h2 className="font-light leading-[1.0] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(34px, 5vw, 56px)', color: C.ink }}>Regnestykket.</h2>
-              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(16.5px, 1.6vw, 18px)', color: C.sub, maxWidth: 660 }}>
+              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(17px, 1.55vw, 18.5px)', color: C.sub, maxWidth: 660 }}>
                 Ett tall inn, to tall ut — hva boligen gir, hva vi tar, og hva som er igjen til deg. Ingen etableringsgebyr, ingen skjulte kostnader.
               </p>
             </Reveal>
@@ -1142,7 +1142,7 @@ export default function TilbudClient({ tilbud, slug }) {
             <Reveal className="mb-14 lg:mb-20">
               <Overline light index="05" className="mb-6">Arbeidsfordelingen</Overline>
               <h2 className="font-light leading-[0.98] tracking-[-0.045em] text-white" style={{ ...head, fontSize: 'clamp(38px, 6vw, 68px)', maxWidth: '16ch' }}>Du gjør to ting. Vi tar resten.</h2>
-              <p className="mt-7 leading-[1.75]" style={{ fontSize: 'clamp(16.5px, 1.7vw, 18.5px)', color: D.soft, maxWidth: 660 }}>
+              <p className="mt-7 leading-[1.75]" style={{ fontSize: 'clamp(17px, 1.65vw, 19px)', color: D.soft, maxWidth: 660 }}>
                 Vi er eiendomsmeglere med utleie som spesialfelt. Å leie ut trenger ikke bli en ny jobb for deg.
               </p>
             </Reveal>
@@ -1179,11 +1179,11 @@ export default function TilbudClient({ tilbud, slug }) {
 
         {/* ══ 06 · ANNONSEN ER KLAR — ekspanderbart preview-kort ══ */}
         {harAnnonse && (
-          <section className={`${padX} mx-auto py-16 lg:py-28`} style={{ maxWidth: maxW }}>
+          <section className={`${padX} mx-auto py-20 lg:py-32`} style={{ maxWidth: maxW }}>
             <Reveal className="mb-10 lg:mb-12">
               <Overline index="06" className="mb-5">Jobben er allerede gjort</Overline>
               <h2 className="font-light leading-[1.0] tracking-[-0.04em]" style={{ ...head, fontSize: 'clamp(34px, 5vw, 56px)', color: C.ink }}>Annonsen er klar.</h2>
-              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(16.5px, 1.6vw, 18px)', color: C.sub, maxWidth: 640 }}>
+              <p className="mt-6 leading-[1.75]" style={{ fontSize: 'clamp(17px, 1.55vw, 18.5px)', color: C.sub, maxWidth: 640 }}>
                 Bildene er valgt. Teksten er skrevet. Prisen er satt. Sier du ja, kan den være live innen 24 timer.
               </p>
             </Reveal>
@@ -1227,7 +1227,7 @@ export default function TilbudClient({ tilbud, slug }) {
         )}
 
         {/* ══ FIRE STEG ══ */}
-        <section className={`${padX} mx-auto py-16 lg:py-28`} style={{ maxWidth: maxW }} data-testid="four-steps">
+        <section className={`${padX} mx-auto py-20 lg:py-32`} style={{ maxWidth: maxW }} data-testid="four-steps">
           <Reveal className="mb-14">
             <div className="mb-3 flex justify-center"><Overline>Neste steg</Overline></div>
             <h2 className="text-center font-light tracking-[-0.03em]" style={{ ...head, fontSize: 'clamp(30px, 4vw, 40px)', color: C.ink }}>Slik kommer vi i gang.</h2>
@@ -1245,8 +1245,8 @@ export default function TilbudClient({ tilbud, slug }) {
                   <div className="flex items-start gap-5 sm:relative sm:block">
                     <div className="relative z-10 flex shrink-0 items-center justify-center rounded-full" style={{ width: 40, height: 40, backgroundColor: C.ink, color: '#fff', ...head, fontSize: 15.5, fontWeight: 600 }}>{i + 1}</div>
                     <div className="pt-1 sm:mt-6 sm:pt-0">
-                      <h3 className="mb-2 font-semibold" style={{ ...head, fontSize: 15.5, color: C.ink }}>{t}</h3>
-                      <p className="leading-[1.6]" style={{ fontSize: 13, color: C.sub }}>{d}</p>
+                      <h3 className="mb-2 font-semibold" style={{ ...head, fontSize: 16.5, color: C.ink }}>{t}</h3>
+                      <p className="leading-[1.65]" style={{ fontSize: 14.5, color: C.sub }}>{d}</p>
                     </div>
                   </div>
                 </Reveal>
@@ -1256,7 +1256,7 @@ export default function TilbudClient({ tilbud, slug }) {
         </section>
 
         {/* ══ FAQ ══ */}
-        <section className="py-16 lg:py-28" style={{ backgroundColor: C.page }} data-testid="faq-section">
+        <section className="py-20 lg:py-32" style={{ backgroundColor: C.page }} data-testid="faq-section">
           <div className={`${padX} mx-auto`} style={{ maxWidth: 760 }}>
             <Reveal className="mb-10">
               <div className="mb-3 flex justify-center"><Overline>Tryggheten</Overline></div>
@@ -1273,7 +1273,7 @@ export default function TilbudClient({ tilbud, slug }) {
                 const open = aapen === i;
                 return (
                   <div key={q} style={{ borderTop: i === 0 ? `1px solid ${C.line}` : undefined, borderBottom: `1px solid ${C.line}` }} data-testid={`faq-${i}`}>
-                    <button type="button" onClick={() => setAapen(open ? -1 : i)} aria-expanded={open} className="flex w-full items-center justify-between gap-5 py-5 text-left lg:py-6">
+                    <button type="button" onClick={() => setAapen(open ? -1 : i)} aria-expanded={open} className="flex w-full items-center justify-between gap-5 py-6 text-left lg:py-7">
                       <span className="font-medium transition-colors duration-200" style={{ ...head, fontSize: 'clamp(16px, 1.6vw, 18px)', color: open ? C.ink : '#2A2926' }}>{q}</span>
                       <span className="flex shrink-0 items-center justify-center rounded-full transition-all duration-300" style={{ width: 30, height: 30, border: `1px solid ${open ? C.ink : C.line}`, backgroundColor: open ? C.ink : 'transparent' }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-transform duration-300" style={{ transform: open ? 'rotate(180deg)' : 'none' }} aria-hidden="true">
@@ -1283,7 +1283,7 @@ export default function TilbudClient({ tilbud, slug }) {
                     </button>
                     <div className={`grid transition-[grid-template-rows] duration-[400ms] ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`} style={{ transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)' }}>
                       <div className="overflow-hidden">
-                        <p className="pb-6 leading-[1.75]" style={{ fontSize: 15, color: C.sub, maxWidth: 640 }}>{a}</p>
+                        <p className="pb-6 leading-[1.75]" style={{ fontSize: 16, color: C.sub, maxWidth: 660 }}>{a}</p>
                       </div>
                     </div>
                   </div>
@@ -1312,8 +1312,8 @@ export default function TilbudClient({ tilbud, slug }) {
                 <div data-testid="tilbud-kontakt">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={LOGO_WHITE} alt="DigiHome" className="mx-auto mb-10" style={{ height: 30, opacity: 0.96 }} />
-                  <h2 className="mb-4 font-light tracking-[-0.03em] text-white" style={{ ...head, fontSize: 'clamp(32px, 4.5vw, 48px)' }}>Høres dette interessant ut?</h2>
-                  <p className="mx-auto mb-9 leading-relaxed" style={{ fontSize: 15.5, color: D.soft, maxWidth: 460 }}>
+                  <h2 className="mb-4 font-light tracking-[-0.03em] text-white" style={{ ...head, fontSize: 'clamp(32px, 4.5vw, 48px)' }}>Skal vi ta det herfra?</h2>
+                  <p className="mx-auto mb-9 leading-relaxed" style={{ fontSize: 16.5, color: D.soft, maxWidth: 480 }}>
                     Legg igjen nummeret ditt, så ringer {fornavn} deg for en uforpliktende prat. Ingenting signeres her.
                   </p>
                   <div className="mx-auto mb-8 inline-flex items-center gap-2.5 rounded-full px-4 py-2" style={{ backgroundColor: D.chip, border: `1px solid ${D.chipLine}` }}>

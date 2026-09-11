@@ -1754,3 +1754,11 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - NYTT: hero-parallax — coverbildet lagt i et bevisst overdimensjonert lag (top -8%, høyde 116%) som drives saktere enn scroll (translateY, faktor 0.08, cap 8% av vh) → dybde uten kant/gap. Kombineres med eksisterende Ken Burns. Respekterer reduserMotion(). Verifisert: translateY 30px ved 380px scroll, lag-top −56 (≤0), lag-bunn 1197 (≥vh) → ingen gap; «Hei.»-brevet glir over coveret.
 - (Samme økt: personalisert hero-bilde-stige + frostet tallpanel — se forrige oppdatering.)
 - IKKE deployet, ikke brukerbekreftet.
+
+## Oppdatering 11. sep 2026 — Tilbud: helhetlig verdensklasse-runde (moderne, ytelse, typografi, luft, tekst)
+- Bruker: «tenk på alt i tilbudet.. mer moderne, raskere performance, bedre fontstørrelser, spacing, layout, luft, VERDENSKLASSE tekster».
+- YTELSE: (1) fullskjerm grain-lag (fixed, mixBlendMode multiply) promotert til eget compositor-lag (translateZ(0)+willChange) → slipper re-blending per scroll-frame; (2) hero-img decoding="async"; (3) før/etter-bildene var fetchPriority="high" UNDER folden (konkurrerte med hero om båndbredde/LCP) → nå loading="lazy" decoding="async". Verifisert: 8 lazy-bilder, hero decoding=async.
+- TYPOGRAFI: `head`-token fikk textWrap:'balance' (moderne balanserte linjebrudd på alle overskrifter, progressiv forbedring — verifisert computed 'balance'). Seksjons-innledninger 16.5–18px → 17–18.5px (mørk manifest 17–19px). FAQ-svar 15→16px (maxW 660). Steg h3 15.5→16.5, steg-tekst 13→14.5 (lh 1.65). CTA-undertekst 15.5→16.5 (maxW 480). Vurdering-avsnitt 15.5→16.5. Netto-linje 15→16.
+- LUFT/RYTME: harmonisert kadens — py-16 lg:py-28 → py-20 lg:py-32 (alle hovedkapitler), pb-16 lg:pb-28 → pb-20 lg:pb-32 (brev/funn/bilder/galleri-kjeden), brev pt/pb justert, FAQ-rader py-5/6 → py-6/7.
+- TEKST: eksisterende copy er allerede skarp («Du gjør to ting. Vi tar resten.», «Ett tall inn, to tall ut») — bevisst IKKE omskrevet. Skjerpet kun slutt-CTA: «Høres dette interessant ut?» → «Skal vi ta det herfra?» (ekko av «Vi tar resten», mer selvsikker).
+- VERIFISERT: HTTP 200; overflow-sveip scrollWidth===clientWidth på 390 og 1920; skjermbilder desktop (steg/FAQ) + mobil (FAQ). IKKE deployet, ikke brukerbekreftet.
