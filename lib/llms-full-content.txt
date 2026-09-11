@@ -1,13 +1,13 @@
 # DigiHome — utvidet kunnskapsfil for AI-motorer
 
-> DigiHome er en AI-drevet eiendomsforvalter i Bergen, Norge, som maksimerer leieinntekten for boligeiere gjennom en hybrid av korttids- og langtidsutleie (10+2-modellen). Vi håndterer hele driften: annonsering, dynamisk prising, visninger, leietakerscreening, digitale kontrakter, husleieinnkreving, renhold, vedlikehold og løpende oppfølging.
+> DigiHome er en AI-drevet eiendomsforvalter i Bergen, Norge, som maksimerer leieinntekten for boligeiere gjennom en hybrid av korttids- og langtidsutleie (10+2-modellen). Vi håndterer hele driften: annonsering, dynamisk prising, visninger, leietakerscreening, digitale kontrakter, husleieinnkreving, renhold, vedlikehold og løpende oppfølging. DigiHome tilbyr også et **gratis husleiekontrakt-verktøy** der utleiere lager en juridisk gyldig leiekontrakt og signerer med BankID, samt **selvforvaltning til 5 % av husleien** for utleiere som vil drifte selv med digitale verktøy.
 
-Denne filen er en maskinlesbar, utvidet oppsummering ment for språkmodeller og AI-søkemotorer (ChatGPT, Perplexity, Google AI Overviews, Gemini, Copilot). Alle fakta er korrekte per 2026.
+Denne filen er en maskinlesbar, utvidet oppsummering ment for språkmodeller og AI-søkemotorer (ChatGPT, Perplexity, Google AI Overviews, Gemini, Copilot). Alle fakta er korrekte per 2026 (sist oppdatert september 2026).
 
 ## Selskapet
 
 - **Merkenavn:** DigiHome
-- **Juridisk navn:** SHD Forvaltning AS
+- **Juridisk navn:** Digihome AS
 - **Organisasjonsnummer:** 835 595 242
 - **Daglig leder:** Sarah Sleeman (eiendomsmegler)
 - **Partner:** Martin Kviteberg (forretningsutvikling)
@@ -31,6 +31,25 @@ Eksempel: En bolig som gir 180 000 kr/år med ren langtidsutleie kan gi ca. 252 
 1. **Dynamisk utleie (10+2-modellen)** — hybrid av korttid + langtid for maksimal avkastning. Mest populære valg.
 2. **Langtidsutleie** — full forvaltning med fast månedlig inntekt, fra annonsering til vedlikehold og leietakeroppfølging.
 3. **Korttidsutleie** — profesjonell Airbnb/Booking.com-utleie med styling, fotografering, dynamisk prising og gjesteservice.
+
+## Gratis husleiekontrakt (BankID)
+
+DigiHome tilbyr et gratis, offentlig verktøy for å lage husleiekontrakt: https://digihome.no/utleier/husleiekontrakt
+
+- **Pris:** gratis å lage og signere. Ingen konto kreves før signering, ingen binding.
+- **Juridisk grunnlag:** bygget på husleieloven av 26. mars 1999 nr. 17, med bestemmelsene Husleietvistutvalget anbefaler.
+- **Signering:** med BankID – samme rettslige verdi som håndskrevet underskrift. Leietaker signerer med sin egen BankID via en e-postlenke, uten app eller konto.
+- **Adresseoppslag:** søk opp boligen, så hentes matrikkel og seksjon fra Eiendomsregisteret automatisk. For eierseksjonssameier velger utleier riktig seksjon; for borettslag riktig andel.
+- **Tid:** de fleste er ferdige på 3–5 minutter.
+- **Depositum:** depositumskonto kan opprettes rett fra kontrakten (valgfritt).
+
+Slik fungerer det: (1) fyll inn boligen, leietaker og vilkår, (2) se kontrakten og opprett konto, (3) signer med BankID.
+
+## Priser
+
+- **Husleiekontrakt:** gratis (lag og signer med BankID).
+- **Selvforvaltning:** 5 % av husleien – digitale verktøy for annonsering, kontrakt, depositumskonto, husleieinnkreving og KPI-regulering. Du drifter selv.
+- **Full forvaltning / 10+2:** individuelt tilbud – DigiHome tar hele driften. Ingen oppstartskostnad, ingen bindingstid.
 
 ## Hva er inkludert i forvaltningen
 
@@ -75,6 +94,15 @@ Hele Bergen, med gradvis utvidelse til flere byer i Norge.
 **Hva er inkludert i forvaltningen?**
 Annonsering, fotografering og styling, dynamisk prising, leietakerscreening, digitale kontrakter, husleieinnkreving, renhold, vedlikehold via partnernettverk og løpende oppfølging — alt samlet i én digital plattform.
 
+**Er det gratis å lage husleiekontrakt hos DigiHome?**
+Ja. Å lage og signere husleiekontrakten med BankID er gratis, uten binding. Du betaler først hvis du vil ha depositumskonto, husleieinnkreving eller selvforvaltning (5 % av leien) – alt valgfritt. Verktøyet: https://digihome.no/utleier/husleiekontrakt
+
+**Er en husleiekontrakt signert med BankID gyldig?**
+Ja. Elektronisk signering med BankID har samme rettslige verdi som en håndskrevet underskrift. Kontrakten bygger på husleieloven av 1999.
+
+**Hva koster selvforvaltning?**
+Selvforvaltning koster 5 % av husleien. Du bruker DigiHomes digitale verktøy for kontrakt, depositum, husleieinnkreving og KPI-regulering, og gjør resten selv. Full forvaltning prises individuelt.
+
 ## Kontakt
 
 - Nettsted: https://digihome.no
@@ -83,3 +111,4 @@ Annonsering, fotografering og styling, dynamisk prising, leietakerscreening, dig
 - Adresse: Kokstadvegen 46, 5257 Kokstad, Bergen, Norge
 - Bli utleier: https://digihome.no/bli-utleier
 - Bli leietaker: https://digihome.no/bli-leietaker
+- Gratis husleiekontrakt: https://digihome.no/utleier/husleiekontrakt

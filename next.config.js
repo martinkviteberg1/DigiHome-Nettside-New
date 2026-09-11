@@ -62,7 +62,7 @@ const nextConfig = {
     // docx-to-pdf.wasm leses med fs.readFile i lib/dokumenter.js og blir IKKE
     // auto-tracet — uten denne linjen feiler DOCX→PDF-konvertering i produksjon.
     outputFileTracingIncludes: {
-      '/**': ['./public/fonts/**/*.woff', './lib/llms-content.txt', './node_modules/docx-to-pdf-wasm/build/docx-to-pdf.wasm', './node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs'],
+      '/**': ['./public/fonts/**/*.woff', './lib/llms-content.txt', './lib/llms-full-content.txt', './node_modules/docx-to-pdf-wasm/build/docx-to-pdf.wasm', './node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs'],
     },
   },
   webpack(config, { dev }) {

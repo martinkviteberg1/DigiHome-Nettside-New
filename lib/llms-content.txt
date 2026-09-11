@@ -1,8 +1,8 @@
 # DigiHome
 
-_Last updated: 2026-08-05_
+_Last updated: 2026-09-10_
 
-> DigiHome er en eiendomsforvalter i Bergen, Norge. Selskapet hjelper boligeiere med selvforvaltning og full forvaltning, og tilbyr verktøy og rådgivning for langtidsutleie og — der eierform, vedtekter og lovverk tillater det — kombinert korttidsutleie.
+> DigiHome er en eiendomsforvalter i Bergen, Norge. Selskapet hjelper boligeiere med selvforvaltning og full forvaltning, og tilbyr verktøy og rådgivning for langtidsutleie og — der eierform, vedtekter og lovverk tillater det — kombinert korttidsutleie. DigiHome tilbyr også et gratis husleiekontrakt-verktøy der utleiere lager en juridisk gyldig leiekontrakt og signerer med BankID.
 
 DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen 46, 5257 Kokstad i Bergen. Daglig leder er Sarah Sleeman (eiendomsmegler). DigiHome oppgir en akkumulert portefølje på 150+ boliger i Bergen. Definisjoner og forbehold er dokumentert på https://digihome.no/metode.
 
@@ -24,6 +24,7 @@ DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen
 - **Modeller:** Selvforvaltning, full forvaltning og rådgivning om langtids-/korttidsmodeller
 - **Inntektspotensial:** Opptil 30 % er et estimat, ikke en garanti; scenarioet gjelder bare enkelte egnede boliger
 - **Oppstart:** 0 kr oppstart på oppgitte standardløp
+- **Gratis husleiekontrakt:** Lag og signer en juridisk gyldig leiekontrakt med BankID gratis på https://digihome.no/utleier/husleiekontrakt
 - **Svartid:** Personlig første svar innen 24 timer
 - **Portefølje:** 150+ boliger akkumulert forvaltet eller håndtert
 - **Metode:** https://digihome.no/metode
@@ -44,6 +45,7 @@ DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen
 
 - [Forsiden](https://digihome.no/): Oversikt over DigiHome, tjenester og inntektspotensial.
 - [Bli utleier](https://digihome.no/bli-utleier): Velg selvforvaltning eller få tilbud på full forvaltning.
+- [Gratis husleiekontrakt (BankID)](https://digihome.no/utleier/husleiekontrakt): Lag en juridisk gyldig leiekontrakt gratis på minutter, med adresseoppslag mot Eiendomsregisteret og signering med BankID.
 - [Metode og dokumentasjon](https://digihome.no/metode): Definisjoner, datagrunnlag og forbehold for nøkkeltall.
 - [Priskalkulator](https://digihome.no/priskalkulator): Bygg en forvaltningspakke og se veiledende pris.
 - [Full forvaltning](https://digihome.no/forvaltning): Fullforvaltningstjenesten.
@@ -51,6 +53,7 @@ DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen
 - [Airbnb-forvaltning i Bergen](https://digihome.no/airbnb-forvaltning-bergen): Korttidsforvaltning og viktige juridiske forbehold.
 - [Guider for utleiere](https://digihome.no/guider): 12 guider om pris, depositum, skatt, korttidsutleie, godkjenning og husleieøkning.
 - [Hva koster utleiemegler](https://digihome.no/guider/hva-koster-utleiemegler): Provisjon 8–12 %, etableringshonorar og totalpris første år.
+- [Slik skriver du en husleiekontrakt](https://digihome.no/guider/skrive-husleiekontrakt): Krav, innhold, tidsbestemt vs. tidsubestemt, depositum — og en gratis mal.
 - [Utleiemegler eller selvforvaltning](https://digihome.no/guider/utleiemegler-vs-selvforvaltning): Sammenligning av pris, tidsbruk, ansvar og risiko.
 - [Leie ut leilighet i Bergen](https://digihome.no/guider/leie-ut-leilighet-bergen): Hele prosessen i fem steg.
 - [Depositum ved utleie](https://digihome.no/guider/depositum-regler): Beløp, konto, frister og lovlige trekk.
@@ -99,6 +102,8 @@ Korte, siterbare svar fra DigiHomes fagredaksjon. Hvert svar er utdypet med kild
 - **Hvor lenge kan man leie ut på Airbnb?** I eierseksjonssameie normalt maks 90 døgn per år for hele seksjonen; vedtektene kan sette grensen mellom 60 og 120 døgn. I borettslag normalt 30 døgn per år uten styrets samtykke. Kilde: https://digihome.no/guider/korttidsutleie-regler
 - **Må utleiedelen være godkjent?** Rom for varig opphold skal være registrert som hoveddel. Bruksendring fra tilleggsdel krever søknad. For bygg oppført før 1. juli 2011 gjelder lempeligere krav, men rømning og brannsikkerhet må alltid ivaretas. Kilde: https://digihome.no/guider/godkjent-utleiedel
 - **Hvor mye kan husleien økes?** Indeksregulering kan ikke overstige endringen i konsumprisindeksen, kan skje én gang per år og krever minst én måneds skriftlig varsel. Tilpasning til gjengs leie kan tidligst kreves etter to år og seks måneder, med seks måneders varsel. Kilde: https://digihome.no/guider/husleieokning
+- **Hva må en husleiekontrakt inneholde?** Partene, leieobjektet (adresse), husleien og hva som er inkludert, depositum, startdato, om avtalen er tidsbestemt eller tidsubestemt, og oppsigelsestid. Skriftlig er ikke lovpålagt, men kan kreves etter husleieloven § 1-4 og er sterkt anbefalt. Lag en gratis kontrakt: https://digihome.no/utleier/husleiekontrakt
+- **Er en husleiekontrakt signert med BankID gyldig?** Ja. Elektronisk signering med BankID har samme rettslige verdi som en håndskrevet underskrift. DigiHomes kontrakt bygger på husleieloven av 1999 og er gratis å lage og signere. Kilde: https://digihome.no/guider/skrive-husleiekontrakt
 
 ## Kontakt
 
