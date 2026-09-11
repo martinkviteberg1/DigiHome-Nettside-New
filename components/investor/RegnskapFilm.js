@@ -192,6 +192,7 @@ export default function RegnskapFilm({ adminKey = '', aktiv = false }) {
   const hentSelskaper = useCallback(async () => {
     try {
       const r = await fetch(`/api/admin/regnskap/selskaper?${q}`, { cache: 'no-store' });
+      if (r.status === 401 || r.status === 403) { setFeil('auth'); setLaster(false); return; }
       const d = await r.json();
       const liste = (d.selskaper || []).map((s) => ({ id: s.id, navn: s.navn }));
       setSelskaper(liste);
@@ -200,29 +201,45 @@ export default function RegnskapFilm({ adminKey = '', aktiv = false }) {
     } catch (e) { setFeil('feil'); setLaster(false); }
   }, [q]);
 
+  // Ett JSON-kall + status. Sekvensiell henting (som admin-portalen) varmer
+  // token- og kontoplan-cachen på første kall, så det andre kallet gjenbruker
+  // dem — vi unngår den kalde parallell-lasten som feilet i prod.
+  const hentJson = useCallback(async (url) => {
+    const r = await fetch(url, { cache: 'no-store' });
+    let d = null; try { d = await r.json(); } catch (e) { d = null; }
+    return { status: r.status, d };
+  }, []);
+
   const hentData = useCallback(async (id, aar) => {
     if (!id) return;
     setLaster(true); setFeil('');
     try {
       if (id === '__konsern__') {
-        const d = await fetch(`/api/admin/regnskap/konsern?${q}&ar=${aar}&dato=${aar}-12-31`, { cache: 'no-store' }).then((r) => r.json());
+        const { status, d } = await hentJson(`/api/admin/regnskap/konsern?${q}&ar=${aar}&dato=${aar}-12-31`);
         setRes(d && d.resultat && d.resultat.ok ? d.resultat : null);
         setBal(d && d.balanse && d.balanse.ok ? d.balanse : null);
         setKonsernRader(Array.isArray(d?.selskaper) ? d.selskaper : []);
-        if (!(d && (d.resultat?.ok || d.balanse?.ok))) setFeil('feil');
+        if (!(d && (d.resultat?.ok || d.balanse?.ok))) setFeil(status === 401 || status === 403 ? 'auth' : 'feil');
       } else {
-        const [rr, rb] = await Promise.all([
-          fetch(`/api/admin/regnskap/resultat?${q}&selskap=${id}&ar=${aar}`, { cache: 'no-store' }).then((r) => r.json()),
-          fetch(`/api/admin/regnskap/saldobalanse?${q}&selskap=${id}&dato=${aar}-12-31`, { cache: 'no-store' }).then((r) => r.json()),
-        ]);
-        setRes(rr && rr.ok ? rr : null);
-        setBal(rb && rb.ok ? rb : null);
+        // Én transient-retry ved 429/5xx (kald oppstart i prod).
+        const medRetry = async (url) => {
+          let res = await hentJson(url);
+          if (!(res.d && res.d.ok) && (res.status >= 500 || res.status === 429)) {
+            await new Promise((r) => setTimeout(r, 700));
+            res = await hentJson(url);
+          }
+          return res;
+        };
+        const rr = await medRetry(`/api/admin/regnskap/resultat?${q}&selskap=${id}&ar=${aar}`);
+        const rb = await medRetry(`/api/admin/regnskap/saldobalanse?${q}&selskap=${id}&dato=${aar}-12-31`);
+        setRes(rr.d && rr.d.ok ? rr.d : null);
+        setBal(rb.d && rb.d.ok ? rb.d : null);
         setKonsernRader([]);
-        if (!(rr && rr.ok) && !(rb && rb.ok)) setFeil('feil');
+        if (!(rr.d && rr.d.ok) && !(rb.d && rb.d.ok)) setFeil((rr.status === 401 || rr.status === 403) ? 'auth' : 'feil');
       }
     } catch (e) { setFeil('feil'); }
     setLaster(false);
-  }, [q]);
+  }, [q, hentJson]);
 
   useEffect(() => { if (adminKey) hentSelskaper(); }, [adminKey, hentSelskaper]);
   useEffect(() => { if (valgtId) hentData(valgtId, ar); }, [valgtId, ar, hentData]);
@@ -277,6 +294,16 @@ export default function RegnskapFilm({ adminKey = '', aktiv = false }) {
         </div>
       ) : feil === 'ingen' ? (
         <div className="mt-10 text-[13.5px]" style={{ color: DIM }}>Regnskapet vises her når selskapet er koblet til.</div>
+      ) : feil === 'auth' ? (
+        <div className="deck-inn mt-9 max-w-xl rounded-2xl p-6" style={{ '--i': 1.5, boxShadow: `inset 0 0 0 1px ${HAIR}`, background: 'rgba(21,19,15,0.015)' }}>
+          <p className="text-[15px] font-semibold" style={{ color: T.ink }}>Økten er utløpt</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: DIM }}>
+            Regnskapstallene krever en gyldig admin-økt. Åpne decket på nytt fra admin-portalen (eller logg inn igjen), så lastes tallene automatisk.
+          </p>
+          <button onClick={() => { setFeil(''); hentSelskaper(); }} className="mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12.5px] font-semibold transition-colors" style={{ background: T.ink, color: T.offwhite }}>
+            <RefreshCw className="h-3.5 w-3.5" strokeWidth={2} /> Prøv igjen
+          </button>
+        </div>
       ) : (feil === 'feil' && !res && !bal) ? (
         <div className="deck-inn mt-9 max-w-xl rounded-2xl p-6" style={{ '--i': 1.5, boxShadow: `inset 0 0 0 1px ${HAIR}`, background: 'rgba(21,19,15,0.015)' }}>
           <p className="text-[15px] font-semibold" style={{ color: T.ink }}>Kunne ikke hente tallene akkurat nå</p>

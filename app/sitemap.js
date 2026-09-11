@@ -23,6 +23,9 @@ export default async function sitemap() {
     { url: `${base}/utleiemeglere`, lastModified: new Date('2026-09-08T00:00:00.000Z'), changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/priser`, lastModified: new Date('2026-09-01T00:00:00.000Z'), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/bli-utleier`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.9 },
+    // Gratis husleiekontrakt-verktøy (offentlig funnel). Høy søkeintensjon
+    // («husleiekontrakt», «leiekontrakt gratis») — indekserbar med høy prioritet.
+    { url: `${base}/utleier/husleiekontrakt`, lastModified: new Date('2026-09-10T00:00:00.000Z'), changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/bli-leietaker`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/tjenester`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/forvaltning`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.8 },

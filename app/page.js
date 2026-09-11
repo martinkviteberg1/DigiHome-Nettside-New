@@ -1,4 +1,5 @@
 import ForsideV4 from '@/components/forside/v4/ForsideV4';
+import StructuredData from '@/components/dh/StructuredData';
 import { FILM } from '@/components/forside/v4/heroFilm';
 import { ogUrl } from '@/lib/og-url';
 
@@ -57,6 +58,7 @@ export default function ForsidePage() {
         <link rel="preload" as="image" href={FILM.poster} media="(min-width: 640px)" fetchPriority="high" />
       )}
       <ForsideV4 />
+      <StructuredData />
     </>
   );
 }
