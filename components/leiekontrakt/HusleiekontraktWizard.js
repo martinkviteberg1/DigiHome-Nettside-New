@@ -163,6 +163,7 @@ export default function HusleiekontraktWizard() {
       const d = await fetch('/api/leiekontrakt/opprett', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: t, owner }) }).then((r) => r.json());
       if (d && d.ok) {
         try { window.localStorage.removeItem('dh_lk_token'); } catch (e) {}
+        if (d.existing_account) { setFerdig({ existing_account: true, email_masked: d.email_masked, login_url: d.login_url, leadId: d.leadId }); return; }
         if (d.onboarding_url) { window.location.href = d.onboarding_url; return; }
         setFerdig({ email_masked: d.email_masked, leadId: d.leadId, requires_verification: d.requires_verification, pending: d.pending });
       } else {
@@ -425,6 +426,27 @@ function SjekkInnboksen({ ferdig, setFerdig, epost }) {
   };
 
   const visEpost = maskert || epost || 'e-posten din';
+
+  /* E-posten finnes allerede: nøytral «du har allerede en konto»-skjerm.
+     Ingen send-på-nytt/endre-e-post — innloggingslenken går kun til kontoeieren. */
+  if (ferdig.existing_account) {
+    return (
+      <main className="grid min-h-screen place-items-center px-5" style={{ background: T.canvas, color: INK }}>
+        <div className="w-full max-w-md text-center">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-full" style={{ background: 'rgba(212,150,255,0.18)' }}><ShieldCheck className="h-7 w-7" style={{ color: INK }} strokeWidth={1.8} /></span>
+          <h1 className="mt-6 text-[30px]" style={{ ...display }}>Du har allerede en konto</h1>
+          <p className="mt-3 text-[15px] leading-relaxed" style={{ color: DIM }}>
+            Det finnes allerede en DigiHome-konto på <span style={{ color: INK, fontWeight: 600 }}>{ferdig.email_masked || visEpost}</span>. Vi har sendt en innloggingslenke dit — logg inn for å fortsette med kontrakten din.
+          </p>
+          <p className="mt-3 text-[13px] leading-relaxed" style={{ color: SVAK }}>Av sikkerhetsgrunner sender vi lenken kun til kontoens egen e-postadresse.</p>
+          {ferdig.login_url ? (
+            <a href={ferdig.login_url} className="mt-7 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-[14px] font-semibold" style={{ background: INK, color: T.offwhite }} data-testid="lk-eksisterende-knapp">Logg inn <ArrowRight className="h-4 w-4" strokeWidth={1.8} /></a>
+          ) : null}
+          <p className="mt-8 text-[12px]" style={{ color: SVAK }}>Fant du ikke e-posten? Sjekk søppelpost, eller <Link href="/kontakt" className="underline" style={{ color: DIM }}>kontakt oss</Link>.</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="grid min-h-screen place-items-center px-5" style={{ background: T.canvas, color: INK }}>

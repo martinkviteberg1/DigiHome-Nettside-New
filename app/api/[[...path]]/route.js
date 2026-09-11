@@ -690,48 +690,70 @@ async function provisionSelfService(lead, request, extra = {}) {
       signal: AbortSignal.timeout(8000),
     });
     const data = await res.json().catch(() => ({}));
-    const ok200 = res.status === 200 && (data.success || data.status === 'provisioned');
-    // NY FLYT — APPEN EIER E-POSTVERIFISERING (magisk lenke). Appen oppretter
-    // kontoen som UBEKREFTET (email_verified=false) og sender en verifiserings-
-    // lenke til e-posten. Da får vi INGEN umiddelbar handoff_url: nettsiden
-    // viser «Sjekk innboksen» i stedet for å logge kunden rett inn på en
-    // konto med en e-post ingen har bevist at de eier.
-    const kreverVerifisering = ok200 && (data.requires_verification === true || data.email_verified === false);
-    if (kreverVerifisering) {
-      return { ok: true, id: null, account: {
-        status: 'provisioned',
-        requires_verification: true,
-        email_verified: false,
-        verification_sent: data.verification_sent !== false,
-        email_masked: data.email_masked || null,
-        // Opak referanse for «send på nytt»/«endre e-post» uten å eksponere bruker-ID.
-        account_ref: data.account_ref || data.verification_ref || data.owner_user_id || null,
-        resend_available_in: Number(data.resend_available_in) || 0,
-        portal_url: data.portal_url || null,
-        owner_user_id: data.owner_user_id || null,
-        property_id: data.property_id || null,
-        unit_id: data.unit_id || null,
-        agreement_id: data.agreement_id || null,
-        provisioned_at: new Date().toISOString(),
-        ...(data.idempotent === true ? { idempotent: true } : {}),
-      } };
-    }
-    // LEGACY-FLYT (uendret): 200 + handoff_url = konto klar + engangs magic login.
-    if (ok200 && data.handoff_url) {
-      return { ok: true, id: null, account: {
-        onboarding_url: data.handoff_url,
-        portal_url: data.portal_url || null,
-        owner_user_id: data.owner_user_id || null,
-        property_id: data.property_id || null,
-        unit_id: data.unit_id || null,
-        agreement_id: data.agreement_id || null,
-        status: 'provisioned',
-        provisioned_at: new Date().toISOString(),
-        ...(data.idempotent === true ? { idempotent: true } : {}),
-      } };
-    }
-    // 202 pending_manual: IKKE feil — forvalter fullfører manuelt (avtalt kontrakt).
+    const status = String(data.status || '').trim();
+    const now = new Date().toISOString();
+
+    // 202: forvalter fullfører manuelt — enten en feil hos oss, ELLER selvforvaltning
+    // uten gyldig X-API-Key (appen nekter å provisjonere → lagres som lead).
     if (res.status === 202) return { ok: true, id: null, account: null, pendingManual: true };
+
+    if (res.status === 200) {
+      // A) E-POSTEN FINNES ALLEREDE — aldri gjenbruk, aldri handoff/innlogging.
+      // Appen sender innloggingslenken KUN til kontoeieren; vi viser en nøytral
+      // «du har allerede en konto»-skjerm. `login_url` peker på /logg-inn (ikke et token).
+      if (status === 'existing_account') {
+        return { ok: true, id: null, account: {
+          status: 'existing_account', existing_account: true,
+          email_masked: data.email_masked || null,
+          login_url: (typeof data.login_url === 'string' && /^https:\/\//.test(data.login_url)) ? data.login_url : null,
+          provisioned_at: now,
+        } };
+      }
+
+      // Diskriminator (defense-in-depth): redirect KUN på status==='provisioned' —
+      // aldri fordi en onboarding_url tilfeldigvis finnes i bodyen. Legacy-app uten
+      // status behandles som provisjonert når success/handoff_url finnes.
+      const legacyProvisioned = !status && (data.success === true || !!data.handoff_url);
+      if (status === 'provisioned' || legacyProvisioned) {
+        const onboardingUrl = (data.account && data.account.onboarding_url) || data.handoff_url || null;
+        // Provisjonert MED sømløs inngang → appens begrensede «bekreft e-post → lag
+        // passord»-sesjon (verifisering skjer der, verification:"email_code").
+        if (typeof onboardingUrl === 'string' && /^https:\/\//.test(onboardingUrl)) {
+          return { ok: true, id: null, account: {
+            onboarding_url: onboardingUrl, status: 'provisioned',
+            verification: data.verification || null,
+            account_id: (data.account && data.account.account_id) || data.owner_user_id || null,
+            owner_user_id: data.owner_user_id || (data.account && data.account.account_id) || null,
+            expires_at: (data.account && data.account.expires_at) || null,
+            portal_url: data.portal_url || null,
+            property_id: data.property_id || null, unit_id: data.unit_id || null, agreement_id: data.agreement_id || null,
+            provisioned_at: now, ...(data.idempotent === true ? { idempotent: true } : {}),
+          } };
+        }
+        // Provisjonert UTEN lenke (ubekreftet via e-postkode, ingen handoff) → «Sjekk innboksen».
+        return { ok: true, id: null, account: {
+          status: 'provisioned', requires_verification: true, email_verified: false,
+          verification_sent: data.verification_sent !== false,
+          email_masked: data.email_masked || null,
+          account_ref: data.account_ref || data.verification_ref || data.owner_user_id || null,
+          resend_available_in: Number(data.resend_available_in) || 0,
+          portal_url: data.portal_url || null, provisioned_at: now,
+        } };
+      }
+
+      // B) LEGACY ubekreftet-flyt: appen returnerte requires_verification/email_verified
+      // uten en 'provisioned'-status. Vi logger IKKE inn — «Sjekk innboksen».
+      if (data.requires_verification === true || data.email_verified === false) {
+        return { ok: true, id: null, account: {
+          status: 'provisioned', requires_verification: true, email_verified: false,
+          verification_sent: data.verification_sent !== false,
+          email_masked: data.email_masked || null,
+          account_ref: data.account_ref || data.verification_ref || data.owner_user_id || null,
+          resend_available_in: Number(data.resend_available_in) || 0,
+          portal_url: data.portal_url || null, provisioned_at: now,
+        } };
+      }
+    }
     return { ok: false, error: `HTTP ${res.status}: ${JSON.stringify(data).slice(0, 250)}` };
   } catch (e) {
     return { ok: false, error: e && e.name === 'TimeoutError' ? 'Tidsavbrudd (8s)' : ((e && e.message) || String(e)) };
@@ -8337,7 +8359,10 @@ async function handleRoute(request, { params }) {
       if (doc.status === 'sendt' && doc.lead_id) {
         const eksisterende = await db.collection('leads').findOne({ id: doc.lead_id }, { projection: { _id: 0 } });
         const acc = (eksisterende && eksisterende.platform_account) || {};
-        return cors(NextResponse.json({ ok: true, idempotent: true, requires_verification: acc.requires_verification !== false, email_masked: acc.email_masked || null, leadId: doc.lead_id, onboarding_url: acc.onboarding_url || null }, { status: 200 }));
+        if (acc.status === 'existing_account' || acc.existing_account === true) {
+          return cors(NextResponse.json({ ok: true, idempotent: true, existing_account: true, email_masked: acc.email_masked || null, login_url: acc.login_url || null, leadId: doc.lead_id }, { status: 200 }));
+        }
+        return cors(NextResponse.json({ ok: true, idempotent: true, requires_verification: acc.requires_verification !== false, email_masked: acc.email_masked || null, leadId: doc.lead_id, onboarding_url: (acc.status === 'provisioned' ? (acc.onboarding_url || null) : null) }, { status: 200 }));
       }
       if (!rateLimit(`lk-opprett-epost:${u.owner.epost}`, 4, 60000)) {
         return cors(NextResponse.json({ ok: false, error: 'Du kan prøve igjen om litt.' }, { status: 429 }));
@@ -8361,13 +8386,17 @@ async function handleRoute(request, { params }) {
 
       const prov = await provisionSelfService(lead, request, { leaseDraft });
       const acc = prov.account || {};
+      const erEksisterende = acc.status === 'existing_account' || acc.existing_account === true;
       const bridgeMeta = {
-        provisioned: !!prov.ok,
+        provisioned: !!prov.ok && !erEksisterende,
+        status: acc.status || (prov.ok ? 'provisioned' : (prov.pendingManual ? 'pending_manual' : 'failed')),
+        existing_account: erEksisterende,
         requires_verification: acc.requires_verification === true,
         email_verified: acc.email_verified === true,
         email_masked: acc.email_masked || null,
         account_ref: acc.account_ref || acc.owner_user_id || null,
         onboarding_url: acc.onboarding_url || null,
+        login_url: acc.login_url || null,
         pending_manual: !!prov.pendingManual,
         error: prov.ok ? null : (prov.error || null),
         at: naa,
@@ -8376,17 +8405,23 @@ async function handleRoute(request, { params }) {
       await db.collection('leads').updateOne({ id: leadId }, { $set: {
         platform_account: {
           status: acc.status || (prov.ok ? 'provisioned' : 'pending'),
+          existing_account: erEksisterende,
           requires_verification: acc.requires_verification === true,
           email_verified: acc.email_verified === true,
           email_masked: acc.email_masked || null,
           account_ref: acc.account_ref || acc.owner_user_id || null,
           onboarding_url: acc.onboarding_url || null,
+          login_url: acc.login_url || null,
           provisioned_at: naa,
         },
       } });
 
-      // Aldri blindvei: selv om broen skulle feile, er utkast+lead lagret.
-      if (acc.onboarding_url) {
+      // E-posten finnes allerede: aldri handoff — egen «du har allerede en konto»-skjerm.
+      if (erEksisterende) {
+        return cors(NextResponse.json({ ok: true, existing_account: true, email_masked: acc.email_masked || null, login_url: acc.login_url || null, leadId }, { status: 200 }));
+      }
+      // Provisjonert MED sømløs inngang → redirect (kun på status==='provisioned').
+      if (acc.status === 'provisioned' && acc.onboarding_url) {
         return cors(NextResponse.json({ ok: true, onboarding_url: acc.onboarding_url, requires_verification: false, leadId }, { status: 200 }));
       }
       return cors(NextResponse.json({

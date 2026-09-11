@@ -91,3 +91,30 @@ folk inn i en falsk signering. Deploy okt-branchen med denne utvidelsen.
 - Ingen passord sendes fra nettsiden — passordløst via magic-link.
 - Nettsiden er allerede live og fungerer for KONTOOPPRETTELSE i dag; punktene
   over aktiverer bare utkast-forhåndsutfylling + garantert ekte BankID.
+
+## LÅST KONTRAKT (11. sep 2026) — selvbetjent provisjonering + e-postverifisering (B)
+App-agenten fant et account-takeover-hull (`/api/leads` åpent + `_ensure_owner` gjenbrukte konto + returnerte handoff-lenke). Løsning: appen eier verifisering (opsjon B) + tetting. Kontrakten er låst; nettsiden er allerede oppdatert til å følge den.
+
+### Svar-kontrakt (POST /api/bridge/self-service-customer og /api/leads self-service)
+| Situasjon | HTTP | Body (nøkkelfelt) | Nettsiden gjør |
+|---|---|---|---|
+| Ny kunde opprettet | 200 | `{ success:true, self_service:true, status:"provisioned", account:{ account_id, onboarding_url, expires_at }, verification:"email_code" }` | Redirect til `account.onboarding_url` (appens begrensede «bekreft e-post → lag passord»-sesjon) |
+| E-post finnes allerede | 200 | `{ success:true, self_service:true, status:"existing_account", email_masked, login_url }` | Egen «du har allerede en konto»-skjerm; INGEN account/tokens. Appen sender innloggingslenke til kontoeier |
+| Feil hos oss | 202 | `{ success:false, self_service:true, status:"pending_manual", message }` | «Vi tar kontakt» |
+| Self-service uten gyldig X-API-Key | 202 | `status:"pending_manual"` | Lagres som lead + forvalteroppgave; ingen konto, ingen lenke |
+
+Diskriminator = `data.status`: `provisioned`→redirect, `existing_account`→egen skjerm, alt annet→«vi tar kontakt».
+
+### Nettside-side (IMPLEMENTERT, agent-/regresjonstestet i preview)
+- `provisionSelfService()` (route.js): status-styrt mapping; redirect KUN på `provisioned` via `account.onboarding_url` (defense-in-depth — aldri kun fordi en onboarding_url finnes). Legacy (uten `status`, men success/handoff_url) → behandles som provisioned (bakoverkompat i overgangen). `existing_account` → account{status,existing_account,email_masked,login_url}. 202 → pendingManual.
+- `/leiekontrakt/opprett`: existing_account-gren + redirect kun på provisioned + idempotent-gren håndterer existing_account. Lagrer status/existing_account/login_url på `platform_account`.
+- Frontends: `StartV4.js` (ny «Du har allerede en konto»-skjerm; redirect kun på status==='provisioned') og `HusleiekontraktWizard.js` (SjekkInnboksen existing_account-variant).
+- Nettsiden sender ALLTID `X-Bridge-Secret` + `X-API-Key` server-til-server på broen. Generisk lead-forward sender også `X-API-Key` → trygt for appen å låse `/api/leads` bak nøkkel.
+
+### App-side (app-agenten gjør — IKKE nettsidens ansvar)
+- UMIDDELBAR TETTING: eksisterende e-post → aldri gjenbruk/handoff (send `existing_account` + e-post til eier; skjemaets avtale/bolig påføres først når eier logger inn). `/api/leads` provisjonerer kun med gyldig X-API-Key, ellers lead + pending_manual.
+- B: bro-kontoer `email_verified:false`; handoff-sesjon begrenset til bekreft/passord til 6-sifret kode (10 min, maks 5, hashet) er riktig; «send ny kode» + «feil e-post? endre»; velkomst-magic-link beviser eierskap → rett til passord.
+
+### Åpne punkter
+- Ende-til-ende funksjonell verifisering av existing_account/provisioned skjer først når appen deployer kontrakten (eller mot en kontrollert staging-bro). Nettsiden er agent-/regresjonstestet i preview, ikke brukerbekreftet.
+- Rotere GitHub-tokenet som ble delt i chatten tidligere.

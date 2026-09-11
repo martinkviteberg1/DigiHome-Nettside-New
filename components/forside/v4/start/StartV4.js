@@ -268,6 +268,7 @@ export default function StartV4() {
   const [nyEpost, setNyEpost] = useState('');
   const [endreLaster, setEndreLaster] = useState(false);
   const [endreFeil, setEndreFeil] = useState('');
+  const [eksisterendeKonto, setEksisterendeKonto] = useState(null); // {email_masked, login_url} — e-posten finnes allerede
 
   const stegIndex = STEG.findIndex((s) => s.id === steg);
   const gate = gateAv(form.address, form.postalCode, form.city);
@@ -529,15 +530,22 @@ export default function StartV4() {
       const acc = d?.account || d?.data?.account || null;
       const nyLeadId = d?.data?.id || d?.data?.lead?.id || '';
       if (nyLeadId) setLeadId(nyLeadId);
-      /* NY FLYT: appen opprettet kontoen ubekreftet og sendte en magisk
-         verifiseringslenke. Vi logger IKKE inn — vi viser «Sjekk innboksen». */
-      if (acc && acc.requires_verification) {
+      if (acc && (acc.status === 'existing_account' || acc.existing_account)) {
+        /* E-posten finnes allerede: aldri innlogging. Nøytral «du har allerede
+           en konto»-skjerm — appen sender innloggingslenken til kontoeieren. */
+        setEksisterendeKonto({
+          email_masked: acc.email_masked || maskEpost(form.email.trim()),
+          login_url: (typeof acc.login_url === 'string' && /^https:\/\//.test(acc.login_url)) ? acc.login_url : null,
+        });
+      } else if (acc && acc.requires_verification) {
+        /* NY FLYT: appen opprettet kontoen ubekreftet og sendte en magisk
+           verifiseringslenke. Vi logger IKKE inn — vi viser «Sjekk innboksen». */
         setMaaVerifisere(true);
         setEpostMaske(acc.email_masked || maskEpost(form.email.trim()));
-      } else {
-        /* LEGACY: 200 + onboarding_url = engangs magic login → åpne portalen. */
-        const url = acc?.onboarding_url || d?.data?.account?.onboarding_url;
-        if (typeof url === 'string' && /^https:\/\//.test(url)) setAccountUrl(url);
+      } else if (acc && acc.status === 'provisioned' && typeof acc.onboarding_url === 'string' && /^https:\/\//.test(acc.onboarding_url)) {
+        /* Provisjonert med sømløs inngang → redirect KUN på status==='provisioned'
+           (aldri fordi en onboarding_url tilfeldigvis finnes i svaret). */
+        setAccountUrl(acc.onboarding_url);
       }
       setSendt(true);
       try { track('lead_submit', { form: 'utleier', flow: 'utleier-v4', tier: form.service }); } catch (e2) { /* ok */ }
@@ -562,7 +570,8 @@ export default function StartV4() {
   const panelKompakt = underLg && (form.address || pos || sikt) ? <BoligPanel adresse={form.address} postal={form.postalCode} city={form.city} pos={pos} sikt={sikt} modell={form.service} kompakt /> : null;
 
   const fornavn = form.name.trim().split(' ')[0];
-  const visInnboks = sendt && erSelv && maaVerifisere;
+  const visEksisterende = sendt && !!eksisterendeKonto;
+  const visInnboks = sendt && erSelv && maaVerifisere && !visEksisterende;
   const epostForslag = foreslaEpost(endreApen ? nyEpost : form.email);
 
   const innboksInnhold = visInnboks ? (
@@ -646,7 +655,28 @@ export default function StartV4() {
     </section>
   ) : null;
 
-  const ferdigInnhold = sendt && !visInnboks ? (
+  const eksisterendeInnhold = visEksisterende ? (
+    <section key="eksisterende" className="dh-cover-inn" data-testid="start-eksisterende">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: 'rgba(212,150,255,0.20)' }}>
+        <Mail className="h-5 w-5" strokeWidth={1.9} style={{ color: T.ink }} />
+      </span>
+      <h1 className="mt-7 text-[40px] sm:text-[52px]" style={{ ...display, color: T.ink, maxWidth: '15ch' }} data-testid="start-eksisterende-tittel">
+        Du har allerede en konto.
+      </h1>
+      <p className="mt-4 max-w-[46ch] text-[16px] leading-[1.5] text-[#15130F]/65 sm:text-[17px]">
+        Det finnes allerede en DigiHome-konto på <span className="font-medium text-[#15130F]" data-testid="start-eksisterende-epost">{eksisterendeKonto.email_masked}</span>. Vi har sendt en innloggingslenke dit — logg inn for å fortsette med boligen din.
+      </p>
+      <p className="mt-3 text-[14px] leading-[1.5] text-[#15130F]/50">Av sikkerhetsgrunner sender vi lenken kun til kontoens egen e-postadresse.</p>
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+        {eksisterendeKonto.login_url ? (
+          <a href={eksisterendeKonto.login_url} className="inline-flex h-[52px] items-center justify-center gap-2 rounded-[12px] px-7 text-[15px] font-medium" style={{ background: T.ink, color: '#F4F1EA' }} data-testid="start-eksisterende-knapp">Logg inn <ArrowRight className="h-4 w-4" strokeWidth={1.8} /></a>
+        ) : null}
+        <Link href="/" className="inline-flex h-[52px] items-center justify-center rounded-[12px] px-7 text-[15px] font-medium text-[#15130F]" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.14)' }}>Til forsiden</Link>
+      </div>
+    </section>
+  ) : null;
+
+  const ferdigInnhold = sendt && !visInnboks && !visEksisterende ? (
     <section key="ferdig" className="dh-cover-inn" data-testid="start-ferdig">
       <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: erSelv && accountUrl ? T.ink : T.gronn }}>
         {erSelv && accountUrl ? <Loader2 className="h-5 w-5 animate-spin text-[#F4F1EA]" /> : <Check className="h-5 w-5 text-white" strokeWidth={2.4} />}
@@ -681,6 +711,7 @@ export default function StartV4() {
           <div className={`mx-auto w-full lg:mx-0 ${steg === 'tjeneste' && !sendt ? 'max-w-[720px]' : 'max-w-[560px]'}`} style={{ opacity: prefillFerdig ? 1 : 0, transition: `opacity 300ms ${EASE}` }}>
             {ferdigInnhold}
             {innboksInnhold}
+            {eksisterendeInnhold}
             {!sendt && steg === 'adresse' ? (
               <section key="adresse" className="dh-cover-inn" data-testid="start-steg-adresse">
                 <Tittel tittel="Hvor ligger boligen?" tekst="Skriv inn adressen — eller lim inn FINN-annonsen." testId="start-h1" />
