@@ -1225,7 +1225,7 @@ function ScenarioSammenligning({ plan, fakta, drivere, scenarioer, aktivtScenari
   );
 }
 
-export default function BudsjettModell({ plan, api, apiKey = '', readOnly = false, presentasjon = false, onTilbake, onEndret }) {
+export default function BudsjettModell({ plan, api, apiKey = '', readOnly = false, presentasjon = false, innebygd = false, onDrivereEndret, onTilbake, onEndret }) {
   const [navn, setNavn] = useState(plan.navn);
   const [status, setStatus] = useState(plan.status || 'utkast');
   const [investorSynlig, setInvestorSynlig] = useState(Boolean(plan.investorSynlig));
@@ -1239,12 +1239,23 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const [lagretAntallMnd, setLagretAntallMnd] = useState(plan.antallMnd);
   const [lagretFakta, setLagretFakta] = useState(plan.fakta || { eksisterende: [], enheter: [], oppdatertAt: null });
   const [aapne, setAapne] = useState({ portefolje: true, unit: false, salg: false, org: false, grunnleggere: false, faste: false, aarlig: false, skatt: false });
-  const [railAapen, setRailAapen] = useState(true);
+  // INNEBYGD (styrerapport): ren dashboard uten topplinje/omvisning. I redigering
+  // (presentasjon=interaktiv) er forutsetnings-railen tilgjengelig og endringer
+  // speiles tilbake til rapportens øyeblikksbilde via onDrivereEndret.
+  const [railAapen, setRailAapen] = useState(innebygd ? Boolean(presentasjon) : true);
   // Under xl er panelet et bunn-ark som dekker innholdet — start derfor lukket
   // på mobil/nettbrett, så tallene er det første man ser.
   useEffect(() => {
     try { if (typeof window !== 'undefined' && window.innerWidth < 1280) setRailAapen(false); } catch (e) {}
   }, []);
+  // Speil forutsetnings-/horisontendringer tilbake til verten (styrerapporten),
+  // så den fryser dem i øyeblikksbildet ved lagring. Hopper over første render.
+  const speilRef = useRef(false);
+  useEffect(() => {
+    if (!onDrivereEndret) return;
+    if (!speilRef.current) { speilRef.current = true; return; }
+    onDrivereEndret({ drivere, antallMnd });
+  }, [drivere, antallMnd]);
   const [skittent, setSkittent] = useState(false);
   // Navngitte scenariosett: lagrede driversett («Konservativt» osv.) på planen.
   // Å velge et scenario laster driverne inn i editoren — «Lagre» i topplinjen
@@ -1361,7 +1372,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
     }
   }, [apiKey]);
   useEffect(() => {
-    if (tourStartetRef.current || presentasjon) return undefined;
+    if (tourStartetRef.current || presentasjon || innebygd) return undefined;
     if (typeof window === 'undefined' || window.innerWidth < 1024) return undefined;
     try { if (localStorage.getItem('dh-omvisning-budsjettmodell')) return undefined; } catch (e) {}
     // Ref settes først når timeren FYRER — StrictMode-sikkert (se BudsjettEnkel).
@@ -1665,7 +1676,8 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
 
   return (
     <div className="w-full" data-testid="modell-editor">
-      {/* Topplinje — én linje: identitet til venstre, handlinger gruppert til høyre */}
+      {/* Topplinje — én linje: identitet til venstre, handlinger gruppert til høyre (skjules innebygd) */}
+      {!innebygd && (
       <ModellTopplinje
         selskap="digihome" testPrefix="modell"
         navn={navn} onNavn={(v) => { setNavn(v); setSkittent(true); }} readOnly={!kanLagre} presentasjon={presentasjon} onTilbake={onTilbake}
@@ -1779,14 +1791,27 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             {!railAapen && antallEndret > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#6d28d9] ring-2 ring-[#f7f6f3]" />}
           </button>}
       </ModellTopplinje>
+      )}
 
       {/* Konsern: plattform + felles + konsolidert — egen cockpit, samme plan */}
       {segment === 'konsern' ? (
         <KonsernModell plan={plan} drivere={drivere} fakta={fakta} antallMnd={antallMnd} startYm={plan.startYm} api={api} readOnly={readOnly} onLagret={onEndret} />
       ) : null}
 
+      {/* Innebygd + interaktiv (styrerapport-redigering): egen forutsetnings-bryter */}
+      {innebygd && interaktiv && segment !== 'konsern' && (
+        <div className="mb-3 flex items-center justify-end">
+          <button type="button" onClick={() => setRailAapen((v) => !v)} data-testid="innebygd-rail-toggle"
+            className={`relative inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-semibold transition-colors ${railAapen ? 'bg-[#1c1917] text-white' : 'bg-white text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:text-[#1c1917]'}`}>
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            {railAapen ? 'Skjul forutsetninger' : 'Juster forutsetninger'}
+            {!railAapen && antallEndret > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#6d28d9] ring-2 ring-white" />}
+          </button>
+        </div>
+      )}
+
       {/* Cockpit (forvaltning) */}
-      <div className={`mt-3 flex flex-col gap-3 xl:flex-row xl:items-start ${segment === 'konsern' ? 'hidden' : ''}`}>
+      <div className={`${innebygd ? '' : 'mt-3'} flex flex-col gap-3 xl:flex-row xl:items-start ${segment === 'konsern' ? 'hidden' : ''}`}>
         {/* ── Venstre: forutsetninger — investorens mentale kjede (vis/skjul i topp-raden) ── */}
         {railAapen && (
         <>

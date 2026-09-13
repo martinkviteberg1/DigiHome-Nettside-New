@@ -17,6 +17,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   SlidersHorizontal, X, RefreshCw, Loader2, TrendingUp, Scale, Megaphone,
   Users, Building2, CalendarDays, Wallet, ChevronUp, ChevronDown, Trash2, PenLine,
@@ -24,6 +25,34 @@ import {
 import {
   beregnInvestorModell, beregnTech, rensModellDrivere, STANDARD_DRIVERE,
 } from '@/lib/budsjett-modell';
+
+// Den EKTE budsjettmodulen (samme komponent som i admin → Budsjett), lastet lat
+// så delingslenker uten budsjettkapittel ikke betaler for den. Rendres
+// «innebygd» (uten topplinje/rail/omvisning) og skrivebeskyttet — forutsetninger
+// endres via rapportens egen «Innstillinger»-skuff og lagres i øyeblikksbildet.
+const BudsjettModell = dynamic(() => import('./BudsjettModell'), {
+  ssr: false,
+  loading: () => <div className="e-meta py-10 text-center">Laster budsjettmodellen …</div>,
+});
+const noopApi = async () => ({ ok: true });
+
+// Bygger et plan-objekt (slik BudsjettModell forventer) fra rapportens øyeblikksbilde.
+function planFraBlokk(blokk) {
+  return {
+    id: blokk.planId || blokk.id,
+    navn: blokk.planNavn || blokk.tittel || 'Budsjett',
+    selskap: blokk.selskap === 'tech' ? 'tech' : 'digihome',
+    type: blokk.planType === 'tech' ? 'tech' : 'modell',
+    status: 'utkast',
+    investorSynlig: false,
+    startYm: blokk.startYm,
+    antallMnd: Number(blokk.antallMnd) || 36,
+    fakta: blokk.fakta || { eksisterende: [], enheter: [], oppdatertAt: null },
+    drivere: blokk.drivere || {},
+    tech: blokk.tech || null,
+    scenarioer: [],
+  };
+}
 
 // Redaksjonell palett — identisk med StyrerapportVisning
 const C = { ink: '#15130F', ink2: '#3A3733', ink3: '#6F6A60', line: '#E4DFD6', line2: '#D6CFC4', canvas: '#F3F1EC', paper: '#FDFCFB', paper2: '#EFEBE3', accent: '#7C3AED', pos: '#1B7A46', neg: '#C0362C', amber: '#9a5b00' };
@@ -390,7 +419,23 @@ function InnstillingerSkuff({ blokk, edit, mm, onLukk, onOppdater, oppdaterer })
 export default function StyrerapportBudsjett({ blokk, edit = null, folio = '', visning = 'admin', idx = 0, antallBlokker = 1 }) {
   const [aapenInnst, setAapenInnst] = useState(false);
   const [oppdaterer, setOppdaterer] = useState(false);
+  // Remount-signal: bumpes KUN ved ekstern oppfriskning («hent fra modul») eller
+  // når et annet budsjett velges — ikke ved slider-endringer (da eier modulen sin
+  // egen state og skal ikke remountes).
+  const [reseed, setReseed] = useState(0);
   const mm = useMemo(() => brukModell(blokk), [blokk]);
+  // Modell-planer rendres med den EKTE budsjettmodulen (identisk med admin);
+  // Tech-planer beholder den redaksjonelle fallback-visningen.
+  const erModellPlan = mm.ok && !mm.tech;
+  const nokkel = `${blokk.planId || blokk.id}::${blokk.startYm || ''}::${reseed}`;
+  // I redigering er modulen interaktiv (presentasjon): sliderne regner om live, og
+  // endringene speiles tilbake i rapportens øyeblikksbilde. I les/delt er den låst.
+  const budsjettProps = edit
+    ? { presentasjon: true, onDrivereEndret: ({ drivere, antallMnd }) => edit.oppdaterBlokk(blokk.id, { drivere, antallMnd }) }
+    : { readOnly: true };
+  const kropp = mm.ok ? (erModellPlan
+    ? <div className="rounded-[18px] p-3 sm:p-4" style={{ background: '#f7f6f3' }}><BudsjettModell key={nokkel} plan={planFraBlokk(blokk)} api={noopApi} apiKey={(edit && edit.apiKey) || ''} innebygd {...budsjettProps} /></div>
+    : <BudsjettKropp mm={mm} blokk={blokk} />) : null;
 
   const kicker = (blokk.kicker || '').trim() || 'Budsjett';
   const tittel = (blokk.tittel || '').trim() || (blokk.planNavn || 'Budsjett');
@@ -398,7 +443,7 @@ export default function StyrerapportBudsjett({ blokk, edit = null, folio = '', v
   const oppdaterFraModul = async () => {
     if (!edit || !edit.oppdaterBudsjett || !blokk.planId) return;
     setOppdaterer(true);
-    try { await edit.oppdaterBudsjett(blokk.id); } finally { setOppdaterer(false); }
+    try { await edit.oppdaterBudsjett(blokk.id); setReseed((r) => r + 1); } finally { setOppdaterer(false); }
   };
 
   // Chapter head
@@ -413,10 +458,11 @@ export default function StyrerapportBudsjett({ blokk, edit = null, folio = '', v
         <h2 className="e-h2">{tittel}</h2>
         {mm.ok && (
           <p className="e-lead mt-4 max-w-[680px]">
-            {blokk.planType === 'tech' ? 'Plattformbudsjettet' : 'Vekstbudsjettet'} for perioden {stor(mndLang(mm.startYm))}–{mndLang(ymPluss(mm.startYm, mm.N - 1))} · {mm.N} mnd. Modellert fra fryste forutsetninger — trykk «Innstillinger» for alle faktorene.
+            {blokk.planType === 'tech' ? 'Plattformbudsjettet' : 'Vekstbudsjettet'} for perioden {stor(mndLang(mm.startYm))}–{mndLang(ymPluss(mm.startYm, mm.N - 1))} · {mm.N} mnd. {erModellPlan ? 'Full modell — samme motor og forutsetninger som budsjettmodulen.' : 'Modellert fra fryste forutsetninger — trykk «Innstillinger» for alle faktorene.'}
           </p>
         )}
       </div>
+      {!erModellPlan && (
       <button
         type="button"
         onClick={() => setAapenInnst(true)}
@@ -426,6 +472,7 @@ export default function StyrerapportBudsjett({ blokk, edit = null, folio = '', v
       >
         <SlidersHorizontal className="h-4 w-4" style={{ color: C.accent }} /> Innstillinger
       </button>
+      )}
     </div>
   );
 
@@ -457,10 +504,16 @@ export default function StyrerapportBudsjett({ blokk, edit = null, folio = '', v
           {/* Live forhåndsvisning */}
           <div className="rounded-[14px] border p-4 sm:p-5" style={{ borderColor: C.line, background: C.canvas }}>
             <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="e-label">Forhåndsvisning</span>
-              <button type="button" onClick={() => setAapenInnst(true)} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-3 text-[12px] font-semibold" style={{ borderColor: C.line2, background: C.paper, color: C.ink2 }}><SlidersHorizontal className="h-3.5 w-3.5" style={{ color: C.accent }} /> Innstillinger</button>
+              <span className="e-label">{erModellPlan ? 'Forhåndsvisning · juster forutsetningene direkte i panelet' : 'Forhåndsvisning'}</span>
+              {erModellPlan ? (
+                blokk.planId ? (
+                  <button type="button" onClick={oppdaterFraModul} disabled={oppdaterer} title="Hent de nyeste tallene fra budsjettmodulen (overskriver justeringer gjort her)" className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-3 text-[12px] font-semibold disabled:opacity-50" style={{ borderColor: C.line2, background: C.paper, color: C.ink2 }}>{oppdaterer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" style={{ color: C.accent }} />} Oppdater fra modul</button>
+                ) : null
+              ) : (
+                <button type="button" onClick={() => setAapenInnst(true)} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-3 text-[12px] font-semibold" style={{ borderColor: C.line2, background: C.paper, color: C.ink2 }}><SlidersHorizontal className="h-3.5 w-3.5" style={{ color: C.accent }} /> Innstillinger</button>
+              )}
             </div>
-            {mm.ok ? <BudsjettKropp mm={mm} blokk={blokk} /> : <p className="e-meta">Kunne ikke beregne budsjettet.{mm.feil ? ` (${mm.feil})` : ''}</p>}
+            {mm.ok ? kropp : <p className="e-meta">Kunne ikke beregne budsjettet.{mm.feil ? ` (${mm.feil})` : ''}</p>}
           </div>
         </div>
         {aapenInnst && <InnstillingerSkuff blokk={blokk} edit={edit} mm={mm} onLukk={() => setAapenInnst(false)} onOppdater={oppdaterFraModul} oppdaterer={oppdaterer} />}
@@ -472,7 +525,7 @@ export default function StyrerapportBudsjett({ blokk, edit = null, folio = '', v
   return (
     <section id={`sr-budsjett-${blokk.id}`} style={{ scrollMarginTop: 116, paddingTop: 'clamp(60px,7.4vw,124px)' }}>
       {hode}
-      {mm.ok ? <BudsjettKropp mm={mm} blokk={blokk} /> : (
+      {mm.ok ? kropp : (
         <div className="rounded-[14px] border border-dashed p-8" style={{ borderColor: C.line2 }}><p className="e-meta">Budsjettet er midlertidig utilgjengelig.</p></div>
       )}
       {aapenInnst && <InnstillingerSkuff blokk={blokk} edit={null} mm={mm} onLukk={() => setAapenInnst(false)} />}

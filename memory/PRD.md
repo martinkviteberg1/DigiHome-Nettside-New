@@ -1838,3 +1838,11 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   - Beholdt: Per planår-tabell. Editor-forhåndsvisning (kompakt) fikk mini enhetsøkonomi (bidrag/payback/LTV·CAC).
   - Tech-plan: guardet (viser KPI+graf+år, ikke modell-spesifikke paneler).
 - VERIFISERT: Kompilerer rent. Skjermbilde-verifisert på offentlig delingslenke (desktop 1440 + mobil 390 uten innholds-overflow) via midlertidig QA-rapport med ekte budsjett «Base 2026–2029 · Digihome AS» (36 mnd) — QA-rapport + lenke slettet etterpå, ekte rapport/lenke urørt. Kun frontend-endring (ingen backend-logikk rørt).
+
+### Styrerapport · Budsjett = den EKTE modulen, med justerbare forutsetninger (juni 2025)
+- MÅL (bruker): «ha samme visning som budsjettmodulen i admin» + «innstillingene kan justeres også».
+- `components/admin/StyrerapportBudsjett.js`: modell-planer rendres nå med den EKTE `BudsjettModell`-komponenten (lat lastet, `ssr:false`) i stedet for en imitasjon — identisk «Veien til break-even»-graf, KPI-bento, full «Resultatoppstilling» (Teleskop/Måned/Kvartal/År), scenarioer, unit economics og sensitivitet. Tech-planer beholder redaksjonell fallback (BudsjettKropp).
+- `components/admin/BudsjettModell.js`: ny prop `innebygd` (skjuler topplinje/omvisning, cockpit uten toppmarg) + `onDrivereEndret`. Ny «Juster/Skjul forutsetninger»-bryter når innebygd+interaktiv.
+- REDIGERING (edit≠null): modulen kjøres `presentasjon` (interaktiv, ingen plan-persistens) med full forutsetnings-rail. Slider-/horisontendringer speiles via `onDrivereEndret` → `edit.oppdaterBlokk(drivere, antallMnd)`, fryses i rapportens øyeblikksbilde ved «Ferdig». Stabil remount-nøkkel (planId+startYm+reseed) hindrer remount under redigering; «Oppdater fra modul» bumper reseed for å hente ferske plantall.
+- LES/DELT (edit=null): modulen er `readOnly` (rail lukket, ingen bryter) — styret kan ikke endre.
+- VERIFISERT ende-til-ende: endret «Nye enheter/mnd» 2→6 i redigering → alt regnet om (Resultat, Break-even Jun 2027, Kapitalbehov 219 211) → «Ferdig» → GET rapport bekreftet `drivere.nyePerMnd=6` i DB. Desktop + mobil uten side-overflow (bred måneds­tabell scroller internt). Ingen runtime-/loop-feil. Kun frontend. QA-rapporter opprettet/slettet; ekte rapport + «Styremøte»-lenke urørt.
