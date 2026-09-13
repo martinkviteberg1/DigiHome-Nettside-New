@@ -460,7 +460,7 @@ export default function StyrerapportBudsjett({ blokk, edit = null, folio = '', v
               <span className="e-label">Forhåndsvisning</span>
               <button type="button" onClick={() => setAapenInnst(true)} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-3 text-[12px] font-semibold" style={{ borderColor: C.line2, background: C.paper, color: C.ink2 }}><SlidersHorizontal className="h-3.5 w-3.5" style={{ color: C.accent }} /> Innstillinger</button>
             </div>
-            {mm.ok ? <BudsjettKropp mm={mm} blokk={blokk} kompakt /> : <p className="e-meta">Kunne ikke beregne budsjettet.{mm.feil ? ` (${mm.feil})` : ''}</p>}
+            {mm.ok ? <BudsjettKropp mm={mm} blokk={blokk} /> : <p className="e-meta">Kunne ikke beregne budsjettet.{mm.feil ? ` (${mm.feil})` : ''}</p>}
           </div>
         </div>
         {aapenInnst && <InnstillingerSkuff blokk={blokk} edit={edit} mm={mm} onLukk={() => setAapenInnst(false)} onOppdater={oppdaterFraModul} oppdaterer={oppdaterer} />}
