@@ -21,6 +21,7 @@ import { COMMON_STEPS } from '@/lib/landing';
 import { StickyMobileCta, ExitIntent } from '@/components/lp/lp-shared';
 import LeadFormPro from '@/components/lp/LeadFormPro';
 import RentCalculator from '@/components/lp/RentCalculator';
+import InntektHistorie from '@/components/lp/InntektHistorie';
 import { getVariant } from '@/lib/ab';
 import { T, display } from '@/components/forside/v4/motion';
 import TillitStripe from '@/components/forside/v4/TillitStripe';
@@ -224,6 +225,9 @@ export default function CampaignLanding({ cfg }) {
             </div>
           )}
         </Avsloring>
+
+        {/* ── Inntektsmodell: slik bygges +30 % opp (kun inntekt-siden) ── */}
+        {cfg.inntektModell ? <InntektHistorie modell={cfg.inntektModell} onCta={scrollToForm} /> : null}
 
         {/* ── Slik fungerer det ── */}
         <StegSeksjon tittel={['Slik fungerer', 'det.']} under="Tre steg fra første kontakt til første husleie." steg={STEG} person={null} testid="lp" />

@@ -1846,3 +1846,12 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - REDIGERING (edit≠null): modulen kjøres `presentasjon` (interaktiv, ingen plan-persistens) med full forutsetnings-rail. Slider-/horisontendringer speiles via `onDrivereEndret` → `edit.oppdaterBlokk(drivere, antallMnd)`, fryses i rapportens øyeblikksbilde ved «Ferdig». Stabil remount-nøkkel (planId+startYm+reseed) hindrer remount under redigering; «Oppdater fra modul» bumper reseed for å hente ferske plantall.
 - LES/DELT (edit=null): modulen er `readOnly` (rail lukket, ingen bryter) — styret kan ikke endre.
 - VERIFISERT ende-til-ende: endret «Nye enheter/mnd» 2→6 i redigering → alt regnet om (Resultat, Break-even Jun 2027, Kapitalbehov 219 211) → «Ferdig» → GET rapport bekreftet `drivere.nyePerMnd=6` i DB. Desktop + mobil uten side-overflow (bred måneds­tabell scroller internt). Ingen runtime-/loop-feil. Kun frontend. QA-rapporter opprettet/slettet; ekte rapport + «Styremøte»-lenke urørt.
+
+### Kampanjeside /lp/inntekt · verdensklasse-løft (juni 2025)
+- MÅL (bruker): «forbedre alt med /lp/inntekt» — «tenk verdensklasse selv på ALT». Full autonomi gitt.
+- NY komponent `components/lp/InntektHistorie.js`: inntekt-spesifikk «proof»-seksjon i V4-drakt (hårlinjer, redaksjonell typografi, kun opacity/transform, avsløres i syne). Tre lag:
+  1. Inntektstrappen — stigende søyler: Vanlig utleie 19 000 → Dynamisk prising 21 600 (+2 600) → Hybrid 10+2 24 700 (+3 100), siste med ink→lilla-gradient. = +30 %.
+  2. Årsgraf — 12 måneder: 10 mnd langtid (21 600) + 2 høysesongmåneder korttid (40 200, jun/jul, lilla), snittlinje 24 700, ≈ 296 400 kr/år.
+  3. Regnestykke — 2-roms Sandviken: 19 000 → 24 700 kr/mnd, grønn payoff «+68 400 kr mer i året», egen CTA til skjemaet.
+- `lib/landing.js`: la til `inntektModell`-config KUN på `inntekt`-oppføringen (konsistente tall). `components/lp/CampaignLanding.js`: importerer + rendrer `<InntektHistorie>` rett etter kalkulator-seksjonen, gated på `cfg.inntektModell` → alle andre kampanjesider (forvaltning, gratis-vurdering, 10pluss2, arvet-bolig, airbnb-langtid, sammenlign, studio) er UBERØRT. Skjema/sporing/A-B/kalkulator uendret.
+- VERIFISERT: Kompilerer rent (alle /lp/inntekt GET 200, ingen feil). Skjermbilde-verifisert desktop 1920 + mobil 390 (OVERFLOW [] — ingen horisontal overflow). Kun frontend + config-data (ingen API/backend-logikk rørt). Preview — ikke bruker-bekreftet ennå.
