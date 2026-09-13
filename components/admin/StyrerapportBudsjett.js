@@ -44,6 +44,7 @@ const krKort = (n) => {
 const antall = (n) => (n == null || isNaN(n) ? '—' : grp(nf0.format(Math.round(Number(n)))));
 const pct = (n) => (n == null || isNaN(n) ? '—' : `${grp(nf1.format(Number(n)))}${NBSP}%`);
 const kma = (s) => String(s).replace('.', ',');
+const sumSerie = (a) => (Array.isArray(a) ? a.reduce((s, x) => s + (Number(x) || 0), 0) : 0);
 
 const MND_KORT = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
 const ymDeler = (ym) => { const [y, m] = String(ym || '').split('-').map(Number); return { y, m }; };
@@ -154,9 +155,9 @@ function BudsjettGraf({ mm }) {
   const N = mm.N;
   const inn = mm.inntekt; const kost = mm.kostSum;
   if (!N || N < 2 || !inn.length) return null;
-  const W = 640, Ht = 190, padX = 8, padT = 20, padB = 26;
+  const W = 660, Ht = 210, padX = 8, padT = 20, padB = 26, padR = 54;
   const maks = Math.max(1, ...inn, ...kost);
-  const x = (i) => padX + (i / (N - 1)) * (W - 2 * padX);
+  const x = (i) => padX + (i / (N - 1)) * (W - padX - padR);
   const y = (v) => padT + (1 - v / maks) * (Ht - padT - padB);
   const innPts = inn.map((v, i) => [x(i), y(v)]);
   const kostPts = kost.map((v, i) => [x(i), y(v)]);
@@ -164,33 +165,108 @@ function BudsjettGraf({ mm }) {
   const kostPath = smoothPath(kostPts);
   const area = `${innPath} L ${x(N - 1).toFixed(1)} ${Ht - padB} L ${x(0).toFixed(1)} ${Ht - padB} Z`;
   const be = mm.breakEvenIdx;
+  const kapIdx = mm.kapIdx;
   const merker = [0, Math.floor((N - 1) / 2), N - 1];
+  const ruter = [1, 0.66, 0.33];
   return (
     <div>
       <svg viewBox={`0 0 ${W} ${Ht}`} className="block h-auto w-full" role="img" aria-label="Budsjett: inntekt mot kostnad">
-        <defs><linearGradient id="dh-bud-grad" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={C.accent} stopOpacity="0.14" /><stop offset="100%" stopColor={C.accent} stopOpacity="0" /></linearGradient></defs>
-        {[0.5, 1].map((f) => <line key={f} x1={padX} x2={W - padX} y1={y(maks * f)} y2={y(maks * f)} stroke={C.line} strokeWidth="1" />)}
+        <defs><linearGradient id="dh-bud-grad" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={C.accent} stopOpacity="0.16" /><stop offset="100%" stopColor={C.accent} stopOpacity="0" /></linearGradient></defs>
+        {ruter.map((f) => (
+          <g key={f}>
+            <line x1={padX} x2={W - padR} y1={y(maks * f)} y2={y(maks * f)} stroke={C.line} strokeWidth="1" />
+            <text x={W - padR + 6} y={y(maks * f) + 3.5} fontSize="10.5" fill="#b5b0a8">{krKort(maks * f)}</text>
+          </g>
+        ))}
         <path d={area} fill="url(#dh-bud-grad)" />
-        <path d={kostPath} fill="none" stroke={C.neg} strokeWidth="1.6" strokeDasharray="5 4" strokeLinecap="round" opacity="0.75" vectorEffect="non-scaling-stroke" />
-        <path d={innPath} fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <path d={kostPath} fill="none" stroke={C.neg} strokeWidth="1.6" strokeDasharray="5 4" strokeLinecap="round" opacity="0.8" vectorEffect="non-scaling-stroke" />
+        <path d={innPath} fill="none" stroke={C.accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        {kapIdx != null && kapIdx > 0 && kapIdx < N && (
+          <line x1={x(kapIdx)} x2={x(kapIdx)} y1={padT} y2={Ht - padB} stroke={C.amber} strokeWidth="1" strokeDasharray="2 4" opacity="0.55" />
+        )}
         {be != null && be > 0 && be < N && (
           <g>
             <line x1={x(be)} x2={x(be)} y1={padT} y2={Ht - padB} stroke={C.ink} strokeWidth="1" strokeDasharray="2 4" opacity="0.4" />
             <circle cx={x(be)} cy={y(inn[be])} r="4" fill={C.paper} stroke={C.accent} strokeWidth="2" />
           </g>
         )}
-        <circle cx={x(N - 1)} cy={y(inn[N - 1])} r="3.5" fill={C.accent} stroke={C.paper} strokeWidth="2" />
+        <circle cx={x(N - 1)} cy={y(inn[N - 1])} r="3.6" fill={C.accent} stroke={C.paper} strokeWidth="2" />
+        <circle cx={x(N - 1)} cy={y(kost[N - 1])} r="3" fill={C.neg} stroke={C.paper} strokeWidth="2" />
       </svg>
       <div className="mt-2.5 flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold" style={{ color: C.ink3 }}>
           <span className="inline-flex items-center gap-1.5"><span className="h-[2.5px] w-4 rounded" style={{ background: C.accent }} /> Inntekt</span>
           <span className="inline-flex items-center gap-1.5"><span className="h-[2px] w-4 rounded" style={{ background: `repeating-linear-gradient(90deg, ${C.neg} 0 4px, transparent 4px 7px)` }} /> Kostnad</span>
-          {be != null && be > 0 && <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full ring-2" style={{ background: C.paper, boxShadow: `inset 0 0 0 2px ${C.accent}` }} /> Break-even</span>}
+          {be != null && be > 0 && <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: C.paper, boxShadow: `inset 0 0 0 2px ${C.accent}` }} /> Break-even</span>}
+          {kapIdx != null && kapIdx > 0 && <span className="inline-flex items-center gap-1.5"><span className="h-[2px] w-4 rounded" style={{ background: `repeating-linear-gradient(90deg, ${C.amber} 0 3px, transparent 3px 6px)` }} /> Kapitalbunn</span>}
         </div>
-        <div className="hidden gap-6 text-[11px] tabular-nums sm:flex" style={{ color: C.ink3 }}>
+        <div className="hidden gap-6 text-[11px] tabular-nums sm:flex" style={{ color: C.ink3, paddingRight: '54px' }}>
           {merker.map((i) => <span key={i}>{mndKort(ymPluss(mm.startYm, i))}</span>)}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Kontantkurve: akkumulert resultat (likviditet) med nullinje + kapitalbunn ─
+function CashGraf({ mm }) {
+  const s = mm.m && mm.m.akkumulert;
+  if (!Array.isArray(s) || s.length < 2) return null;
+  const N = s.length;
+  const W = 660, Ht = 180, padX = 8, padT = 18, padB = 24, padR = 54;
+  const maxV = Math.max(0, ...s); const minV = Math.min(0, ...s);
+  const range = (maxV - minV) || 1;
+  const x = (i) => padX + (i / (N - 1)) * (W - padX - padR);
+  const y = (v) => padT + (1 - (v - minV) / range) * (Ht - padT - padB);
+  const pts = s.map((v, i) => [x(i), y(v)]);
+  const path = smoothPath(pts);
+  const y0 = y(0);
+  const area = `${path} L ${x(N - 1).toFixed(1)} ${y0.toFixed(1)} L ${x(0).toFixed(1)} ${y0.toFixed(1)} Z`;
+  const kapIdx = mm.kapIdx;
+  const lav = minV < 0 ? minV : null;
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${Ht}`} className="block h-auto w-full" role="img" aria-label="Kontantbeholdning gjennom perioden">
+        <defs><linearGradient id="dh-cash-grad" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={C.accent} stopOpacity="0.14" /><stop offset="100%" stopColor={C.accent} stopOpacity="0" /></linearGradient></defs>
+        <line x1={padX} x2={W - padR} y1={y0} y2={y0} stroke={C.line2} strokeWidth="1" />
+        <text x={W - padR + 6} y={y0 + 3.5} fontSize="10.5" fill="#b5b0a8">0</text>
+        <path d={area} fill="url(#dh-cash-grad)" />
+        <path d={path} fill="none" stroke={C.accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        {kapIdx != null && kapIdx >= 0 && kapIdx < N && lav != null && (
+          <g>
+            <circle cx={x(kapIdx)} cy={y(lav)} r="4" fill={C.paper} stroke={C.amber} strokeWidth="2" />
+            <text x={Math.min(W - padR - 4, x(kapIdx) + 8)} y={y(lav) + 14} fontSize="11" fontWeight="700" fill={C.amber}>−{krKort(-lav)}</text>
+          </g>
+        )}
+        <circle cx={x(N - 1)} cy={y(s[N - 1])} r="3.6" fill={s[N - 1] >= 0 ? C.pos : C.neg} stroke={C.paper} strokeWidth="2" />
+      </svg>
+    </div>
+  );
+}
+
+// ── Sammensetning: én rad med etikett, kr, andel og fargebar ─────────────────
+function KomposRad({ navn, v, pctAv, farge }) {
+  return (
+    <div className="py-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[13px]" style={{ color: C.ink2 }}>{navn}</span>
+        <span className="text-[13px] font-semibold tabular-nums" style={{ color: C.ink }}>{kr(v)} <span className="ml-0.5 text-[11.5px] font-normal" style={{ color: C.ink3 }}>{pct(pctAv)}</span></span>
+      </div>
+      <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full" style={{ background: C.paper2 }}>
+        <div className="h-full rounded-full" style={{ width: `${Math.max(2, Math.min(100, pctAv))}%`, background: farge }} />
+      </div>
+    </div>
+  );
+}
+
+// ── Liten nøkkeltall-celle for enhetsøkonomi-panelet ─────────────────────────
+function UeCelle({ label, verdi, sub, tone }) {
+  const col = tone === 'pos' ? C.pos : tone === 'neg' ? C.neg : C.ink;
+  return (
+    <div className="rounded-[12px] border bg-white p-3.5" style={{ borderColor: C.line }}>
+      <p className="text-[11px] leading-tight" style={{ color: C.ink3 }}>{label}</p>
+      <p className="mt-1.5 font-bold tabular-nums" style={{ ...H, fontSize: '19px', lineHeight: 1, letterSpacing: '-0.02em', color: col }}>{verdi}</p>
+      {sub && <p className="mt-1 text-[11px]" style={{ color: C.ink3 }}>{sub}</p>}
     </div>
   );
 }
@@ -407,19 +483,55 @@ export default function StyrerapportBudsjett({ blokk, edit = null, folio = '', v
 // ── Selve tallene (KPI-band + graf + årstabell) — delt av visning og editor ──
 function BudsjettKropp({ mm, blokk, kompakt = false }) {
   const vis = blokk.vis || {};
+  const N = mm.N;
   const beMnd = (mm.breakEvenIdx != null && mm.breakEvenIdx >= 0) ? mndLang(ymPluss(mm.startYm, mm.breakEvenIdx)) : null;
+  const mrrExit = mm.inntekt && mm.inntekt.length ? mm.inntekt[N - 1] : null;
+  const margin = mm.sumInntekt > 0 ? (mm.sumResultat / mm.sumInntekt) * 100 : null;
+  const erModell = !mm.tech;
+  const sm = (mm.m && mm.m.sammendrag) || {};
+
+  // Kostnadssammensetning (kun modell — Tech har egen kost-struktur)
+  const k = (mm.m && mm.m.kost) || {};
+  const kostRader = erModell ? [
+    { navn: 'Lønn & bemanning', v: sumSerie(k.bemanning) + sumSerie(k.grunnleggere), farge: C.ink },
+    { navn: 'System & drift', v: sumSerie(k.system), farge: C.accent },
+    { navn: 'Marked & salg', v: sumSerie(k.mfFast) + sumSerie(k.provisjon) + sumSerie(k.partner), farge: '#B08900' },
+    { navn: 'Administrasjon', v: sumSerie(k.admin), farge: C.ink3 },
+    { navn: 'Andre kostnader', v: sumSerie(k.andre), farge: C.line2 },
+  ].filter((r) => r.v > 0).sort((a, b) => b.v - a.v) : [];
+  const kostTot = kostRader.reduce((s, r) => s + r.v, 0) || 1;
+
+  // Inntektskilder
+  const inntRader = erModell ? [
+    { navn: 'Kontraktsfestet honorar', v: sm.sumEksisterende || 0, farge: C.pos },
+    { navn: 'Gjenutleie', v: sm.sumReutleie || 0, farge: C.accent },
+    { navn: 'Ny vekst (modellert)', v: sm.sumModellert || 0, farge: C.ink },
+  ].filter((r) => r.v > 0).sort((a, b) => b.v - a.v) : [];
+  const inntTot = inntRader.reduce((s, r) => s + r.v, 0) || 1;
+
+  // Enhetsøkonomi
+  const ue = mm.cac;
+  const mChurn = (sm.mndChurnPct || 0) / 100;
+  const levetidMnd = mChurn > 0 ? 1 / mChurn : null;
+  const bidragMarginPct = ue && ue.bruttoHonorarNy > 0 ? (ue.bidrag / ue.bruttoHonorarNy) * 100 : null;
+  const ltv = (ue && ue.bidrag != null && levetidMnd) ? ue.bidrag * levetidMnd : null;
+  const ltvCac = (ltv != null && ue && ue.fullCac > 0) ? ltv / ue.fullCac : null;
+
   return (
     <>
-      <div className={`grid gap-3 ${kompakt ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2 md:grid-cols-5'}`}>
-        <KpiFlis label="ARR ved slutt" verdi={kr(mm.arrExit)} sub="run-rate exit" />
-        <KpiFlis label="Resultat i perioden" verdi={kr(mm.sumResultat)} sub={mm.sumInntekt ? `inntekt ${krKort(mm.sumInntekt)}` : ''} tone={(mm.sumResultat || 0) >= 0 ? 'pos' : 'neg'} />
+      {/* KPI-band */}
+      <div className={`grid gap-3 ${kompakt ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2 md:grid-cols-3'}`}>
+        <KpiFlis label="ARR ved slutt" verdi={kr(mm.arrExit)} sub={mrrExit != null ? `${kr(mrrExit)} / mnd exit` : 'run-rate exit'} />
+        <KpiFlis label="Resultat i perioden" verdi={kr(mm.sumResultat)} sub={mm.sumInntekt ? `av ${krKort(mm.sumInntekt)} inntekt` : ''} tone={(mm.sumResultat || 0) >= 0 ? 'pos' : 'neg'} />
+        {!kompakt && <KpiFlis label="Driftsmargin" verdi={margin != null ? pct(margin) : '—'} sub="resultat / inntekt" tone={(margin || 0) >= 0 ? 'pos' : 'neg'} />}
         <KpiFlis label="Break-even" verdi={beMnd ? stor(mndKort(ymPluss(mm.startYm, mm.breakEvenIdx))) : (mm.breakEvenIdx === 0 ? 'Fra start' : 'Etter perioden')} sub={beMnd ? `måned ${mm.breakEvenIdx + 1}` : 'i planhorisonten'} />
         {!kompakt && <KpiFlis label="Kapitalbehov" verdi={mm.kapitalbehov > 0 ? `−${kr(mm.kapitalbehov)}` : kr(0)} sub={mm.kapitalbehov > 0 ? 'dypeste kontantbunn' : 'ingen kapitalbunn'} tone={mm.kapitalbehov > 0 ? 'neg' : 'pos'} />}
         <KpiFlis label="Enheter ved slutt" verdi={antall(mm.enheterVedSlutt)} sub="under forvaltning" />
       </div>
 
+      {/* Inntekt mot kostnad */}
       {vis.graf !== false && (
-        <div className={`mt-3 rounded-[14px] border bg-white p-5 sm:p-6`} style={{ borderColor: C.line }}>
+        <div className="mt-3 rounded-[14px] border bg-white p-5 sm:p-6" style={{ borderColor: C.line }}>
           <div className="mb-4 flex items-center justify-between gap-2">
             <p className="text-[14px] font-semibold" style={{ color: C.ink }}>Inntekt mot kostnad</p>
             <span className="e-meta">{mm.N} mnd</span>
@@ -428,6 +540,59 @@ function BudsjettKropp({ mm, blokk, kompakt = false }) {
         </div>
       )}
 
+      {/* Sammensetning: hvor inntekten kommer fra / hvor pengene går */}
+      {!kompakt && erModell && (kostRader.length > 0 || inntRader.length > 0) && (
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          {inntRader.length > 0 && (
+            <div className="rounded-[14px] border bg-white p-5 sm:p-6" style={{ borderColor: C.line }}>
+              <p className="mb-1 text-[14px] font-semibold" style={{ color: C.ink }}>Hvor inntekten kommer fra</p>
+              <p className="e-meta mb-3">Sum {kr(inntTot)} i perioden</p>
+              <div>{inntRader.map((r) => <KomposRad key={r.navn} navn={r.navn} v={r.v} pctAv={(r.v / inntTot) * 100} farge={r.farge} />)}</div>
+            </div>
+          )}
+          {kostRader.length > 0 && (
+            <div className="rounded-[14px] border bg-white p-5 sm:p-6" style={{ borderColor: C.line }}>
+              <p className="mb-1 text-[14px] font-semibold" style={{ color: C.ink }}>Hvor pengene går</p>
+              <p className="e-meta mb-3">Sum {kr(kostTot)} i perioden</p>
+              <div>{kostRader.map((r) => <KomposRad key={r.navn} navn={r.navn} v={r.v} pctAv={(r.v / kostTot) * 100} farge={r.farge} />)}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Enhetsøkonomi */}
+      {!kompakt && erModell && ue && (
+        <div className="mt-3 rounded-[14px] border bg-white p-5 sm:p-6" style={{ borderColor: C.line }}>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <p className="text-[14px] font-semibold" style={{ color: C.ink }}>Enhetsøkonomi</p>
+            <span className="e-meta">per ny enhet</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+            <UeCelle label="Honorar / mnd" verdi={kr(ue.bruttoHonorarNy)} sub="eks. mva" />
+            <UeCelle label="Bidrag / mnd" verdi={kr(ue.bidrag)} sub={bidragMarginPct != null ? `margin ${pct(bidragMarginPct)}` : ''} tone={(ue.bidrag || 0) >= 0 ? 'pos' : 'neg'} />
+            <UeCelle label="Anskaffelse (CAC)" verdi={kr(ue.fullCac)} sub={ue.organiskAndelPct != null ? `${kma(String(ue.organiskAndelPct))} % organisk` : ''} />
+            <UeCelle label="Tilbakebetalt" verdi={ue.paybackMnd != null ? `${kma(String(ue.paybackMnd))} mnd` : '—'} sub="CAC payback" />
+            <UeCelle label="Kundelevetid" verdi={levetidMnd != null ? `${antall(Math.round(levetidMnd))} mnd` : '—'} sub={sm.mndChurnPct != null ? `${kma(String(sm.mndChurnPct))} % churn/mnd` : ''} />
+            <UeCelle label="Verdi (LTV)" verdi={ltv != null ? kr(ltv) : '—'} sub="bidrag × levetid" />
+            <UeCelle label="LTV / CAC" verdi={ltvCac != null ? `${kma(nf1.format(ltvCac))}×` : '—'} sub={ltvCac != null ? (ltvCac >= 3 ? 'sunt (≥ 3×)' : 'under 3×') : ''} tone={ltvCac != null ? (ltvCac >= 3 ? 'pos' : (ltvCac < 1 ? 'neg' : undefined)) : undefined} />
+            <UeCelle label="Systemkost / mnd" verdi={kr(ue.systemPerEnhet)} sub="per enhet" />
+          </div>
+        </div>
+      )}
+
+      {/* Kontantbeholdning gjennom perioden */}
+      {!kompakt && mm.m && Array.isArray(mm.m.akkumulert) && mm.m.akkumulert.length > 1 && (
+        <div className="mt-3 rounded-[14px] border bg-white p-5 sm:p-6" style={{ borderColor: C.line }}>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <p className="text-[14px] font-semibold" style={{ color: C.ink }}>Kontantbeholdning gjennom perioden</p>
+            <span className="e-meta">{mm.kapitalbehov > 0 ? `bunn −${krKort(mm.kapitalbehov)}` : 'ingen kapitalbunn'}</span>
+          </div>
+          <CashGraf mm={mm} />
+          <p className="e-meta mt-3">Akkumulert resultat før finansiering. {mm.kapitalbehov > 0 ? `Dypeste punkt er kapitalbehovet — ${kr(mm.kapitalbehov)} — nådd ${mm.kapIdx != null ? `i ${mndLang(ymPluss(mm.startYm, mm.kapIdx))}` : 'i perioden'}.` : 'Driften er selvfinansierende gjennom hele perioden.'}</p>
+        </div>
+      )}
+
+      {/* Per planår */}
       {vis.aar !== false && mm.aar && mm.aar.length > 0 && !kompakt && (
         <div className="mt-3 rounded-[14px] border bg-white p-5 sm:p-6" style={{ borderColor: C.line }}>
           <p className="mb-4 text-[14px] font-semibold" style={{ color: C.ink }}>Per planår</p>
@@ -449,6 +614,15 @@ function BudsjettKropp({ mm, blokk, kompakt = false }) {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Kompakt (editor-forhåndsvisning): mini enhetsøkonomi under grafen */}
+      {kompakt && erModell && ue && (
+        <div className="mt-3 grid grid-cols-3 gap-2.5">
+          <UeCelle label="Bidrag / mnd" verdi={kr(ue.bidrag)} tone={(ue.bidrag || 0) >= 0 ? 'pos' : 'neg'} />
+          <UeCelle label="CAC payback" verdi={ue.paybackMnd != null ? `${kma(String(ue.paybackMnd))} mnd` : '—'} />
+          <UeCelle label="LTV / CAC" verdi={ltvCac != null ? `${kma(nf1.format(ltvCac))}×` : '—'} tone={ltvCac != null && ltvCac >= 3 ? 'pos' : undefined} />
         </div>
       )}
     </>

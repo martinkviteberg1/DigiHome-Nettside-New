@@ -1826,3 +1826,15 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - BACKEND (`route.js`): srRensDoc-hviteliste utvidet (taskList/taskItem[checked]/details/detailsSummary/detailsContent/kolonner[2|3]/kolonne/codeBlock, textAlign left|center|right|justify, callout-varianter tips/suksess, image.align). Bilde-opplasting POST /api/admin/styrerapport/bilde (base64 i Mongo-kolleksjon styrerapport_bilder, maks ~6MB), offentlig servering GET /api/styrerapport/bilde/<id>, AI POST /api/admin/styrerapport/ai (chatLLM gpt-4o → trygg HTML). Bilder lagres i DB (ikke object storage — S3 kan kobles på senere uten å endre doc-format, som peker på /api/styrerapport/bilde/<id>).
 - PAKKER: +@tiptap/extension-image, -table(+row/header/cell), -task-list, -task-item, -text-align, -details, +@tiptap/suggestion (alle v3.31.3). Drag-handle-pakken droppet (drar inn yjs/collaboration) — egen lettvekts implementasjon i stedet.
 - TEST: Backend-testagent 100% på (a) bilde-opplasting/servering + AI + image/table-sanitizer (12/12), (b) Confluence-noder sanitizer-round-trip (task/details/kolonner/textAlign/paneler/codeBlock, ukjente noder fjernet, ugyldige verdier klampet, 401 uten key, offentlig /del round-trip). Frontend skjermbilde-verifisert (editor + slash-meny desktop, mobil 390px uten overflow). IKKE deployet / ikke sluttbekreftet av bruker.
+
+### Styrerapport · Budsjett-visning løftet til admin-nivå (juni 2025)
+- MÅL (bruker): «forbedre ALT med budsjett-visningen … bør se likt ut som admin-portalen, nå ser den kjedelig og tom ut».
+- `components/admin/StyrerapportBudsjett.js` (BudsjettKropp/BudsjettGraf) utvidet — samme rene motor (lib/budsjett-modell, beregnInvestorModell), editorial palett:
+  - KPI-band utvidet: ARR (m/ MRR exit), Resultat i perioden, Driftsmargin, Break-even, Kapitalbehov, Enheter ved slutt.
+  - Inntekt-mot-kostnad-graf oppgradert: y-akse-verdier, break-even-markør, kapitalbunn-markør, ende-punkter for både inntekt og kostnad.
+  - NYE paneler: «Hvor inntekten kommer fra» (kontraktsfestet honorar / gjenutleie / ny vekst) og «Hvor pengene går» (lønn & bemanning / marked & salg / system & drift / admin / andre) med kr + andel + fargebar.
+  - NYTT: Enhetsøkonomi-panel (Honorar/mnd, Bidrag/mnd + margin, CAC, CAC payback, Kundelevetid, LTV, LTV/CAC, systemkost) — beregnet fra cac + churn.
+  - NYTT: «Kontantbeholdning gjennom perioden» (akkumulert resultat, nullinje, kapitalbunn-markør) med forklarende tekst.
+  - Beholdt: Per planår-tabell. Editor-forhåndsvisning (kompakt) fikk mini enhetsøkonomi (bidrag/payback/LTV·CAC).
+  - Tech-plan: guardet (viser KPI+graf+år, ikke modell-spesifikke paneler).
+- VERIFISERT: Kompilerer rent. Skjermbilde-verifisert på offentlig delingslenke (desktop 1440 + mobil 390 uten innholds-overflow) via midlertidig QA-rapport med ekte budsjett «Base 2026–2029 · Digihome AS» (36 mnd) — QA-rapport + lenke slettet etterpå, ekte rapport/lenke urørt. Kun frontend-endring (ingen backend-logikk rørt).
