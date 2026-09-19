@@ -121,7 +121,7 @@ export default function MeglerV4() {
               <div className="min-w-0 lg:col-span-5">
                 <p className="dh-cover-inn text-[14px] font-medium sm:text-[14.5px]" style={{ color: SVAK }} data-testid="v4m-label">For utleiemeglere og forvaltere</p>
                 <h1 className="dh-cover-inn mt-4 text-[50px] sm:text-[68px] lg:text-[clamp(56px,4.5vw,82px)]" style={{ ...display, color: T.ink, animationDelay: '.04s' }} data-testid="v4m-h1">
-                  Hundre eiere.<br />Én rolig morgen<span style={{ color: T.lilla, marginLeft: '0.03em' }}>.</span>
+                  Ta flere oppdrag<br />uten å ansette<span style={{ color: T.lilla, marginLeft: '0.03em' }}>.</span>
                 </h1>
                 <p className="dh-cover-inn mt-6 max-w-[38ch] text-[17px] leading-[1.5] sm:text-[19px]" style={{ color: 'rgba(21,19,15,0.7)', animationDelay: '.08s' }} data-testid="v4m-ingress">
                   DigiHome er systemet vi bruker når vi forvalter boliger for egne kunder i Bergen. Nå kan utleiemeglere og forvaltere bruke det samme: salg, kontrakter, husleie, oppgjør og eierportal i ett system, med klientkonto og honorar innebygd.
@@ -206,8 +206,8 @@ export default function MeglerV4() {
 
         {/* ── 15. Avslutning ── */}
         <AvslutningSeksjon
-          tittel="Hundre eiere. Én rolig morgen"
-          under="Book en demo på 30 minutter, eller registrer selskapet og kom i gang på egen hånd."
+          tittel="Vi viser dere det på 30 minutter"
+          under="Book en demo med deres egne eiere og boliger, eller registrer selskapet og kom i gang på egen hånd."
           handling={{ knapp: { tekst: 'Book en demo', href: '#demo' }, lenke: { tekst: 'Registrer selskapet', href: '/bli-utleier/start?kind=business' } }}
           steg={null}
         />

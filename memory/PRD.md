@@ -1932,3 +1932,4 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - Kontroll på megler: «Dere setter reglene.» — Forvalter / grenser per eier / Jonas Haugland / Kari Moen-eksempler (KONTROLL-const i MeglerV4). Bedrift-siden uendret (verifisert).
 - Hero-ingress = posisjonering (ikke oppgjørsdetaljer). Oppgjør har «andres penger»-rammen én gang. Overgang → «Kom i gang: Tre uker fra demo til første oppgjør.» Demo → «Book en demo.» FAQ 11 → 10 spørsmål, kortere svar. Tillit-tekst «dere».
 - QA: alle 7 v4-sider 200, FAQ 01–10, avslutning uten steg, bedrift-Kontroll intakt, mobil 390 uten overflow.
+- Hero-H1 byttet etter bruker («Hundre eiere. Én rolig morgen» = elendig): nå «Ta flere oppdrag uten å ansette.» (2 linjer desktop+mobil, verifisert). Avslutning: «Vi viser dere det på 30 minutter.» Metadata-tittel oppdatert i app/utleiemeglere/page.js.
