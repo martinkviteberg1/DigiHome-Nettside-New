@@ -10,7 +10,7 @@ import {
 import { promises as fsp } from 'fs';
 import nodePath from 'path';
 import { getDb, clean } from '@/lib/mongodb';
-import { poFellesKonfigurert, poKlientInfo, poResultat, poSaldobalanse, PO_DEFAULT_ENV, PO_BOOTSTRAP_CLIENT_KEY } from '@/lib/poweroffice';
+import { poFellesKonfigurert, poKlientInfo, poResultat, poSaldobalanse, poFakturaUtkast, PO_DEFAULT_ENV, PO_BOOTSTRAP_CLIENT_KEY } from '@/lib/poweroffice';
 import { getObject, putObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
 import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels, computeLandingPages, buildPaidFunnel, computeVelocity, computeMarketingTrends } from '@/lib/analytics-server';
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
@@ -2408,6 +2408,23 @@ async function kanskjeSendFristDigest(db) {
 // STYRERAPPORT — felles datapakke for admin-visning OG ekstern delingslenke.
 // Alle kilder hentes best-effort (én kilde som feiler → null, aldri 500).
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Velger regnskaps-selskapet (klientnøkkel) fakturaen skal opprettes I — dvs. selgeren
+// (DigiHome Tech AS). Settes eksplisitt via settings.poSelskapId, ellers selskap med
+// «tech» i navnet, ellers første selskap. Seeder demo-selskapet ved behov.
+async function poFakturaCtx(db, settings = {}) {
+  const koll = db.collection('regnskap_selskaper');
+  if ((await koll.countDocuments({})) === 0 && PO_BOOTSTRAP_CLIENT_KEY) {
+    await koll.insertOne({ id: uuidv4(), navn: 'DigiHome AS', clientKey: PO_BOOTSTRAP_CLIENT_KEY, env: PO_DEFAULT_ENV, klientNavn: null, opprettet: new Date().toISOString(), sistTestet: null });
+  }
+  const alle = await koll.find({}).sort({ opprettet: 1 }).toArray();
+  if (!alle.length) return null;
+  let s = null;
+  if (settings.poSelskapId) s = alle.find((x) => x.id === settings.poSelskapId);
+  if (!s) s = alle.find((x) => /tech/i.test(x.navn || ''));
+  if (!s) s = alle[0];
+  return { clientKey: s.clientKey, env: s.env || PO_DEFAULT_ENV, selskapNavn: s.navn };
+}
 
 // Sammenstilt PowerOffice-regnskap (alle selskaper) for ett år. Speiler logikken i
 // /admin/regnskap/konsern (som er urørt) slik at delingslenken kan inkludere bokførte
@@ -4960,6 +4977,59 @@ async function handleRoute(request, { params }) {
         }
       }
       return cors(NextResponse.json({ ok: true, faktura }));
+    }
+
+    // ── PowerOffice: opprett fakturautkast (SalesOrder Draft) for lisensen ──
+    // POST { kundeId, maaned, tvang? } → finn/opprett produkt + kunde i Go, lag et
+    // USENDT Draft-utkast. Idempotent per kunde+måned+miljø (lagres i po_faktura_utkast).
+    if (route === '/admin/pris/poweroffice/utkast' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!poFellesKonfigurert()) return cors(NextResponse.json({ ok: false, feil: 'PowerOffice er ikke konfigurert (mangler app-/abonnementsnøkkel)' }, { status: 400 }));
+      const body = await request.json().catch(() => ({}));
+      const maaned = (String(body.maaned || '').match(/^\d{4}-\d{2}$/) ? body.maaned : prisForrigeMaaned());
+      const alt = await prisHentAlt(db);
+      const kunde = (alt.kunder || []).find((k) => k.id === body.kundeId);
+      if (!kunde) return cors(NextResponse.json({ ok: false, feil: 'Ukjent kunde — lagre kunden først' }, { status: 404 }));
+      const plan = (alt.planer || []).find((p) => p.id === kunde.planId) || (alt.planer || []).find((p) => p.standard) || (alt.planer || [])[0];
+      let rows = [];
+      if (kunde.enhetskilde === 'plattform') { try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { rows = []; } }
+      const grunnlag = prisBeregnGrunnlag(rows, plan, kunde, alt.settings, maaned);
+      if (!grunnlag.linjer.length) return cors(NextResponse.json({ ok: false, feil: 'Ingen fakturerbare enheter for denne måneden' }, { status: 400 }));
+
+      const ctx = await poFakturaCtx(db, alt.settings);
+      if (!ctx || !ctx.clientKey) return cors(NextResponse.json({ ok: false, feil: 'Mangler regnskaps-selskap (klientnøkkel) for fakturering — legg til selskapet under Regnskap.' }, { status: 400 }));
+
+      const koll = db.collection('po_faktura_utkast');
+      const eksisterende = await koll.findOne({ kundeId: kunde.id, maaned, env: ctx.env });
+      if (eksisterende && body.tvang !== true) {
+        const { _id, ...ren } = eksisterende;
+        return cors(NextResponse.json({ ok: true, alleredeOpprettet: true, utkast: ren }));
+      }
+      try {
+        const res = await poFakturaUtkast(ctx, { kunde, grunnlag, settings: alt.settings, maaned });
+        const doc = {
+          id: (eksisterende && eksisterende.id) || uuidv4(),
+          kundeId: kunde.id, kundeNavn: kunde.navn, maaned, env: ctx.env, selskap: ctx.selskapNavn || null,
+          poOrderId: res.poOrderId, poOrderNo: res.poOrderNo, poCustomerId: res.poCustomerId, poCustomerNo: res.poCustomerNo,
+          extRef: res.extRef, status: res.status, sumEksMva: res.sumEksMva, gui: res.gui,
+          opprettetKunde: res.opprettetKunde, opprettetProdukt: res.opprettetProdukt,
+          opprettet: new Date().toISOString(),
+        };
+        await koll.updateOne({ kundeId: kunde.id, maaned, env: ctx.env }, { $set: doc }, { upsert: true });
+        return cors(NextResponse.json({ ok: true, utkast: doc }));
+      } catch (e) {
+        const status = e.status === 403 ? 403 : 502;
+        const hint = e.status === 403 ? 'PowerOffice mangler skrivetilgang (SalesOrders_Full). Be PowerOffice aktivere det på integrasjonsnøkkelen.' : '';
+        return cors(NextResponse.json({ ok: false, feil: String(e.message || e).slice(0, 300), hint }, { status }));
+      }
+    }
+    // GET ?maaned= → status for opprettede utkast (så UI kan vise «allerede opprettet»)
+    if (route === '/admin/pris/poweroffice/utkast' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const url = new URL(request.url);
+      const maaned = (String(url.searchParams.get('maaned') || '').match(/^\d{4}-\d{2}$/) ? url.searchParams.get('maaned') : prisForrigeMaaned());
+      const liste = await db.collection('po_faktura_utkast').find({ maaned }).toArray();
+      return cors(NextResponse.json({ ok: true, maaned, konfigurert: poFellesKonfigurert(), env: PO_DEFAULT_ENV, utkast: liste.map((d) => { const { _id, ...ren } = d; return ren; }) }));
     }
 
 

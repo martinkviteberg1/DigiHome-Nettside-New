@@ -18,7 +18,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Tags, Users, Plus, Trash2, Building2, ReceiptText, Save, Layers, CheckCircle2,
   Loader2, ChevronDown, ChevronRight, Sparkles, Check, CreditCard, Server, Pencil, X,
-  TrendingUp, Star, Boxes, FileText, Download, Eye, MapPin, Landmark, Settings2, Percent,
+  TrendingUp, Star, Boxes, FileText, Download, Eye, MapPin, Landmark, Settings2, Percent, ArrowUpRight,
 } from 'lucide-react';
 
 const LILLA = '#7a3fa8';
@@ -98,7 +98,7 @@ function TrinnEditor({ trinn, setTrinn }) {
 }
 
 /* ── Rik proforma-faktura: sammendrag + enhetsspesifikasjon + PDF ── */
-function FakturaPanel({ faktura, kundeNavn, maaned, laster, spesifiser, onSpesifiser, onForhaandsvis, onLastNed, pdfLaster }) {
+function FakturaPanel({ faktura, kundeNavn, maaned, laster, spesifiser, onSpesifiser, onForhaandsvis, onLastNed, pdfLaster, onPoUtkast, poLaster, poUtkast, poKundeLagret }) {
   const [åpen, setÅpen] = useState(false);
   const mva = faktura?.mvaSats ?? 25;
   const spec = faktura?.spesifikasjon || [];
@@ -197,6 +197,20 @@ function FakturaPanel({ faktura, kundeNavn, maaned, laster, spesifiser, onSpesif
           <button onClick={onLastNed} disabled={tom || pdfLaster} className="flex h-9 items-center gap-1.5 rounded-xl border border-black/10 px-3 text-[13px] font-medium text-black/70 transition-colors hover:bg-black/[0.03] disabled:opacity-40"><Download className="h-4 w-4" /> Last ned</button>
           <button onClick={onForhaandsvis} disabled={tom || pdfLaster} className="flex h-9 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-semibold text-white transition-all disabled:opacity-40" style={{ background: LILLA }}>{pdfLaster ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Forhåndsvis PDF</button>
         </div>
+
+        {/* PowerOffice Go — opprett USENDT fakturautkast (Draft) i regnskapet */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-black/[0.06] bg-black/[0.02] px-3 py-2.5">
+          <span className="flex items-center gap-1.5 text-[12px] font-medium text-black/55"><Landmark className="h-3.5 w-3.5" style={{ color: LILLA }} /> PowerOffice Go</span>
+          {poUtkast ? (
+            <>
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[12px] font-semibold text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> Utkast opprettet{poUtkast.env === 'demo' ? ' · demo' : ''}</span>
+              {poUtkast.gui ? <a href={poUtkast.gui} target="_blank" rel="noreferrer" className="flex h-8 items-center gap-1.5 rounded-lg border border-black/10 px-2.5 text-[12.5px] font-medium text-black/70 hover:bg-black/[0.03]">Åpne i Go <ArrowUpRight className="h-3.5 w-3.5" /></a> : null}
+            </>
+          ) : (
+            <span className="hidden text-[12px] text-black/45 sm:inline">Lag et usendt utkast i regnskapet — du kontrollerer og sender det i Go.</span>
+          )}
+          <button onClick={onPoUtkast} disabled={tom || poLaster || !poKundeLagret || !!poUtkast} title={!poKundeLagret ? 'Lagre kunden først' : (poUtkast ? 'Allerede opprettet for denne måneden' : '')} className="ml-auto flex h-9 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-semibold text-white transition-all disabled:opacity-40" style={{ background: BLEKK }}>{poLaster ? <Loader2 className="h-4 w-4 animate-spin" /> : <ReceiptText className="h-4 w-4" />} {poUtkast ? 'Opprettet' : 'Opprett utkast'}</button>
+        </div>
       </div>
     </div>
   );
@@ -243,6 +257,8 @@ export default function PrisModul({ apiKey = '' }) {
   const [ok, setOk] = useState('');
   const [pdfUrl, setPdfUrl] = useState('');
   const [pdfLaster, setPdfLaster] = useState(false);
+  const [poStatus, setPoStatus] = useState([]); // opprettede PowerOffice-utkast for valgt måned
+  const [poLaster, setPoLaster] = useState(false);
   const forhRef = useRef(0);
 
   const lastData = useCallback(async () => {
@@ -252,9 +268,12 @@ export default function PrisModul({ apiKey = '' }) {
   const lastMrr = useCallback(async (mnd) => {
     try { const r = await fetch(`/api/admin/pris/grunnlag?${q}&maaned=${mnd}`, { cache: 'no-store' }); const d = await r.json(); if (d.ok) setMrr(d); } catch (e) {}
   }, [q]);
+  const lastPoStatus = useCallback(async (mnd) => {
+    try { const r = await fetch(`/api/admin/pris/poweroffice/utkast?${q}&maaned=${mnd}`, { cache: 'no-store' }); const d = await r.json(); if (d.ok) setPoStatus(d.utkast || []); } catch (e) {}
+  }, [q]);
 
   useEffect(() => { lastData(); }, [lastData]);
-  useEffect(() => { lastMrr(maaned); }, [maaned, lastMrr]);
+  useEffect(() => { lastMrr(maaned); lastPoStatus(maaned); }, [maaned, lastMrr, lastPoStatus]);
 
   const planFor = useCallback((id) => (data?.planer || []).find((p) => p.id === id) || (data?.planer || []).find((p) => p.standard) || (data?.planer || [])[0], [data]);
 
@@ -295,6 +314,19 @@ export default function PrisModul({ apiKey = '' }) {
   }, [hentPdfBlob, kUtkast, maaned]);
 
   const lukkPdf = useCallback(() => { setPdfUrl((u) => { if (u) setTimeout(() => URL.revokeObjectURL(u), 500); return ''; }); }, []);
+
+  // PowerOffice: opprett usendt fakturautkast (Draft) for valgt kunde + måned
+  const opprettPoUtkast = useCallback(async () => {
+    if (!kUtkast?.id) { window.alert('Lagre kunden først, så kan du opprette utkast i PowerOffice.'); return; }
+    setPoLaster(true);
+    try {
+      const r = await fetch(`/api/admin/pris/poweroffice/utkast?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kundeId: kUtkast.id, maaned }) });
+      const d = await r.json();
+      if (d.ok) { await lastPoStatus(maaned); setOk('po'); setTimeout(() => setOk(''), 2500); }
+      else { window.alert(`${d.feil || 'Kunne ikke opprette utkast'}${d.hint ? '\n\n' + d.hint : ''}`); }
+    } catch (e) { window.alert('Kunne ikke kontakte PowerOffice akkurat nå.'); }
+    setPoLaster(false);
+  }, [q, kUtkast, maaned, lastPoStatus]);
 
   const velgKunde = (k) => { setValgtKundeId(k.id); setKUtkast({ ...k }); };
   const nyKunde = () => { setValgtKundeId('ny'); setKUtkast({ navn: '', orgnr: '', epost: '', planId: planFor()?.id || '', enhetskilde: 'manuell', manueltAntall: 0, grunnlag: 'utleid_mnd', grunnlagSelvbetjent: 'utleid_mnd', status: 'aktiv', notat: '' }); };
@@ -443,6 +475,10 @@ export default function PrisModul({ apiKey = '' }) {
                     onForhaandsvis={forhaandsvisPdf}
                     onLastNed={lastNedPdf}
                     pdfLaster={pdfLaster}
+                    onPoUtkast={opprettPoUtkast}
+                    poLaster={poLaster}
+                    poUtkast={(poStatus || []).find((u) => u.kundeId === kUtkast.id) || null}
+                    poKundeLagret={!!kUtkast.id}
                   />
                 </div>
               ) : (

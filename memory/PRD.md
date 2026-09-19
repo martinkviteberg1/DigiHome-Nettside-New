@@ -1855,3 +1855,45 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   3. Regnestykke — 2-roms Sandviken: 19 000 → 24 700 kr/mnd, grønn payoff «+68 400 kr mer i året», egen CTA til skjemaet.
 - `lib/landing.js`: la til `inntektModell`-config KUN på `inntekt`-oppføringen (konsistente tall). `components/lp/CampaignLanding.js`: importerer + rendrer `<InntektHistorie>` rett etter kalkulator-seksjonen, gated på `cfg.inntektModell` → alle andre kampanjesider (forvaltning, gratis-vurdering, 10pluss2, arvet-bolig, airbnb-langtid, sammenlign, studio) er UBERØRT. Skjema/sporing/A-B/kalkulator uendret.
 - VERIFISERT: Kompilerer rent (alle /lp/inntekt GET 200, ingen feil). Skjermbilde-verifisert desktop 1920 + mobil 390 (OVERFLOW [] — ingen horisontal overflow). Kun frontend + config-data (ingen API/backend-logikk rørt). Preview — ikke bruker-bekreftet ennå.
+
+### Pris · PowerOffice fakturautkast (Draft) fra adminportalen (juni 2025)
+- MÅL (bruker): kunne fakturere plattformlisensen (Tech → Digihome AS, p.t. ~6 000 kr/mnd = enheter×200) fra adminportalen. Valgt flyt: «lag utkast pt» (Draft), ikke auto-send.
+- KONTEKST avklart: mva-forhåndsregistrering (Tech har brukt ~400k på utvikling) trenger dokumentert omsetning — proforma teller ikke, men et SENDT utkast (fra Go) gjør det. Draft-flyt gir kontroll; sending skjer i Go (eller senere CreateAndSendInvoice).
+- `lib/poweroffice.js`: nye skrive-eksporter poRaw (POST/DELETE m/ 401-retry, client-credentials gjenbrukt), poFinnKunde/poOpprettKunde (match/oppslag på org.nr→navn), poFinnProdukt/poOpprettProdukt (match på Name), poFakturaUtkast (orkestrerer produkt+kunde+POST /SalesOrders/Complete med SalesOrderStatus:'Draft'). ExternalImportReference='dhlic:<poKundeId>:<mnd>' (≤50 tegn — PO-krav). poKlientInfo utvidet med salgsordreSkriv.
+- `app/api/[[...path]]/route.js`: POST/GET /admin/pris/poweroffice/utkast (adminAuthed). POST idempotent per kunde+mnd+miljø (po_faktura_utkast), 403→hint om manglende SalesOrders-privilegium. poFakturaCtx velger selgerselskapets klientnøkkel fra regnskap_selskaper (settings.poSelskapId→navn~tech→første).
+- `components/admin/PrisModul.js`: FakturaPanel fikk «PowerOffice Go»-rad med «Opprett utkast»-knapp; ved suksess grønn «✓ Utkast opprettet · demo» + «Åpne i Go»-lenke, knapp→«Opprettet». Kunden må være lagret først.
+- VERIFISERT: (a) isolert probe mot ekte DEMO-API — demo-testklient har SalesOrders_Full+OutgoingInvoice_Full; produkt/kunde/Draft opprettes 201. (b) Backend-testagent 6/7 (poOrderId satt, extRef 24 tegn, status Draft, produkt auto-opprettet, idempotens, 404/401). Steg 7 (tvang) ga 502 Cloudflare/rate-limit etter 3 raske POST — ikke kodefeil. (c) UI ende-til-ende: logget inn → Pris → DigiHome AS → «Opprett utkast» → grønn suksess + «Åpne i Go». Desktop 1920 + mobil 390 uten overflow.
+- MERK: env=demo. For PRODUKSJON må PowerOffice aktivere SalesOrders_Full på prod-nøkkelen, og Tech-selskapet legges inn i regnskap_selskaper (prod-klientnøkkel). Sending (CreateAndSendInvoice) er IKKE bygget ennå — bevisst (utkast pt).
+
+### LinkedIn-promovideo av de nye sidene (juni 2025)
+- MÅL (bruker): «nydelig video til LinkedIn i forbindelse med de nye nettsidene — scroller rootsiden + nydelig animasjon på toppen». Full autonomi.
+- LEVERT: ekte MP4 rendret lokalt. `/app/public/promo/digihome-linkedin.mp4` (1080×1080 kvadrat, H.264, 30 fps, ~23,5 s, 5,6 MB, stille AAC-spor, faststart). Nedlasting: {NEXT_PUBLIC_BASE_URL}/promo/digihome-linkedin.mp4 (verifisert HTTP 200 video/mp4).
+- STRUKTUR: intro-kort (brandet: «Nye digihome.no.») → forside-scroll (hero-storyboard → tilbud → steg → footer) → inntektssiden (kalkulator + inntektstrappen) → outro (charcoal «digihome.no.»). Warm-Ink-palett, lydløs-vennlig.
+- TEKNISK PIPELINE (gjenbrukbar): `app/promo/page.js` + `layout.js` = brandede intro/outro-kort (noindex, `?record=1` skjuler cookie-banner, arver --font-heading/-body + logo). `scripts/render-promo.py` = Python Playwright (headless_shell i /pw-browsers) tar opp 4 segmenter → ffmpeg (imageio-ffmpeg-binær) normaliserer + xfade-syr sammen → MP4. Kjør på nytt: `python3 scripts/render-promo.py`.
+- LÆRINGER: (a) pip-playwright har kun chromium_headless_shell-1208 → launch med executable_path direkte. (b) `html{scroll-behavior:smooth}` ødela programmatisk scroll → sett `scrollBehavior='auto'` under opptak. (c) trim må måles relativt til opptaksstart (goto-tid varierer), ellers lekker prewarm-frames inn.
+- VARIANTER MULIG: portrett 1080×1350 / liggende 1920×1080, tekst-tagline underveis, musikk — kun å endre parametre i scriptet.
+
+### LinkedIn-video v2 — VERDENSKLASSE-løft (juni 2025)
+- Bruker: «hater introen» + «for lite forklarende, kan ikke bare være scroll». To grep:
+  1. NY intro (kinetisk/forklarende) i app/promo/page.js: eyebrow «Utleie i Bergen» → «Alt som må gjøres / gjør vi automatisk.» → prosess-chips Annonse→Leietaker→Kontrakt→Husleie→Drift (staggered) → logo. Erstatter det gamle statiske «Nye digihome.no»-kortet.
+  2. FORKLARENDE bildetekster synket til scrollen (scripts/render-promo.py, SCROLLCAP): nedre plakat i --font-heading, toner inn/ut ved hvert punkt på SAMME rAF-klokke som scrollen (perfekt sync). Forside 5 tekster (adresse→annonse, BankID/husleie, lei selv/full forvaltning, tre steg, uten styret). Inntekt: «Opptil 30 % høyere leieinntekt».
+- Resultat: /app/public/promo/digihome-linkedin.mp4 — 1080×1080, ~26,2 s, 6,2 MB, stille AAC, faststart. Verifisert HTTP 200. Re-render: python3 scripts/render-promo.py.
+
+### Generell markedsføringsfilm — VERDENSKLASSE (juni 2025)
+- Bruker: «Kan du nå lage en markedsføringsvideo for digihome generelt?» + «tenk VIRKELIG verdensklasse på alt» → sa «fortsett» (jeg tar alle valg selv).
+- Konsept: «Utleie på autopilot». HELT brandet, forklarende kinetisk film — INGEN passiv scroll (fikser tidligere klage). Produktsubstans er gjenskapt som premium animerte mock-ups i appens font/Warm-Ink-palett/lilla punktum (full kontroll, lesbart på lyd av).
+- 6 scener i app/promo/page.js (?del=…&record=1, banner skjules automatisk av isRecord):
+  1. hook — «Å leie ut skal ikke være en jobb.» → «Nå går det av seg selv.»
+  2. flyt — «Fire steg. Null styr.» vertikal tidslinje: Annonse→Kontrakt→Husleie→Drift
+  3. oversikt — «God morgen, Kari.»-dashbord (Leieinntekt 37 600 kr, Åpne saker 1, Utleiegrad 100 %, Neste forfall 1. des) + søylegraf
+  4. leietaker — «Hei, Emma.»-appkort (Husleie 12 500 kr/Betal, BankID-kontrakt, sak)
+  5. inntekt — «Opptil 30 %» (JS count-up) + Før/Med DigiHome-søyler
+  6. cta — charcoal: logo + «Start med adressen din.» + digihome.no + «Gratis vurdering innen 24 timer»
+- Alt vmin-basert (vmin=1080 i alle format) + sentrert Stage → samme scener funker i 9:16/1:1/16:9.
+- Render: scripts/render-generell.py [vertical|square|wide] (headless_shell + imageio-ffmpeg, myke kryssfades 0,45 s, stille AAC, faststart).
+- Levert (rører IKKE digihome-linkedin.mp4):
+  - public/promo/digihome-generell.mp4      — 9:16 1080×1920, ~26,7 s, ~1,19 MB (HTTP 200)
+  - public/promo/digihome-generell-1x1.mp4  — 1:1 1080×1080, ~26,7 s, ~1,06 MB (HTTP 200)
+  - 16:9 (wide) ikke rendret ennå — tilbys som utvidelse.
+- Status: agent-rendret + rammer visuelt inspisert + HTTP-servering verifisert. IKKE brukerbekreftet.
+
