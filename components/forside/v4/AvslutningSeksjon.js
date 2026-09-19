@@ -68,7 +68,8 @@ export default function AvslutningSeksjon({ tittel = 'Utleie på autopilot', und
           )}
         </div>
 
-        {/* Stegene som følger — tre korte, på én hårlinje */}
+        {/* Stegene som følger — tre korte, på én hårlinje. steg={null} skjuler dem. */}
+        {Array.isArray(steg) && steg.length > 0 && (
         <ol className="mt-16 grid gap-8 border-t pt-8 sm:grid-cols-3 sm:gap-10 lg:mt-24 lg:pt-10" style={{ borderColor: 'rgba(244,241,234,0.16)', ...inn(3) }} data-testid="v4-avslutning-steg">
           {steg.map(([nr, t, d]) => (
             <li key={nr} className="grid grid-cols-[28px_minmax(0,1fr)] gap-x-3">
@@ -80,6 +81,7 @@ export default function AvslutningSeksjon({ tittel = 'Utleie på autopilot', und
             </li>
           ))}
         </ol>
+        )}
       </div>
     </section>
   );

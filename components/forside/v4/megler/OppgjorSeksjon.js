@@ -62,7 +62,7 @@ export default function OppgjorSeksjon() {
             Pengene går riktig vei<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
           </h2>
           <p className="mt-6 max-w-[50ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-            Husleien går inn på klientkonto. Honoraret trekkes etter avtalen med hver eier, resten utbetales, og eieren får en rapport som er enkel å lese.
+            Å forvalte for andre er å ha ansvar for andres penger. Husleien går inn på klientkonto, honoraret trekkes etter avtalen med hver eier, og resten utbetales sammen med en rapport eieren forstår.
           </p>
         </div>
 

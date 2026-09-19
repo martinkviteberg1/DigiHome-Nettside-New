@@ -26,7 +26,12 @@ const PUNKTER = [
   { t: 'BankID gjennom Posten', d: 'Kontrakter og oppgjør signeres av identifiserte parter. Dokumentet arkiveres på enheten.', eks: ['Signert 14:02', 'Strandgaten Eiendom AS · v/ driftssjef'] },
 ];
 
-export default function KontrollSeksjon() {
+const TITTEL = ['Beslutningene er deres', 'Sporet er komplett'];
+const INGRESS = 'Autopilot betyr ikke mindre kontroll — det betyr at kontrollen ligger i reglene dere setter, ikke i innboksen. Det som koster og det som binder, stopper hos riktig rolle. Alt annet går, og alt logges.';
+const BUNN = 'Rapport per bygg og selskap eksporteres til regnskapssystemet dere bruker.';
+
+/* Tekstene kan overstyres per side (megler-siden bruker egne), standardverdiene er bedriftssidens. */
+export default function KontrollSeksjon({ tittel = TITTEL, ingress = INGRESS, punkter = PUNKTER, bunn = BUNN }) {
   const ref = useRef(null);
   const vis = useSynlig(ref, 0.2);
   return (
@@ -36,14 +41,16 @@ export default function KontrollSeksjon() {
           <div className="lg:col-span-5">
             <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(vis, 0) }}>Kontroll</p>
             <h2 className="mt-4 max-w-[13ch] text-[clamp(38px,4.2vw,72px)]" style={{ ...display, color: T.ink, ...inn(vis, 80) }} data-testid="v4e-kontroll-tittel">
-              Beslutningene er deres<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span> Sporet er komplett<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+              {tittel.map((t, i) => (
+                <React.Fragment key={t}>{i > 0 ? ' ' : null}{t}<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span></React.Fragment>
+              ))}
             </h2>
             <p className="mt-6 max-w-[44ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(vis, 160) }}>
-              Autopilot betyr ikke mindre kontroll — det betyr at kontrollen ligger i reglene dere setter, ikke i innboksen. Det som koster og det som binder, stopper hos riktig rolle. Alt annet går, og alt logges.
+              {ingress}
             </p>
           </div>
           <ul className="lg:col-span-7" data-testid="v4e-kontroll-punkter">
-            {PUNKTER.map((p, i) => (
+            {punkter.map((p, i) => (
               <li key={p.t} className="grid gap-3 border-t py-6 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-8 lg:py-7" style={{ borderColor: 'rgba(21,19,15,0.14)', ...inn(vis, 120 + i * 120) }}>
                 <div>
                   <p className="text-[18px] font-medium tracking-[-0.01em]" style={{ color: T.ink }}>{p.t}</p>
@@ -60,7 +67,7 @@ export default function KontrollSeksjon() {
               </li>
             ))}
             <li className="border-t pt-4 text-[13.5px]" style={{ borderColor: 'rgba(21,19,15,0.14)', color: SVAK, ...inn(vis, 620) }}>
-              Rapport per bygg og selskap eksporteres til regnskapssystemet dere bruker.
+              {bunn}
             </li>
           </ul>
         </div>

@@ -17,15 +17,15 @@ const DIM = 'rgba(21,19,15,0.62)';
 const SVAK = 'rgba(21,19,15,0.46)';
 
 const FASER = [
-  { uke: 'Uke 1', t: 'Import', d: 'Eiere, oppdragsavtaler, løpende leieforhold og depositum legges inn med kontrakter og historikk slik de er. Honorarsats settes per eier, og regnskapssystemet kobles til.' },
-  { uke: 'Uke 2', t: 'Parallell drift', d: 'Dere kjører begge systemene side om side. Ingen eiere eller leietakere merker at noe er endret.' },
-  { uke: 'Uke 3', t: 'Første oppgjør', d: 'Husleien kreves inn, honoraret trekkes, og eierne får utbetaling og rapport fra DigiHome. Fra nå av går det av seg selv.' },
+  { uke: 'Uke 1', t: 'Demo og oppsett', d: 'En demo på 30 minutter med deres egne eiere og boliger. Deretter legger vi inn eiere, oppdragsavtaler og leieforhold med kontrakter og historikk slik de er, setter honorarsats per eier og kobler til regnskapet.' },
+  { uke: 'Uke 2', t: 'Roller og parallell drift', d: 'Dere bestemmer hvem som ser hva og hvem som godkjenner hva, og kjører begge systemene side om side. Ingen eiere eller leietakere merker at noe er endret.' },
+  { uke: 'Uke 3', t: 'Første oppgjør', d: 'Første oppgjør kjøres i DigiHome, og nye henvendelser går rett inn i salgsoversikten. Fra nå av går det av seg selv.' },
 ];
 
 const LOFTER = [
   ['Ingenting går tapt', 'Kontrakter, depositum og historikk følger med akkurat slik de er.'],
   ['Dere velger tempo', 'Eier for eier, eller hele porteføljen på én gang.'],
-  ['Vi sitter med dere', 'Oppsettet gjør vi sammen med dere, i møter, til alt er på plass.'],
+  ['Vi gjør det sammen', 'Oppsettet gjør vi i møter med dere, til alt er på plass.'],
 ];
 
 export default function OvergangSeksjon() {
@@ -36,12 +36,12 @@ export default function OvergangSeksjon() {
     <section id="overgang" ref={ref} className="relative" style={{ background: T.flate, color: T.ink }} data-testid="v4m-overgang">
       <div className="mx-auto w-full max-w-[1360px] px-5 pb-20 pt-16 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-28 lg:pt-24">
         <div className="max-w-[820px]">
-          <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>Overgang</p>
+          <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>Kom i gang</p>
           <h2 className="mt-4 text-[clamp(38px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }} data-testid="v4m-overgang-tittel">
-            Overgangen tar tre uker<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+            Tre uker fra demo til første oppgjør<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
           </h2>
           <p className="mt-6 max-w-[50ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-            Det som oftest stopper et systembytte, er selve byttet. Derfor har vi lagt det opp som tre korte uker, og vi gjør jobben sammen med dere.
+            Det som oftest stopper et systembytte, er selve byttet. Derfor er det lagt opp som tre korte uker, og vi gjør jobben sammen med dere.
           </p>
         </div>
         <div className="relative mt-12 lg:mt-16" style={inn(3, 20)}>

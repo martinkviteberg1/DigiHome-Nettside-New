@@ -22,9 +22,9 @@ const SVAK = 'rgba(21,19,15,0.46)';
 const EPOST = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 const HVA = [
-  ['Salget, oppgjøret og eierportalen', 'Vi viser det med deres egne eiere og boliger som eksempel.'],
-  ['Pristilbud i løpet av uken', 'Prisen regnes per leieforhold under forvaltning, med de modulene dere trenger.'],
-  ['Ingen forpliktelse', 'Demoen tar 30 minutter. Etterpå bestemmer dere om det er verdt å gå videre.'],
+  ['Hva dere får se', 'Salget fra henvendelse til signatur, oppgjøret og eierportalen, satt opp med deres egne tall.'],
+  ['Pristilbud i løpet av uken', 'Regnet per leieforhold under forvaltning, med de modulene dere trenger.'],
+  ['Ingen forpliktelse', 'Dere bestemmer etterpå om det er verdt å gå videre.'],
 ];
 
 const INPUT = 'mt-1.5 h-11 w-full bg-transparent text-[16px] outline-none placeholder:text-[#15130F]/30';
@@ -104,10 +104,10 @@ export default function DemoSkjema() {
           <div className="lg:col-span-5">
             <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>Demo</p>
             <h2 className="mt-4 text-[clamp(38px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }} data-testid="v4m-demo-tittel">
-              Se det med deres egne tall<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+              Book en demo<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
             </h2>
             <p className="mt-6 max-w-[42ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-              Fyll inn tre felt, så tar vi kontakt innen én virkedag og foreslår et tidspunkt.
+              Fyll inn tre felt, så tar vi kontakt innen én virkedag og foreslår et tidspunkt. Demoen tar 30 minutter.
             </p>
             <ol className="mt-8 grid gap-5">
               {HVA.map(([t, d], i) => (

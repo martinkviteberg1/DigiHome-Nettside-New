@@ -71,7 +71,7 @@ export default function RegnSeksjon() {
             Hva koster det manuelle arbeidet i dag<span style={{ color: T.lilla, marginLeft: '0.04em' }}>?</span>
           </h2>
           <p className="mt-6 max-w-[52ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-            Bruk deres egne tall. Kalkulatoren regner bare på det dere selv anslår at innkreving, purring, avstemming, eierrapporter og bilag koster i dag. Vi lover ingenting her.
+            Bruk deres egne tall. Kalkulatoren regner bare på det dere selv anslår at innkreving, purring, avstemming, eierrapporter og bilag koster i dag.
           </p>
         </div>
         <div className="mt-12 grid gap-px overflow-hidden rounded-[22px] lg:mt-16 lg:grid-cols-12" style={{ background: HAIR, boxShadow: '0 0 0 1px rgba(21,19,15,0.07), 0 48px 100px -56px rgba(21,19,15,0.35)', ...inn(3, 20) }} data-testid="v4m-regn-flate">

@@ -143,7 +143,7 @@ export default function MeglerScene() {
           </ul>
         </div>
       </div>
-      <figcaption className="sr-only">Dagen hos en forvalter med 86 eiere og 214 leieforhold: oppgjør kjørt automatisk, ny henvendelse med tilbudsutkast, tilbud lest, sak løst med eiergodkjenning, oppdragsavtale signert og enhet opprettet, purring sendt. To ting venter på teamet.</figcaption>
+      <figcaption className="sr-only">Dagen hos en forvalter med 86 eiere og 214 leieforhold: oppgjør kjørt automatisk, ny henvendelse med tilbudsutkast, tilbud lest, sak løst med eiergodkjenning, oppdragsavtale signert og bolig opprettet, purring sendt. To ting venter på teamet.</figcaption>
     </figure>
   );
 }

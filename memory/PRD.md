@@ -1923,3 +1923,12 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - Nye titler: «Trygt for eiernes penger.» · «Tilbudet går ut i deres navn.» · «Hva koster det manuelle arbeidet i dag?» · «Overgangen tar tre uker.» · «Vi sender oppdrag til fem byråer.» · «Se det med deres egne tall.» Hero-H1 «Hundre eiere. Én rolig morgen.» beholdt.
 - Ikke rørt (delt med andre sider): KontrollSeksjon (bedrift), TillitStripe, interne tekster i Innsyn/Steg/Faq/Avslutning.
 - QA: kompilert rent, /utleiemeglere 200, desktop + 390 px uten overflow. Ikke brukerbekreftet.
+
+### /utleiemeglere — strukturell omskriving («forbedre ALT, dette suger») (juni 2025)
+- Diagnose fra full tekstdump: samme fakta gjentatt opptil 9×, fire ulike «kom i gang»-lister, Trygghet dublerte Oppgjør+Kontroll, Kontroll viste bedriftstekst («driftssjef», «per bygg»), FAQ-nummer «010/011», «du» vs «dere».
+- Prinsipp: hver ting sies ÉN gang der den hører hjemme. 17 → 15 seksjoner.
+- Fjernet fra megler-siden: TrygghetSeksjon (fil slettet) og StegSeksjon. Avslutning uten steg.
+- Delte komponenter gjort fleksible (bakoverkompatibelt, defaults = gammel tekst): KontrollSeksjon({tittel, ingress, punkter, bunn}), FaqSeksjon({intro}) + nummer padStart, AvslutningSeksjon steg={null} skjuler listen, TillitStripe({tekst}).
+- Kontroll på megler: «Dere setter reglene.» — Forvalter / grenser per eier / Jonas Haugland / Kari Moen-eksempler (KONTROLL-const i MeglerV4). Bedrift-siden uendret (verifisert).
+- Hero-ingress = posisjonering (ikke oppgjørsdetaljer). Oppgjør har «andres penger»-rammen én gang. Overgang → «Kom i gang: Tre uker fra demo til første oppgjør.» Demo → «Book en demo.» FAQ 11 → 10 spørsmål, kortere svar. Tillit-tekst «dere».
+- QA: alle 7 v4-sider 200, FAQ 01–10, avslutning uten steg, bedrift-Kontroll intakt, mobil 390 uten overflow.

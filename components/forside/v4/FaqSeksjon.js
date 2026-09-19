@@ -40,7 +40,7 @@ const SPORSMAL = [
   },
 ];
 
-export default function FaqSeksjon({ sporsmal = SPORSMAL, prisSvar = null }) {
+export default function FaqSeksjon({ sporsmal = SPORSMAL, prisSvar = null, intro = 'Det korte svaret på det folk lurer på først. Fant du ikke ditt? Ta en kort samtale med oss — et menneske, ikke et skjema.' }) {
   const ref = useRef(null);
   const synlig = useSynlig(ref, 0.2);
   const inn = (i) => ({ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(16px)', transition: `opacity 700ms ${EASE} ${i * 80}ms, transform 800ms ${EASE} ${i * 80}ms` });
@@ -54,7 +54,7 @@ export default function FaqSeksjon({ sporsmal = SPORSMAL, prisSvar = null }) {
               Spørsmål<br />og svar.
             </h2>
             <p className="mt-6 max-w-[30ch] text-[17px] leading-[1.5]" style={{ color: 'rgba(21,19,15,0.64)' }}>
-              Det korte svaret på det folk lurer på først. Fant du ikke ditt? Ta en kort samtale med oss — et menneske, ikke et skjema.
+              {intro}
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
               <Lenke href="/book-mote" data-testid="v4-faq-book">Book en samtale</Lenke>
@@ -70,7 +70,7 @@ export default function FaqSeksjon({ sporsmal = SPORSMAL, prisSvar = null }) {
                 <AccordionItem key={s.q} value={`q${i}`} className="border-[#15130F]/10" data-testid={`v4-faq-${i}`}>
                   <AccordionTrigger className="group py-5 text-left hover:no-underline sm:py-6 [&>svg]:hidden">
                     <span className="grid w-full grid-cols-[36px_minmax(0,1fr)_24px] items-start gap-x-4 sm:grid-cols-[48px_minmax(0,1fr)_24px] sm:gap-x-6">
-                      <span className="pt-[6px] text-[13px] tabular-nums transition-colors duration-300 group-data-[state=open]:text-[#D298FF]" style={{ color: 'rgba(21,19,15,0.45)' }}>0{i + 1}</span>
+                      <span className="pt-[6px] text-[13px] tabular-nums transition-colors duration-300 group-data-[state=open]:text-[#D298FF]" style={{ color: 'rgba(21,19,15,0.45)' }}>{String(i + 1).padStart(2, '0')}</span>
                       <span className="text-[18px] font-medium leading-[1.3] tracking-[-0.012em] text-[#15130F] transition-colors duration-300 sm:text-[21px]">{s.q}</span>
                       <span aria-hidden="true" className="relative mt-[3px] block h-6 w-6 shrink-0 rounded-full transition-[box-shadow,background-color] duration-300 group-hover:bg-[#15130F]/[0.04]" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.16)' }}>
                         <span className="absolute left-1/2 top-1/2 h-px w-[10px] -translate-x-1/2 -translate-y-1/2 bg-[#15130F]" />
