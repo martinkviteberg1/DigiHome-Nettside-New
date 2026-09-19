@@ -22,9 +22,9 @@ const SVAK = 'rgba(21,19,15,0.46)';
 const EPOST = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 const HVA = [
-  ['Hva dere får se', 'Salget fra henvendelse til signatur, oppgjøret og eierportalen, satt opp med deres egne tall.'],
-  ['Pristilbud i løpet av uken', 'Regnet per leieforhold under forvaltning, med de modulene dere trenger.'],
-  ['Ingen forpliktelse', 'Dere bestemmer etterpå om det er verdt å gå videre.'],
+  ['Deres egne tall', 'Vi setter opp demoen med deres eiere og boliger.'],
+  ['Pris i løpet av uken', 'Regnet per leieforhold under forvaltning.'],
+  ['Ingen forpliktelse', 'Dere bestemmer etterpå.'],
 ];
 
 const INPUT = 'mt-1.5 h-11 w-full bg-transparent text-[16px] outline-none placeholder:text-[#15130F]/30';
@@ -107,7 +107,7 @@ export default function DemoSkjema() {
               Book en demo<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
             </h2>
             <p className="mt-6 max-w-[42ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-              Fyll inn tre felt, så tar vi kontakt innen én virkedag og foreslår et tidspunkt. Demoen tar 30 minutter.
+              Tre felt, så tar vi kontakt innen én virkedag. Demoen tar 30 minutter.
             </p>
             <ol className="mt-8 grid gap-5">
               {HVA.map(([t, d], i) => (

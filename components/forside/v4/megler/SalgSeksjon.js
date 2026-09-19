@@ -306,12 +306,6 @@ function SalgScene({ start }) {
   );
 }
 
-const PUNKTER = [
-  ['Henvendelsen kommer ferdig utfylt', 'Enten den kommer fra landingssiden, et skjema, telefon eller import, får den boligdata fra eiendomsregisteret og et leieestimat basert på deres egen portefølje.'],
-  ['Tilbudet er klart før dere har lagt på', 'En personlig hilsen fra forvalteren, bilde av boligen, leie, honorar og hva eieren sitter igjen med. Med deres logo og farger. Eieren åpner det som en nettside, og dere ser når det blir lest.'],
-  ['Signaturen setter boligen i drift', 'Når eieren signerer med BankID, opprettes boligen, eieren får en lenke for bilder og opplysninger, og annonsen legges i kø. Blir en henvendelse liggende, får dere beskjed.'],
-];
-
 export default function SalgSeksjon() {
   const ref = useRef(null);
   const synlig = useSynlig(ref, 0.15);
@@ -327,23 +321,13 @@ export default function SalgSeksjon() {
             </h2>
           </div>
           <p className="max-w-[46ch] text-[17px] leading-[1.5] sm:text-[18px] lg:col-span-5 lg:pb-2" style={{ color: DIM, ...inn(2) }} data-testid="v4m-salg-ingress">
-            Det er farten som vinner oppdrag. Når en eier tar kontakt, ligger boligdata og leieestimat allerede på saken, tilbudet er skrevet, og når eieren signerer, er boligen i drift samme kveld.
+            Boligdata og leieestimat ligger på saken når eieren ringer. Tilbudet går ut med deres logo. Når eieren signerer med BankID, er boligen i drift.
           </p>
         </div>
 
         <div className="mt-10 lg:mt-14" style={inn(3, 20)}>
           <SalgScene start={synlig} />
         </div>
-
-        <ol className="mt-12 grid gap-x-10 gap-y-8 sm:grid-cols-3 lg:mt-14">
-          {PUNKTER.map(([t, d], i) => (
-            <li key={t} className="border-t pt-5" style={{ borderColor: HAIR, ...inn(4 + i, 12) }}>
-              <p className="text-[12px] tabular-nums" style={{ color: T.lilla }}>0{i + 1}</p>
-              <p className="mt-2 text-[16.5px] font-medium" style={{ color: T.ink }}>{t}</p>
-              <p className="mt-2 max-w-[40ch] text-[14.5px] leading-[1.5]" style={{ color: DIM }}>{d}</p>
-            </li>
-          ))}
-        </ol>
       </div>
     </section>
   );

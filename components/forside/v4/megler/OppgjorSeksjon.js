@@ -43,12 +43,6 @@ const STASJONER = [
   { k: 'Til eierne', v: '86 utbetalinger', d: 'Én utbetaling per eier · oppgjørsrapport per bolig (PDF) · årsoppgave i januar', dato: '3. juni' },
 ];
 
-const PUNKTER = [
-  ['Ett oppgjør per eier, hver måned', 'Rapporten viser husleie, kostnader, honorar og utbetalt beløp for hver bolig. Korrigeringer tas i neste periode og kan alltid spores.'],
-  ['Regnskapet får det ferdig', 'Bilag og utbetalinger går til PowerOffice, Tripletex eller Fiken. Leverandørfakturaer bokføres på riktig eier.'],
-  ['Purring uten at noen må huske det', 'Påminnelse, purring og varsel om utkastelse følger husleieloven og sendes automatisk. Dere bestemmer hvor det skal stoppe.'],
-];
-
 export default function OppgjorSeksjon() {
   const ref = useRef(null);
   const synlig = useSynlig(ref, 0.2);
@@ -56,13 +50,15 @@ export default function OppgjorSeksjon() {
   return (
     <section id="oppgjor" ref={ref} className="relative" style={{ background: T.flate, color: T.ink }} data-testid="v4m-oppgjor">
       <div className="mx-auto w-full max-w-[1360px] px-5 pb-20 pt-16 sm:px-8 lg:w-[calc(100%-128px)] lg:px-0 lg:pb-28 lg:pt-24">
-        <div className="max-w-[820px]">
-          <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>Oppgjør</p>
-          <h2 className="mt-4 text-[clamp(38px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }} data-testid="v4m-oppgjor-tittel">
-            Pengene går riktig vei<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
-          </h2>
-          <p className="mt-6 max-w-[50ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-            Å forvalte for andre er å ha ansvar for andres penger. Husleien går inn på klientkonto, honoraret trekkes etter avtalen med hver eier, og resten utbetales sammen med en rapport eieren forstår.
+        <div className="grid gap-8 lg:grid-cols-12 lg:items-end lg:gap-12">
+          <div className="lg:col-span-7">
+            <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>Oppgjør</p>
+            <h2 className="mt-4 text-[clamp(38px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }} data-testid="v4m-oppgjor-tittel">
+              Pengene går riktig vei<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+            </h2>
+          </div>
+          <p className="max-w-[46ch] text-[17px] leading-[1.5] sm:text-[18px] lg:col-span-5 lg:pb-2" style={{ color: DIM, ...inn(2) }}>
+            Husleien går inn på klientkonto. Honoraret trekkes etter avtalen med hver eier, og resten utbetales med en rapport per bolig.
           </p>
         </div>
 
@@ -104,15 +100,6 @@ export default function OppgjorSeksjon() {
             </div>
           </div>
         </div>
-
-        <ol className="mt-12 grid gap-x-10 gap-y-8 sm:grid-cols-3 lg:mt-14">
-          {PUNKTER.map(([t, d], i) => (
-            <li key={t} className="border-t pt-5" style={{ borderColor: HAIR, ...inn(8 + i, 12) }}>
-              <p className="text-[16.5px] font-medium" style={{ color: T.ink }}>{t}</p>
-              <p className="mt-2 max-w-[38ch] text-[14.5px] leading-[1.5]" style={{ color: DIM }}>{d}</p>
-            </li>
-          ))}
-        </ol>
       </div>
     </section>
   );

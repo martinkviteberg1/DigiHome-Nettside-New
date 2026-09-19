@@ -1933,3 +1933,11 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - Hero-ingress = posisjonering (ikke oppgjørsdetaljer). Oppgjør har «andres penger»-rammen én gang. Overgang → «Kom i gang: Tre uker fra demo til første oppgjør.» Demo → «Book en demo.» FAQ 11 → 10 spørsmål, kortere svar. Tillit-tekst «dere».
 - QA: alle 7 v4-sider 200, FAQ 01–10, avslutning uten steg, bedrift-Kontroll intakt, mobil 390 uten overflow.
 - Hero-H1 byttet etter bruker («Hundre eiere. Én rolig morgen» = elendig): nå «Ta flere oppdrag uten å ansette.» (2 linjer desktop+mobil, verifisert). Avslutning: «Vi viser dere det på 30 minutter.» Metadata-tittel oppdatert i app/utleiemeglere/page.js.
+
+## /utleiemeglere – kuttet til 9 blokker (juni 2025)
+- Fjernet: produktfilmer, «Én dag, tre stoler», Eierportal-, Merkevare-, Kontroll-, Overgang- og Partner-seksjon (filer Merkevare/Overgang/Partner slettet).
+- Ny: `megler/InkludertSeksjon.js` («Det som hører med», 6 punkter à én setning).
+- Salg/Oppgjør: kun tittel + 1–3 setninger + produktbilde; punktlistene under er fjernet.
+- FAQ kuttet fra 10 til 5. Hero uten bevis-liste. Partnerprogram lever i FAQ + avkrysning i skjema.
+- Rekkefølge: hero → logoer → Salg → Oppgjør → Det som hører med → Regn → Demo → FAQ → avslutning.
+- Verifisert: alle ruter 200, mobil 390 uten horisontal scroll, FAQ-numre 01–05. Ikke brukerbekreftet.

@@ -71,7 +71,7 @@ export default function RegnSeksjon() {
             Hva koster det manuelle arbeidet i dag<span style={{ color: T.lilla, marginLeft: '0.04em' }}>?</span>
           </h2>
           <p className="mt-6 max-w-[52ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-            Bruk deres egne tall. Kalkulatoren regner bare på det dere selv anslår at innkreving, purring, avstemming, eierrapporter og bilag koster i dag.
+            Bruk deres egne tall. Kalkulatoren regner bare på det dere selv anslår.
           </p>
         </div>
         <div className="mt-12 grid gap-px overflow-hidden rounded-[22px] lg:mt-16 lg:grid-cols-12" style={{ background: HAIR, boxShadow: '0 0 0 1px rgba(21,19,15,0.07), 0 48px 100px -56px rgba(21,19,15,0.35)', ...inn(3, 20) }} data-testid="v4m-regn-flate">
@@ -105,7 +105,7 @@ export default function RegnSeksjon() {
             </div>
             <div className="mt-8 border-t pt-6" style={{ borderColor: 'rgba(244,241,234,0.12)' }}>
               <p className="max-w-[40ch] text-[14px] leading-[1.5]" style={{ color: 'rgba(244,241,234,0.7)' }}>
-                DigiHome prises per leieforhold under forvaltning. Med {tall(n)} leieforhold får dere et konkret pristilbud i løpet av uken, regnet på deres egen portefølje.
+                DigiHome prises per leieforhold. Med {tall(n)} leieforhold får dere et konkret tilbud i løpet av uken.
               </p>
               <div className="mt-5"><Knapp href="#demo" onClick={() => sendTilDemo({ leieforhold: n })} data-testid="v4m-regn-cta">Få pris for {tall(n)} leieforhold</Knapp></div>
             </div>
