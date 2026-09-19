@@ -121,7 +121,7 @@ export default async function LedigeBoligerPage() {
         {/* Utleier? Samme avslutning som resten av siden — én setning, én handling. */}
         <AvslutningSeksjon
           tittel="Har du en bolig å leie ut"
-          under="Vi finner leietakeren og tar alt etterpå — eller du gjør det selv, med systemet som tar rutinen."
+          under="Lista vår ser boligen din først — ofte før annonsen rekker ut. Vi finner leietakeren og tar alt etterpå, eller du gjør det selv med systemet som tar rutinen."
           handling={{ knapp: { href: '/bli-utleier', tekst: 'Bli utleier' }, lenke: { href: '/priser', tekst: 'Se priser' } }}
         />
       </main>

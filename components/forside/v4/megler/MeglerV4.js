@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import NavV4 from '../NavV4';
 import Footer from '@/components/dh/Footer';
@@ -16,6 +15,12 @@ import StegSeksjon from '../StegSeksjon';
 import FaqSeksjon from '../FaqSeksjon';
 import AvslutningSeksjon from '../AvslutningSeksjon';
 import SammenligningSeksjon from '../SammenligningSeksjon';
+import TrygghetSeksjon from './TrygghetSeksjon';
+import MerkevareSeksjon from './MerkevareSeksjon';
+import RegnSeksjon from './RegnSeksjon';
+import OvergangSeksjon from './OvergangSeksjon';
+import PartnerSeksjon from './PartnerSeksjon';
+import DemoSkjema from './DemoSkjema';
 
 const ProduktSeksjon = dynamic(() => import('../produkt/ProduktSeksjon'), { ssr: false, loading: () => <div id="produkt" style={{ minHeight: 'var(--dh-h-produkt)', background: '#DCE1EB' }} aria-hidden="true" /> });
 
@@ -29,9 +34,12 @@ const ProduktSeksjon = dynamic(() => import('../produkt/ProduktSeksjon'), { ssr:
    honorar → eier) og eierportal. Alt på siden finnes i produktet.
 
    Rekkefølge: hero (løftet + morgenen hos en forvalter) → logoene → Salg →
-   produktfilmene (annonse · kontrakt · drift · økonomi) → Oppgjør →
-   Eierportal → Kontroll (roller, grenser, historikk, BankID) → steg →
-   spørsmål og svar (inkl. «konkurrerer dere med oss?») → avslutning.
+   produktfilmene (annonse · kontrakt · drift · økonomi) → Trygghet (andres
+   penger: klientkonto, BankID, rapport, regnskap) → Én dag, tre stoler →
+   Oppgjør → Eierportal → Merkevare (tilbudet i byråets drakt) → Kontroll →
+   Regn på det (ROI på deres egne anslag) → Overgang (uker, ikke måneder) →
+   Partnerprogram → steg → Demo (inline skjema, #demo) → spørsmål og svar →
+   avslutning. Alle «Book en demo»-handlinger peker på #demo.
 --------------------------------------------------------------------------- */
 
 const HAIR = 'rgba(21,19,15,0.10)';
@@ -76,7 +84,10 @@ const LINK = 'underline underline-offset-4 decoration-[#15130F]/30 hover:decorat
 
 const SPORSMAL = [
   { q: 'Hva koster det?', a: null },
-  { q: 'Konkurrerer DigiHome med oss?', a: 'DigiHome forvalter egne kunders boliger i Bergen på dette systemet — det er derfor det fungerer. Deres data er deres: ingen deling av eiere, henvendelser eller priser, og vi selger ikke til eierne dere har avtale med. Det står i avtalen.' },
+  { q: 'Konkurrerer DigiHome med oss?', a: 'Vi forvalter egne kunders boliger i Bergen sentrum på dette systemet — det er derfor det fungerer. Utenfor sentrum, og når vi er uten kapasitet, går henvendelsene til partnere på systemet. Deres data er deres: ingen deling av eiere, henvendelser eller priser, og vi selger ikke til eierne dere har avtale med. Det står i avtalen.' },
+  { q: 'Hvor lang tid tar overgangen?', a: 'Typisk tre uker: import av eiere, avtaler og leieforhold i uke én, parallell drift i uke to, første oppgjør på DigiHome i uke tre. Kontrakter og historikk følger med som de er, og vi gjør oppsettet sammen med dere — eier for eier eller hele porteføljen på én gang.' },
+  { q: 'Kan vi bruke vår egen merkevare?', a: 'Ja. Tilbudet som går til eieren skriver seg selv og går ut med deres logo og farger, og landingssidene dere publiserer fra systemet er deres. Eieren møter dere — motoren er vår.' },
+  { q: 'Hva er partnerprogrammet?', a: 'Fem byråer i 2025. Partnere får henvendelser fra digihome.no i sitt område — med boligdata, leieestimat og tilbudsutkast klart — og en direkte linje til produktteamet. Kryss av for partnerprogrammet i demo-skjemaet, så tar vi det i samtalen.' },
   { q: 'Hvordan kommer henvendelsene inn?', a: 'Fra skjema og landingssider dere publiserer fra systemet, fra telefon og e-post dere registrerer, eller ved import. Hvert lead får boligdata, leieestimat og et tilbudsutkast med deres honorar.' },
   { q: 'Kan vi ta med eksisterende eiere og leieforhold?', a: 'Ja. Eiere, oppdragsavtaler og løpende leieforhold settes opp sammen med dere i oppsettet — med kontrakter og historikk som de er.' },
   { q: 'Hvordan håndteres eiernes penger?', a: 'Husleien går inn på klientkonto, adskilt fra deres egne midler. Honoraret trekkes etter avtalen med hver eier, resten utbetales, og eieren får oppgjørsrapport per bolig og årsoppgave.' },
@@ -88,7 +99,8 @@ const SPORSMAL = [
 const PRIS_SVAR = (
   <p className="max-w-[60ch]" style={{ color: 'rgba(21,19,15,0.66)' }}>
     Plattformen prises etter <strong style={{ color: '#15130F', fontWeight: 500 }}>antall leieforhold under forvaltning</strong> og modulene dere bruker.{' '}
-    <Link href="/book-mote" className={LINK} style={{ color: '#15130F' }} data-testid="v4m-faq-demo">Book en demo</Link>, så får dere et konkret forslag samme uke — med deres portefølje som eksempel.
+    <a href="#regn" className={LINK} style={{ color: '#15130F' }} data-testid="v4m-faq-regn">Regn på hva rutinen koster dere i dag</a>, og{' '}
+    <a href="#demo" className={LINK} style={{ color: '#15130F' }} data-testid="v4m-faq-demo">book en demo</a> — så får dere et konkret forslag samme uke, med deres portefølje som eksempel.
   </p>
 );
 
@@ -108,10 +120,10 @@ export default function MeglerV4() {
                   Hundre eiere.<br />Én rolig morgen<span style={{ color: T.lilla, marginLeft: '0.03em' }}>.</span>
                 </h1>
                 <p className="dh-cover-inn mt-6 max-w-[38ch] text-[17px] leading-[1.5] sm:text-[19px]" style={{ color: 'rgba(21,19,15,0.7)', animationDelay: '.08s' }} data-testid="v4m-ingress">
-                  Vi bygde systemet for å forvalte egne kunders boliger. Nå er det deres: fra første henvendelse til oppgjøret står på eiers konto — med klientkonto, honorar og eierportal innebygd.
+                  Vi bygde systemet for å forvalte egne kunders boliger. Nå er det deres: husleien inn på klientkonto, honoraret trukket, hver eier betalt og rapportert — automatisk, hver måned. Dere tar valgene. Rutinen går.
                 </p>
                 <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ animationDelay: '.14s' }}>
-                  <Knapp href="/book-mote" data-testid="v4m-cta">Book en demo</Knapp>
+                  <Knapp href="#demo" data-testid="v4m-cta">Book en demo</Knapp>
                   <Lenke href="#salg" data-testid="v4m-cta-salg">Se salget fra henvendelse til signatur</Lenke>
                 </div>
                 <ul className="dh-cover-inn mt-10 grid grid-cols-3 gap-x-5 border-t pt-5 sm:gap-x-8" style={{ borderColor: HAIR, animationDelay: '.2s' }} data-testid="v4m-bevis">
@@ -141,7 +153,10 @@ export default function MeglerV4() {
           <ProduktSeksjon kapitler={['annonse', 'kontrakt', 'drift', 'okonomi']} />
         </Utsatt>
 
-        {/* ── 5. Én dag, tre stoler ── */}
+        {/* ── 5. Trygghet: andres penger — klientkonto, BankID, rapport, regnskap ── */}
+        <TrygghetSeksjon />
+
+        {/* ── 6. Én dag, tre stoler ── */}
         <SammenligningSeksjon
           tittel={['Én dag.', 'Tre stoler.']}
           under="Seks ting som skjer i en forvalters uke — sett fra stolen du sitter i."
@@ -152,10 +167,10 @@ export default function MeglerV4() {
           testid="v4m"
         />
 
-        {/* ── 6. Oppgjør ── */}
+        {/* ── 7. Oppgjør ── */}
         <OppgjorSeksjon />
 
-        {/* ── 6. Eierportalen ── */}
+        {/* ── 8. Eierportalen ── */}
         <InnsynSeksjon
           id="eierportal"
           label="Eierportal"
@@ -167,10 +182,22 @@ export default function MeglerV4() {
           testid="v4m-eierportal"
         />
 
-        {/* ── 7. Kontroll: roller, grenser, historikk, BankID ── */}
+        {/* ── 9. Merkevare: tilbudet i byråets drakt ── */}
+        <MerkevareSeksjon />
+
+        {/* ── 10. Kontroll: roller, grenser, historikk, BankID ── */}
         <KontrollSeksjon />
 
-        {/* ── 8. Slik kommer dere i gang ── */}
+        {/* ── 11. Regn på det: ROI på deres egne anslag → #demo ── */}
+        <RegnSeksjon />
+
+        {/* ── 12. Overgang: uker, ikke måneder ── */}
+        <OvergangSeksjon />
+
+        {/* ── 13. Partnerprogram 2025 ── */}
+        <PartnerSeksjon />
+
+        {/* ── 14. Slik kommer dere i gang ── */}
         <StegSeksjon
           tittel={['Slik kommer', 'dere i gang.']}
           under="Fra demo til første oppgjør på noen uker — med deres eiere, ikke en mal."
@@ -179,14 +206,17 @@ export default function MeglerV4() {
           testid="v4m"
         />
 
-        {/* ── 9. Spørsmål og svar ── */}
+        {/* ── 15. Demo: inline skjema (#demo) ── */}
+        <DemoSkjema />
+
+        {/* ── 16. Spørsmål og svar ── */}
         <FaqSeksjon sporsmal={SPORSMAL} prisSvar={PRIS_SVAR} />
 
-        {/* ── 10. Avslutning ── */}
+        {/* ── 17. Avslutning ── */}
         <AvslutningSeksjon
           tittel="Hundre eiere. Én rolig morgen"
           under="Book en demo — 30 minutter, med deres eiere og boliger som eksempel."
-          handling={{ knapp: { tekst: 'Book en demo', href: '/book-mote' }, lenke: { tekst: 'Registrer selskapet', href: '/bli-utleier/start?kind=business' } }}
+          handling={{ knapp: { tekst: 'Book en demo', href: '#demo' }, lenke: { tekst: 'Registrer selskapet', href: '/bli-utleier/start?kind=business' } }}
           steg={[
             ['1', 'Demo med deres portefølje', 'Dere ser morgenen deres — og salget — i systemet.'],
             ['2', 'Eiere, avtaler og roller', 'Oppdragsavtaler, honorarsats per eier, hvem godkjenner hva.'],

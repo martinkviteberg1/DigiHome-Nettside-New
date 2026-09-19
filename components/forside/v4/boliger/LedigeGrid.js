@@ -313,6 +313,22 @@ export default function LedigeGrid({ listings = [], dbOk = true }) {
               : 'Vi fikk ikke kontakt med boligoversikten i dette sekundet. Last siden på nytt — eller legg inn e-posten din, så sier vi fra når noe blir ledig.'}
           </p>
           <div className="mt-8"><Varsel /></div>
+          {dbOk && (
+            /* Tomt er ikke dødt: slik fungerer lista — tre steg, samme språk som resten av siden */
+            <ol className="mt-14 grid gap-x-10 gap-y-8 border-t pt-8 sm:grid-cols-3" style={{ borderColor: HAIR }} data-testid="listings-empty-steg">
+              {[
+                ['Legg inn e-posten din', 'Én linje. Bare beskjed om boliger — ingenting annet.'],
+                ['Du ser boligen før den annonseres', 'Lista vår får nye boliger først. De fleste går før annonsen rekker ut.'],
+                ['Meld interesse og signer', 'Kredittsjekk, kontrakt med BankID og depositum — i én løsning. Vi svarer samme dag.'],
+              ].map(([t, d], i) => (
+                <li key={t}>
+                  <p className="text-[13px] tabular-nums" style={{ color: T.lilla }}>0{i + 1}</p>
+                  <p className="mt-2 text-[16.5px] font-medium" style={{ color: T.ink }}>{t}</p>
+                  <p className="mt-1.5 max-w-[34ch] text-[14.5px] leading-[1.5]" style={{ color: DIM }}>{d}</p>
+                </li>
+              ))}
+            </ol>
+          )}
         </div>
       )}
 

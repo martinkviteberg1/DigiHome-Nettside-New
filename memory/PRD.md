@@ -1897,3 +1897,21 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
   - 16:9 (wide) ikke rendret ennå — tilbys som utvidelse.
 - Status: agent-rendret + rammer visuelt inspisert + HTTP-servering verifisert. IKKE brukerbekreftet.
 
+
+### Utleiemegler-siden + navbar + Ledige boliger — VERDENSKLASSE-løft (juni 2025)
+- Bruker: «hvordan kan vi forbedre siden for utleiemeglere? bør vi legge til Ledige boliger i navbar?» → diskusjon → «ta alt nå.. tenk verdensklasse».
+- Viktig funn: hero-kortet (MeglerScene) er IKKE halvtomt — 6 hendelser + «Venter på dere» avsløres i sekvens over ~6 s. Ikke rørt.
+- /priser sier bevisst «Tilpasset · demo først» for eiendomsselskap → INGEN intern enhetspris publisert. Kalkulatoren er ROI på meglerens egne anslag.
+- Nye seksjoner i components/forside/v4/megler/ (alle kun med påstander som alt sto på siden/FAQ):
+  1. TrygghetSeksjon — «Bygget for andres penger.» 6 fakta (klientkonto, avstemming, BankID via Posten, rapport/årsoppgave, purring, logg) + regnskapsrad PowerOffice/Tripletex/Fiken.
+  2. MerkevareSeksjon — «Deres navn på det eieren ser.» Tilbud i byråets drakt, 3 byrå-piller (Vest Utleie/Fjord/Bryggen) bytter farge live.
+  3. RegnSeksjon (#regn) — ROI-kalkulator, 4 glidere (leieforhold/min/andel rutine/timekost) → charcoal-resultat. CTA «Få pris for N leieforhold» → sendTilDemo() forhåndsfyller #demo (event + sessionStorage).
+  4. OvergangSeksjon — «Uker, ikke måneder.» Uke 1 Import · Uke 2 Parallell drift · Uke 3 Første oppgjør + 3 løfter. «Typisk plan».
+  5. PartnerSeksjon — «Fem byråer. Oppdrag i deres område.» PLASSER=5 (konstant). FORRETNINGSLØFTE eier må stå for: henvendelser utenfor Bergen sentrum/kapasitet → partnere.
+  6. DemoSkjema (#demo) — inline skjema (navn, selskap, e-post, tlf, leieforhold, partner-avkrysning). POST /api/leads m/ lead_type 'megler', owner_kind 'business', source 'utleiemeglere-demo', SpamGuard-felter. Løfte: «innen én virkedag».
+- MeglerV4.js: skjerpet ingress, alle «Book en demo» → #demo (hero, FAQ, avslutning), FAQ +3 (overgang, merkevare, partner) + skjerpet konkurranse-svar, PRIS_SVAR lenker #regn/#demo. Rekkefølge: Hero→Tillit→Salg→Film→Trygghet→Tre stoler→Oppgjør→Eierportal→Merkevare→Kontroll→Regn→Overgang→Partner→Steg→Demo→FAQ→Avslutning.
+- NavV4.js (GLOBAL for alle v4-sider): «Produkt»-nedtrekk (Produktet /#produkt · Husleiekontrakt · Forvaltning) + Boligeiere · Eiendomsselskaper · Utleiemeglere · Priser. «Ledige boliger · N» vises KUN når /api/public/listings har status==='active' (useLedigeTall, 5 min sessionStorage-cache 'dh_ledige_n'). Mobilmeny gruppert: Produkt / Hvem er du / Priser·Ledige·Om oss.
+- /ledige-boliger: tomtilstand «Alt er utleid.» + 3 steg «slik får du boligen først» (LedigeGrid listings-empty-steg); Avslutning-under nevner lista. DB-fakta: 181 boliger, 3 visible, 0 publiserbare (FINN-bilder stoppes av gate), 0 housing_alerts → derfor ingen «nylig utleid»/ventelistetall vist (ville vært tomt/uærlig).
+- QA: kompilert rent; desktop + 390 px (scrollWidth == 390) på /utleiemeglere og /ledige-boliger; kalkulator 250 → prefill 250 → submit → lead i `leads` (ikke spam) m/ riktig felter, forwarded:true; testpost slettet lokalt (QA Megler Testesen / QA Byrå AS ble videresendt til plattform-CRM — kan ignoreres der). Nav-teller verifisert m/ simulert n=3 desktop+mobil.
+- Ikke kjørt: formell frontend-testagent (krever brukerens tillatelse). Ikke brukerbekreftet.
+

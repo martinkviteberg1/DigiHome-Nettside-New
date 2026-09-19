@@ -1,31 +1,104 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { ChevronDown } from 'lucide-react';
 import { site } from '@/lib/site';
 import { Knapp } from './motion';
 import { Kapittelpille, useKapittelbar } from './kapittelbar';
-import { EASE } from './tokens';
+import { EASE, T } from './tokens';
 import KomIGangVelger from './start/KomIGangVelger';
 
 /* ---------------------------------------------------------------------------
-   NavV4 — lys, stille verktøylinje. Logo, fem lenker, logg inn, én knapp.
-   Ingen megamenyer i første versjon. Hairline når siden er scrollet.
+   NavV4 — lys, stille verktøylinje. Logo, «Produkt» (nedtrekk), tre publikum,
+   priser, logg inn, én knapp. Hairline når siden er scrollet.
+
+   «Produkt» samler produktet, husleiekontrakten og forvaltning i ett
+   nedtrekk — så publikums-sidene (Boligeiere · Eiendomsselskaper ·
+   Utleiemeglere) står tydelig. «Ledige boliger» vises KUN når det faktisk
+   finnes publiserte, ledige boliger — med live teller. En død «Alt er utleid»-
+   lenke i hovedmenyen er et dårligere førsteinntrykk enn ingen lenke.
 
    «Kom i gang» åpner veiskillet (Huseier / Eiendomsselskap) som overlay —
    modal på desktop, drawer på mobil. Lenken peker på /kom-i-gang, så
    cmd-klikk, høyreklikk og uten JS fortsatt gir en side.
 --------------------------------------------------------------------------- */
 
+const PRODUKT = [
+  ['Produktet', '/#produkt', 'Annonse, kontrakt, husleie og drift — i én flate'],
+  ['Husleiekontrakt', '/utleier/husleiekontrakt', 'Gratis kontrakt, signert med BankID'],
+  ['Forvaltning', '/forvaltning', 'Vi tar hele jobben — du får rapporten'],
+];
+
 const LENKER = [
-  ['Produkt', '/#produkt'],
   ['Boligeiere', '/boligeiere'],
   ['Eiendomsselskaper', '/bedrift'],
   ['Utleiemeglere', '/utleiemeglere'],
-  ['Husleiekontrakt', '/utleier/husleiekontrakt'],
-  ['Forvaltning', '/forvaltning'],
   ['Priser', '/priser'],
 ];
+
+/* Antall ledige, publiserte boliger — hentes én gang per fane (5 min cache). 0 eller feil → lenken skjules. */
+function useLedigeTall() {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    try {
+      const c = JSON.parse(window.sessionStorage.getItem('dh_ledige_n') || 'null');
+      if (c && typeof c.n === 'number' && Date.now() - c.t < 5 * 60 * 1000) { setN(c.n); return undefined; }
+    } catch (e) { /* stille */ }
+    (async () => {
+      try {
+        const r = await fetch('/api/public/listings', { cache: 'no-store' });
+        const j = await r.json();
+        const k = j && j.ok ? (j.listings || []).filter((l) => l && l.status === 'active').length : 0;
+        if (alive) setN(k);
+        try { window.sessionStorage.setItem('dh_ledige_n', JSON.stringify({ n: k, t: Date.now() })); } catch (e) { /* stille */ }
+      } catch (e) { /* skjul lenken ved feil */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+  return n;
+}
+
+/* «Produkt» — nedtrekk på hover/fokus. Escape lukker. Panelet er et lite PAPIR-kort med tre lenker og én linje hver. */
+function ProduktMeny({ lenke, disabled }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const t = useRef(0);
+  const vis = () => { window.clearTimeout(t.current); setOpen(true); };
+  const skjul = () => { window.clearTimeout(t.current); t.current = window.setTimeout(() => setOpen(false), 140); };
+  useEffect(() => () => window.clearTimeout(t.current), []);
+  return (
+    <div
+      ref={ref}
+      className="relative"
+      onMouseEnter={vis}
+      onMouseLeave={skjul}
+      onFocus={vis}
+      onBlur={(e) => { if (!ref.current || !ref.current.contains(e.relatedTarget)) skjul(); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
+      data-testid="v4-nav-produkt"
+    >
+      <button type="button" className={`${lenke} gap-1`} aria-haspopup="true" aria-expanded={open} tabIndex={disabled ? -1 : undefined} onClick={() => setOpen((v) => !v)} data-testid="v4-nav-produkt-knapp">
+        Produkt<ChevronDown className="h-3.5 w-3.5 transition-transform duration-300" style={{ transform: open ? 'rotate(180deg)' : 'none' }} strokeWidth={1.8} />
+      </button>
+      <div
+        className="absolute left-0 top-full pt-2"
+        style={{ opacity: open ? 1 : 0, transform: open ? 'none' : 'translateY(-6px)', pointerEvents: open ? 'auto' : 'none', visibility: open ? 'visible' : 'hidden', transition: `opacity 200ms ${EASE}, transform 260ms ${EASE}, visibility 0s ${open ? '0s' : '260ms'}` }}
+        data-testid="v4-nav-produkt-meny"
+      >
+        <div className="w-[304px] rounded-[16px] p-2" style={{ background: '#FBFAF8', boxShadow: '0 0 0 1px rgba(21,19,15,0.08), 0 24px 60px -24px rgba(21,19,15,0.35)' }}>
+          {PRODUKT.map(([l, h, d]) => (
+            <Link key={l} prefetch={false} href={h} onClick={() => setOpen(false)} tabIndex={disabled || !open ? -1 : undefined} className="block rounded-[10px] px-3.5 py-2.5 transition-colors hover:bg-[#15130F]/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" data-testid={`v4-nav-produkt-${h.replace(/[^a-z]/gi, '').toLowerCase()}`}>
+              <span className="block text-[14.5px] text-[#15130F]">{l}</span>
+              <span className="mt-0.5 block text-[12.5px] text-[#15130F]/55">{d}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* Kapitlene i linja — samme segmenterte pille som i seksjonen (Kapittelpille, tema 'nav'). Desktop: sentrert,
    absolutt, så merke og knapper står stille. Mobil: i midtfeltet mellom merke og hamburger, kompakt. */
@@ -56,6 +129,7 @@ export default function NavV4({ bg = 'rgba(243,241,236,0.85)', bgTett = '#F3F1EC
      merke · kapitler · hamburger — i stedet for to linjer oppå hverandre. */
   const kap = useKapittelbar();
   const medKap = !!kap;
+  const ledige = useLedigeTall();
 
   /* Åpne veiskillet i stedet for å navigere — men la modifikator-klikk gå til /kom-i-gang */
   const apneVelger = (e) => {
@@ -103,9 +177,14 @@ export default function NavV4({ bg = 'rgba(243,241,236,0.85)', bgTett = '#F3F1EC
               )}
             </Link>
             <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Hovedmeny" style={{ opacity: medKap ? 0 : 1, transform: medKap ? 'translateY(-6px)' : 'none', pointerEvents: medKap ? 'none' : 'auto', transition: `opacity 220ms ${EASE}, transform 300ms ${EASE}` }} aria-hidden={medKap}>
-              {LENKER.map(([l, h]) => (h.startsWith('#')
-                ? <a key={l} href={h} className={lenke} tabIndex={medKap ? -1 : undefined}>{l}</a>
-                : <Link key={l} prefetch={false} href={h} className={lenke} tabIndex={medKap ? -1 : undefined}>{l}</Link>))}
+              <ProduktMeny lenke={lenke} disabled={medKap} />
+              {LENKER.map(([l, h]) => <Link key={l} prefetch={false} href={h} className={lenke} tabIndex={medKap ? -1 : undefined}>{l}</Link>)}
+              {ledige > 0 && (
+                <Link prefetch={false} href="/ledige-boliger" className={`${lenke} gap-1.5`} tabIndex={medKap ? -1 : undefined} data-testid="v4-nav-ledige">
+                  Ledige boliger
+                  <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[11.5px] font-medium tabular-nums" style={{ background: T.lilla, color: T.ink }} data-testid="v4-nav-ledige-tall">{ledige}</span>
+                </Link>
+              )}
             </nav>
           </div>
           {/* Kapitlene — midt i linja på desktop, i midtfeltet på mobil */}
@@ -131,9 +210,21 @@ export default function NavV4({ bg = 'rgba(243,241,236,0.85)', bgTett = '#F3F1EC
       >
         <div className="mx-auto flex min-h-full w-full max-w-[720px] flex-col px-6 pb-8 pt-4 lg:pt-10">
           <nav className="flex flex-col" aria-label="Mobilmeny">
-            {[...LENKER, ['Om oss', '/om-oss']].map(([l, h]) => (h.startsWith('#')
-              ? <a key={l} href={h} onClick={() => setApen(false)} className="border-b border-[#15130F]/[0.08] py-4 text-[26px] text-[#15130F]" style={{ fontFamily: 'var(--font-heading)' }}>{l}</a>
-              : <Link key={l} prefetch={false} href={h} onClick={() => setApen(false)} className="border-b border-[#15130F]/[0.08] py-4 text-[26px] text-[#15130F]" style={{ fontFamily: 'var(--font-heading)' }}>{l}</Link>))}
+            {[
+              ['Produkt', PRODUKT.map(([l, h]) => [l, h])],
+              ['Hvem er du', LENKER.filter(([l]) => l !== 'Priser')],
+              [null, [['Priser', '/priser'], ...(ledige > 0 ? [['Ledige boliger', '/ledige-boliger', ledige]] : []), ['Om oss', '/om-oss']]],
+            ].map(([gruppe, lenker], gi) => (
+              <div key={gruppe || 'rest'} className={gi > 0 ? 'mt-6' : ''}>
+                {gruppe ? <p className="pb-1 text-[12.5px] font-medium" style={{ color: 'rgba(21,19,15,0.5)' }}>{gruppe}</p> : null}
+                {lenker.map(([l, h, n]) => (
+                  <Link key={l} prefetch={false} href={h} onClick={() => setApen(false)} className={`flex items-center justify-between border-b border-[#15130F]/[0.08] py-4 text-[#15130F] ${gruppe ? 'text-[22px]' : 'text-[26px]'}`} style={{ fontFamily: 'var(--font-heading)' }} data-testid={n ? 'v4-mobil-ledige' : undefined}>
+                    {l}
+                    {n ? <span className="rounded-full px-2.5 py-1 text-[13px] font-medium tabular-nums" style={{ background: T.lilla, color: T.ink, fontFamily: 'var(--font-body), sans-serif' }}>{n}</span> : null}
+                  </Link>
+                ))}
+              </div>
+            ))}
           </nav>
           <div className="mt-auto flex flex-col gap-2 pt-8">
             <Knapp href="/kom-i-gang" onClick={apneVelger} aria-haspopup="dialog" data-testid="v4-nav-cta-mobil">Kom i gang</Knapp>
