@@ -12,17 +12,19 @@ import { EASE, T, display, useSynlig } from '../motion';
    produktet allerede.
 --------------------------------------------------------------------------- */
 
+const PAPIR = '#FBFAF8';
 const HAIR = 'rgba(21,19,15,0.09)';
 const DIM = 'rgba(21,19,15,0.62)';
 const SVAK = 'rgba(21,19,15,0.46)';
 
+/* [tittel, én setning, én linje fra produktet] */
 const PUNKTER = [
-  ['Eierportal', 'Hver eier ser sine boliger, godkjenner kostnader over grensen dere har satt, og finner oppgjøret selv.'],
-  ['Deres merkevare', 'Tilbud, oppdragsavtale og landingssider går ut med deres logo og farger.'],
-  ['Roller og historikk', 'Hver ansatt ser bare sine eiere. Alt som gjøres, lagres med navn og tidspunkt.'],
-  ['Purring etter husleieloven', 'Påminnelse, purring og varsel sendes automatisk. Dere bestemmer hvor det stopper.'],
-  ['Regnskap', 'Bilag per eier og bolig til PowerOffice, Tripletex eller Fiken.'],
-  ['Overgang på tre uker', 'Oppsett, parallell drift og første oppgjør. Kontrakter og historikk følger med.'],
+  ['Eierportal', 'Hver eier ser sine boliger, godkjenner kostnader over grensen dere har satt, og finner oppgjøret selv.', ['Kari Moen', 'godkjente 6 200 kr · 08:41']],
+  ['Deres merkevare', 'Tilbud, oppdragsavtale og landingssider går ut med deres logo og farger.', ['Tilbud · Fjellveien 12', 'sendt fra Vest Utleie AS']],
+  ['Roller og historikk', 'Hver ansatt ser bare sine eiere. Alt som gjøres, lagres med navn og tidspunkt.', ['Jonas Haugland', 'forvalter · 31 eiere · alt logget']],
+  ['Purring etter husleieloven', 'Påminnelse, purring og varsel sendes automatisk. Dere bestemmer hvor det stopper.', ['Dag 3', 'påminnelse sendt · 3 av 214']],
+  ['Regnskap', 'Bilag per eier og bolig til PowerOffice, Tripletex eller Fiken.', ['Mai', '86 oppgjør → PowerOffice']],
+  ['Overgang på tre uker', 'Oppsett, parallell drift og første oppgjør. Kontrakter og historikk følger med.', ['Uke 1 · 2 · 3', 'oppsett · parallell · første oppgjør']],
 ];
 
 export default function InkludertSeksjon() {
@@ -40,11 +42,17 @@ export default function InkludertSeksjon() {
             </h2>
           </div>
           <ol className="grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:col-span-8" data-testid="v4m-inkludert-liste">
-            {PUNKTER.map(([t, d], i) => (
+            {PUNKTER.map(([t, d, eks], i) => (
               <li key={t} className="border-t pt-5" style={{ borderColor: HAIR, ...inn(2 + i, 12) }}>
                 <p className="text-[12px] tabular-nums" style={{ color: T.lilla }}>{String(i + 1).padStart(2, '0')}</p>
                 <p className="mt-2 text-[17px] font-medium" style={{ color: T.ink }}>{t}</p>
                 <p className="mt-2 max-w-[40ch] text-[15px] leading-[1.5]" style={{ color: DIM }}>{d}</p>
+                {/* Én linje fra produktet, slik den ser ut i systemet */}
+                <p className="mt-4 inline-flex max-w-full items-center gap-2 rounded-[10px] px-3 py-2 text-[12.5px] leading-[1.3]" style={{ background: PAPIR, boxShadow: `inset 0 0 0 1px ${HAIR}` }}>
+                  <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.lilla }} />
+                  <span className="truncate font-medium" style={{ color: T.ink }}>{eks[0]}</span>
+                  <span className="truncate" style={{ color: SVAK }}>{eks[1]}</span>
+                </p>
               </li>
             ))}
           </ol>

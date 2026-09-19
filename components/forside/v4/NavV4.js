@@ -15,14 +15,18 @@ import KomIGangVelger from './start/KomIGangVelger';
 
    «Produkt» samler produktet, husleiekontrakten og forvaltning i ett
    nedtrekk — så publikums-sidene (Boligeiere · Eiendomsselskaper ·
-   Utleiemeglere) står tydelig. «Ledige boliger» vises KUN når det faktisk
-   finnes publiserte, ledige boliger — med live teller. En død «Alt er utleid»-
-   lenke i hovedmenyen er et dårligere førsteinntrykk enn ingen lenke.
+   Utleiemeglere) står tydelig. «Ledige boliger» er en leietaker-lenke, ikke
+   en kjøper-lenke: den ligger til høyre sammen med «Logg inn», og vises KUN
+   når det finnes minst LEDIGE_MIN publiserte, ledige boliger, med live
+   teller. Én eller to boliger gir et svakere inntrykk enn ingen lenke.
+   Footeren har den alltid.
 
    «Kom i gang» åpner veiskillet (Huseier / Eiendomsselskap) som overlay —
    modal på desktop, drawer på mobil. Lenken peker på /kom-i-gang, så
    cmd-klikk, høyreklikk og uten JS fortsatt gir en side.
 --------------------------------------------------------------------------- */
+
+const LEDIGE_MIN = 3;
 
 const PRODUKT = [
   ['Produktet', '/#produkt', 'Annonse, kontrakt, husleie og drift — i én flate'],
@@ -179,17 +183,17 @@ export default function NavV4({ bg = 'rgba(243,241,236,0.85)', bgTett = '#F3F1EC
             <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Hovedmeny" style={{ opacity: medKap ? 0 : 1, transform: medKap ? 'translateY(-6px)' : 'none', pointerEvents: medKap ? 'none' : 'auto', transition: `opacity 220ms ${EASE}, transform 300ms ${EASE}` }} aria-hidden={medKap}>
               <ProduktMeny lenke={lenke} disabled={medKap} />
               {LENKER.map(([l, h]) => <Link key={l} prefetch={false} href={h} className={lenke} tabIndex={medKap ? -1 : undefined}>{l}</Link>)}
-              {ledige > 0 && (
-                <Link prefetch={false} href="/ledige-boliger" className={`${lenke} gap-1.5`} tabIndex={medKap ? -1 : undefined} data-testid="v4-nav-ledige">
-                  Ledige boliger
-                  <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[11.5px] font-medium tabular-nums" style={{ background: T.lilla, color: T.ink }} data-testid="v4-nav-ledige-tall">{ledige}</span>
-                </Link>
-              )}
             </nav>
           </div>
           {/* Kapitlene — midt i linja på desktop, i midtfeltet på mobil */}
           {medKap && <NavKapitler kap={kap} />}
           <div className="flex shrink-0 items-center gap-2">
+            {ledige >= LEDIGE_MIN && (
+              <Link prefetch={false} href="/ledige-boliger" className={`${lenke} hidden gap-1.5 ${medKap ? '' : 'lg:inline-flex'}`} data-testid="v4-nav-ledige">
+                Ledige boliger
+                <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[11.5px] font-medium tabular-nums" style={{ background: T.lilla, color: T.ink }} data-testid="v4-nav-ledige-tall">{ledige}</span>
+              </Link>
+            )}
             <a href={site.loginUrl} className={`${lenke} hidden ${medKap ? 'lg:hidden' : 'sm:inline-flex'}`}>Logg inn</a>
             <Knapp href="/kom-i-gang" size="sm" className={`hidden ${medKap ? 'lg:inline-flex' : 'sm:inline-flex'}`} onClick={apneVelger} aria-haspopup="dialog" aria-expanded={velger} data-testid="v4-nav-cta">Kom i gang</Knapp>
             <button type="button" onClick={() => setApen((v) => !v)} aria-expanded={apen} aria-label={apen ? 'Lukk meny' : 'Åpne meny'} className={`relative -mr-2 flex h-11 w-11 items-center justify-center rounded-full text-[#15130F] transition-colors hover:bg-[#15130F]/[0.05] ${medKap ? '' : 'lg:hidden'}`} data-testid="v4-meny-knapp">
@@ -213,7 +217,7 @@ export default function NavV4({ bg = 'rgba(243,241,236,0.85)', bgTett = '#F3F1EC
             {[
               ['Produkt', PRODUKT.map(([l, h]) => [l, h])],
               ['Hvem er du', LENKER.filter(([l]) => l !== 'Priser')],
-              [null, [['Priser', '/priser'], ...(ledige > 0 ? [['Ledige boliger', '/ledige-boliger', ledige]] : []), ['Om oss', '/om-oss']]],
+              [null, [['Priser', '/priser'], ...(ledige >= LEDIGE_MIN ? [['Ledige boliger', '/ledige-boliger', ledige]] : []), ['Om oss', '/om-oss']]],
             ].map(([gruppe, lenker], gi) => (
               <div key={gruppe || 'rest'} className={gi > 0 ? 'mt-6' : ''}>
                 {gruppe ? <p className="pb-1 text-[12.5px] font-medium" style={{ color: 'rgba(21,19,15,0.5)' }}>{gruppe}</p> : null}

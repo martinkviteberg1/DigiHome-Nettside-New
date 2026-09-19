@@ -34,6 +34,30 @@ const ProduktSeksjon = dynamic(() => import('../produkt/ProduktSeksjon'), { ssr:
 const SVAK = 'rgba(21,19,15,0.5)';
 const LINK = 'underline underline-offset-4 decoration-[#15130F]/30 hover:decoration-[#15130F]';
 
+/* Produktfilmene med megler-tekst: «dere» og eieren, ikke «du». Kortversjonen vises på mobil. */
+const FILM = {
+  annonse: {
+    tittel: ['Fra adressen', 'til valgt leietaker.'],
+    ingress: 'Adressen inn, så finner systemet boligen, skriver annonsen og legger den ut på FINN.no. Interessentene legitimerer seg og booker visning selv. Dere velger leietaker, eieren sier ja i appen.',
+    kort: 'Systemet finner boligen, skriver annonsen og legger den ut på FINN. Interessentene booker selv. Dere velger leietaker.',
+  },
+  kontrakt: {
+    tittel: ['Fra valgt leietaker', 'til nøklene i hånden.'],
+    ingress: 'Kontrakten fylles ut fra annonsen og signeres med BankID. Depositumet står på egen konto hos Keyhole, og overtakelsen dokumenteres i en protokoll som signeres i døra.',
+    kort: 'Kontrakt fra annonsen, signert med BankID. Depositum hos Keyhole, protokoll i døra.',
+  },
+  drift: {
+    tittel: ['Fra melding til løst.', 'Ett trykk fra dere.'],
+    ingress: 'Leietakeren melder at varmtvannet er borte. Saken sorterer seg selv, rørleggeren svarer med tid og pris, og beløp over eierens grense går til eieren for godkjenning. Fakturaen bokføres på riktig eier.',
+    kort: 'Leietakeren melder fra. Rørleggeren svarer med tid og pris, eieren godkjenner i appen. Fakturaen bokføres på riktig eier.',
+  },
+  okonomi: {
+    tittel: ['Fra husleie', 'til oppgjør per eier.'],
+    ingress: 'Den første kommer husleien inn på klientkonto, leilighet for leilighet. Den som mangler, purres automatisk. Så trekkes honoraret, hver eier får sin utbetaling, og bilagene går til regnskapet.',
+    kort: 'Husleien inn på klientkonto. Mangler én, purres den. Honorar trekkes, hver eier får sin utbetaling.',
+  },
+};
+
 const SPORSMAL = [
   { q: 'Hva koster det?', a: null },
   { q: 'Konkurrerer DigiHome med oss?', a: 'Vi forvalter egne kunders boliger i Bergen sentrum. Henvendelser utenfor sentrum sender vi til partnere som bruker systemet. Vi deler ikke eiere, henvendelser eller priser, og vi selger ikke til eiere dere har avtale med. Det står i avtalen.' },
@@ -72,6 +96,10 @@ export default function MeglerV4() {
                   <Knapp href="#demo" data-testid="v4m-cta">Book en demo</Knapp>
                   <Lenke href="#lopet" data-testid="v4m-cta-salg">Se hele løpet</Lenke>
                 </div>
+                <p className="dh-cover-inn mt-8 inline-flex items-center gap-2.5 text-[13.5px] sm:text-[14px]" style={{ color: SVAK, animationDelay: '.2s' }} data-testid="v4m-bevis">
+                  <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: T.gronn }} />
+                  Systemet vi selv forvalter med, hver dag, i Bergen.
+                </p>
               </div>
               <div className="dh-cover-inn min-w-0 lg:col-span-7" style={{ animationDelay: '.12s' }} data-testid="v4m-hero-scene">
                 <MeglerScene />
@@ -91,7 +119,7 @@ export default function MeglerV4() {
 
         {/* ── 5. Produktfilmene: annonse, kontrakt, drift, økonomi ── */}
         <Utsatt id="produkt" minHeight="var(--dh-h-produkt)" className="bg-[#DCE1EB]">
-          <ProduktSeksjon kapitler={['annonse', 'kontrakt', 'drift', 'okonomi']} />
+          <ProduktSeksjon kapitler={['annonse', 'kontrakt', 'drift', 'okonomi']} tekster={FILM} />
         </Utsatt>
 
         {/* ── 5. Oppgjør: klientkonto → honorar → eier (produktbilde) ── */}
@@ -115,6 +143,7 @@ export default function MeglerV4() {
           under="Book en demo med deres egne eiere og boliger."
           handling={{ knapp: { tekst: 'Book en demo', href: '#demo' }, lenke: { tekst: 'Registrer selskapet', href: '/bli-utleier/start?kind=business' } }}
           steg={null}
+          bilde={{ src: '/v4/drift/fasade-morgen-1920.webp', srcSet: '/v4/drift/fasade-morgen-1200.webp 1200w, /v4/drift/fasade-morgen-1920.webp 1920w, /v4/drift/fasade-morgen-3840.webp 3840w', pos: '50% 40%' }}
         />
       </main>
       <Footer />

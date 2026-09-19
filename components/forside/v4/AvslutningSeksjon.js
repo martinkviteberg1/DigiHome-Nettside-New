@@ -21,10 +21,12 @@ const STEG = [
   ['3', 'Autopilot på', 'Husleie, purring og saker går automatisk — du godkjenner det som koster.'],
 ];
 
-export default function AvslutningSeksjon({ tittel = 'Utleie på autopilot', under = 'Start med adressen din. Resten setter vi opp sammen — på ti minutter.', handling = null, steg = STEG }) {
+export default function AvslutningSeksjon({ tittel = 'Utleie på autopilot', under = 'Start med adressen din. Resten setter vi opp sammen — på ti minutter.', handling = null, steg = STEG, bilde = null }) {
   const ref = useRef(null);
   const synlig = useSynlig(ref, 0.25);
   const inn = (i) => ({ opacity: synlig ? 1 : 0, transform: synlig ? 'none' : 'translateY(18px)', transition: `opacity 800ms ${EASE} ${i * 100}ms, transform 900ms ${EASE} ${i * 100}ms` });
+  /* bilde: valgfri { src, srcSet, pos } — undersider kan bytte bygården (meglersiden bruker fasaden om morgenen). */
+  const b = bilde || { src: '/v4/bolig-oslo-2000.webp', srcSet: '/v4/bolig-oslo-1200.webp 1200w, /v4/bolig-oslo-2000.webp 2000w', pos: '50% 35%' };
 
   return (
     <section id="start" ref={ref} className="relative overflow-hidden" style={{ background: T.charcoal, color: T.offwhite }} data-testid="v4-avslutning">
@@ -32,8 +34,8 @@ export default function AvslutningSeksjon({ tittel = 'Utleie på autopilot', und
       <div aria-hidden="true" className="absolute inset-0" style={{ transform: synlig ? 'scale(1)' : 'scale(1.05)', transition: 'transform 14000ms cubic-bezier(0.2,0.6,0.2,1)', willChange: 'transform' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/v4/bolig-oslo-2000.webp"
-          srcSet="/v4/bolig-oslo-1200.webp 1200w, /v4/bolig-oslo-2000.webp 2000w"
+          src={b.src}
+          srcSet={b.srcSet}
           sizes="100vw"
           alt=""
           draggable={false}
@@ -41,7 +43,7 @@ export default function AvslutningSeksjon({ tittel = 'Utleie på autopilot', und
           decoding="async"
           fetchPriority="low"
           className="h-full w-full select-none object-cover"
-          style={{ objectPosition: '50% 35%' }}
+          style={{ objectPosition: b.pos }}
         />
       </div>
       <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(21,18,15,0.66) 0%, rgba(21,18,15,0.50) 45%, rgba(21,18,15,0.82) 100%)' }} />

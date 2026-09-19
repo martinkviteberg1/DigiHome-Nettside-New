@@ -151,8 +151,9 @@ const TEMA = {
 /* variant: 'ramme' (standard — produktflaten som kort på bakgrunn) eller 'full' (full bleed: bildet ER scenen, ingen kort,
    ingen bakgrunnsfoto, teksttabs med lilla underline over stagen, seksjonsoverskriften står inne i filmens åpning). */
 /* kapitler: hvilke filmer som vises (rekkefølgen er kjeden). Forsiden viser alle fire fra Annonse; undersiden for
-   eiendomsselskap viser Drift → Økonomi → Kontrakt — det teamet gjør hver dag, ikke annonsen. */
-export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse', 'kontrakt', 'drift', 'okonomi'] }) {
+   eiendomsselskap viser Drift → Økonomi → Kontrakt — det teamet gjør hver dag, ikke annonsen.
+   tekster: valgfri overstyring per kapittel ({ drift: { tittel, ingress, kort } }) — meglersiden snakker til «dere». */
+export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse', 'kontrakt', 'drift', 'okonomi'], tekster = null }) {
   const full = variant === 'full';
   const TABS = kapitler.map((id) => ALLE_TABS.find((t) => t.id === id)).filter(Boolean);
   const [aktiv, setAktiv] = useState(TABS[0]?.id || 'annonse');   // starter på første kapittel — kjeden leses fra venstre
@@ -173,7 +174,7 @@ export default function ProduktSeksjon({ variant = 'ramme', kapitler = ['annonse
   const sceneRef = useRef(null);
   const sceneSynlig = useSynlig(sceneRef, 0.5);   // halve flaten (eller 35 % av skjermen) må være i bildet før klokken går
   const filmSynlig = synlig && sceneSynlig;
-  const scene = SCENER[aktiv] || SCENER.drift;
+  const scene = { ...(SCENER[aktiv] || SCENER.drift), ...((tekster && tekster[aktiv]) || {}) };
   const bg = BAKGRUNNER[bakgrunn] || BAKGRUNNER.plomme;
   const tema = TEMA[bg.tema] || TEMA.mork;
   const venstre = bg.layout === 'venstre';
