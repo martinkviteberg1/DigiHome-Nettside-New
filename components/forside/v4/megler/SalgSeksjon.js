@@ -321,7 +321,7 @@ export default function SalgSeksjon() {
             </h2>
           </div>
           <p className="max-w-[46ch] text-[17px] leading-[1.5] sm:text-[18px] lg:col-span-5 lg:pb-2" style={{ color: DIM, ...inn(2) }} data-testid="v4m-salg-ingress">
-            Boligdata og leieestimat ligger på saken når eieren ringer. Tilbudet går ut med deres logo. Når eieren signerer med BankID, er boligen i drift.
+            Tilbudet går ut med deres logo, og dere ser når det blir lest. Når eieren signerer med BankID, er boligen i drift.
           </p>
         </div>
 

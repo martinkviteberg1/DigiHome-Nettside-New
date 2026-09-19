@@ -1941,3 +1941,5 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - FAQ kuttet fra 10 til 5. Hero uten bevis-liste. Partnerprogram lever i FAQ + avkrysning i skjema.
 - Rekkefølge: hero → logoer → Salg → Oppgjør → Det som hører med → Regn → Demo → FAQ → avslutning.
 - Verifisert: alle ruter 200, mobil 390 uten horisontal scroll, FAQ-numre 01–05. Ikke brukerbekreftet.
+- Lagt til `megler/LopetSeksjon.js` (#lopet) etter logoene: linje med 11 stopp (3 ringer = menneske velger), tre inn→ut-kort (sak, henvendelse, spørsmål fra kontrakt), én setning om språkmodell vs regler. Hero-ingress = mekanismen. CTA «Se hele løpet» → #lopet. Produktfilmene er tilbake etter Salg.
+- MERK: kortenes påstander speiler eksisterende tekst på digihome.no (forside-FAQ + megler). Selve produktlogikken (saker fra meldinger, leieestimat, klientkonto, oppgjør) finnes IKKE i dette repoet; må bekreftes av eier.

@@ -1,7 +1,7 @@
 import MeglerV4 from '@/components/forside/v4/megler/MeglerV4';
 
 const TITTEL = 'For utleiemeglere – Ta flere oppdrag uten å ansette';
-const BESKRIVELSE = 'Systemet DigiHome selv forvalter med: salg fra henvendelse til signert oppdrag, klientkonto og oppgjør per eier, eierportal og full historikk. For utleiemeglere og forvaltere.';
+const BESKRIVELSE = 'Ett system fra henvendelse til årsoppgave: salg, annonse, kontrakt, saker, husleie, klientkonto og oppgjør per eier. Systemet gjør arbeidet, dere tar valgene. For utleiemeglere og forvaltere.';
 
 export const metadata = {
   title: TITTEL,

@@ -8,6 +8,7 @@ import { Knapp, Lenke, T, Utsatt, display } from '../motion';
 import TillitStripe from '../TillitStripe';
 import MeglerScene from './MeglerScene';
 import SalgSeksjon from './SalgSeksjon';
+import LopetSeksjon from './LopetSeksjon';
 import OppgjorSeksjon from './OppgjorSeksjon';
 import InkludertSeksjon from './InkludertSeksjon';
 import RegnSeksjon from './RegnSeksjon';
@@ -24,10 +25,10 @@ const ProduktSeksjon = dynamic(() => import('../produkt/ProduktSeksjon'), { ssr:
    Kort side, lite tekst. Hver seksjon: én tittel, én til tre setninger, og
    der det passer ett produktbilde. Ingenting forklares to ganger.
 
-   Rekkefølge: hero → logoene → Salg (produktbilde) → produktfilmene
-   (annonse, kontrakt, drift, økonomi) → Oppgjør (produktbilde) → Det som
-   hører med (seks punkter) → Regn på det → Demo (#demo) → spørsmål og svar
-   (fem) → avslutning.
+   Rekkefølge: hero → logoene → Hele løpet (linjen + tre inn/ut-kort) →
+   Salg (produktbilde) → produktfilmene (annonse, kontrakt, drift, økonomi)
+   → Oppgjør (produktbilde) → Det som hører med (seks punkter) → Regn på det
+   → Demo (#demo) → spørsmål og svar (fem) → avslutning.
 --------------------------------------------------------------------------- */
 
 const SVAK = 'rgba(21,19,15,0.5)';
@@ -65,11 +66,11 @@ export default function MeglerV4() {
                   Ta flere oppdrag<br />uten å ansette<span style={{ color: T.lilla, marginLeft: '0.03em' }}>.</span>
                 </h1>
                 <p className="dh-cover-inn mt-6 max-w-[38ch] text-[17px] leading-[1.5] sm:text-[19px]" style={{ color: 'rgba(21,19,15,0.7)', animationDelay: '.08s' }} data-testid="v4m-ingress">
-                  Salg, kontrakter, husleie, oppgjør og eierportal i ett system, med klientkonto innebygd. Det samme vi bruker på egne kunders boliger i Bergen.
+                  Systemet leser henvendelsen, skriver annonsen, oppretter saken og gjør oppgjøret. Dere velger leietaker og håndverker, og godkjenner det som koster.
                 </p>
                 <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ animationDelay: '.14s' }}>
                   <Knapp href="#demo" data-testid="v4m-cta">Book en demo</Knapp>
-                  <Lenke href="#salg" data-testid="v4m-cta-salg">Se hvordan det virker</Lenke>
+                  <Lenke href="#lopet" data-testid="v4m-cta-salg">Se hele løpet</Lenke>
                 </div>
               </div>
               <div className="dh-cover-inn min-w-0 lg:col-span-7" style={{ animationDelay: '.12s' }} data-testid="v4m-hero-scene">
@@ -82,10 +83,13 @@ export default function MeglerV4() {
         {/* ── 2. Logoene ── */}
         <TillitStripe tekst="Koblet til tjenestene dere allerede bruker." />
 
-        {/* ── 3. Salg: fra henvendelse til signert oppdrag (produktbilde) ── */}
+        {/* ── 3. Hele løpet: elleve stopp + tre inn/ut-kort (#lopet) ── */}
+        <LopetSeksjon />
+
+        {/* ── 4. Salg: fra henvendelse til signert oppdrag (produktbilde) ── */}
         <SalgSeksjon />
 
-        {/* ── 4. Produktfilmene: annonse, kontrakt, drift, økonomi ── */}
+        {/* ── 5. Produktfilmene: annonse, kontrakt, drift, økonomi ── */}
         <Utsatt id="produkt" minHeight="var(--dh-h-produkt)" className="bg-[#DCE1EB]">
           <ProduktSeksjon kapitler={['annonse', 'kontrakt', 'drift', 'okonomi']} />
         </Utsatt>
