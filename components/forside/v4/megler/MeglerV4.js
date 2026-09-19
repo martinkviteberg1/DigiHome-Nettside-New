@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import NavV4 from '../NavV4';
 import Footer from '@/components/dh/Footer';
-import { Knapp, Lenke, T, display } from '../motion';
+import { Knapp, Lenke, T, Utsatt, display } from '../motion';
 import TillitStripe from '../TillitStripe';
 import MeglerScene from './MeglerScene';
 import SalgSeksjon from './SalgSeksjon';
@@ -14,6 +15,8 @@ import DemoSkjema from './DemoSkjema';
 import FaqSeksjon from '../FaqSeksjon';
 import AvslutningSeksjon from '../AvslutningSeksjon';
 
+const ProduktSeksjon = dynamic(() => import('../produkt/ProduktSeksjon'), { ssr: false, loading: () => <div id="produkt" style={{ minHeight: 'var(--dh-h-produkt)', background: '#DCE1EB' }} aria-hidden="true" /> });
+
 /* ---------------------------------------------------------------------------
    MeglerV4 — /utleiemeglere. For utleiemeglere og forvaltere som drifter
    boliger for andre.
@@ -21,9 +24,10 @@ import AvslutningSeksjon from '../AvslutningSeksjon';
    Kort side, lite tekst. Hver seksjon: én tittel, én til tre setninger, og
    der det passer ett produktbilde. Ingenting forklares to ganger.
 
-   Rekkefølge: hero → logoene → Salg (produktbilde) → Oppgjør (produktbilde)
-   → Det som hører med (seks punkter) → Regn på det → Demo (#demo) →
-   spørsmål og svar (fem) → avslutning.
+   Rekkefølge: hero → logoene → Salg (produktbilde) → produktfilmene
+   (annonse, kontrakt, drift, økonomi) → Oppgjør (produktbilde) → Det som
+   hører med (seks punkter) → Regn på det → Demo (#demo) → spørsmål og svar
+   (fem) → avslutning.
 --------------------------------------------------------------------------- */
 
 const SVAK = 'rgba(21,19,15,0.5)';
@@ -81,22 +85,27 @@ export default function MeglerV4() {
         {/* ── 3. Salg: fra henvendelse til signert oppdrag (produktbilde) ── */}
         <SalgSeksjon />
 
-        {/* ── 4. Oppgjør: klientkonto → honorar → eier (produktbilde) ── */}
+        {/* ── 4. Produktfilmene: annonse, kontrakt, drift, økonomi ── */}
+        <Utsatt id="produkt" minHeight="var(--dh-h-produkt)" className="bg-[#DCE1EB]">
+          <ProduktSeksjon kapitler={['annonse', 'kontrakt', 'drift', 'okonomi']} />
+        </Utsatt>
+
+        {/* ── 5. Oppgjør: klientkonto → honorar → eier (produktbilde) ── */}
         <OppgjorSeksjon />
 
-        {/* ── 5. Det som hører med: seks punkter, én setning hver ── */}
+        {/* ── 6. Det som hører med: seks punkter, én setning hver ── */}
         <InkludertSeksjon />
 
-        {/* ── 6. Regn på det: deres egne anslag → #demo ── */}
+        {/* ── 7. Regn på det: deres egne anslag → #demo ── */}
         <RegnSeksjon />
 
-        {/* ── 7. Demo: inline skjema (#demo) ── */}
+        {/* ── 8. Demo: inline skjema (#demo) ── */}
         <DemoSkjema />
 
-        {/* ── 8. Spørsmål og svar ── */}
+        {/* ── 9. Spørsmål og svar ── */}
         <FaqSeksjon sporsmal={SPORSMAL} prisSvar={PRIS_SVAR} intro="Korte svar på det meglere spør om først." />
 
-        {/* ── 9. Avslutning ── */}
+        {/* ── 10. Avslutning ── */}
         <AvslutningSeksjon
           tittel="Vi viser dere det på 30 minutter"
           under="Book en demo med deres egne eiere og boliger."
