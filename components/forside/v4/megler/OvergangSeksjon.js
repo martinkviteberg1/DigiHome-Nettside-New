@@ -17,15 +17,15 @@ const DIM = 'rgba(21,19,15,0.62)';
 const SVAK = 'rgba(21,19,15,0.46)';
 
 const FASER = [
-  { uke: 'Uke 1', t: 'Import', d: 'Eiere, oppdragsavtaler, løpende leieforhold og depositum inn — med kontrakter og historikk som de er. Honorarsats per eier. Regnskapet kobles.' },
-  { uke: 'Uke 2', t: 'Parallell drift', d: 'Dere ser begge systemene side om side. Ingenting stopper — ingen eier eller leietaker merker byttet.' },
-  { uke: 'Uke 3', t: 'Første oppgjør', d: 'Husleien krevs inn, honoraret trekkes, eierne får utbetaling og rapport. Fra da av går rutinen.' },
+  { uke: 'Uke 1', t: 'Import', d: 'Eiere, oppdragsavtaler, løpende leieforhold og depositum legges inn med kontrakter og historikk slik de er. Honorarsats settes per eier, og regnskapssystemet kobles til.' },
+  { uke: 'Uke 2', t: 'Parallell drift', d: 'Dere kjører begge systemene side om side. Ingen eiere eller leietakere merker at noe er endret.' },
+  { uke: 'Uke 3', t: 'Første oppgjør', d: 'Husleien kreves inn, honoraret trekkes, og eierne får utbetaling og rapport fra DigiHome. Fra nå av går det av seg selv.' },
 ];
 
 const LOFTER = [
-  ['Ingenting går tapt', 'Kontrakter, depositum og historikk følger med — ikke en mal.'],
+  ['Ingenting går tapt', 'Kontrakter, depositum og historikk følger med akkurat slik de er.'],
   ['Dere velger tempo', 'Eier for eier, eller hele porteføljen på én gang.'],
-  ['Vi sitter med dere', 'Oppsettet gjøres sammen — ikke overlatt til en import-knapp.'],
+  ['Vi sitter med dere', 'Oppsettet gjør vi sammen med dere, i møter, til alt er på plass.'],
 ];
 
 export default function OvergangSeksjon() {
@@ -38,10 +38,10 @@ export default function OvergangSeksjon() {
         <div className="max-w-[820px]">
           <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>Overgang</p>
           <h2 className="mt-4 text-[clamp(38px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }} data-testid="v4m-overgang-tittel">
-            Uker, ikke måneder<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+            Overgangen tar tre uker<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
           </h2>
           <p className="mt-6 max-w-[50ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-            Den største innvendingen mot å bytte system er byttet. Derfor er det planlagt som tre korte uker — og vi gjør det sammen med dere.
+            Det som oftest stopper et systembytte, er selve byttet. Derfor har vi lagt det opp som tre korte uker, og vi gjør jobben sammen med dere.
           </p>
         </div>
         <div className="relative mt-12 lg:mt-16" style={inn(3, 20)}>
@@ -70,7 +70,7 @@ export default function OvergangSeksjon() {
             </li>
           ))}
         </ol>
-        <p className="mt-8 text-[13px]" style={{ color: SVAK, ...inn(10) }}>Typisk plan. Tempoet tilpasses porteføljen — større porteføljer tas eier for eier.</p>
+        <p className="mt-8 text-[13px]" style={{ color: SVAK, ...inn(10) }}>Dette er en typisk plan. Store porteføljer tar vi gjerne eier for eier.</p>
       </div>
     </section>
   );

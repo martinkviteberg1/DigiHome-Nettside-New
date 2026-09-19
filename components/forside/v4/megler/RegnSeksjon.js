@@ -68,28 +68,28 @@ export default function RegnSeksjon() {
         <div className="max-w-[820px]">
           <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>Regn på det</p>
           <h2 className="mt-4 text-[clamp(38px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }} data-testid="v4m-regn-tittel">
-            Hva koster rutinen dere i dag<span style={{ color: T.lilla, marginLeft: '0.04em' }}>?</span>
+            Hva koster det manuelle arbeidet i dag<span style={{ color: T.lilla, marginLeft: '0.04em' }}>?</span>
           </h2>
           <p className="mt-6 max-w-[52ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-            Sett inn deres egne tall. Kalkulatoren lover ingenting — den regner bare på det dere selv anslår at innkreving, purring, avstemming, eierrapporter og bilag koster i dag.
+            Bruk deres egne tall. Kalkulatoren regner bare på det dere selv anslår at innkreving, purring, avstemming, eierrapporter og bilag koster i dag. Vi lover ingenting her.
           </p>
         </div>
         <div className="mt-12 grid gap-px overflow-hidden rounded-[22px] lg:mt-16 lg:grid-cols-12" style={{ background: HAIR, boxShadow: '0 0 0 1px rgba(21,19,15,0.07), 0 48px 100px -56px rgba(21,19,15,0.35)', ...inn(3, 20) }} data-testid="v4m-regn-flate">
           <div className="grid gap-8 px-6 py-7 sm:px-8 sm:py-9 lg:col-span-6" style={{ background: PAPIR }}>
             <Glider label="Leieforhold under forvaltning" verdi={n} vis={tall(n)} min={10} max={1000} step={10} onChange={setN} testid="v4m-regn-n" />
             <Glider label="Minutter admin per leieforhold, per måned" verdi={min} vis={`${min} min`} min={10} max={120} step={5} onChange={setMin} hjelp="Innkreving, purring, avstemming, eierrapport, bilag, spørsmål fra eier" testid="v4m-regn-min" />
-            <Glider label="Andel av dette som er rutine" verdi={andel} vis={`${andel} %`} min={30} max={90} step={5} onChange={setAndel} hjelp="Det som kan gå automatisk — ikke valgene som trenger et menneske" testid="v4m-regn-andel" />
-            <Glider label="Kostnad per time" verdi={time} vis={`${tall(time)} kr`} min={400} max={1200} step={50} onChange={setTime} hjelp="Lønn, arbeidsgiveravgift og kontor — det en time faktisk koster dere" testid="v4m-regn-time" />
+            <Glider label="Andel av dette som er rutine" verdi={andel} vis={`${andel} %`} min={30} max={90} step={5} onChange={setAndel} hjelp="Det som kan gjøres automatisk, altså ikke valgene som krever et menneske" testid="v4m-regn-andel" />
+            <Glider label="Kostnad per time" verdi={time} vis={`${tall(time)} kr`} min={400} max={1200} step={50} onChange={setTime} hjelp="Lønn, arbeidsgiveravgift og kontor, altså det en time faktisk koster dere" testid="v4m-regn-time" />
           </div>
           <div className="flex flex-col justify-between px-6 py-7 sm:px-8 sm:py-9 lg:col-span-6" style={{ background: T.charcoal, color: T.offwhite }} data-testid="v4m-regn-resultat">
             <div>
-              <p className="text-[12.5px] font-medium" style={{ color: MORK }}>Rutinen i dag</p>
+              <p className="text-[12.5px] font-medium" style={{ color: MORK }}>Manuelt arbeid i dag</p>
               <p className="mt-2 text-[clamp(34px,3.4vw,52px)] tabular-nums" style={{ ...display, letterSpacing: '-0.03em', lineHeight: 1, color: T.offwhite }} data-testid="v4m-regn-timer">
                 {en(r.timer)} t<span className="text-[0.5em]" style={{ color: 'rgba(244,241,234,0.55)' }}> / mnd</span>
               </p>
               <p className="mt-2 text-[14px] tabular-nums" style={{ color: MORK }}>≈ {en(r.kr)} kr i måneden</p>
               <div className="mt-8 border-t pt-6" style={{ borderColor: 'rgba(244,241,234,0.12)' }}>
-                <p className="text-[12.5px] font-medium" style={{ color: MORK }}>Kan gå automatisk — etter deres anslag</p>
+                <p className="text-[12.5px] font-medium" style={{ color: MORK }}>Kan gjøres automatisk, etter deres anslag</p>
                 <p className="mt-2 text-[clamp(40px,4.2vw,64px)] tabular-nums" style={{ ...display, letterSpacing: '-0.035em', lineHeight: 1, color: T.lilla }} data-testid="v4m-regn-auto">
                   {en(r.auto)} t<span className="text-[0.5em]" style={{ color: 'rgba(244,241,234,0.55)' }}> / mnd</span>
                 </p>
@@ -105,7 +105,7 @@ export default function RegnSeksjon() {
             </div>
             <div className="mt-8 border-t pt-6" style={{ borderColor: 'rgba(244,241,234,0.12)' }}>
               <p className="max-w-[40ch] text-[14px] leading-[1.5]" style={{ color: 'rgba(244,241,234,0.7)' }}>
-                DigiHome prises per leieforhold under forvaltning. Med {tall(n)} leieforhold får dere et konkret forslag samme uke — med deres portefølje som eksempel.
+                DigiHome prises per leieforhold under forvaltning. Med {tall(n)} leieforhold får dere et konkret pristilbud i løpet av uken, regnet på deres egen portefølje.
               </p>
               <div className="mt-5"><Knapp href="#demo" onClick={() => sendTilDemo({ leieforhold: n })} data-testid="v4m-regn-cta">Få pris for {tall(n)} leieforhold</Knapp></div>
             </div>

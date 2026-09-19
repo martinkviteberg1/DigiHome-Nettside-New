@@ -64,8 +64,8 @@ const KORT = {
   befaring: { detalj: '3-roms · 72 m² · 3. etasje', note: 'Befaring 14:00 · nøkler og bilder til annonsen', temp: 'Varm', verdi: 21600 },
   tilbud: { detalj: 'Full forvaltning · deres sats', note: 'Tilbud og oppdragsavtale sendt 15:20', temp: 'Varm', verdi: 21600 },
   lest: { detalj: 'Full forvaltning · deres sats', note: 'Åpnet 19:42 · lest 2 ganger · 4 min', temp: 'Varm', verdi: 21600 },
-  signert: { detalj: 'Oppdragsavtale · BankID · 21:05', note: 'Enhet opprettet · onboarding-lenke sendt til Kari', temp: 'Signert', verdi: 21600 },
-  ferdig: { detalj: 'Oppdragsavtale · BankID · 21:05', note: 'Enhet opprettet · onboarding-lenke sendt til Kari', temp: 'Signert', verdi: 21600 },
+  signert: { detalj: 'Oppdragsavtale · BankID · 21:05', note: 'Bolig opprettet · velkomstlenke sendt til Kari', temp: 'Signert', verdi: 21600 },
+  ferdig: { detalj: 'Oppdragsavtale · BankID · 21:05', note: 'Bolig opprettet · velkomstlenke sendt til Kari', temp: 'Signert', verdi: 21600 },
 };
 
 function Init({ navn, selskap = false, tone = 'lys' }) {
@@ -160,7 +160,7 @@ function Tilbudsark({ fase }) {
           {/* Personlig hilsen fra forvalteren */}
           <div style={del(1)}>
             <p className="text-[10.5px] font-medium uppercase tracking-[0.08em]" style={{ color: SVAK }}>Personlig hilsen</p>
-            <p className="mt-2 text-[12.5px] leading-[1.5]" style={{ color: DIM }}>Takk for en fin befaring i dag, Kari. Leiligheten er lys, godt holdt og ligger der folk vil bo — vi anbefaler 17 500 kr i måneden og legger den ut på FINN så snart du har signert.</p>
+            <p className="mt-2 text-[12.5px] leading-[1.5]" style={{ color: DIM }}>Takk for en fin befaring i dag, Kari. Leiligheten er lys, godt holdt og ligger der folk vil bo. Vi anbefaler 17 500 kr i måneden og legger den ut på FINN så snart du har signert.</p>
             <div className="mt-3 flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-full text-[10.5px] font-semibold" style={{ background: 'rgba(21,19,15,0.06)', color: T.ink }}>JH</span>
               <div>
@@ -299,7 +299,7 @@ function SalgScene({ start }) {
 
       {/* Bunnen: det som skjedde automatisk idet det ble signert */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-[13px] sm:px-6" style={{ background: 'rgba(21,19,15,0.03)', color: SVAK, opacity: er('signert') || er('ferdig') ? 1 : 0, transition: `opacity 600ms ${EASE} 500ms` }} data-testid="v4m-salg-bunn">
-        <span className="inline-flex items-center gap-2"><Hake />Fjellveien 12 opprettet som enhet · Kari fikk lenke for bilder og boliginfo · annonsen står i kø</span>
+        <span className="inline-flex items-center gap-2"><Hake />Fjellveien 12 er opprettet · Kari har fått lenke for bilder og opplysninger · annonsen står i kø</span>
         <span className="tabular-nums">Henvendelse → signert · <span style={{ color: T.ink }}>14 timer</span></span>
       </div>
     </div>
@@ -307,9 +307,9 @@ function SalgScene({ start }) {
 }
 
 const PUNKTER = [
-  ['Leadet kommer ferdig', 'Fra landingssiden, skjema, telefon eller import — med boligdata fra eiendomsregisteret og leieestimat kalibrert mot deres egen portefølje.'],
-  ['Tilbudet skriver seg selv — og ser ut som dere', 'Personlig hilsen fra forvalteren, boligen i cover, brutto → honorar → netto, pris og avtale. Deres logo og farger. Eieren åpner en side, ikke en PDF — og dere ser når den leses.'],
-  ['Signert er i drift', 'BankID-signaturen oppretter enheten, sender eieren lenke for bilder og info, og setter annonsen i kø. Varm, lun eller kald — og varsel når noe blir liggende.'],
+  ['Henvendelsen kommer ferdig utfylt', 'Enten den kommer fra landingssiden, et skjema, telefon eller import, får den boligdata fra eiendomsregisteret og et leieestimat basert på deres egen portefølje.'],
+  ['Tilbudet er klart før dere har lagt på', 'En personlig hilsen fra forvalteren, bilde av boligen, leie, honorar og hva eieren sitter igjen med. Med deres logo og farger. Eieren åpner det som en nettside, og dere ser når det blir lest.'],
+  ['Signaturen setter boligen i drift', 'Når eieren signerer med BankID, opprettes boligen, eieren får en lenke for bilder og opplysninger, og annonsen legges i kø. Blir en henvendelse liggende, får dere beskjed.'],
 ];
 
 export default function SalgSeksjon() {
@@ -327,7 +327,7 @@ export default function SalgSeksjon() {
             </h2>
           </div>
           <p className="max-w-[46ch] text-[17px] leading-[1.5] sm:text-[18px] lg:col-span-5 lg:pb-2" style={{ color: DIM, ...inn(2) }} data-testid="v4m-salg-ingress">
-            Meglere vinner på fart og tillit. Ett lead, én dag: henvendelsen kommer inn med boligen og et leieestimat, tilbudet ligger klart, og signaturen setter boligen i drift — samme kveld.
+            Det er farten som vinner oppdrag. Når en eier tar kontakt, ligger boligdata og leieestimat allerede på saken, tilbudet er skrevet, og når eieren signerer, er boligen i drift samme kveld.
           </p>
         </div>
 

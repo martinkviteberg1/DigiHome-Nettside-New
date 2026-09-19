@@ -1915,3 +1915,11 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 - QA: kompilert rent; desktop + 390 px (scrollWidth == 390) på /utleiemeglere og /ledige-boliger; kalkulator 250 → prefill 250 → submit → lead i `leads` (ikke spam) m/ riktig felter, forwarded:true; testpost slettet lokalt (QA Megler Testesen / QA Byrå AS ble videresendt til plattform-CRM — kan ignoreres der). Nav-teller verifisert m/ simulert n=3 desktop+mobil.
 - Ikke kjørt: formell frontend-testagent (krever brukerens tillatelse). Ikke brukerbekreftet.
 
+
+### Språkvask /utleiemeglere — «mye bedre norsk, mindre AI-slop» (juni 2025)
+- Diagnose: tankestrek i nesten hver setning, stakkato-fragmenter («Dere tar valgene. Rutinen går.»), «ikke X»-kontraster, «rutinen går» ×6, anglisismer (lead, onboarding, CRM, enhet).
+- Grep: hele setninger i rolig bokmål, null tankestreker i synlig tekst (verifisert med grep), konkrete verb, «bolig» for «enhet», «velkomstlenke» for «onboarding», «henvendelse» for «lead», «salgsoversikten» for «CRM».
+- Endret: MeglerV4 (ingress, BEVIS, STEG, DAGEN/DAGEN_SUM, FAQ, PRIS_SVAR, Innsyn-/Steg-/Sammenligning-/Avslutning-props), SalgSeksjon (ingress, PUNKTER, kort-/bunn-tekst, hilsen), OppgjorSeksjon (ingress, stasjoner, PUNKTER), MeglerScene (én hendelse), Trygghet/Merkevare/Regn/Overgang/Partner/DemoSkjema (titler, ingresser, punkter, etiketter, statusmeldinger).
+- Nye titler: «Trygt for eiernes penger.» · «Tilbudet går ut i deres navn.» · «Hva koster det manuelle arbeidet i dag?» · «Overgangen tar tre uker.» · «Vi sender oppdrag til fem byråer.» · «Se det med deres egne tall.» Hero-H1 «Hundre eiere. Én rolig morgen.» beholdt.
+- Ikke rørt (delt med andre sider): KontrollSeksjon (bedrift), TillitStripe, interne tekster i Innsyn/Steg/Faq/Avslutning.
+- QA: kompilert rent, /utleiemeglere 200, desktop + 390 px uten overflow. Ikke brukerbekreftet.

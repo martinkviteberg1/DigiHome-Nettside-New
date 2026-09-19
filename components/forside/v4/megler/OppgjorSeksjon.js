@@ -38,15 +38,15 @@ function Teller({ vis, til, suffix = '' }) {
 
 const STASJONER = [
   { k: 'Husleie inn', v: `${tall(3142000)} kr`, tell: 3142000, suffix: ' kr', d: '214 leieforhold · KID · avstemt automatisk · 3 purringer sendt', dato: '1.–3. juni' },
-  { k: 'Klientkonto', v: 'Adskilt', d: 'Eiernes penger holdes på klientmiddelkonto — aldri blandet med deres egne', dato: 'løpende' },
-  { k: 'Honorar', v: 'Etter avtale', d: 'Trekkes per eier etter hver oppdragsavtale — fast eller prosent · bokført på dere', dato: '3. juni' },
+  { k: 'Klientkonto', v: 'Adskilt', d: 'Eiernes penger står på klientmiddelkonto, aldri sammen med deres egne', dato: 'løpende' },
+  { k: 'Honorar', v: 'Etter avtale', d: 'Trekkes per eier etter oppdragsavtalen, fast eller prosent · bokført hos dere', dato: '3. juni' },
   { k: 'Til eierne', v: '86 utbetalinger', d: 'Én utbetaling per eier · oppgjørsrapport per bolig (PDF) · årsoppgave i januar', dato: '3. juni' },
 ];
 
 const PUNKTER = [
-  ['Ett oppgjør per eier, per måned', 'Rapporten viser husleie inn, kostnader, honorar og utbetalt — per bolig. Korrigeringer havner i neste periode, sporbart.'],
+  ['Ett oppgjør per eier, hver måned', 'Rapporten viser husleie, kostnader, honorar og utbetalt beløp for hver bolig. Korrigeringer tas i neste periode og kan alltid spores.'],
   ['Regnskapet får det ferdig', 'Bilag og utbetalinger går til PowerOffice, Tripletex eller Fiken. Leverandørfakturaer bokføres på riktig eier.'],
-  ['Purring uten å tenke på det', 'Påminnelse, purring og varsel om utkastelse etter husleieloven — automatisk, med stopp der dere vil.'],
+  ['Purring uten at noen må huske det', 'Påminnelse, purring og varsel om utkastelse følger husleieloven og sendes automatisk. Dere bestemmer hvor det skal stoppe.'],
 ];
 
 export default function OppgjorSeksjon() {
@@ -62,7 +62,7 @@ export default function OppgjorSeksjon() {
             Pengene går riktig vei<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
           </h2>
           <p className="mt-6 max-w-[50ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-            Å forvalte for andre er å ha ansvar for andres penger. Husleien går inn på klientkonto, honoraret trekkes etter avtalen med hver eier, og resten utbetales — med en rapport eieren forstår.
+            Husleien går inn på klientkonto. Honoraret trekkes etter avtalen med hver eier, resten utbetales, og eieren får en rapport som er enkel å lese.
           </p>
         </div>
 

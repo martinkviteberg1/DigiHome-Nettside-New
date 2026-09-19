@@ -18,12 +18,12 @@ const DIM = 'rgba(21,19,15,0.62)';
 const SVAK = 'rgba(21,19,15,0.46)';
 
 const PUNKTER = [
-  { t: 'Klientkonto', d: 'Eiernes husleie holdes på klientmiddelkonto — adskilt fra deres egne midler. Alltid.' },
-  { t: 'Avstemt automatisk', d: 'KID per leieforhold. Innbetalinger matches og avstemmes uten manuelt arbeid.' },
-  { t: 'BankID på alt som signeres', d: 'Oppdragsavtaler og leiekontrakter via Posten signering. Arkivert på eier og enhet.' },
-  { t: 'Rapport eieren forstår', d: 'Oppgjørsrapport per bolig hver måned. Årsoppgave i januar — klar til eierens regnskapsfører.' },
-  { t: 'Purring etter husleieloven', d: 'Påminnelse, purring og varsel om utkastelse — automatisk, med stopp der dere vil.' },
-  { t: 'Alt logget', d: 'Hver handling med hvem og når. Roller og grenser per eier — og per person hos dere.' },
+  { t: 'Klientkonto', d: 'Eiernes husleie står på klientmiddelkonto, adskilt fra deres egne penger.' },
+  { t: 'Avstemt automatisk', d: 'Hvert leieforhold har egen KID. Innbetalingene avstemmes automatisk mot husleiekravene.' },
+  { t: 'BankID på alt som signeres', d: 'Oppdragsavtaler og leiekontrakter signeres gjennom Posten signering og arkiveres på eier og bolig.' },
+  { t: 'Rapport eieren forstår', d: 'Eieren får oppgjørsrapport per bolig hver måned, og en årsoppgave i januar som regnskapsføreren kan bruke direkte.' },
+  { t: 'Purring etter husleieloven', d: 'Påminnelse, purring og varsel om utkastelse sendes automatisk, og dere bestemmer hvor prosessen skal stoppe.' },
+  { t: 'Alt logget', d: 'Hver handling lagres med hvem og når. Roller og beløpsgrenser settes per eier og per person hos dere.' },
 ];
 
 /* PowerOffice har vektorlogo i /v4/logo; Tripletex og Fiken settes typografisk i samme dempede ink. */
@@ -52,13 +52,13 @@ export default function TrygghetSeksjon() {
           <div className="lg:col-span-5">
             <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>Trygghet</p>
             <h2 className="mt-4 text-[clamp(38px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }} data-testid="v4m-trygghet-tittel">
-              Bygget for andres penger<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+              Trygt for eiernes penger<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
             </h2>
             <p className="mt-6 max-w-[44ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-              Å forvalte for andre er regulert tillit. Systemet er bygget rundt det — og vi driver selv på det, hver dag, i Bergen.
+              Den som forvalter for andre, har ansvar for andres penger. DigiHome er laget med det som utgangspunkt, og vi bruker det selv hver dag på egne kunders boliger i Bergen.
             </p>
             <p className="mt-8 inline-flex items-center gap-2.5 text-[14.5px] font-medium" style={{ color: T.ink, ...inn(3) }} data-testid="v4m-trygghet-bevis">
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: T.gronn }} />Bevist i egen drift — DigiHome forvalter selv på samme system
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: T.gronn }} />Vi bruker det selv: DigiHome forvalter egne kunders boliger på samme system
             </p>
           </div>
           <ol className="grid gap-x-8 gap-y-7 sm:grid-cols-2 lg:col-span-7 lg:gap-x-10">
@@ -72,7 +72,7 @@ export default function TrygghetSeksjon() {
         </div>
         {/* Regnskapet dere har */}
         <div className="mt-14 flex flex-col gap-5 border-t pt-7 sm:flex-row sm:items-center sm:justify-between lg:mt-16" style={{ borderColor: HAIR, ...inn(10, 10) }} data-testid="v4m-trygghet-regnskap">
-          <p className="text-[14.5px]" style={{ color: DIM }}>Bilag og utbetalinger går til regnskapet dere allerede har.</p>
+          <p className="text-[14.5px]" style={{ color: DIM }}>Bilag og utbetalinger går rett inn i regnskapssystemet dere allerede bruker.</p>
           <ul className="flex flex-wrap items-center gap-x-9 gap-y-3" style={{ color: 'rgba(21,19,15,0.74)' }}>
             {REGNSKAP.map((l) => <li key={l.id} className="flex items-center" data-testid={`v4m-regnskap-${l.id}`}><Logo {...l} /></li>)}
           </ul>

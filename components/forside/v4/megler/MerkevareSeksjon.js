@@ -47,10 +47,10 @@ export default function MerkevareSeksjon() {
           <div className="lg:col-span-5">
             <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>Merkevare</p>
             <h2 className="mt-4 text-[clamp(38px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }} data-testid="v4m-merkevare-tittel">
-              Deres navn på det eieren ser<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+              Tilbudet går ut i deres navn<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
             </h2>
             <p className="mt-6 max-w-[44ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-              Tilbudet skriver seg selv — og går ut med deres logo og farger. Landingssidene dere publiserer er deres. Eieren møter dere. Motoren er vår.
+              Tilbudet til eieren lages automatisk og sendes med deres logo og farger. Landingssidene dere publiserer fra systemet er også deres. For eieren er det dere som er avsender.
             </p>
             <div className="mt-8 flex flex-wrap gap-2" style={inn(3)} role="tablist" aria-label="Velg byrå">
               {BYRA.map((x, i) => (
@@ -75,7 +75,7 @@ export default function MerkevareSeksjon() {
               <div className="px-6 py-6 sm:px-8 sm:py-8">
                 <p className="text-[12.5px] font-medium" style={{ color: SVAK }}>Til Kari Moen</p>
                 <p className="mt-2 max-w-[46ch] text-[15.5px] leading-[1.5]" style={{ color: T.ink }}>
-                  Takk for henvendelsen. Vi har sett på Fjellveien 12 og foreslår følgende — med samme rutine som for de {tall(86)} eierne vi allerede forvalter for.
+                  Takk for henvendelsen. Vi har sett på Fjellveien 12 og foreslår følgende, med samme opplegg som for de {tall(86)} eierne vi allerede forvalter for.
                 </p>
                 <dl className="mt-6 grid gap-px overflow-hidden rounded-[14px] sm:grid-cols-3" style={{ background: HAIR }}>
                   {rader.map(([k, v, s], i) => (
@@ -92,7 +92,7 @@ export default function MerkevareSeksjon() {
                 </div>
               </div>
             </div>
-            <p className="mt-4 text-[13px]" style={{ color: SVAK }}>Eksempel. Honorar og vilkår er deres avtale med hver eier.</p>
+            <p className="mt-4 text-[13px]" style={{ color: SVAK }}>Eksempel. Honorar og vilkår avtaler dere med hver eier.</p>
           </div>
         </div>
       </div>

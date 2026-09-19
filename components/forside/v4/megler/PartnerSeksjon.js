@@ -21,9 +21,9 @@ const SVAK = 'rgba(21,19,15,0.46)';
 const PLASSER = 5;
 
 const FORDELER = [
-  ['Oppdrag fra vår trakt', 'Henvendelser fra digihome.no i deres område går til dere — med boligdata, leieestimat og tilbudsutkast klart.'],
-  ['Direkte linje til produktet', 'Partnerne former veikartet. Det dere trenger i drift, bygger vi — og dere får det først.'],
-  ['Deres data er deres', 'Ingen deling av eiere, henvendelser eller priser. Vi selger ikke til eierne dere har avtale med. Det står i avtalen.'],
+  ['Oppdrag fra digihome.no', 'Eiere som tar kontakt via digihome.no i deres område, sendes til dere med boligdata, leieestimat og tilbudsutkast ferdig.'],
+  ['Dere påvirker hva vi bygger', 'Partnerne er de første vi spør når vi prioriterer. Det dere trenger i drift, bygger vi, og dere får det først.'],
+  ['Deres data er deres', 'Vi deler ikke eiere, henvendelser eller priser med andre, og vi selger ikke til eiere dere har avtale med. Det står i avtalen.'],
 ];
 
 export default function PartnerSeksjon() {
@@ -44,10 +44,10 @@ export default function PartnerSeksjon() {
               </span>
             </p>
             <h2 className="mt-4 text-[clamp(38px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }} data-testid="v4m-partner-tittel">
-              Fem byråer.<br />Oppdrag i deres område<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+              Vi sender oppdrag<br />til fem byråer<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
             </h2>
             <p className="mt-6 max-w-[50ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-              Vi forvalter selv i Bergen sentrum — det er derfor systemet fungerer. Henvendelser vi ikke tar selv, utenfor sentrum eller utenfor kapasitet, går til partnere på systemet. Dere får oppdraget. Eieren får samme rutine.
+              DigiHome forvalter selv i Bergen sentrum. Henvendelser vi ikke kan ta, fordi de ligger utenfor sentrum eller vi ikke har kapasitet, sender vi videre til partnere som bruker systemet. Dere får oppdraget, og eieren får samme opplegg som hos oss.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={inn(3)}>
               <Knapp href="#demo" variant="ink" onClick={() => sendTilDemo({ partner: true })} data-testid="v4m-partner-cta">Søk om partnerplass</Knapp>

@@ -49,7 +49,7 @@ const RADER = [
   { kl: '07:15', hva: 'Ny henvendelse', d: 'Fjellveien 12 · «Ønsker hjelp til utleie» · tilbudsutkast ligger klart', s: 'ny' },
   { kl: '08:02', hva: 'Tilbud lest', d: 'Kari Moen åpnet tilbudet · 2. gang · 4 min', s: 'ok' },
   { kl: '08:30', hva: 'Sak · varmtvann', d: `Strandgaten 12 · rørlegger bestilt · eier godkjente ${tall(6200)} kr i appen`, s: 'ok' },
-  { kl: '09:10', hva: 'Signert', d: 'Oppdragsavtale Fjellveien 12 · BankID · enhet opprettet · onboarding sendt', s: 'ok' },
+  { kl: '09:10', hva: 'Signert', d: 'Oppdragsavtale Fjellveien 12 · BankID · bolig opprettet · velkomstlenke sendt', s: 'ok' },
   { kl: '09:40', hva: 'Purring', d: '3 av 214 husleier ikke betalt · påminnelse sendt automatisk', s: 'auto' },
 ];
 

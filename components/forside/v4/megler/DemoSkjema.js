@@ -22,9 +22,9 @@ const SVAK = 'rgba(21,19,15,0.46)';
 const EPOST = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 const HVA = [
-  ['Salget, oppgjøret og eierportalen', 'Med deres eiere og boliger som eksempel — ikke en mal.'],
-  ['Konkret prisforslag samme uke', 'Per leieforhold under forvaltning, med modulene dere trenger.'],
-  ['Ingen forpliktelse', '30 minutter. Dere bestemmer om det er verdt en uke til.'],
+  ['Salget, oppgjøret og eierportalen', 'Vi viser det med deres egne eiere og boliger som eksempel.'],
+  ['Pristilbud i løpet av uken', 'Prisen regnes per leieforhold under forvaltning, med de modulene dere trenger.'],
+  ['Ingen forpliktelse', 'Demoen tar 30 minutter. Etterpå bestemmer dere om det er verdt å gå videre.'],
 ];
 
 const INPUT = 'mt-1.5 h-11 w-full bg-transparent text-[16px] outline-none placeholder:text-[#15130F]/30';
@@ -88,7 +88,7 @@ export default function DemoSkjema() {
       if (r.ok && (j.success || j.ok)) {
         setSt('ok');
         try { window.sessionStorage.removeItem('dh_megler_leieforhold'); window.sessionStorage.removeItem('dh_megler_partner'); } catch (er) { /* stille */ }
-      } else { setSt('feil'); setFeil(j.error || 'Noe gikk galt. Prøv igjen — eller skriv til oss.'); }
+      } else { setSt('feil'); setFeil(j.error || 'Noe gikk galt. Prøv igjen, eller send oss en e-post.'); }
     } catch (err) { setSt('feil'); setFeil('Fikk ikke kontakt. Prøv igjen om et øyeblikk.'); }
   };
 
@@ -104,10 +104,10 @@ export default function DemoSkjema() {
           <div className="lg:col-span-5">
             <p className="text-[14px] font-medium" style={{ color: SVAK, ...inn(0) }}>Demo</p>
             <h2 className="mt-4 text-[clamp(38px,4vw,64px)]" style={{ ...display, color: T.ink, ...inn(1) }} data-testid="v4m-demo-tittel">
-              Se morgenen deres i systemet<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
+              Se det med deres egne tall<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
             </h2>
             <p className="mt-6 max-w-[42ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-              Tre felt, så tar vi kontakt innen én virkedag og foreslår tid. Ingen kalender å lete i.
+              Fyll inn tre felt, så tar vi kontakt innen én virkedag og foreslår et tidspunkt.
             </p>
             <ol className="mt-8 grid gap-5">
               {HVA.map(([t, d], i) => (
@@ -125,7 +125,7 @@ export default function DemoSkjema() {
                   <p className="inline-flex items-center gap-2.5 text-[14px] font-medium" style={{ color: '#166B3C' }}><span className="h-2 w-2 rounded-full" style={{ background: T.gronn }} />Mottatt</p>
                   <p className="mt-4 text-[clamp(28px,3vw,40px)]" style={{ ...display, color: T.ink }}>Takk{fornavn ? `, ${fornavn}` : ''}<span style={{ color: T.lilla }}>.</span></p>
                   <p className="mt-4 max-w-[46ch] text-[16px] leading-[1.5]" style={{ color: DIM }}>
-                    Vi tar kontakt innen én virkedag og foreslår tid for en demo — med {f.selskap.trim()} sine tall som eksempel{f.partner ? ', og vurderer søknaden om partnerplass' : ''}.
+                    Vi tar kontakt innen én virkedag og foreslår et tidspunkt. Demoen setter vi opp med tallene til {f.selskap.trim()}{f.partner ? ', og vi ser på søknaden om partnerplass samtidig' : ''}.
                   </p>
                 </div>
               ) : (
@@ -139,7 +139,7 @@ export default function DemoSkjema() {
                     <Felt label="Leieforhold under forvaltning (ca.)"><input inputMode="numeric" value={f.leieforhold} onChange={set('leieforhold')} placeholder="120" className={INPUT} style={kant(false)} data-testid="v4m-demo-leieforhold" /></Felt>
                     <label className="flex items-start gap-3 pt-6 text-[14px] leading-[1.45]" style={{ color: DIM }}>
                       <input type="checkbox" checked={f.partner} onChange={set('partner')} className="mt-[3px] h-4 w-4 shrink-0 accent-[#15130F]" data-testid="v4m-demo-partner" />
-                      <span>Vurder oss for <span style={{ color: T.ink }}>partnerprogrammet 2025</span> (fem plasser)</span>
+                      <span>Vi vil gjerne vurderes for <span style={{ color: T.ink }}>partnerprogrammet</span> (fem plasser i 2025)</span>
                     </label>
                   </div>
                   <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
@@ -147,7 +147,7 @@ export default function DemoSkjema() {
                     <Link href="/bli-utleier/start?kind=business" className="text-[14.5px] underline decoration-[#15130F]/25 underline-offset-4 hover:decoration-[#15130F]" style={{ color: T.ink }} data-testid="v4m-demo-registrer">Eller registrer selskapet direkte</Link>
                   </div>
                   {feil ? <p className="mt-4 text-[14px]" style={{ color: '#B4462F' }} role="alert" data-testid="v4m-demo-feil">{feil}</p> : null}
-                  <p className="mt-5 text-[12.5px] leading-[1.5]" style={{ color: SVAK }}>Vi bruker opplysningene bare til å ta kontakt om demoen. Ingen nyhetsbrev.</p>
+                  <p className="mt-5 text-[12.5px] leading-[1.5]" style={{ color: SVAK }}>Vi bruker opplysningene bare til å ta kontakt om demoen, ikke til nyhetsbrev.</p>
                 </form>
               )}
             </div>

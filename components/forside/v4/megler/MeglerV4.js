@@ -46,61 +46,61 @@ const HAIR = 'rgba(21,19,15,0.10)';
 const SVAK = 'rgba(21,19,15,0.5)';
 
 const BEVIS = [
-  { t: 'Klientkonto og oppgjør innebygd', d: 'Husleie inn, honorar, utbetaling — per eier.' },
-  { t: 'Eierportal til hver eier', d: 'Hver eier ser sitt. Godkjenner sitt.' },
-  { t: 'Bevist i egen drift', d: 'DigiHome forvalter selv på samme system.' },
+  { t: 'Klientkonto og oppgjør', d: 'Husleie inn, honorar ut, én utbetaling per eier.' },
+  { t: 'Egen portal for hver eier', d: 'Eieren ser sine boliger og godkjenner selv.' },
+  { t: 'Vi bruker det selv', d: 'DigiHome forvalter egne kunders boliger på samme system.' },
 ];
 
 const STEG = [
-  { nr: '1', t: 'Demo', d: '30 minutter med deres eiere og boliger som eksempel. Dere ser morgenen deres i systemet — og salget fra henvendelse til signatur.' },
-  { nr: '2', t: 'Oppsett', d: 'Selskapet, eierne, oppdragsavtalene og løpende leieforhold settes opp sammen med dere. Honorarsats per eier. Regnskapssystemet kobles.' },
-  { nr: '3', t: 'Roller og grenser', d: 'Hvem ser hva, hvem godkjenner hva, hva går til eier. Hver handling logges med hvem og når.' },
-  { nr: '4', t: 'Første oppgjør', d: 'Husleien krevs inn, honoraret trekkes, eierne får utbetaling og rapport. Fra da av går rutinen — og nye henvendelser lander i CRM.' },
+  { nr: '1', t: 'Demo', d: '30 minutter med deres egne eiere og boliger som eksempel. Dere ser hvordan en vanlig morgen ser ut i systemet, og hvordan salget går fra henvendelse til signatur.' },
+  { nr: '2', t: 'Oppsett', d: 'Vi legger inn selskapet, eierne, oppdragsavtalene og løpende leieforhold sammen med dere. Honorarsats settes per eier, og regnskapssystemet kobles til.' },
+  { nr: '3', t: 'Roller og grenser', d: 'Dere bestemmer hvem som ser hva, hvem som godkjenner hva, og hva som skal til eieren. Alt som gjøres, lagres med navn og tidspunkt.' },
+  { nr: '4', t: 'Første oppgjør', d: 'Husleien kreves inn, honoraret trekkes, og eierne får utbetaling og rapport. Nye henvendelser går rett inn i salgsoversikten.' },
 ];
 
-/* Én dag, tre stoler: forvalteren, den som gjør oppgjøret, og eieren. Hva hver av dem gjør — og hva systemet gjør. */
+/* Én dag, tre stoler: forvalteren, den som gjør oppgjøret, og eieren. Hva hver av dem gjør, og hva systemet gjør. */
 const ROLLER = [['forvalter', 'Forvalter'], ['okonomi', 'Oppgjør'], ['eier', 'Eier']];
-const HENV = 'Lager lead med boligdata og leieestimat, legger tilbudsutkast klart';
+const HENV = 'Lager henvendelse med boligdata og leieestimat, legger tilbudsutkast klart';
 const HUSLEIE = 'Krever inn på klientkonto, avstemmer, purrer de som mangler';
 const SAK = 'Oppretter sak, henter pris, sender godkjenning til eier, følger opp håndverker';
-const KONTRAKT = 'Kontrakt fra malen, BankID, depositum, arkiv på enheten';
+const KONTRAKT = 'Kontrakt fra malen, BankID, depositum, arkiv på boligen';
 const OPPGJOR = 'Trekker honorar, utbetaler hver eier, lager oppgjørsrapport per bolig';
 const RAPPORT = 'Bilag til regnskapet, oppgjør til eier, alt logget';
 const DAGEN = [
   { t: 'Ny henvendelse fra Fjellveien 12', forvalter: ['Leser utkastet, justerer, trykker send', HENV], okonomi: [null, HENV], eier: ['Åpner tilbudet, signerer med BankID', HENV] },
-  { t: 'Husleie, den 1.', forvalter: ['Ser status — 3 av 214 mangler', HUSLEIE], okonomi: ['Ser klientkontoen avstemt', HUSLEIE], eier: ['Ser at husleien er kommet', HUSLEIE] },
-  { t: 'Varmtvann borte i Strandgaten 12', forvalter: ['Velger rørlegger — saken er adressert til deg', SAK], okonomi: ['Ser kostnaden når eier har godkjent', SAK], eier: ['Godkjenner 6 200 kr i appen', SAK] },
+  { t: 'Husleie, den 1.', forvalter: ['Ser at 3 av 214 mangler', HUSLEIE], okonomi: ['Ser at klientkontoen er avstemt', HUSLEIE], eier: ['Ser at husleien er kommet', HUSLEIE] },
+  { t: 'Varmtvann borte i Strandgaten 12', forvalter: ['Velger rørlegger, saken er sendt til deg', SAK], okonomi: ['Ser kostnaden når eier har godkjent', SAK], eier: ['Godkjenner 6 200 kr i appen', SAK] },
   { t: 'Ny leietaker i Løkkeveien 14', forvalter: ['Godkjenner anbefalingen', KONTRAKT], okonomi: ['Ser depositum og første husleie', KONTRAKT], eier: ['Sier ja til leietakeren', KONTRAKT] },
-  { t: 'Oppgjør, den 3.', forvalter: [null, OPPGJOR], okonomi: ['Godkjenner utbetalingskjøringen', OPPGJOR], eier: ['Får utbetaling og rapport', OPPGJOR] },
+  { t: 'Oppgjør, den 3.', forvalter: [null, OPPGJOR], okonomi: ['Godkjenner utbetalingene', OPPGJOR], eier: ['Får utbetaling og rapport', OPPGJOR] },
   { t: 'Månedsslutt', forvalter: ['Leser ukesrapporten', RAPPORT], okonomi: ['Sender bilag til regnskapsfører', RAPPORT], eier: [null, RAPPORT] },
 ];
 const DAGEN_SUM = {
-  forvalter: 'Du tar valgene som krever et menneske — hvem som flytter inn, hvilken håndverker, når noe må eskaleres. Rutinen går.',
-  okonomi: 'Du godkjenner utbetalingskjøringen og sender bilag. Innkreving, avstemming, honorar og rapporter går automatisk.',
-  eier: 'Eieren ser sitt, godkjenner sitt — og slipper å ringe.',
+  forvalter: 'Du tar de valgene som krever et menneske: hvem som skal flytte inn, hvilken håndverker som skal brukes, og når noe må løftes videre. Resten går av seg selv.',
+  okonomi: 'Du godkjenner utbetalingene og sender bilag. Innkreving, avstemming, honorar og rapporter skjer automatisk.',
+  eier: 'Eieren ser sine boliger, godkjenner det som trenger godkjenning, og slipper å ringe.',
 };
 
 const LINK = 'underline underline-offset-4 decoration-[#15130F]/30 hover:decoration-[#15130F]';
 
 const SPORSMAL = [
   { q: 'Hva koster det?', a: null },
-  { q: 'Konkurrerer DigiHome med oss?', a: 'Vi forvalter egne kunders boliger i Bergen sentrum på dette systemet — det er derfor det fungerer. Utenfor sentrum, og når vi er uten kapasitet, går henvendelsene til partnere på systemet. Deres data er deres: ingen deling av eiere, henvendelser eller priser, og vi selger ikke til eierne dere har avtale med. Det står i avtalen.' },
-  { q: 'Hvor lang tid tar overgangen?', a: 'Typisk tre uker: import av eiere, avtaler og leieforhold i uke én, parallell drift i uke to, første oppgjør på DigiHome i uke tre. Kontrakter og historikk følger med som de er, og vi gjør oppsettet sammen med dere — eier for eier eller hele porteføljen på én gang.' },
-  { q: 'Kan vi bruke vår egen merkevare?', a: 'Ja. Tilbudet som går til eieren skriver seg selv og går ut med deres logo og farger, og landingssidene dere publiserer fra systemet er deres. Eieren møter dere — motoren er vår.' },
-  { q: 'Hva er partnerprogrammet?', a: 'Fem byråer i 2025. Partnere får henvendelser fra digihome.no i sitt område — med boligdata, leieestimat og tilbudsutkast klart — og en direkte linje til produktteamet. Kryss av for partnerprogrammet i demo-skjemaet, så tar vi det i samtalen.' },
-  { q: 'Hvordan kommer henvendelsene inn?', a: 'Fra skjema og landingssider dere publiserer fra systemet, fra telefon og e-post dere registrerer, eller ved import. Hvert lead får boligdata, leieestimat og et tilbudsutkast med deres honorar.' },
-  { q: 'Kan vi ta med eksisterende eiere og leieforhold?', a: 'Ja. Eiere, oppdragsavtaler og løpende leieforhold settes opp sammen med dere i oppsettet — med kontrakter og historikk som de er.' },
+  { q: 'Konkurrerer DigiHome med oss?', a: 'DigiHome forvalter egne kunders boliger i Bergen sentrum. Henvendelser utenfor sentrum, eller som vi ikke har kapasitet til, sender vi til partnere som bruker systemet. Vi deler ikke eiere, henvendelser eller priser med andre, og vi selger ikke til eiere dere har avtale med. Det står i avtalen.' },
+  { q: 'Hvor lang tid tar overgangen?', a: 'Vanligvis tre uker. Første uke legger vi inn eiere, avtaler og leieforhold, andre uke kjører dere begge systemene parallelt, og tredje uke kjøres første oppgjør i DigiHome. Kontrakter og historikk følger med slik de er. Dere velger om vi tar eier for eier eller hele porteføljen på én gang.' },
+  { q: 'Kan vi bruke vår egen merkevare?', a: 'Ja. Tilbudet til eieren sendes med deres logo og farger, og landingssidene dere publiserer fra systemet er deres. Eieren ser dere som avsender.' },
+  { q: 'Hva er partnerprogrammet?', a: 'Vi tar inn fem byråer i 2025. Partnere får henvendelser fra digihome.no i sitt område, med boligdata, leieestimat og tilbudsutkast ferdig, og de er de første vi spør når vi prioriterer ny funksjonalitet. Kryss av for partnerprogrammet i skjemaet, så tar vi det opp i demoen.' },
+  { q: 'Hvordan kommer henvendelsene inn?', a: 'Fra skjemaer og landingssider dere publiserer fra systemet, fra telefon og e-post dere registrerer selv, eller ved import. Hver henvendelse får boligdata, leieestimat og et tilbudsutkast med deres honorar.' },
+  { q: 'Kan vi ta med eksisterende eiere og leieforhold?', a: 'Ja. Eiere, oppdragsavtaler og løpende leieforhold legges inn sammen med dere, med kontrakter og historikk slik de er.' },
   { q: 'Hvordan håndteres eiernes penger?', a: 'Husleien går inn på klientkonto, adskilt fra deres egne midler. Honoraret trekkes etter avtalen med hver eier, resten utbetales, og eieren får oppgjørsrapport per bolig og årsoppgave.' },
-  { q: 'Hva ser eierne våre?', a: 'Sine egne boliger: husleie, oppgjør, saker, kontrakter og dokumenter — ikke porteføljen. Kostnader over grensen dere setter per eier går til eieren for godkjenning.' },
-  { q: 'Hvordan signeres oppdragsavtaler og kontrakter?', a: 'Med BankID gjennom Posten signering (SMS-signering som alternativ). Dokumentene arkiveres på eieren og enheten, med full historikk.' },
+  { q: 'Hva ser eierne våre?', a: 'Bare sine egne boliger: husleie, oppgjør, saker, kontrakter og dokumenter. Kostnader over grensen dere har satt for eieren, sendes til eieren for godkjenning.' },
+  { q: 'Hvordan signeres oppdragsavtaler og kontrakter?', a: 'Med BankID gjennom Posten signering, eller med SMS-signering. Dokumentene arkiveres på eieren og boligen, med full historikk.' },
   { q: 'Hva med regnskapet?', a: 'Husleie, kostnader, honorar og utbetalinger ligger per eier og bolig, og går til PowerOffice, Tripletex eller Fiken.' },
 ];
 
 const PRIS_SVAR = (
   <p className="max-w-[60ch]" style={{ color: 'rgba(21,19,15,0.66)' }}>
-    Plattformen prises etter <strong style={{ color: '#15130F', fontWeight: 500 }}>antall leieforhold under forvaltning</strong> og modulene dere bruker.{' '}
-    <a href="#regn" className={LINK} style={{ color: '#15130F' }} data-testid="v4m-faq-regn">Regn på hva rutinen koster dere i dag</a>, og{' '}
-    <a href="#demo" className={LINK} style={{ color: '#15130F' }} data-testid="v4m-faq-demo">book en demo</a> — så får dere et konkret forslag samme uke, med deres portefølje som eksempel.
+    Prisen avhenger av <strong style={{ color: '#15130F', fontWeight: 500 }}>antall leieforhold under forvaltning</strong> og hvilke moduler dere bruker.{' '}
+    <a href="#regn" className={LINK} style={{ color: '#15130F' }} data-testid="v4m-faq-regn">Regn på hva det manuelle arbeidet koster dere i dag</a>, og{' '}
+    <a href="#demo" className={LINK} style={{ color: '#15130F' }} data-testid="v4m-faq-demo">book en demo</a>. Da får dere et konkret pristilbud i løpet av uken, regnet på deres egen portefølje.
   </p>
 );
 
@@ -120,11 +120,11 @@ export default function MeglerV4() {
                   Hundre eiere.<br />Én rolig morgen<span style={{ color: T.lilla, marginLeft: '0.03em' }}>.</span>
                 </h1>
                 <p className="dh-cover-inn mt-6 max-w-[38ch] text-[17px] leading-[1.5] sm:text-[19px]" style={{ color: 'rgba(21,19,15,0.7)', animationDelay: '.08s' }} data-testid="v4m-ingress">
-                  Vi bygde systemet for å forvalte egne kunders boliger. Nå er det deres: husleien inn på klientkonto, honoraret trukket, hver eier betalt og rapportert — automatisk, hver måned. Dere tar valgene. Rutinen går.
+                  Vi laget DigiHome for å forvalte boliger for egne kunder, og nå kan dere bruke det samme. Husleien kommer inn på klientkonto, honoraret trekkes, og hver eier får utbetaling og rapport hver måned. Ingen hos dere trenger å gjøre det for hånd.
                 </p>
                 <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ animationDelay: '.14s' }}>
                   <Knapp href="#demo" data-testid="v4m-cta">Book en demo</Knapp>
-                  <Lenke href="#salg" data-testid="v4m-cta-salg">Se salget fra henvendelse til signatur</Lenke>
+                  <Lenke href="#salg" data-testid="v4m-cta-salg">Se hvordan salget fungerer</Lenke>
                 </div>
                 <ul className="dh-cover-inn mt-10 grid grid-cols-3 gap-x-5 border-t pt-5 sm:gap-x-8" style={{ borderColor: HAIR, animationDelay: '.2s' }} data-testid="v4m-bevis">
                   {BEVIS.map((b) => (
@@ -159,7 +159,7 @@ export default function MeglerV4() {
         {/* ── 6. Én dag, tre stoler ── */}
         <SammenligningSeksjon
           tittel={['Én dag.', 'Tre stoler.']}
-          under="Seks ting som skjer i en forvalters uke — sett fra stolen du sitter i."
+          under="Seks ting som skjer i løpet av en uke hos en forvalter, sett fra den stolen du sitter i."
           valg={ROLLER}
           hendelser={DAGEN}
           sum={DAGEN_SUM}
@@ -174,9 +174,9 @@ export default function MeglerV4() {
         <InnsynSeksjon
           id="eierportal"
           label="Eierportal"
-          tittel="Eierne deres ser det de skal se"
-          ingress="Hver eier har sin egen innlogging: husleie, oppgjør, saker og dokumenter for sine boliger — ikke porteføljen. Kostnader over eierens grense går til eieren for godkjenning, ikke til innboksen deres."
-          punkter={['Oppgjørsrapport per bolig og årsoppgave — klar til eierens regnskapsfører', 'Godkjenning hos eier med én melding og ett valg', 'Færre telefoner: eieren finner svaret selv']}
+          tittel="Eierne ser sine egne boliger"
+          ingress="Hver eier logger inn og ser husleie, oppgjør, saker og dokumenter for sine egne boliger, og bare dem. Kostnader over grensen dere har satt, sendes til eieren for godkjenning i stedet for til innboksen deres."
+          punkter={['Oppgjørsrapport per bolig og årsoppgave som regnskapsføreren kan bruke direkte', 'Eieren godkjenner med én melding og ett trykk', 'Færre telefoner, fordi eieren finner svaret selv']}
           flateLabel="Eierens oversikt · Kari Moen · mai"
           bunn="Ingenting venter på eieren"
           testid="v4m-eierportal"
@@ -200,7 +200,7 @@ export default function MeglerV4() {
         {/* ── 14. Slik kommer dere i gang ── */}
         <StegSeksjon
           tittel={['Slik kommer', 'dere i gang.']}
-          under="Fra demo til første oppgjør på noen uker — med deres eiere, ikke en mal."
+          under="Fra demo til første oppgjør på noen uker, med deres egne eiere og boliger."
           steg={STEG}
           person={null}
           testid="v4m"
@@ -215,12 +215,12 @@ export default function MeglerV4() {
         {/* ── 17. Avslutning ── */}
         <AvslutningSeksjon
           tittel="Hundre eiere. Én rolig morgen"
-          under="Book en demo — 30 minutter, med deres eiere og boliger som eksempel."
+          under="Book en demo på 30 minutter, med deres egne eiere og boliger som eksempel."
           handling={{ knapp: { tekst: 'Book en demo', href: '#demo' }, lenke: { tekst: 'Registrer selskapet', href: '/bli-utleier/start?kind=business' } }}
           steg={[
-            ['1', 'Demo med deres portefølje', 'Dere ser morgenen deres — og salget — i systemet.'],
-            ['2', 'Eiere, avtaler og roller', 'Oppdragsavtaler, honorarsats per eier, hvem godkjenner hva.'],
-            ['3', 'Første oppgjør', 'Husleie inn, honorar trukket, eierne betalt og rapportert. Rutinen går.'],
+            ['1', 'Demo med deres portefølje', 'Dere ser en vanlig morgen og hele salget i systemet.'],
+            ['2', 'Eiere, avtaler og roller', 'Oppdragsavtaler, honorarsats per eier, og hvem som godkjenner hva.'],
+            ['3', 'Første oppgjør', 'Husleien inn, honoraret trukket, eierne betalt og rapportert.'],
           ]}
         />
       </main>
