@@ -132,7 +132,8 @@ export function InteresseSkjema({ listing, available }) {
     } catch (e2) { setSt('idle'); setErr('Nettverksfeil — prøv igjen'); }
   };
   if (st === 'ferdig') {
-    return <Ferdig testid="listing-interest-done" tittel="Interessen er registrert" tekst={`Vi tar kontakt om ${String(listing.title || 'boligen').toLowerCase()}${begge && f.scope ? ` (${f.scope === 'rom' ? 'rom i bofellesskap' : 'hele enheten'})` : ''} — samme dag på hverdager. Du får en bekreftelse på e-post nå.`} />;
+    const om = listing.streetAddress || listing.area || 'boligen';
+    return <Ferdig testid="listing-interest-done" tittel="Interessen er registrert" tekst={`Vi tar kontakt om ${om}${begge && f.scope ? ` (${f.scope === 'rom' ? 'rom i bofellesskap' : 'hele enheten'})` : ''} samme dag på hverdager. Du får en bekreftelse på e-post nå.`} />;
   }
   return (
     <form onSubmit={send} className="grid gap-4" data-testid="listing-interest-form" noValidate>
@@ -201,7 +202,9 @@ export default function BoligDetalj({ listing, available, nl = null }) {
   const sted = listing.streetAddress || listing.area || listing.title;
   const under = [listing.district, listing.city].filter(Boolean).filter((v, k, a) => a.indexOf(v) === k).join(', ');
   const leie = listing.rentText ? listing.rentText.replace(/\s*kr\/mnd\s*$/i, '') : null;
-  const ledigFra = formatNoDate(listing.availableFrom) || listing.availableFrom || null;
+  /* «Ledig fra» vises bare når datoen ligger foran oss; en dato som har passert betyr «Ledig nå» */
+  const fremtid = /^\d{4}-/.test(String(listing.availableFrom || '')) && new Date(listing.availableFrom) > new Date();
+  const ledigFra = fremtid ? (formatNoDate(listing.availableFrom) || listing.availableFrom) : null;
   const fakta = [
     listing.sqm ? ['Areal', `${listing.sqm} m²`] : null,
     listing.bedrooms ? ['Soverom', String(listing.bedrooms)] : null,
@@ -209,7 +212,7 @@ export default function BoligDetalj({ listing, available, nl = null }) {
     ['Utleieenhet', listing.scopeShort || 'Hele enheten'],
     listing.roomsLabel ? ['Ledige rom', listing.roomsLabel] : null,
     ['Utleieform', listing.modelLabel],
-    ['Ledig fra', ledigFra || 'Etter avtale'],
+    ['Ledig fra', ledigFra || (available ? 'Nå' : 'Etter avtale')],
   ].filter(Boolean);
   const pris = (
     <div data-testid="listing-price">
@@ -232,7 +235,7 @@ export default function BoligDetalj({ listing, available, nl = null }) {
             <div className="min-w-0">
               <p className="flex items-center gap-2 text-[13.5px]" style={{ color: available ? 'rgba(21,19,15,0.75)' : SVAK }} data-testid="listing-detail-status">
                 <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: available ? T.lilla : 'rgba(21,19,15,0.3)', boxShadow: available ? '0 0 0 3px rgba(212,150,255,0.22)' : 'none' }} />
-                {available ? (ledigFra && /^\d{4}-/.test(String(listing.availableFrom)) ? `Ledig fra ${ledigFra}` : 'Ledig nå') : 'Utleid'}
+                {available ? (ledigFra ? `Ledig fra ${ledigFra}` : 'Ledig nå') : 'Utleid'}
                 {listing.scope && listing.scope !== 'hele' ? <span data-testid="listing-detail-scope"> · {listing.scopeLabel}</span> : null}
               </p>
               <h1 className="mt-3 break-words text-[clamp(34px,4.2vw,64px)]" style={{ ...display, color: T.ink }} data-testid="listing-detail-h1">{sted}</h1>

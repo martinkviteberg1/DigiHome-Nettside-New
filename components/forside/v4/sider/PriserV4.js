@@ -45,55 +45,49 @@ const PLANER = [
     lilla: true,
   },
   {
-    id: 'selskap', nr: '03', navn: 'Eiendomsselskap', stor: 'Per enhet', liten: 'tilbud etter demo', pris: 'Per enhet',
-    en: 'Alle bygg. Ett system. Teamet driver.', for: 'Selskap med eget team · fra 10 enheter',
-    punkter: ['Roller og godkjenning', 'Saker på tvers av alle bygg', 'Husleie, purring og regnskap', 'Full historikk per enhet'],
+    id: 'selskap', nr: '03', navn: 'Eiendomsselskap og utleiemegler', stor: 'Per enhet', liten: 'tilbud etter demo', pris: 'Per enhet',
+    en: 'Alle bygg og eiere. Ett system. Teamet driver.', for: 'Selskap med eget team, eller byrå som forvalter for andre',
+    punkter: ['Roller, godkjenning og full historikk', 'Saker på tvers av alle bygg', 'Husleie, purring og regnskap', 'For meglere: salg, klientkonto og oppgjør per eier'],
     notat: 'Pris etter antall enheter · demo først',
     knapp: { tekst: 'Book en demo', href: '/book-mote' },
     lenke: { tekst: 'For eiendomsselskaper', href: '/bedrift' },
-  },
-  {
-    id: 'megler', nr: '04', navn: 'Utleiemegler', stor: 'Per leieforhold', liten: 'tilbud etter demo', pris: 'Per leieforhold',
-    en: 'Forvalt for mange. Oppgjør per eier.', for: 'Byråer som forvalter for andre',
-    punkter: ['Alt i Eiendomsselskap', 'Salg fra henvendelse til signert oppdrag', 'Klientkonto og oppgjør per eier', 'Eierportal med deres merkevare'],
-    notat: 'Pris etter antall leieforhold og moduler · demo først',
-    knapp: { tekst: 'Book en demo', href: '/utleiemeglere#demo' },
-    lenke: { tekst: 'For utleiemeglere', href: '/utleiemeglere' },
+    lenke2: { tekst: 'For utleiemeglere', href: '/utleiemeglere' },
   },
 ];
 
 /* Sammenligningen. 1 = med, 0 = ikke med, tekst = slik det er. Rekkefølgen følger PLANER. */
+const MEGLER = 'For meglere';
 const SAMMENLIGN = [
   { gruppe: 'Utleie', rader: [
-    ['Annonse på FINN', 1, 1, 1, 1],
-    ['Leiekontrakt signert med BankID', 1, 1, 1, 1],
-    ['Depositumskonto', 1, 1, 1, 1],
-    ['Visning og anbefalt leietaker', 0, 1, 0, 0],
+    ['Annonse på FINN', 1, 1, 1],
+    ['Leiekontrakt signert med BankID', 1, 1, 1],
+    ['Depositumskonto', 1, 1, 1],
+    ['Visning og anbefalt leietaker', 0, 1, 0],
   ] },
   { gruppe: 'Drift', rader: [
-    ['Saker og chat med leietaker', 1, 1, 1, 1],
-    ['Én fast forvalter', 0, 1, 0, 0],
-    ['Vaktmester, renhold og håndverkere', 0, 1, 0, 0],
-    ['Roller og godkjenning', 0, 0, 1, 1],
-    ['Saker på tvers av alle bygg', 0, 0, 1, 1],
-    ['Full historikk per enhet', 0, 0, 1, 1],
+    ['Saker og chat med leietaker', 1, 1, 1],
+    ['Én fast forvalter', 0, 1, 0],
+    ['Vaktmester, renhold og håndverkere', 0, 1, 0],
+    ['Roller og godkjenning', 0, 0, 1],
+    ['Saker på tvers av alle bygg', 0, 0, 1],
+    ['Full historikk per enhet', 0, 0, 1],
   ] },
   { gruppe: 'Økonomi', rader: [
-    ['Husleie og purring', 1, 1, 1, 1],
-    ['Årsoppgave', 1, 1, 1, 1],
-    ['Månedsrapport', 0, 1, 0, 0],
-    ['Regnskap: PowerOffice, Tripletex, Fiken', 0, 0, 1, 1],
-    ['Klientkonto og oppgjør per eier', 0, 0, 0, 1],
+    ['Husleie og purring', 1, 1, 1],
+    ['Årsoppgave', 1, 1, 1],
+    ['Månedsrapport', 0, 1, 0],
+    ['Regnskap: PowerOffice, Tripletex, Fiken', 0, 0, 1],
+    ['Klientkonto og oppgjør per eier', 0, 0, MEGLER],
   ] },
   { gruppe: 'Salg og eiere', rader: [
-    ['Salg fra henvendelse til signert oppdrag', 0, 0, 0, 1],
-    ['Eierportal', 0, 0, 0, 1],
-    ['Tilbud og landingssider med deres merkevare', 0, 0, 0, 1],
+    ['Salg fra henvendelse til signert oppdrag', 0, 0, MEGLER],
+    ['Eierportal', 0, 0, MEGLER],
+    ['Tilbud og landingssider med deres merkevare', 0, 0, MEGLER],
   ] },
   { gruppe: 'Kom i gang', rader: [
-    ['Oppstart', 'Selv, på minutter', 'Vi setter opp', 'Onboarding av teamet', 'Tre uker, parallell drift'],
-    ['Bindingstid', 'Ingen', 'Ingen', 'Etter avtale', 'Etter avtale'],
-    ['Pris', '5 % av husleien', 'Tilbud innen 24 t', 'Per enhet', 'Per leieforhold'],
+    ['Oppstart', 'Selv, på minutter', 'Vi setter opp', 'Onboarding av teamet, eller tre uker med parallell drift'],
+    ['Bindingstid', 'Ingen', 'Ingen', 'Etter avtale'],
+    ['Pris', '5 % av husleien', 'Tilbud innen 24 t', 'Per enhet'],
   ] },
 ];
 
@@ -102,7 +96,7 @@ const SPORSMAL = [
   { q: 'Hva koster full forvaltning?', a: null },
   { q: 'Når betaler jeg?', a: 'Når husleien kommer inn. Står boligen tom, koster den ingenting. Selvforvaltning er fem prosent av det som faktisk betales.' },
   { q: 'Finnes det skjulte kostnader?', a: 'Nei. Prosenten dekker systemet: annonse, kontrakt, husleie, depositum, saker og årsoppgave. Tjenester utover det, som profesjonell boligfoto eller hjelp til visning, avtales alltid på forhånd med fast pris.' },
-  { q: 'Hva koster det for eiendomsselskaper og utleiemeglere?', a: 'Selskaper prises per enhet, meglere per leieforhold under forvaltning. Begge får et konkret tilbud etter en demo på 30 minutter, regnet på egen portefølje.' },
+  { q: 'Hva koster det for eiendomsselskaper og utleiemeglere?', a: 'Begge betaler per enhet, altså per leieforhold i systemet. Dere får et konkret tilbud etter en demo på 30 minutter, regnet på egen portefølje. Meglere kan legge til salg, klientkonto og eierportal.' },
   { q: 'Kan jeg bytte fra selvforvaltning til full forvaltning?', a: 'Ja. Det er samme system under. Bytter du, tar vi over der du er. Boligen, kontrakten og historikken blir med.' },
   { q: 'Hva med depositum?', a: 'Depositumskonto er inkludert. Kontrakten og depositumet settes opp sammen, og begge parter signerer med BankID.' },
 ];
@@ -150,7 +144,10 @@ function Plan({ p, inn, i }) {
       <p className="mt-5 text-[12.5px] leading-[1.5]" style={{ color: SVAK }}>{p.notat}</p>
       <div className="mt-6 flex flex-col items-start gap-3 pt-1 lg:mt-auto lg:pt-6">
         <Knapp href={p.knapp.href} variant={p.lilla ? 'lilla' : 'ink'} className="w-full justify-center" data-testid={`v4p-cta-${p.nr}`}>{p.knapp.tekst}</Knapp>
-        <Lenke href={p.lenke.href}>{p.lenke.tekst}</Lenke>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <Lenke href={p.lenke.href}>{p.lenke.tekst}</Lenke>
+          {p.lenke2 ? <Lenke href={p.lenke2.href}>{p.lenke2.tekst}</Lenke> : null}
+        </div>
       </div>
     </li>
   );
@@ -164,13 +161,13 @@ function Sammenligning({ inn }) {
         <h2 className="text-[clamp(34px,3.6vw,60px)] lg:col-span-7" style={{ ...display, color: T.ink }}>Alt som er med<Punkt /></h2>
         <p className="max-w-[36ch] text-[16.5px] leading-[1.5] lg:col-span-4 lg:col-start-9 lg:pb-2" style={{ color: DIM }}>Samme system under alle fire. Forskjellen er hvem som gjør jobben, og hva dere trenger på toppen.</p>
       </div>
-      <div className="-mx-5 mt-10 overflow-x-auto px-5 sm:mx-0 sm:px-0 lg:mt-14" style={inn(1, 24)}>
-        <table className="w-full min-w-[820px] border-collapse text-left" data-testid="v4p-tabell">
+      <div className="-mx-5 mt-10 overflow-x-auto sm:mx-0 lg:mt-14" style={inn(1, 24)}>
+        <table className="w-full min-w-[720px] border-collapse text-left" data-testid="v4p-tabell">
           <thead>
             <tr>
-              <th scope="col" className="sticky left-0 z-[1] w-[32%] pb-5 align-bottom pr-6 text-[13px] font-medium" style={{ background: T.flate, color: SVAK }}>Hva</th>
-              {PLANER.map((p) => (
-                <th key={p.id} scope="col" className="pb-5 pr-4 align-bottom">
+              <th scope="col" className="sticky left-0 z-[1] w-[32%] pb-5 pl-5 pr-6 align-bottom text-[13px] font-medium sm:pl-0" style={{ background: T.flate, color: SVAK }}>Hva</th>
+              {PLANER.map((p, i) => (
+                <th key={p.id} scope="col" className={`pb-5 align-bottom ${i === PLANER.length - 1 ? 'pr-5 sm:pr-4' : 'pr-4'}`}>
                   <p className="text-[15px] font-medium" style={{ color: T.ink }}>{p.navn}</p>
                   <p className="mt-0.5 text-[12.5px]" style={{ color: p.lilla ? T.lilla : SVAK }}>{p.pris}</p>
                 </th>
@@ -180,13 +177,13 @@ function Sammenligning({ inn }) {
           {SAMMENLIGN.map((g) => (
             <tbody key={g.gruppe}>
               <tr>
-                <td colSpan={5} className="sticky left-0 pb-3 pt-8 text-[11.5px] font-medium uppercase tracking-[0.1em]" style={{ color: T.lilla }}>{g.gruppe}</td>
+                <td colSpan={4} className="sticky left-0 pb-3 pl-5 pt-8 text-[11.5px] font-medium uppercase tracking-[0.1em] sm:pl-0" style={{ color: T.lilla }}>{g.gruppe}</td>
               </tr>
               {g.rader.map((r) => (
                 <tr key={r[0]} className="border-t" style={{ borderColor: HAIR }}>
-                  <th scope="row" className="sticky left-0 z-[1] py-3.5 pr-6 text-[15px] font-normal" style={{ background: T.flate, color: T.ink }}>{r[0]}</th>
+                  <th scope="row" className="sticky left-0 z-[1] py-3.5 pl-5 pr-6 text-[15px] font-normal sm:pl-0" style={{ background: T.flate, color: T.ink }}>{r[0]}</th>
                   {r.slice(1).map((c, i) => (
-                    <td key={i} className="py-3.5 pr-4 text-[14px]" style={{ color: DIM }}>
+                    <td key={i} className={`py-3.5 text-[14px] ${i === PLANER.length - 1 ? 'pr-5 sm:pr-4' : 'pr-4'}`} style={{ color: DIM }}>
                       {c === 1 ? <Hake /> : c === 0 ? <span aria-label="Ikke med" style={{ color: 'rgba(21,19,15,0.25)' }}>–</span> : c}
                     </td>
                   ))}
@@ -332,7 +329,7 @@ export default function PriserV4() {
               </div>
 
               {/* 2. Fire planer */}
-              <ol className="mt-16 grid gap-5 md:grid-cols-2 lg:mt-24 xl:grid-cols-4" data-testid="v4p-nivaer">
+              <ol className="mt-16 grid gap-5 lg:mt-24 lg:grid-cols-3" data-testid="v4p-nivaer">
                 {PLANER.map((p, i) => <Plan key={p.id} p={p} inn={inn} i={i} />)}
               </ol>
             </div>

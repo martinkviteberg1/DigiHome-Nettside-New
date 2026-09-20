@@ -9,6 +9,7 @@ import TillitStripe from '../TillitStripe';
 import MeglerScene from './MeglerScene';
 import SalgSeksjon from './SalgSeksjon';
 import LopetSeksjon from './LopetSeksjon';
+import AgentSeksjon from './AgentSeksjon';
 import OppgjorSeksjon from './OppgjorSeksjon';
 import InkludertSeksjon from './InkludertSeksjon';
 import RegnSeksjon from './RegnSeksjon';
@@ -113,6 +114,9 @@ export default function MeglerV4() {
 
         {/* ── 3. Hele løpet: elleve stopp + tre inn/ut-kort (#lopet) ── */}
         <LopetSeksjon />
+
+        {/* ── 3b. Assistenten: teammedlemmet, og den ekte chatten (#assistent) ── */}
+        <AgentSeksjon />
 
         {/* ── 4. Salg: fra henvendelse til signert oppdrag (produktbilde) ── */}
         <SalgSeksjon />

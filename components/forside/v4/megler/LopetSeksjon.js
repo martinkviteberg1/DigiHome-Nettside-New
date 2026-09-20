@@ -60,14 +60,15 @@ const KORT = [
     venter: 'Dere leser gjennom og sender', dere: true,
   },
   {
-    hvem: 'Sander Vik', rolle: 'Leietaker · Løkkeveien 14', ini: 'SV', kl: '21:12',
-    inn: 'Hei! Kan vi ha katt i leiligheten?',
+    hvem: 'Husleie ikke mottatt', rolle: 'Løkkeveien 14 · forfall 1. juni', ini: '1.', kl: '06:00', hendelse: true,
+    inn: 'Forfall 1. juni · 14 200 kr · ikke mottatt ved avstemming',
     ut: [
-      { t: 'Svar funnet i kontrakten', m: 'Punkt 9 · Husdyr · signert 12. mars', chip: 'Kontrakt' },
-      { svar: 'Hei Sander! Ja, kontrakten din tillater katt. Gi oss beskjed når den flytter inn, så noterer vi det på leieforholdet.' },
-      { t: 'Logget på leieforholdet', m: 'Løkkeveien 14 · 21:12', chip: 'Sendt' },
+      { t: 'Påminnelse sendt til leietaker', m: 'SMS og e-post · 3. juni', chip: 'Sendt' },
+      { t: 'Purring etter husleieloven', m: 'Går 15. juni om beløpet fortsatt mangler', chip: 'Planlagt' },
+      { t: 'Eier ser status i portalen', m: 'Ingen telefon nødvendig', chip: 'Oppdatert' },
+      { t: 'Dere varsles før neste steg', m: 'Varsel og oppsigelse er alltid dere', chip: 'Venter', ring: true },
     ],
-    venter: 'Ingen handling fra dere', dere: false,
+    venter: 'Dere bestemmer hvor det stopper', dere: true,
   },
 ];
 
@@ -160,6 +161,12 @@ function Kort({ k, i, synlig }) {
           </div>
           <span className="shrink-0 text-[12px] tabular-nums" style={{ color: SVAK }}>{k.kl}</span>
         </div>
+        {k.hendelse ? (
+          <div className="mt-3 flex items-center gap-2.5 rounded-[12px] px-4 py-3 text-[13.5px] leading-[1.4]" style={{ background: 'rgba(21,19,15,0.04)', boxShadow: `inset 0 0 0 1px ${HAIR}`, color: T.ink, ...d(260) }}>
+            <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: T.lilla }} />
+            <span>{k.inn}</span>
+          </div>
+        ) : (
         <div className="mt-3 max-w-[94%] rounded-[16px] rounded-tl-[6px] px-4 py-3 text-[14.5px] leading-[1.45]" style={{ background: '#FFFFFF', boxShadow: `inset 0 0 0 1px ${HAIR}`, color: T.ink, ...d(260) }}>
           {k.inn}
           {k.bilde ? (
@@ -167,6 +174,7 @@ function Kort({ k, i, synlig }) {
             <img src={k.bilde} alt="" className="mt-3 block h-[72px] w-[56px] rounded-[10px] object-cover" style={{ boxShadow: `0 0 0 1px ${HAIR}` }} />
           ) : null}
         </div>
+        )}
       </div>
 
       {/* Systemet arbeider: en linje tegnes fra venstre til høyre, så kommer radene */}
@@ -181,14 +189,7 @@ function Kort({ k, i, synlig }) {
 
       {/* Ut: radene slik de står i produktet */}
       <ul className="grid gap-2 px-5 pt-4 sm:px-6">
-        {k.ut.map((r, j) => r.svar ? (
-          <li key="svar" className="flex justify-end" style={d(utStart + j * 260, 6)}>
-            <div className="max-w-[92%] rounded-[16px] rounded-tr-[6px] px-4 py-3 text-[13.5px] leading-[1.45]" style={{ background: T.ink, color: '#F4F1EA' }} data-testid={`v4m-lopet-svar-${i}`}>
-              {r.svar}
-              <span className="mt-1.5 block text-right text-[11px]" style={{ color: 'rgba(244,241,234,0.55)' }}>Sendt til Sander · 21:12</span>
-            </div>
-          </li>
-        ) : (
+        {k.ut.map((r, j) => (
           <li key={r.t} className="flex items-center gap-3 rounded-[12px] px-3 py-2.5" style={{ background: '#FFFFFF', boxShadow: `inset 0 0 0 1px ${HAIR}`, ...d(utStart + j * 260, 6) }}>
             <Hake />
             <span className="min-w-0 flex-1">

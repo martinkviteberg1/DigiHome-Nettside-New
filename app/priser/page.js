@@ -2,8 +2,8 @@ import PriserV4 from '@/components/forside/v4/sider/PriserV4';
 import { JsonLd } from '@/components/site/JsonLd';
 import { breadcrumbLd, webPageLd } from '@/lib/seo';
 
-const TITTEL = 'Priser — 5 % selvforvaltning, forvaltning på tilbud';
-const BESKRIVELSE = 'Selvforvaltning koster 5 % av husleien — ingen oppstart, ingen bindingstid. Full forvaltning prises etter omfang med tilbud innen 24 timer. Eiendomsselskaper får avtale tilpasset porteføljen.';
+const TITTEL = 'Priser – 5 % av husleien, ingen bindingstid';
+const BESKRIVELSE = 'Selvforvaltning koster 5 % av husleien. Ingen oppstart, ingen bindingstid, ingen minstepris. Full forvaltning får tilbud innen 24 timer. Eiendomsselskaper og utleiemeglere betaler per enhet, tilbud etter demo.';
 
 export const metadata = {
   title: TITTEL,

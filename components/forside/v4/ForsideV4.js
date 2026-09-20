@@ -84,8 +84,8 @@ export default function ForsideV4({ bilde = null, produkt = 'ramme' }) {
                 Utleie på autopilot<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
               </h1>
               <p className="dh-cover-inn mx-auto mt-5 max-w-[44ch] text-[18px] leading-[1.45] text-[#15130F]/70 sm:mt-6 sm:text-[21px]" style={{ animationDelay: '.08s' }} data-testid="v4-hero-ingress">
-                <span className="sm:hidden">Hele utleien samlet. Mye av arbeidet gjort for deg.</span>
-                <span className="hidden sm:inline">Leietakere, kontrakter, husleie og drift — samlet på ett sted, og gjort underveis.</span>
+                <span className="sm:hidden">Annonse, husleie og saker går automatisk. Du godkjenner det som koster.</span>
+                <span className="hidden sm:inline">Annonsen skrives, husleien kreves inn, leietakeren får svar. Du godkjenner det som koster.</span>
               </p>
               {/* Handlingen er feltet. Ink-knapp: lilla er reservert for det ene du gjør i scenen — «Godkjenn». */}
               <div className="dh-cover-inn relative z-20 mx-auto mt-7 w-full max-w-[520px] sm:mt-9" style={{ animationDelay: '.14s' }}>
