@@ -85,7 +85,7 @@ export default function ForsideV4({ bilde = null, produkt = 'ramme' }) {
               </h1>
               <p className="dh-cover-inn mx-auto mt-5 max-w-[44ch] text-[18px] leading-[1.45] text-[#15130F]/70 sm:mt-6 sm:text-[21px]" style={{ animationDelay: '.08s' }} data-testid="v4-hero-ingress">
                 <span className="sm:hidden">Annonse, husleie og saker går automatisk. Du godkjenner det som koster.</span>
-                <span className="hidden sm:inline">Annonsen skrives, husleien kreves inn, leietakeren får svar. Du godkjenner det som koster.</span>
+                <span className="hidden sm:inline">Annonsen skrives, husleien kreves inn, leietakeren får svar.<br className="hidden md:inline" /> Du godkjenner det som koster.</span>
               </p>
               {/* Handlingen er feltet. Ink-knapp: lilla er reservert for det ene du gjør i scenen — «Godkjenn». */}
               <div className="dh-cover-inn relative z-20 mx-auto mt-7 w-full max-w-[520px] sm:mt-9" style={{ animationDelay: '.14s' }}>
