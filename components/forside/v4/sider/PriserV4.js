@@ -153,45 +153,103 @@ function Plan({ p, inn, i }) {
   );
 }
 
-/* Sammenligningen: første kolonne står fast når tabellen ruller sidelengs på små skjermer */
+/* Én celle i sammenligningen: med (hake i sirkel), ikke med (kort strek), eller tekst (pille) */
+function Celle({ c, lilla }) {
+  if (c === 1) return <span className="inline-flex h-6 w-6 items-center justify-center rounded-full" style={{ background: lilla ? 'rgba(212,150,255,0.28)' : 'rgba(31,157,85,0.12)' }} data-med="1"><Hake color={lilla ? '#7A2FB0' : T.gronn} size={12} /></span>;
+  if (c === 0) return <span aria-label="Ikke med" className="block h-px w-3" style={{ background: 'rgba(21,19,15,0.22)' }} data-med="0" />;
+  return <span className="inline-block max-w-full rounded-full px-2.5 py-1 text-[12.5px] leading-[1.3]" style={{ background: PAPIR, color: DIM, boxShadow: `inset 0 0 0 1px ${HAIR}` }} data-med="tekst">{c}</span>;
+}
+
+/* Liten knapp i tabellhodet */
+function MiniKnapp({ p }) {
+  return (
+    <Link href={p.knapp.href} className="inline-flex items-center rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-opacity hover:opacity-85" style={{ background: p.lilla ? T.lilla : T.ink, color: p.lilla ? T.ink : '#F4F1EA' }} data-testid={`v4p-tabell-cta-${p.id}`}>{p.knapp.tekst}</Link>
+  );
+}
+
+/* Sammenligningen. Desktop: rutenett med hode som blir stående mens tabellen ruller, tonet kolonne for
+   Full forvaltning, rad som lyser ved hover. Mobil: én plan om gangen, valgt i en pille, ingen sidelengs rulling. */
+const KOL = 'lg:grid lg:grid-cols-[minmax(0,2.1fr)_repeat(3,minmax(0,1fr))]';
+const TONE = 'rgba(212,150,255,0.09)';
+
 function Sammenligning({ inn }) {
+  const [valgt, setValgt] = useState(0);
+  const pv = PLANER[valgt];
   return (
     <div data-testid="v4p-sammenlign">
       <div className="grid gap-6 lg:grid-cols-12 lg:items-end lg:gap-10" style={inn(0)}>
         <h2 className="text-[clamp(34px,3.6vw,60px)] lg:col-span-7" style={{ ...display, color: T.ink }}>Alt som er med<Punkt /></h2>
-        <p className="max-w-[36ch] text-[16.5px] leading-[1.5] lg:col-span-4 lg:col-start-9 lg:pb-2" style={{ color: DIM }}>Samme system under alle fire. Forskjellen er hvem som gjør jobben, og hva dere trenger på toppen.</p>
+        <p className="max-w-[36ch] text-[16.5px] leading-[1.5] lg:col-span-4 lg:col-start-9 lg:pb-2" style={{ color: DIM }}>Samme system under alle tre. Forskjellen er hvem som gjør jobben, og hva dere trenger på toppen.</p>
       </div>
-      <div className="-mx-5 mt-10 overflow-x-auto sm:mx-0 lg:mt-14" style={inn(1, 24)}>
-        <table className="w-full min-w-[720px] border-collapse text-left" data-testid="v4p-tabell">
-          <thead>
-            <tr>
-              <th scope="col" className="sticky left-0 z-[1] w-[32%] pb-5 pl-5 pr-6 align-bottom text-[13px] font-medium sm:pl-0" style={{ background: T.flate, color: SVAK }}>Hva</th>
-              {PLANER.map((p, i) => (
-                <th key={p.id} scope="col" className={`pb-5 align-bottom ${i === PLANER.length - 1 ? 'pr-5 sm:pr-4' : 'pr-4'}`}>
-                  <p className="text-[15px] font-medium" style={{ color: T.ink }}>{p.navn}</p>
-                  <p className="mt-0.5 text-[12.5px]" style={{ color: p.lilla ? T.lilla : SVAK }}>{p.pris}</p>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          {SAMMENLIGN.map((g) => (
-            <tbody key={g.gruppe}>
-              <tr>
-                <td colSpan={4} className="sticky left-0 pb-3 pl-5 pt-8 text-[11.5px] font-medium uppercase tracking-[0.1em] sm:pl-0" style={{ color: T.lilla }}>{g.gruppe}</td>
-              </tr>
-              {g.rader.map((r) => (
-                <tr key={r[0]} className="border-t" style={{ borderColor: HAIR }}>
-                  <th scope="row" className="sticky left-0 z-[1] py-3.5 pl-5 pr-6 text-[15px] font-normal sm:pl-0" style={{ background: T.flate, color: T.ink }}>{r[0]}</th>
-                  {r.slice(1).map((c, i) => (
-                    <td key={i} className={`py-3.5 text-[14px] ${i === PLANER.length - 1 ? 'pr-5 sm:pr-4' : 'pr-4'}`} style={{ color: DIM }}>
-                      {c === 1 ? <Hake /> : c === 0 ? <span aria-label="Ikke med" style={{ color: 'rgba(21,19,15,0.25)' }}>–</span> : c}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
+
+      {/* ── Desktop ── */}
+      <div className="mt-14 hidden lg:block" style={inn(1, 24)} data-testid="v4p-tabell">
+        {/* Hodet: blir stående under menyen mens tabellen ruller */}
+        <div className={`${KOL} sticky top-[64px] z-[2] border-b`} style={{ background: T.flate, borderColor: 'rgba(21,19,15,0.14)' }}>
+          <div className="py-5 pr-6 text-[13px] font-medium" style={{ color: SVAK }}>Hva</div>
+          {PLANER.map((p) => (
+            <div key={p.id} className="flex flex-col gap-3 px-4 py-5" style={{ background: p.lilla ? TONE : 'transparent' }}>
+              <div>
+                <p className="text-[15px] font-medium leading-[1.2]" style={{ color: T.ink }}>{p.navn}</p>
+                <p className="mt-1 text-[12.5px]" style={{ color: p.lilla ? '#7A2FB0' : SVAK }}>{p.pris}</p>
+              </div>
+              <div><MiniKnapp p={p} /></div>
+            </div>
           ))}
-        </table>
+        </div>
+        {SAMMENLIGN.map((g) => (
+          <div key={g.gruppe} role="rowgroup">
+            <div className={KOL}>
+              <p className="pb-3 pt-9 text-[11.5px] font-medium uppercase tracking-[0.1em]" style={{ color: T.lilla }}>{g.gruppe}</p>
+              {PLANER.map((p) => <div key={p.id} style={{ background: p.lilla ? TONE : 'transparent' }} />)}
+            </div>
+            {g.rader.map((r) => (
+              <div key={r[0]} className={`${KOL} group border-t transition-colors hover:bg-[#15130F]/[0.03]`} style={{ borderColor: HAIR }} role="row">
+                <div className="flex items-center py-3.5 pr-6 text-[15px]" style={{ color: T.ink }}>{r[0]}</div>
+                {r.slice(1).map((c, i) => (
+                  <div key={i} className="flex items-center px-4 py-3.5" style={{ background: PLANER[i].lilla ? TONE : 'transparent' }}>
+                    <Celle c={c} lilla={PLANER[i].lilla} />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        ))}
+        <div className={`${KOL} border-t`} style={{ borderColor: 'rgba(21,19,15,0.14)' }}>
+          <div />
+          {PLANER.map((p) => <div key={p.id} className="h-3 rounded-b-[12px]" style={{ background: p.lilla ? TONE : 'transparent' }} />)}
+        </div>
+      </div>
+
+      {/* ── Mobil: én plan om gangen ── */}
+      <div className="mt-10 lg:hidden" style={inn(1, 24)} data-testid="v4p-tabell-mobil">
+        <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 pb-1" role="tablist" aria-label="Velg plan">
+          {PLANER.map((p, i) => (
+            <button key={p.id} type="button" role="tab" aria-selected={i === valgt} onClick={() => setValgt(i)} className="shrink-0 rounded-full px-3.5 py-2 text-[13px] font-medium transition-colors" style={{ background: i === valgt ? T.ink : PAPIR, color: i === valgt ? '#F4F1EA' : DIM, boxShadow: i === valgt ? 'none' : `inset 0 0 0 1px ${HAIR}` }} data-testid={`v4p-mobil-plan-${p.id}`}>{p.navn}</button>
+          ))}
+        </div>
+        <div className="mt-5 rounded-[18px] px-5 py-5" style={{ background: pv.lilla ? TONE : PAPIR, boxShadow: `inset 0 0 0 1px ${pv.lilla ? 'rgba(212,150,255,0.5)' : HAIR}` }}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[16px] font-medium" style={{ color: T.ink }}>{pv.navn}</p>
+              <p className="mt-0.5 text-[13px]" style={{ color: pv.lilla ? '#7A2FB0' : SVAK }}>{pv.pris}</p>
+            </div>
+            <MiniKnapp p={pv} />
+          </div>
+        </div>
+        {SAMMENLIGN.map((g) => (
+          <div key={g.gruppe}>
+            <p className="pb-2 pt-7 text-[11.5px] font-medium uppercase tracking-[0.1em]" style={{ color: T.lilla }}>{g.gruppe}</p>
+            <ul>
+              {g.rader.map((r) => (
+                <li key={r[0]} className="flex items-center justify-between gap-4 border-t py-3" style={{ borderColor: HAIR }}>
+                  <span className="text-[14.5px]" style={{ color: r[1 + valgt] === 0 ? SVAK : T.ink }}>{r[0]}</span>
+                  <span className="flex shrink-0 items-center justify-end text-right"><Celle c={r[1 + valgt]} lilla={pv.lilla} /></span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
     </div>
   );

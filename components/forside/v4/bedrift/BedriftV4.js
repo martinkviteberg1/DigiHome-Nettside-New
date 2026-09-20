@@ -15,6 +15,54 @@ import KontrollSeksjon from './KontrollSeksjon';
 import StegSeksjon from '../StegSeksjon';
 import FaqSeksjon from '../FaqSeksjon';
 import AvslutningSeksjon from '../AvslutningSeksjon';
+import AgentSeksjon from '../megler/AgentSeksjon';
+
+/* Assistenten slik et eiendomsselskap ser den: i teamlisten ved siden av driftssjef og vaktmester.
+   Tre samtaler: leietaker (sak), interessent fra FINN (visning), og driftssjefen som spør assistenten selv. */
+const ASSISTENT = {
+  firma: 'Fjordbygg Eiendom AS',
+  tittel: 'En kollega som kjenner hvert bygg',
+  ingress: 'Assistenten står i teamlisten som alle andre. Den leser kontrakt, sak, annonse og husleie, svarer leietakere og interessenter, og gir teamet svar uten at noen må lete. Det som koster penger, går til et menneske.',
+  team: [
+    { navn: 'Marte Sandvik', rolle: 'Driftssjef', foto: '/v4/ida.webp', status: 'Fra 08:00' },
+    { navn: 'Jonas Haugland', rolle: 'Vaktmester', foto: '/v4/jonas.webp', status: 'Fra 07:00' },
+    { navn: 'DigiHome', rolle: 'Assistent', logo: true, status: 'Svarer nå', aktiv: true },
+  ],
+  leser: ['Bygg og enheter', 'Kontrakter', 'Saker', 'Husleie', 'Annonser', 'Visningskalender'],
+  aldri: ['Godkjenner kostnader', 'Lover avslag på husleie', 'Velger leietaker'],
+  regler: 'Assistenten svarer på det som står i kontrakt, annonse, sak og husleie. Den godkjenner ingen kostnader, lover ingen avslag og velger ingen leietaker. Det gjør teamet.',
+  samtaler: [
+    {
+      id: 'leietaker', fane: 'Leietaker', hvem: 'Emma Lie', ini: 'EL', om: 'Damsgårdsveien 12 · leil. 3', kl: '08:30',
+      m: [
+        { fra: 'dem', t: 'Hei, vaskemaskinen i fellesvaskeriet stopper midt i programmet.' },
+        { fra: 'oss', t: 'Hei Emma. Er det maskinen nærmest døren eller den innerste? Og står det en feilkode i displayet?', kilde: 'Bygg · Damsgårdsveien 12 · fellesvaskeri, 2 maskiner' },
+        { fra: 'dem', t: 'Den innerste. Feilkode E20.' },
+        { fra: 'oss', t: 'Takk. Jeg har opprettet en sak og lagt den til Jonas, som ser på den i dag. Du får beskjed her når den er i orden.', kilde: 'Sak 2291 opprettet · sendt til vaktmester' },
+        { fra: 'dem', t: 'Kan jeg få refundert vasken jeg mistet?' },
+        { fra: 'oss', t: 'Det må Marte ta stilling til. Jeg har sendt spørsmålet til henne, og hun svarer deg her.', loft: 'Løftet til Marte Sandvik · hun svarer i samtalen' },
+      ],
+    },
+    {
+      id: 'interessent', fane: 'Interessent fra FINN', hvem: 'Amir Hussain', ini: 'AH', om: 'Fra annonsen · Nygårdsgaten 22', kl: '21:05',
+      m: [
+        { fra: 'dem', t: 'Hei! Er leiligheten i Nygårdsgaten 22 ledig fra 1. august? Kan jeg se den?' },
+        { fra: 'oss', t: 'Hei Amir, ja, den er ledig fra 1. august. Onsdag er det visning kl. 17:00 og 17:30. Vil du ha 17:00?', kilde: 'Annonse Nygårdsgaten 22 · Visningskalender' },
+        { fra: 'dem', t: '17:00 passer. Er det parkering?' },
+        { fra: 'oss', t: 'Du er satt opp onsdag 17:00, bekreftelse kommer på SMS. Parkering leies separat i garasjen, skriv det i søknaden, så tar Marte det med.', kilde: 'Visning booket · Annonse: parkering etter avtale' },
+      ],
+    },
+    {
+      id: 'team', fane: 'Driftssjefen', hvem: 'Marte Sandvik', foto: '/v4/ida.webp', om: 'Driftssjef · spør assistenten', kl: '07:52',
+      m: [
+        { fra: 'dem', t: 'Hva er åpent i Damsgårdsveien 12?' },
+        { fra: 'oss', t: 'Tre saker: vaskemaskin i fellesvaskeriet (Jonas, i dag), lekkasje bad leil. 4 (rørlegger torsdag), dørpumpe inngang B (venter på pris). Ingen over godkjenningsgrensen din.', kilde: 'Saker · Damsgårdsveien 12 · oppdatert 07:50' },
+        { fra: 'dem', t: 'Og husleie for juni?' },
+        { fra: 'oss', t: 'To leieforhold mangler, 27 400 kr til sammen. Påminnelse gikk 3. juni, purring går 15. juni om det fortsatt mangler. Resten er avstemt.', kilde: 'Husleie juni · avstemt i dag 06:00' },
+      ],
+    },
+  ],
+};
 
 /* Produktfilmene (drift · økonomi · kontrakt) er den tyngste delen — egen chunk, montert når den nærmer seg. */
 const ProduktSeksjon = dynamic(() => import('../produkt/ProduktSeksjon'), { ssr: false, loading: () => <div id="produkt" style={{ minHeight: 'var(--dh-h-produkt)', background: '#DCE1EB' }} aria-hidden="true" /> });
@@ -157,6 +205,8 @@ export default function BedriftV4() {
         <StrukturSeksjon />
         {/* ── 3. Produktet i drift — filmene teamet kjenner seg igjen i: saken, økonomien, kontrakten ── */}
         <Utsatt id="produkt" minHeight="var(--dh-h-produkt)" className="bg-[#DCE1EB]"><ProduktSeksjon kapitler={['drift', 'okonomi', 'kontrakt']} /></Utsatt>
+        {/* ── 3b. Assistenten — teammedlemmet, og den ekte chatten (#assistent) ── */}
+        <AgentSeksjon {...ASSISTENT} />
         {/* ── 4. Én dag, tre roller ── */}
         <SammenligningSeksjon
           tittel={['Én dag.', 'Tre roller.']}
