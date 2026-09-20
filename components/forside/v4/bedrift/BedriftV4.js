@@ -16,6 +16,7 @@ import StegSeksjon from '../StegSeksjon';
 import FaqSeksjon from '../FaqSeksjon';
 import AvslutningSeksjon from '../AvslutningSeksjon';
 import AgentSeksjon from '../megler/AgentSeksjon';
+import HvemSeksjon from '../megler/HvemSeksjon';
 
 /* Assistenten slik et eiendomsselskap ser den: i teamlisten ved siden av driftssjef og vaktmester.
    Tre samtaler: leietaker (sak), interessent fra FINN (visning), og driftssjefen som spør assistenten selv. */
@@ -200,6 +201,8 @@ export default function BedriftV4() {
           </div>
         </section>
         <TillitStripe />
+        {/* ── 2b. Hva DigiHome er: tre påstander + sitat fra produktsjefen ── */}
+        <HvemSeksjon tredje={{ t: 'Nå driver det eiendomsselskaper', d: 'Teamet får systemet, assistenten og rutinene. Dere beholder byggene, tallene og valgene.' }} />
 
         {/* ── 2. Strukturen — konsern, selskaper, bygg, enheter: passer systemet oss? ── */}
         <StrukturSeksjon />

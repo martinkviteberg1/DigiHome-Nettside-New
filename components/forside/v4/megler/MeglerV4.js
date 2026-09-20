@@ -6,6 +6,7 @@ import NavV4 from '../NavV4';
 import Footer from '@/components/dh/Footer';
 import { Knapp, Lenke, T, Utsatt, display } from '../motion';
 import TillitStripe from '../TillitStripe';
+import HvemSeksjon from './HvemSeksjon';
 import MeglerScene from './MeglerScene';
 import SalgSeksjon from './SalgSeksjon';
 import LopetSeksjon from './LopetSeksjon';
@@ -111,6 +112,9 @@ export default function MeglerV4() {
 
         {/* ── 2. Logoene ── */}
         <TillitStripe tekst="Koblet til tjenestene dere allerede bruker." />
+
+        {/* ── 2b. Hva DigiHome er: tre påstander + sitat fra produktsjefen ── */}
+        <HvemSeksjon />
 
         {/* ── 3. Hele løpet: elleve stopp + tre inn/ut-kort (#lopet) ── */}
         <LopetSeksjon />
