@@ -45,12 +45,12 @@ const ASSISTENT = {
       ],
     },
     {
-      id: 'interessent', fane: 'Interessent fra FINN', hvem: 'Amir Hussain', ini: 'AH', om: 'Fra annonsen · Nygårdsgaten 22', kl: '21:05',
+      id: 'interessent', fane: 'Interessent fra annonsen', hvem: 'Amir Hussain', ini: 'AH', om: 'Fra annonsen · Nygårdsgaten 22', kl: '21:05',
       m: [
         { fra: 'dem', t: 'Hei! Er leiligheten i Nygårdsgaten 22 ledig fra 1. august? Kan jeg se den?' },
-        { fra: 'oss', t: 'Hei Amir, ja, den er ledig fra 1. august. Onsdag er det visning kl. 17:00 og 17:30. Vil du ha 17:00?', kilde: 'Annonse Nygårdsgaten 22 · Visningskalender' },
-        { fra: 'dem', t: '17:00 passer. Er det parkering?' },
-        { fra: 'oss', t: 'Du er satt opp onsdag 17:00, bekreftelse kommer på SMS. Parkering leies separat i garasjen, skriv det i søknaden, så tar Marte det med.', kilde: 'Visning booket · Annonse: parkering etter avtale' },
+        { fra: 'oss', t: 'Hei Amir, ja, den er ledig fra 1. august. Onsdag er det visning kl. 17:00 og 17:30. Du velger tidspunkt rett i annonsen.', kilde: 'Annonse Nygårdsgaten 22 · Visningskalender' },
+        { fra: 'dem', t: 'Booket 17:00. Er det parkering?' },
+        { fra: 'oss', t: 'Fint, da ser vi deg onsdag 17:00. Parkering leies separat i garasjen, skriv det i søknaden, så tar Marte det med.', kilde: 'Visning onsdag 17:00 · Annonse: parkering etter avtale' },
       ],
     },
     {

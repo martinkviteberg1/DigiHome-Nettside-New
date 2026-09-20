@@ -76,7 +76,7 @@ const SAMMENLIGN = [
     ['Husleie og purring', 1, 1, 1],
     ['Årsoppgave', 1, 1, 1],
     ['Månedsrapport', 0, 1, 0],
-    ['Regnskap: PowerOffice, Tripletex, Fiken', 0, 0, 1],
+    ['Regnskap: PowerOffice og Fiken', 0, 0, 1],
     ['Klientkonto og oppgjør per eier', 0, 0, MEGLER],
   ] },
   { gruppe: 'Salg og eiere', rader: [

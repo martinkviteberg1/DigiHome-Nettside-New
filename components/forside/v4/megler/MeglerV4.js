@@ -12,7 +12,7 @@ import SalgSeksjon from './SalgSeksjon';
 import LopetSeksjon from './LopetSeksjon';
 import AgentSeksjon from './AgentSeksjon';
 import OppgjorSeksjon from './OppgjorSeksjon';
-import InkludertSeksjon from './InkludertSeksjon';
+import FunksjonerSeksjon from './FunksjonerSeksjon';
 import RegnSeksjon from './RegnSeksjon';
 import DemoSkjema from './DemoSkjema';
 import FaqSeksjon from '../FaqSeksjon';
@@ -29,7 +29,7 @@ const ProduktSeksjon = dynamic(() => import('../produkt/ProduktSeksjon'), { ssr:
 
    Rekkefølge: hero → logoene → Hele løpet (linjen + tre inn/ut-kort) →
    Salg (produktbilde) → produktfilmene (annonse, kontrakt, drift, økonomi)
-   → Oppgjør (produktbilde) → Det som hører med (seks punkter) → Regn på det
+   → Oppgjør (produktbilde) → Funksjoner (spesifikasjonsark, søkbart) → Regn på det
    → Demo (#demo) → spørsmål og svar (fem) → avslutning.
 --------------------------------------------------------------------------- */
 
@@ -133,8 +133,8 @@ export default function MeglerV4() {
         {/* ── 5. Oppgjør: klientkonto → honorar → eier (produktbilde) ── */}
         <OppgjorSeksjon />
 
-        {/* ── 6. Det som hører med: seks punkter, én setning hver ── */}
-        <InkludertSeksjon />
+        {/* ── 6. Funksjoner: spesifikasjonsarket, samme elleve stopp, søkbart (#funksjoner) ── */}
+        <FunksjonerSeksjon />
 
         {/* ── 7. Regn på det: deres egne anslag → #demo ── */}
         <RegnSeksjon />

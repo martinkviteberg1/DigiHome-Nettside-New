@@ -62,12 +62,12 @@ const MEGLER = {
       ],
     },
     {
-      id: 'interessent', fane: 'Interessent fra FINN', hvem: 'Amir Hussain', ini: 'AH', om: 'Fra annonsen · Fjellveien 12', kl: '21:05',
+      id: 'interessent', fane: 'Interessent fra annonsen', hvem: 'Amir Hussain', ini: 'AH', om: 'Fra annonsen · Fjellveien 12', kl: '21:05',
       m: [
         { fra: 'dem', t: 'Hei! Er leiligheten i Fjellveien 12 fortsatt ledig? Kan jeg se den torsdag?' },
-        { fra: 'oss', t: 'Hei Amir, ja, den er ledig. Torsdag er det visning kl. 17:00 og 17:30. Vil du ha 17:00?', kilde: 'Annonse Fjellveien 12 · Visningskalender' },
-        { fra: 'dem', t: '17:00 passer. Er husdyr ok?' },
-        { fra: 'oss', t: 'Du er satt opp torsdag 17:00, bekreftelse kommer på SMS. Husdyr avtales med eier, så skriv det i søknaden, så tar Jonas det opp med henne.', kilde: 'Visning booket · Annonse: husdyr etter avtale', loft: 'Husdyr · avgjøres av eier' },
+        { fra: 'oss', t: 'Hei Amir, ja, den er ledig. Torsdag er det visning kl. 17:00 og 17:30. Du velger tidspunkt rett i annonsen, det tar et halvt minutt.', kilde: 'Annonse Fjellveien 12 · Visningskalender' },
+        { fra: 'dem', t: 'Booket 17:00 nå. Er husdyr ok?' },
+        { fra: 'oss', t: 'Fint, da ser vi deg torsdag 17:00. Husdyr avtales med eier, så skriv det i søknaden, så tar Jonas det opp med henne.', kilde: 'Visning torsdag 17:00 · Annonse: husdyr etter avtale', loft: 'Husdyr · avgjøres av eier' },
       ],
     },
   ],
