@@ -1,13 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import NavV4 from '../NavV4';
 import Footer from '@/components/dh/Footer';
 import { Knapp, Lenke, T, Utsatt, display } from '../motion';
 import TillitStripe from '../TillitStripe';
 import HvemSeksjon from './HvemSeksjon';
-import MeglerScene from './MeglerScene';
+import MeglerKartScene, { STORRELSER } from './MeglerKartScene';
 import SalgSeksjon from './SalgSeksjon';
 import LopetSeksjon from './LopetSeksjon';
 import AgentSeksjon from './AgentSeksjon';
@@ -77,6 +77,7 @@ const PRIS_SVAR = (
 );
 
 export default function MeglerV4() {
+  const [storrelse, setStorrelse] = useState('mellom');
   return (
     <div className="min-h-screen overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="megler-v4">
       <NavV4 />
@@ -102,9 +103,27 @@ export default function MeglerV4() {
                   <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: T.gronn }} />
                   Systemet vi selv forvalter med, hver dag, i Bergen.
                 </p>
+                {/* Størrelsen: velg, og scenen spiller dagen for en portefølje på deres størrelse */}
+                <div className="dh-cover-inn mt-6 flex flex-wrap items-baseline gap-x-2 text-[14px]" style={{ animationDelay: '.24s', color: 'rgba(21,19,15,0.5)' }}>
+                  <span id="v4m-storrelse-label">Se dagen for en portefølje på</span>
+                  <span role="radiogroup" aria-labelledby="v4m-storrelse-label" className="inline-flex items-baseline gap-x-1" data-testid="v4m-storrelse">
+                    {Object.entries(STORRELSER).map(([id, s], i) => {
+                      const er = id === storrelse;
+                      return (
+                        <React.Fragment key={id}>
+                          {i > 0 && <span aria-hidden="true" style={{ color: 'rgba(21,19,15,0.25)' }}>·</span>}
+                          <button type="button" role="radio" aria-checked={er} onClick={() => setStorrelse(id)} className="rounded-[6px] px-1 py-0.5 tabular-nums underline-offset-4 transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15130F]/30" style={{ color: er ? T.ink : 'rgba(21,19,15,0.5)', fontWeight: er ? 500 : 400, textDecoration: er ? 'underline' : 'none', textDecorationColor: er ? T.lilla : 'transparent', textDecorationThickness: 2 }} data-testid={`v4m-storrelse-${id}`}>
+                            {s.navn}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+                  </span>
+                  <span>boliger</span>
+                </div>
               </div>
               <div className="dh-cover-inn min-w-0 lg:col-span-7" style={{ animationDelay: '.12s' }} data-testid="v4m-hero-scene">
-                <MeglerScene />
+                <MeglerKartScene storrelse={storrelse} />
               </div>
             </div>
           </div>
