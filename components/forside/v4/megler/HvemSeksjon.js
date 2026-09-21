@@ -22,13 +22,13 @@ const DIM = 'rgba(21,19,15,0.62)';
 const SVAK = 'rgba(21,19,15,0.46)';
 
 const STANDARD = [
-  { t: 'Vi er forvaltere', d: 'DigiHome drifter egne kunders boliger i Bergen, hver dag, med systemet dere ser på denne siden.' },
-  { t: 'Vi bygde det selv', d: 'Fordi ingen leverte ett system fra henvendelse til årsoppgave: salg, kontrakt, husleie, saker, klientkonto og oppgjør.' },
-  { t: 'Nå er det deres', d: 'Byråer som forvalter for andre får systemet, assistenten og rutinene. Dere beholder eierne, merkevaren og valgene.' },
+  { t: 'Vi er forvaltere', d: 'DigiHome forvalter boliger for egne kunder i Bergen – hver dag, med systemet dere ser på denne siden.' },
+  { t: 'Vi bygde det selv', d: 'Fordi ingen leverte ett system som tok hele løpet fra henvendelse til årsoppgave: salg, kontrakt, husleie, saker, klientkonto og oppgjør.' },
+  { t: 'Nå er det deres', d: 'Utleiemeglere og forvaltere får systemet, assistenten og rutinene. Dere beholder eierne, merkevaren og avgjørelsene.' },
 ];
 
 const SITAT = {
-  tekst: 'Vi lette etter ett system som tok hele løpet, fra første henvendelse til oppgjøret hos eieren. Det fantes ikke. Så vi bygde det, på egne boliger, med egne feil. Alt på denne siden er noe vi selv har trengt.',
+  tekst: 'Vi lette etter ett system som tok hele løpet, fra første henvendelse til oppgjøret hos eieren. Det fantes ikke. Så vi bygde det selv – på egne boliger, med egne feil. Alt på denne siden er noe vi selv har trengt.',
   navn: 'Martin C. Kviteberg',
   tittel: 'Produktsjef, DigiHome',
   foto: '/v4/martin.webp',

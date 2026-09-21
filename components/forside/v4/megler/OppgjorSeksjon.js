@@ -37,9 +37,9 @@ function Teller({ vis, til, suffix = '' }) {
 }
 
 const STASJONER = [
-  { k: 'Husleie inn', v: `${tall(3142000)} kr`, tell: 3142000, suffix: ' kr', d: '214 leieforhold · KID · avstemt automatisk · 3 purringer sendt', dato: '1.–3. juni' },
-  { k: 'Klientkonto', v: 'Adskilt', d: 'Eiernes penger står på klientmiddelkonto, aldri sammen med deres egne', dato: 'løpende' },
-  { k: 'Honorar', v: 'Etter avtale', d: 'Trekkes per eier etter oppdragsavtalen, fast eller prosent · bokført hos dere', dato: '3. juni' },
+  { k: 'Husleie inn', v: `${tall(3142000)} kr`, tell: 3142000, suffix: ' kr', d: '214 leieforhold · KID · avstemt automatisk · 3 påminnelser sendt', dato: '1.–3. juni' },
+  { k: 'Klientkonto', v: 'Adskilt', d: 'Eiernes penger står på klientkonto – aldri sammen med deres egne', dato: 'løpende' },
+  { k: 'Honorar', v: 'Etter avtale', d: 'Trekkes per eier etter oppdragsavtalen, fast beløp eller prosent · bokføres hos dere', dato: '3. juni' },
   { k: 'Til eierne', v: '86 utbetalinger', d: 'Én utbetaling per eier · oppgjørsrapport per bolig (PDF) · årsoppgave i januar', dato: '3. juni' },
 ];
 
@@ -58,7 +58,7 @@ export default function OppgjorSeksjon() {
             </h2>
           </div>
           <p className="max-w-[46ch] text-[17px] leading-[1.5] sm:text-[18px] lg:col-span-5 lg:pb-2" style={{ color: DIM, ...inn(2) }}>
-            Husleien går inn på klientkonto. Honoraret trekkes etter avtalen med hver eier, og resten utbetales med en rapport per bolig.
+            Husleien går inn på klientkonto. Honoraret trekkes etter avtalen med hver eier, og resten utbetales – med oppgjørsrapport per bolig.
           </p>
         </div>
 

@@ -40,32 +40,32 @@ const LINK = 'underline underline-offset-4 decoration-[#15130F]/30 hover:decorat
 const FILM = {
   annonse: {
     tittel: ['Fra adressen', 'til valgt leietaker.'],
-    ingress: 'Adressen inn, så finner systemet boligen, skriver annonsen og legger den ut på FINN.no. Interessentene legitimerer seg og booker visning selv. Dere velger leietaker, eieren sier ja i appen.',
-    kort: 'Systemet finner boligen, skriver annonsen og legger den ut på FINN. Interessentene booker selv. Dere velger leietaker.',
+    ingress: 'Skriv inn adressen, så finner systemet boligen, skriver annonsen og legger den ut på FINN. Interessentene legitimerer seg og booker visning selv. Dere velger leietaker, og eieren godkjenner i appen.',
+    kort: 'Systemet finner boligen, skriver annonsen og legger den ut på FINN. Interessentene booker visning selv. Dere velger leietaker.',
   },
   kontrakt: {
     tittel: ['Fra valgt leietaker', 'til nøklene i hånden.'],
-    ingress: 'Kontrakten fylles ut fra annonsen og signeres med BankID. Depositumet står på egen konto hos Keyhole, og overtakelsen dokumenteres i en protokoll som signeres i døra.',
-    kort: 'Kontrakt fra annonsen, signert med BankID. Depositum hos Keyhole, protokoll i døra.',
+    ingress: 'Kontrakten fylles ut fra annonsen og signeres med BankID. Depositumet står på egen konto hos Keyhole, og overtakelsen dokumenteres i en protokoll som signeres på stedet.',
+    kort: 'Kontrakt fra annonsen, signert med BankID. Depositum hos Keyhole, protokoll signert på stedet.',
   },
   drift: {
     tittel: ['Fra melding til løst.', 'Ett trykk fra dere.'],
-    ingress: 'Leietakeren melder at varmtvannet er borte. Saken sorterer seg selv, rørleggeren svarer med tid og pris, og beløp over eierens grense går til eieren for godkjenning. Fakturaen bokføres på riktig eier.',
+    ingress: 'Leietakeren melder at varmtvannet er borte. Systemet oppretter saken og finner rørlegger, som svarer med tid og pris. Beløp over eierens grense går til eieren for godkjenning, og fakturaen bokføres på riktig eier.',
     kort: 'Leietakeren melder fra. Rørleggeren svarer med tid og pris, eieren godkjenner i appen. Fakturaen bokføres på riktig eier.',
   },
   okonomi: {
     tittel: ['Fra husleie', 'til oppgjør per eier.'],
-    ingress: 'Den første kommer husleien inn på klientkonto, leilighet for leilighet. Den som mangler, purres automatisk. Så trekkes honoraret, hver eier får sin utbetaling, og bilagene går til regnskapet.',
-    kort: 'Husleien inn på klientkonto. Mangler én, purres den. Honorar trekkes, hver eier får sin utbetaling.',
+    ingress: 'Den første i måneden går husleien inn på klientkonto, leilighet for leilighet. Mangler én, sendes påminnelse automatisk. Så trekkes honoraret, hver eier får sin utbetaling, og bilagene går til regnskapet.',
+    kort: 'Husleien går inn på klientkonto. Mangler én, purres den automatisk. Honoraret trekkes, og hver eier får sin utbetaling.',
   },
 };
 
 const SPORSMAL = [
   { q: 'Hva koster det?', a: null },
-  { q: 'Konkurrerer DigiHome med oss?', a: 'Vi forvalter egne kunders boliger i Bergen sentrum. Henvendelser utenfor sentrum sender vi til partnere som bruker systemet. Vi deler ikke eiere, henvendelser eller priser, og vi selger ikke til eiere dere har avtale med. Det står i avtalen.' },
+  { q: 'Konkurrerer DigiHome med oss?', a: 'Vi forvalter boliger for egne kunder i Bergen sentrum. Henvendelser utenfor sentrum sender vi videre til partnere som bruker systemet. Vi deler ikke eiere, henvendelser eller priser, og vi kontakter ikke eiere dere har avtale med. Det står i avtalen.' },
   { q: 'Hvordan håndteres eiernes penger?', a: 'Husleien går inn på klientkonto, adskilt fra deres egne midler. Honoraret trekkes etter avtalen med hver eier, resten utbetales, og eieren får oppgjørsrapport per bolig og årsoppgave.' },
-  { q: 'Hvor lang tid tar overgangen?', a: 'Vanligvis tre uker: oppsett, parallell drift og første oppgjør. Dere velger om vi tar eier for eier eller hele porteføljen på én gang.' },
-  { q: 'Hva er partnerprogrammet?', a: 'Fem byråer i 2025 får henvendelser fra digihome.no i sitt område. Kryss av i skjemaet, så tar vi det opp i demoen.' },
+  { q: 'Hvor lang tid tar overgangen?', a: 'Vanligvis tre uker: oppsett, parallell drift og første oppgjør. Dere velger om vi flytter over eier for eier eller hele porteføljen på én gang.' },
+  { q: 'Hva er partnerprogrammet?', a: 'Fem byråer får i 2025 henvendelsene fra digihome.no i sitt område. Kryss av i skjemaet, så tar vi det opp i demoen.' },
 ];
 
 const PRIS_SVAR = (
@@ -93,7 +93,7 @@ export default function MeglerV4() {
                   Ta flere oppdrag<br />uten å ansette<span style={{ color: T.lilla, marginLeft: '0.03em' }}>.</span>
                 </h1>
                 <p className="dh-cover-inn mt-6 max-w-[38ch] text-[17px] leading-[1.5] sm:text-[19px]" style={{ color: 'rgba(21,19,15,0.7)', animationDelay: '.08s' }} data-testid="v4m-ingress">
-                  Systemet leser henvendelsen, skriver annonsen, oppretter saken og gjør oppgjøret. Dere velger leietaker og håndverker, og godkjenner det som koster.
+                  Systemet tar henvendelsen, skriver annonsen, oppretter saken og gjør oppgjøret med eieren. Dere velger leietaker og håndverker – og godkjenner det som koster penger.
                 </p>
                 <div className="dh-cover-inn mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ animationDelay: '.14s' }}>
                   <Knapp href="#demo" data-testid="v4m-cta">Book en demo</Knapp>
@@ -101,11 +101,11 @@ export default function MeglerV4() {
                 </div>
                 <p className="dh-cover-inn mt-8 inline-flex items-center gap-2.5 text-[13.5px] sm:text-[14px]" style={{ color: SVAK, animationDelay: '.2s' }} data-testid="v4m-bevis">
                   <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: T.gronn }} />
-                  Systemet vi selv forvalter med, hver dag, i Bergen.
+                  Samme system som vi selv forvalter boliger med i Bergen – hver dag.
                 </p>
                 {/* Størrelsen: velg, og scenen spiller dagen for en portefølje på deres størrelse */}
                 <div className="dh-cover-inn mt-6 flex flex-wrap items-baseline gap-x-2 text-[14px]" style={{ animationDelay: '.24s', color: 'rgba(21,19,15,0.5)' }}>
-                  <span id="v4m-storrelse-label">Se dagen for en portefølje på</span>
+                  <span id="v4m-storrelse-label">Se en dag med</span>
                   <span role="radiogroup" aria-labelledby="v4m-storrelse-label" className="inline-flex items-baseline gap-x-1" data-testid="v4m-storrelse">
                     {Object.entries(STORRELSER).map(([id, s], i) => {
                       const er = id === storrelse;

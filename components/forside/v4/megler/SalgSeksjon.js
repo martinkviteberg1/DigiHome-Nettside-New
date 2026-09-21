@@ -60,7 +60,7 @@ const KOLONNE_FOR = { inn: -1, ny: 0, beriket: 0, kontaktet: 1, befaring: 2, til
 const KORT = {
   ny: { detalj: 'Fjellveien 12, 5019 Bergen', note: 'Fra landingssiden · 07:15', temp: 'Ny' },
   beriket: { detalj: '3-roms · 72 m² · 3. etasje', note: `Leieestimat ${tall(16800)}–${tall(18200)} kr/mnd · eiendomsregisteret`, temp: 'Varm', verdi: 21600 },
-  kontaktet: { detalj: '3-roms · 72 m² · 3. etasje', note: 'Ringt 09:10 · befaring avtalt i dag', temp: 'Varm', verdi: 21600 },
+  kontaktet: { detalj: '3-roms · 72 m² · 3. etasje', note: 'Ringte 09:10 · befaring avtalt i dag', temp: 'Varm', verdi: 21600 },
   befaring: { detalj: '3-roms · 72 m² · 3. etasje', note: 'Befaring 14:00 · nøkler og bilder til annonsen', temp: 'Varm', verdi: 21600 },
   tilbud: { detalj: 'Full forvaltning · deres sats', note: 'Tilbud og oppdragsavtale sendt 15:20', temp: 'Varm', verdi: 21600 },
   lest: { detalj: 'Full forvaltning · deres sats', note: 'Åpnet 19:42 · lest 2 ganger · 4 min', temp: 'Varm', verdi: 21600 },
@@ -181,9 +181,9 @@ function Tilbudsark({ fase }) {
         </div>
         {/* Pris og aksept */}
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-4 sm:px-5 sm:pb-5" style={del(3)}>
-          <p className="text-[11.5px]" style={{ color: SVAK }}>Oppdragsavtale · ingen bindingstid · 3 mnd oppsigelse · vedlegg: hva som er inkludert</p>
+          <p className="text-[11.5px]" style={{ color: SVAK }}>Oppdragsavtale · ingen bindingstid · 3 måneders oppsigelse · vedlegg: hva som er inkludert</p>
           <span className="inline-flex h-9 items-center gap-2 rounded-[10px] px-3.5 text-[12.5px] font-medium" style={{ background: signert ? 'rgba(31,157,85,0.14)' : T.ink, color: signert ? '#166B3C' : '#F4F1EA', transition: `background-color 400ms ${EASE}, color 400ms ${EASE}` }} data-testid="v4m-tilbud-aksept">
-            {signert ? <><Hake size={11} />Signert med BankID · 21:05</> : 'Aksepter tilbud → BankID'}
+            {signert ? <><Hake size={11} />Signert med BankID · 21:05</> : 'Aksepter med BankID'}
           </span>
         </div>
       </div>
@@ -247,7 +247,7 @@ function SalgScene({ start }) {
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6" style={{ boxShadow: `inset 0 -1px 0 ${HAIR}` }}>
         <div className="flex items-center gap-3">
           <p className="text-[15px] font-medium" style={{ color: T.ink }}>Salg</p>
-          <p className="text-[12.5px]" style={{ color: SVAK }}>Huseiere · Vest Utleie AS</p>
+          <p className="text-[12.5px]" style={{ color: SVAK }}>Salgstavle · Vest Utleie AS</p>
         </div>
         <p className="text-[12.5px] tabular-nums" style={{ color: SVAK }}>Pipeline <span style={{ color: T.ink }}>{tall(STADIER.reduce((s, st, i) => s + sum(st.id, i), 0))}</span> kr/år</p>
       </div>
@@ -299,8 +299,8 @@ function SalgScene({ start }) {
 
       {/* Bunnen: det som skjedde automatisk idet det ble signert */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-[13px] sm:px-6" style={{ background: 'rgba(21,19,15,0.03)', color: SVAK, opacity: er('signert') || er('ferdig') ? 1 : 0, transition: `opacity 600ms ${EASE} 500ms` }} data-testid="v4m-salg-bunn">
-        <span className="inline-flex items-center gap-2"><Hake />Fjellveien 12 er opprettet · Kari har fått lenke for bilder og opplysninger · annonsen står i kø</span>
-        <span className="tabular-nums">Henvendelse → signert · <span style={{ color: T.ink }}>14 timer</span></span>
+        <span className="inline-flex items-center gap-2"><Hake />Fjellveien 12 er opprettet · Kari har fått lenke for bilder og opplysninger · annonsen ligger klar</span>
+        <span className="tabular-nums">Fra henvendelse til signert · <span style={{ color: T.ink }}>14 timer</span></span>
       </div>
     </div>
   );
@@ -321,7 +321,7 @@ export default function SalgSeksjon() {
             </h2>
           </div>
           <p className="max-w-[46ch] text-[17px] leading-[1.5] sm:text-[18px] lg:col-span-5 lg:pb-2" style={{ color: DIM, ...inn(2) }} data-testid="v4m-salg-ingress">
-            Tilbudet går ut med deres logo, og dere ser når det blir lest. Når eieren signerer med BankID, er boligen i drift.
+            Tilbudet sendes fra dere, og dere ser når det blir lest. Når eieren signerer med BankID, er boligen i drift.
           </p>
         </div>
 

@@ -23,8 +23,8 @@ const EPOST = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 const HVA = [
   ['Deres egne tall', 'Vi setter opp demoen med deres eiere og boliger.'],
-  ['Pris i løpet av uken', 'Regnet per leieforhold under forvaltning.'],
-  ['Ingen forpliktelse', 'Dere bestemmer etterpå.'],
+  ['Pris innen en uke', 'Regnet per leieforhold under forvaltning.'],
+  ['Ingen forpliktelser', 'Dere bestemmer etterpå.'],
 ];
 
 const INPUT = 'mt-1.5 h-11 w-full bg-transparent text-[16px] outline-none placeholder:text-[#15130F]/30';
@@ -107,7 +107,7 @@ export default function DemoSkjema() {
               Book en demo<span style={{ color: T.lilla, marginLeft: '0.04em' }}>.</span>
             </h2>
             <p className="mt-6 max-w-[42ch] text-[17px] leading-[1.5] sm:text-[18px]" style={{ color: DIM, ...inn(2) }}>
-              Tre felt, så tar vi kontakt innen én virkedag. Demoen tar 30 minutter.
+              Fyll ut skjemaet, så tar vi kontakt innen én virkedag. Demoen tar 30 minutter.
             </p>
             <ol className="mt-8 grid gap-5">
               {HVA.map(([t, d], i) => (
@@ -139,7 +139,7 @@ export default function DemoSkjema() {
                     <Felt label="Leieforhold under forvaltning (ca.)"><input inputMode="numeric" value={f.leieforhold} onChange={set('leieforhold')} placeholder="120" className={INPUT} style={kant(false)} data-testid="v4m-demo-leieforhold" /></Felt>
                     <label className="flex items-start gap-3 pt-6 text-[14px] leading-[1.45]" style={{ color: DIM }}>
                       <input type="checkbox" checked={f.partner} onChange={set('partner')} className="mt-[3px] h-4 w-4 shrink-0 accent-[#15130F]" data-testid="v4m-demo-partner" />
-                      <span>Vi vil gjerne vurderes for <span style={{ color: T.ink }}>partnerprogrammet</span> (fem plasser i 2025)</span>
+                      <span>Vi vil gjerne bli vurdert for <span style={{ color: T.ink }}>partnerprogrammet</span> (fem plasser i 2025)</span>
                     </label>
                   </div>
                   <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">

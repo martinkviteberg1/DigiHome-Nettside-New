@@ -1145,7 +1145,23 @@ html.dh-nav-klar [data-testid="v4-nav"] { background-color: transparent; border-
 @keyframes v4-kart-avduk { from { clip-path: circle(0% at 50% 50%); opacity: 0.4; } to { clip-path: circle(80% at 50% 50%); opacity: 1; } }
 @keyframes v4-naal-land { from { opacity: 0; transform: translateY(-22px) scale(0.55); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
 @keyframes v4-ring-en { from { opacity: 0.75; transform: scale(0.35); } to { opacity: 0; transform: scale(1.7); } }
+@keyframes v4-naal-inn { 0% { opacity: 0; transform: translateY(-22px) scale(0.4); } 70% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes v4-prikk-inn { from { opacity: 0; transform: scale(0.2); } to { opacity: 1; transform: none; } }
 @keyframes v4-ring-pust { 0%, 100% { opacity: 0.35; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.12); } }
+/* Meglerkartet (/utleiemeglere): husleiebølgen — én stor ring løper fra sentrum over byen, boligene popper grønne idet
+   den passerer; små hendelser dukker opp og forsvinner rundt i byen gjennom dagen; tall som ruller inn i hodet */
+@keyframes v4-bolge-ring { 0% { opacity: 0.55; transform: scale(0.02); } 70% { opacity: 0.32; } 100% { opacity: 0; transform: scale(1); } }
+@keyframes v4-bolge-pop { 0% { transform: scale(1); } 40% { transform: scale(1.65); } 100% { transform: scale(1); } }
+@keyframes v4-mikro { 0% { opacity: 0; transform: translateY(5px) scale(0.94); } 14% { opacity: 1; transform: none; } 78% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-5px) scale(0.98); } }
+@keyframes v4-tall-inn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+@keyframes v4-strek { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+/* Funksjoner (/utleiemeglere): panelet bytter stopp — innholdet kommer opp nedenfra; fremdriften i skinnen fyller mot neste */
+@keyframes v4-panel-inn { from { opacity: 0; transform: translateY(calc(22px * var(--dir, 1))); } to { opacity: 1; transform: none; } }
+@keyframes v4-panel-ut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(calc(-16px * var(--dir, 1))); } }
+@keyframes v4-fremdrift { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes v4-steg-inn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes v4-skinne-inn { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
 @keyframes v4-linje-tegn { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes v4-verdi-inn { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
 @keyframes v4-verdi-ut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-10px); } }

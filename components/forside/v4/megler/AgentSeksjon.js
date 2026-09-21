@@ -31,15 +31,15 @@ const MEGLER = {
   firma: 'Vest Utleie AS',
   label: 'DigiHome-assistenten',
   tittel: 'En kollega som kjenner hver bolig',
-  ingress: 'Assistenten står i teamlisten som alle andre. Den leser kontrakt, sak, annonse og oppgjør, og svarer leietakere, eiere og interessenter. Det som koster penger, går til et menneske.',
+  ingress: 'Assistenten står i teamlisten som alle andre. Den leser kontrakt, sak, annonse og oppgjør, og svarer leietakere, eiere og interessenter. Alt som koster penger, går til et menneske.',
   team: [
-    { navn: 'Jonas Haugland', rolle: 'Forvalter', foto: '/v4/jonas.webp', status: 'Fra 08:00' },
-    { navn: 'Ida Berg', rolle: 'Oppgjør', foto: '/v4/ida.webp', status: 'Fra 08:00' },
+    { navn: 'Jonas Haugland', rolle: 'Forvalter', foto: '/v4/jonas.webp', status: 'På jobb 08–16' },
+    { navn: 'Ida Berg', rolle: 'Oppgjør', foto: '/v4/ida.webp', status: 'På jobb 08–16' },
     { navn: 'DigiHome', rolle: 'Assistent', logo: true, status: 'Svarer nå', aktiv: true },
   ],
   leser: ['Boligkort', 'Kontrakter', 'Saker', 'Oppgjør', 'Annonser', 'Visningskalender'],
-  aldri: ['Godkjenner kostnader', 'Lover avslag på husleie', 'Velger leietaker'],
-  regler: 'Assistenten svarer på det som står i kontrakt, annonse, sak og oppgjør. Den godkjenner ingen kostnader, lover ingen avslag og velger ingen leietaker. Det gjør menneskene i teamet.',
+  aldri: ['Godkjenne kostnader', 'Love avslag på husleien', 'Velge leietaker'],
+  regler: 'Assistenten svarer ut fra det som står i kontrakt, annonse, sak og oppgjør. Den godkjenner ingen kostnader, lover ingen avslag og velger ingen leietaker. Det gjør menneskene i teamet.',
   samtaler: [
     {
       id: 'leietaker', fane: 'Leietaker', hvem: 'Emma Lie', ini: 'EL', om: 'Strandgaten 12 · leil. 3', kl: '08:30',
@@ -47,9 +47,9 @@ const MEGLER = {
         { fra: 'dem', t: 'Hei, varmtvannet er borte i hele leiligheten.' },
         { fra: 'oss', t: 'Hei Emma. Er det bare varmtvannet som er borte, eller kaldtvannet også? Og lyser det noe på berederen?', kilde: 'Boligkort · bereder 200 l, 2019' },
         { fra: 'dem', t: 'Bare varmt. Ingen lys på berederen.' },
-        { fra: 'oss', t: 'Takk. Jeg har opprettet en sak og lagt den til Jonas, som velger rørlegger. Du får beskjed her så snart tidspunktet er klart, sannsynligvis i dag.', kilde: 'Sak 4812 opprettet · Strandgaten 12' },
+        { fra: 'oss', t: 'Takk. Jeg har opprettet en sak og sendt den til Jonas, som velger rørlegger. Du får beskjed her så snart tidspunktet er klart – sannsynligvis i dag.', kilde: 'Sak 4812 opprettet · Strandgaten 12' },
         { fra: 'dem', t: 'Kan jeg få avslag på husleien for dette?' },
-        { fra: 'oss', t: 'Det må Jonas ta stilling til. Jeg har sendt spørsmålet til ham, og han svarer deg her.', loft: 'Løftet til Jonas Haugland · han svarer i samtalen' },
+        { fra: 'oss', t: 'Det må Jonas ta stilling til. Jeg har sendt spørsmålet videre, og han svarer deg her.', loft: 'Sendt til Jonas Haugland · han svarer i samtalen' },
       ],
     },
     {
@@ -58,16 +58,16 @@ const MEGLER = {
         { fra: 'dem', t: 'Hei, når kommer husleien for mai?' },
         { fra: 'oss', t: 'Hei Kari. Husleien for mai er mottatt, 17 500 kr. Oppgjøret utbetales 3. juni: 16 100 kr etter honorar. Oppgjørsrapporten ligger i portalen din.', kilde: 'Klientkonto · Oppgjør mai · Fjellveien 12' },
         { fra: 'dem', t: 'Må jeg gjøre noe med årsoppgaven?' },
-        { fra: 'oss', t: 'Nei. Årsoppgaven lages i januar og legges i portalen. Tallene går rett inn i skattemeldingen.', kilde: 'Årsoppgave · leveres januar' },
+        { fra: 'oss', t: 'Nei. Årsoppgaven lages i januar og legges i portalen. Tallene kan føres rett inn i skattemeldingen.', kilde: 'Årsoppgave · klar i januar' },
       ],
     },
     {
       id: 'interessent', fane: 'Interessent fra annonsen', hvem: 'Amir Hussain', ini: 'AH', om: 'Fra annonsen · Fjellveien 12', kl: '21:05',
       m: [
         { fra: 'dem', t: 'Hei! Er leiligheten i Fjellveien 12 fortsatt ledig? Kan jeg se den torsdag?' },
-        { fra: 'oss', t: 'Hei Amir, ja, den er ledig. Torsdag er det visning kl. 17:00 og 17:30. Du velger tidspunkt rett i annonsen, det tar et halvt minutt.', kilde: 'Annonse Fjellveien 12 · Visningskalender' },
-        { fra: 'dem', t: 'Booket 17:00 nå. Er husdyr ok?' },
-        { fra: 'oss', t: 'Fint, da ser vi deg torsdag 17:00. Husdyr avtales med eier, så skriv det i søknaden, så tar Jonas det opp med henne.', kilde: 'Visning torsdag 17:00 · Annonse: husdyr etter avtale', loft: 'Husdyr · avgjøres av eier' },
+        { fra: 'oss', t: 'Hei Amir! Ja, den er ledig. Torsdag er det visning kl. 17:00 og 17:30. Du velger tidspunkt rett i annonsen – det tar et halvt minutt.', kilde: 'Annonse Fjellveien 12 · visningskalender' },
+        { fra: 'dem', t: 'Har booket 17:00 nå. Er husdyr greit?' },
+        { fra: 'oss', t: 'Flott, da ser vi deg torsdag kl. 17:00. Husdyr avgjør eieren, så skriv det i søknaden – da tar Jonas det opp med henne.', kilde: 'Visning torsdag 17:00 · annonse: husdyr etter avtale', loft: 'Husdyr · avgjøres av eieren' },
       ],
     },
   ],
@@ -159,7 +159,7 @@ function Chat({ start, samtaler }) {
           <p className="truncate text-[12px]" style={{ color: SVAK }}>{s.om}</p>
         </div>
         <span className="hidden items-center gap-2 rounded-full px-2.5 py-1 text-[12px] font-medium sm:inline-flex" style={{ background: 'rgba(212,150,255,0.22)', color: T.ink }}>
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.gronn }} />Svarer: DigiHome · Assistent
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.gronn }} />Svarer: DigiHome-assistenten
         </span>
       </div>
       {/* Meldingene */}
@@ -243,7 +243,7 @@ export default function AgentSeksjon(props) {
                 </ul>
               </div>
               <div className="mt-6 border-t pt-5" style={{ borderColor: 'rgba(244,241,234,0.12)' }}>
-                <p className="text-[12.5px] font-medium" style={{ color: LYS_SVAK }}>Gjør aldri</p>
+                <p className="text-[12.5px] font-medium" style={{ color: LYS_SVAK }}>Gjør aldri selv</p>
                 <ul className="mt-2.5 grid gap-2">
                   {c.aldri.map((a) => (
                     <li key={a} className="flex items-center gap-2.5 text-[14px]" style={{ color: LYS }}>

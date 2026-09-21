@@ -42,31 +42,31 @@ const KORT = [
     inn: 'Hei, varmtvannet er borte i hele leiligheten. Bilde vedlagt.', bilde: '/v4/bereder-3x4.webp',
     ut: [
       { t: 'Sak opprettet', m: 'Varmtvann · Strandgaten 12 · leil. 3', chip: 'Ny sak' },
-      { t: 'Rørlegger foreslått, pris hentet', m: 'Ledig i dag 12–14', v: '6 200 kr' },
+      { t: 'Rørlegger foreslått, med pris', m: 'Ledig i dag 12–14', v: '6 200 kr' },
       { t: 'Eier bedt om godkjenning', m: 'Over grensen på 5 000 kr', chip: 'Venter', ring: true },
-      { t: 'Emma har fått beskjed', m: 'Får ny melding når rørlegger er bestilt', chip: 'Sendt' },
+      { t: 'Emma har fått svar', m: 'Får ny melding når rørleggeren er bestilt', chip: 'Sendt' },
     ],
-    venter: 'Dere velger rørlegger · eier godkjenner', dere: true,
+    venter: 'Dere velger rørlegger · eieren godkjenner', dere: true,
   },
   {
     hvem: 'Kari Moen', rolle: 'Eier · fra landingssiden', foto: '/v4/kari.webp', kl: '07:15',
-    inn: 'Fjellveien 12, 5019 Bergen. Ønsker hjelp til utleie.',
+    inn: 'Fjellveien 12, 5019 Bergen. Ønsker hjelp med utleie.',
     ut: [
       { t: 'Boligdata hentet', m: '3-roms · 72 m² · 3. etasje · 1934', chip: 'Eiendomsregisteret' },
       { t: 'Leieestimat', m: 'Fra deres egen portefølje', v: '16 800–18 200 kr' },
-      { t: 'Tilbudsutkast skrevet', m: 'Med deres honorar og logo', chip: 'Utkast' },
-      { t: 'Lagt i Salg', m: 'Kolonne Ny · 21 600 kr/år', chip: '10 %' },
+      { t: 'Tilbudsutkast skrevet', m: 'Med deres honorar og vilkår', chip: 'Utkast' },
+      { t: 'Lagt på salgstavlen', m: 'Kolonnen Ny · 21 600 kr/år', chip: '10 %' },
     ],
-    venter: 'Dere leser gjennom og sender', dere: true,
+    venter: 'Dere leser gjennom og sender tilbudet', dere: true,
   },
   {
     hvem: 'Husleie ikke mottatt', rolle: 'Løkkeveien 14 · forfall 1. juni', ini: '1.', kl: '06:00', hendelse: true,
-    inn: 'Forfall 1. juni · 14 200 kr · ikke mottatt ved avstemming',
+    inn: 'Forfall 1. juni · 14 200 kr · ikke registrert ved avstemming',
     ut: [
       { t: 'Påminnelse sendt til leietaker', m: 'SMS og e-post · 3. juni', chip: 'Sendt' },
-      { t: 'Purring etter husleieloven', m: 'Går 15. juni om beløpet fortsatt mangler', chip: 'Planlagt' },
-      { t: 'Eier ser status i portalen', m: 'Ingen telefon nødvendig', chip: 'Oppdatert' },
-      { t: 'Dere varsles før neste steg', m: 'Varsel og oppsigelse er alltid dere', chip: 'Venter', ring: true },
+      { t: 'Purring med gebyr', m: 'Sendes 15. juni hvis beløpet fortsatt mangler', chip: 'Planlagt' },
+      { t: 'Eieren ser status i portalen', m: 'Uten å måtte ringe dere', chip: 'Oppdatert' },
+      { t: 'Dere varsles før neste steg', m: 'Varsel og oppsigelse avgjør alltid dere', chip: 'Venter', ring: true },
     ],
     venter: 'Dere bestemmer hvor det stopper', dere: true,
   },
@@ -116,7 +116,7 @@ function Linje() {
       {/* Tegnforklaring + tellingen */}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-[12.5px] lg:mt-8" style={{ color: SVAK }} data-testid="v4m-lopet-legende">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <span className="inline-flex items-center gap-2"><span className="h-[9px] w-[9px] rounded-full" style={{ background: T.lilla }} />Systemet gjør det</span>
+          <span className="inline-flex items-center gap-2"><span className="h-[9px] w-[9px] rounded-full" style={{ background: T.lilla }} />Systemet gjør</span>
           <span className="inline-flex items-center gap-2"><span className="h-[9px] w-[9px] rounded-full" style={{ boxShadow: `inset 0 0 0 1.5px ${T.ink}` }} />Dere velger</span>
         </div>
         <span className="tabular-nums" style={{ color: T.ink }}>Systemet tar 8 av 11</span>
@@ -228,7 +228,7 @@ export default function LopetSeksjon() {
             </h2>
           </div>
           <p className="max-w-[46ch] text-[17px] leading-[1.5] sm:text-[18px] lg:col-span-5 lg:pb-2" style={{ color: DIM, ...inn(2) }} data-testid="v4m-lopet-ingress">
-            Elleve stopp. Tre av dem trenger et menneske. Resten gjør systemet, og dere ser alt som skjer.
+            Elleve stopp. Tre av dem krever et menneske. Resten gjør systemet – og dere ser alt som skjer.
           </p>
         </div>
 
@@ -241,7 +241,7 @@ export default function LopetSeksjon() {
         </ol>
 
         <p className="mt-10 max-w-[64ch] border-t pt-6 text-[15px] leading-[1.55] lg:mt-12" style={{ borderColor: HAIR, color: DIM }} data-testid="v4m-lopet-regler">
-          Meldinger og henvendelser tolkes av språkmodeller. Husleie, purring og oppgjør følger regler. Alt som koster penger, godkjennes av et menneske.
+          Meldinger og henvendelser tolkes av språkmodeller. Husleie, purring og oppgjør følger faste regler. Alt som koster penger, godkjennes av et menneske.
         </p>
       </div>
     </section>
