@@ -1246,6 +1246,7 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       const r = await fetch(`/api/investor/deck?${qs}`, { cache: 'no-store' });
       const j = await r.json().catch(() => ({}));
       if (r.status === 401 && j.needsPin) { setTrengerPin(j.label || ''); return; }
+      if (r.status === 401 && j.trengerInnlogging) { setFeil({ innlogging: true, utlopt: Boolean(j.utlopt), tekst: j.error || '' }); return; }
       if (!r.ok) { setFeil(j.error || 'Kunne ikke åpne decket'); return; }
       setTrengerPin(null); setData(j);
       if (!aapnetLogget.current) { aapnetLogget.current = true; hendelse({ type: 'deck_aapnet' }); }
@@ -1467,7 +1468,24 @@ export default function DeckKonsept({ token = '', adminKey = '', planId = '', te
       </div>
     );
   }
-  if (feil) return <div className="flex min-h-[100svh] items-center justify-center px-6" style={{ background: T.canvas, color: T.ink }}><div className="max-w-[420px] text-center"><h1 className="text-[32px]" style={display}>Kunne ikke åpne decket</h1><p className="mt-3 text-[15px]" style={{ color: DIM }}>{feil}</p></div></div>;
+  if (feil && feil.innlogging) {
+    /* Uten lenke og uten admin-sesjon: vis veien inn i stedet for «ugyldig lenke». */
+    const tilbake = encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/investor/deck');
+    return (
+      <div className="flex min-h-[100svh] items-center justify-center px-6" style={{ background: T.canvas, color: T.ink }} data-testid="deck-innlogging">
+        <div className="max-w-[460px] text-center">
+          <p className="text-[13px] font-medium" style={{ color: T.lilla }}>DigiHome · investordeck</p>
+          <h1 className="mt-3 text-[32px]" style={display}>{feil.utlopt ? 'Sesjonen er utløpt' : 'Decket åpnes fra admin'}</h1>
+          <p className="mt-3 text-[15px] leading-[1.55]" style={{ color: DIM }}>{feil.utlopt ? 'Logg inn igjen, så åpner decket seg med planen du velger. Mangler kontoen Budsjett-modulen, gir en administrator tilgang under Brukere.' : 'Logg inn i admin og velg plan under Deck, eller åpne lenken du har fått fra oss.'}</p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+            <a href={`/admin?next=${tilbake}`} className="inline-flex h-11 items-center rounded-full px-5 text-[14.5px] font-medium" style={{ background: T.ink, color: T.offwhite }} data-testid="deck-logg-inn">Logg inn i admin</a>
+            <a href="/" className="inline-flex h-11 items-center rounded-full px-5 text-[14.5px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(21,19,15,0.15)', color: T.ink }}>Til digihome.no</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (feil) return <div className="flex min-h-[100svh] items-center justify-center px-6" style={{ background: T.canvas, color: T.ink }}><div className="max-w-[420px] text-center"><h1 className="text-[32px]" style={display}>Kunne ikke åpne decket</h1><p className="mt-3 text-[15px]" style={{ color: DIM }}>{typeof feil === 'string' ? feil : feil.tekst}</p></div></div>;
   if (!data || !k || !mF) return <div className="min-h-[100svh]" style={{ background: T.canvas }} />;
 
   /* ── Avledede tall ── */

@@ -10815,6 +10815,12 @@ async function handleRoute(request, { params }) {
 
       let link = null;
       if (!presenter) {
+        // Ingen lenke og ingen gyldig admin-sesjon: si hva som må til, ikke «ugyldig lenke».
+        // (Sesjonen kan være utløpt, eller kontoen mangler Budsjett-modulen som decket krever.)
+        if (!t) {
+          const harNokkel = Boolean(dUrl.searchParams.get('key') || request.headers.get('x-admin-key'));
+          return cors(NextResponse.json({ ok: false, trengerInnlogging: true, utlopt: harNokkel, error: harNokkel ? 'Admin-sesjonen er utløpt, eller kontoen mangler tilgang til Budsjett-modulen.' : 'Decket åpnes fra admin, eller via en lenke du har fått fra oss.' }, { status: 401 }));
+        }
         link = await ddValidateToken(db, t);
         if (!link) return cors(NextResponse.json({ error: 'Ugyldig lenke' }, { status: 404 }));
         if (link.invalid) return cors(NextResponse.json({ error: link.invalid === 'revoked' ? 'Lenken er trukket tilbake' : 'Lenken er utløpt', invalid: link.invalid }, { status: 410 }));

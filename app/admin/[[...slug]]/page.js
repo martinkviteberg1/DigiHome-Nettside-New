@@ -371,6 +371,11 @@ export default function AdminPage({ params }) {
           const j = await res.json();
           setToken(t); setUser(j.user);
           try { localStorage.setItem(LEGACY_KEY, t); } catch (e) {}
+          // Allerede innlogget og kom for å åpne noe bestemt (?next=/investor/deck) → rett dit.
+          try {
+            const next = new URL(window.location.href).searchParams.get('next') || '';
+            if (next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/admin')) { window.location.replace(next); return; }
+          } catch (e) {}
         } else {
           // En «se som»-økt kan være utløpt (1 t) — fall automatisk og sømløst
           // tilbake til admin-sesjonen som ble lagret da økten startet.
@@ -515,6 +520,11 @@ export default function AdminPage({ params }) {
     cacheSlett(''); // ny identitet = ren cache (utløpt økt kan hoppe rett hit uten logout)
     setToken(t); setUser(u);
     try { localStorage.setItem(SESSION_KEY, t); localStorage.setItem(LEGACY_KEY, t); } catch (e) {}
+    // Kom brukeren hit for å åpne noe bestemt (f.eks. /admin?next=/investor/deck), send dem dit.
+    try {
+      const next = new URL(window.location.href).searchParams.get('next') || '';
+      if (next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/admin')) window.location.assign(next);
+    } catch (e) {}
   };
 
   const logout = () => {
