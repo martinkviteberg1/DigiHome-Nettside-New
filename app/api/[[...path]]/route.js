@@ -25,7 +25,7 @@ import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads
 import { recordWonConversions } from '@/lib/closed-loop';
 import { runDueReminders } from '@/lib/reminders';
 import { hentLeieforhold } from '@/lib/leieforhold';
-import { hentAlt as prisHentAlt, lagreInnstillinger as prisLagreInnstillinger, lagrePlan as prisLagrePlan, slettPlan as prisSlettPlan, lagreKunde as prisLagreKunde, slettKunde as prisSlettKunde, beregnGrunnlag as prisBeregnGrunnlag, forrigeMaaned as prisForrigeMaaned } from '@/lib/pris';
+import { hentAlt as prisHentAlt, lagreInnstillinger as prisLagreInnstillinger, lagrePlan as prisLagrePlan, slettPlan as prisSlettPlan, lagreKunde as prisLagreKunde, slettKunde as prisSlettKunde, beregnGrunnlag as prisBeregnGrunnlag, forrigeMaaned as prisForrigeMaaned, hentLaast as prisHentLaast, hentLaastForMaaned as prisHentLaastForMaaned, laasGrunnlag as prisLaasGrunnlag, laasOpp as prisLaasOpp } from '@/lib/pris';
 import { byggFaktura as prisByggFaktura } from '@/lib/faktura';
 import { fakturaPdf as prisFakturaPdf } from '@/lib/faktura-pdf';
 import { synkFraBrreg, hentOrganisasjon, lagrePerson, slettPerson, nyRolle, oppdaterRolle, slettRolle, oppdaterSelskap, hentEierbok, lagreEier, slettEier, lagreKlasse, slettKlasse, nyTransaksjon, slettTransaksjon, sokBrregEnheter, lagreStotte } from '@/lib/selskap';
@@ -4897,6 +4897,7 @@ async function handleRoute(request, { params }) {
     // POST {maaned, kunde:{...}, plan:{...}} beregner med U-LAGREDE objekter (live
     // forhåndsvisning i UI). «plattform»-kunder leser leieforhold; øvrige bruker
     // manueltAntall. Uten kunde-param summeres HELE porteføljen (alle kunder) → MRR.
+    // FROSSET måned (pris_grunnlag_laast) vinner alltid over live-beregning.
     if (route === '/admin/pris/grunnlag' && (method === 'GET' || method === 'POST')) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const url = new URL(request.url);
@@ -4906,31 +4907,69 @@ async function handleRoute(request, { params }) {
       const planId = (id) => alt.planer.find((p) => p.id === id) || alt.planer.find((p) => p.standard) || alt.planer[0];
       let rows = null; // lazy: hent leieforhold kun når en plattform-kunde er med
       const hentRows = async () => { if (rows === null) { try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { rows = []; } } return rows; };
+      const laastInfo = (l) => (l ? { tid: l.laast, av: l.laastAv } : null);
 
-      // POST med u-lagret kunde+plan → forhåndsvisning for én kunde
+      // POST med u-lagret kunde+plan → forhåndsvisning for én kunde (frosset måned vinner)
       if (method === 'POST' && body.kunde) {
         const kunde = body.kunde;
+        const laast = kunde.id ? await prisHentLaast(db, kunde.id, maaned) : null;
+        if (laast) return cors(NextResponse.json({ ok: true, grunnlag: laast.grunnlag, laast: laastInfo(laast) }));
         const plan = body.plan || planId(kunde.planId);
         const r = kunde.enhetskilde === 'plattform' ? await hentRows() : [];
-        return cors(NextResponse.json({ ok: true, grunnlag: prisBeregnGrunnlag(r, plan, kunde, alt.settings, maaned) }));
+        return cors(NextResponse.json({ ok: true, grunnlag: prisBeregnGrunnlag(r, plan, kunde, alt.settings, maaned), laast: null }));
       }
       // GET ?kunde=<id> → én lagret kunde
       const kundeId = url.searchParams.get('kunde');
       if (kundeId) {
         const kunde = alt.kunder.find((k) => k.id === kundeId);
         if (!kunde) return cors(NextResponse.json({ error: 'Ukjent kunde' }, { status: 404 }));
+        const laast = await prisHentLaast(db, kunde.id, maaned);
+        if (laast) return cors(NextResponse.json({ ok: true, kunde, grunnlag: laast.grunnlag, laast: laastInfo(laast) }));
         const r = kunde.enhetskilde === 'plattform' ? await hentRows() : [];
-        return cors(NextResponse.json({ ok: true, kunde, grunnlag: prisBeregnGrunnlag(r, planId(kunde.planId), kunde, alt.settings, maaned) }));
+        return cors(NextResponse.json({ ok: true, kunde, grunnlag: prisBeregnGrunnlag(r, planId(kunde.planId), kunde, alt.settings, maaned), laast: null }));
       }
-      // Uten kunde → alle kunder (MRR-oversikt)
+      // Uten kunde → alle kunder (MRR-oversikt). Frosne måneder leses som de ble låst.
+      const laaste = await prisHentLaastForMaaned(db, maaned);
       const per = [];
       for (const kunde of alt.kunder) {
-        const r = kunde.enhetskilde === 'plattform' ? await hentRows() : [];
-        const g = prisBeregnGrunnlag(r, planId(kunde.planId), kunde, alt.settings, maaned);
-        per.push({ kundeId: kunde.id, navn: kunde.navn, status: kunde.status, planId: kunde.planId, antallEnheter: g.antallEnheter, sumEksMva: g.sumEksMva, sumInkMva: g.sumInkMva });
+        const laast = laaste.get(kunde.id) || null;
+        let g;
+        if (laast) g = laast.grunnlag;
+        else { const r = kunde.enhetskilde === 'plattform' ? await hentRows() : []; g = prisBeregnGrunnlag(r, planId(kunde.planId), kunde, alt.settings, maaned); }
+        per.push({ kundeId: kunde.id, navn: kunde.navn, status: kunde.status, planId: kunde.planId, antallEnheter: g.antallEnheter, sumEksMva: g.sumEksMva, sumInkMva: g.sumInkMva, vektet: g.sammendrag?.vektet ?? null, laast: laastInfo(laast) });
       }
       const sum = per.reduce((a, p) => ({ enheter: a.enheter + p.antallEnheter, eks: a.eks + p.sumEksMva, ink: a.ink + p.sumInkMva }), { enheter: 0, eks: 0, ink: 0 });
-      return cors(NextResponse.json({ ok: true, maaned, per, sum, antallKunder: alt.kunder.length, aktive: alt.kunder.filter((k) => k.status === 'aktiv').length }));
+      return cors(NextResponse.json({ ok: true, maaned, per, sum, antallKunder: alt.kunder.length, aktive: alt.kunder.filter((k) => k.status === 'aktiv').length, laaste: laaste.size }));
+    }
+
+    // ── Frys / lås opp faktureringsgrunnlag for kunde + måned ──
+    // POST { kundeId, maaned } → beregner med LAGRET kunde/plan og fryser. Idempotent.
+    // DELETE ?kundeId=&maaned=[&tvang=1] → låser opp (nektes når PowerOffice-utkast finnes).
+    if (route === '/admin/pris/grunnlag/laas' && (method === 'POST' || method === 'DELETE')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const url = new URL(request.url);
+      const body = method === 'POST' ? await request.json().catch(() => ({})) : {};
+      const kundeId = body.kundeId || url.searchParams.get('kundeId');
+      const maanedInn = body.maaned || url.searchParams.get('maaned');
+      const maaned = (String(maanedInn || '').match(/^\d{4}-\d{2}$/) ? maanedInn : prisForrigeMaaned());
+      if (method === 'DELETE') {
+        const r = await prisLaasOpp(db, kundeId, maaned, { tvang: ['1', 'true'].includes(String(url.searchParams.get('tvang') || '')) });
+        return cors(NextResponse.json(r, { status: r.ok ? 200 : 409 }));
+      }
+      // Måneden må være avsluttet — et grunnlag for inneværende måned kan ikke fryses.
+      if (maaned >= new Date().toISOString().slice(0, 7)) return cors(NextResponse.json({ ok: false, feil: 'Måneden er ikke avsluttet ennå — grunnlaget kan først fryses fra den 1. i måneden etter.' }, { status: 400 }));
+      const alt = await prisHentAlt(db);
+      const kunde = (alt.kunder || []).find((k) => k.id === kundeId);
+      if (!kunde) return cors(NextResponse.json({ ok: false, feil: 'Ukjent kunde — lagre kunden først' }, { status: 404 }));
+      const plan = (alt.planer || []).find((p) => p.id === kunde.planId) || (alt.planer || []).find((p) => p.standard) || (alt.planer || [])[0];
+      let rows = []; let antallRader = null;
+      if (kunde.enhetskilde === 'plattform') {
+        try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; antallRader = rows.length; }
+        catch (e) { return cors(NextResponse.json({ ok: false, feil: 'Fikk ikke hentet leieforhold fra plattformen — grunnlaget ble ikke frosset.' }, { status: 502 })); }
+      }
+      const grunnlag = prisBeregnGrunnlag(rows, plan, kunde, alt.settings, maaned);
+      const r = await prisLaasGrunnlag(db, { kunde, plan, settings: alt.settings, grunnlag, maaned, av: 'manuell', antallRader });
+      return cors(NextResponse.json({ ok: true, ...r }));
     }
 
     // Proforma-faktura (JSON + PDF). Bygger en komplett faktura fra grunnlaget
@@ -4955,10 +4994,21 @@ async function handleRoute(request, { params }) {
         if (!kunde) return cors(NextResponse.json({ error: 'Ukjent kunde' }, { status: 404 }));
         plan = planFor(kunde.planId);
       }
-      let rows = [];
-      if (kunde && kunde.enhetskilde === 'plattform') { try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { rows = []; } }
-      const grunnlag = prisBeregnGrunnlag(rows, plan, kunde, alt.settings, maaned);
-      const faktura = prisByggFaktura({ settings: alt.settings, plan, kunde, grunnlag, maaned, spesifiserPerEnhet: spesifiser });
+      // Frosset måned: grunnlag + plan slik de var ved låsing. Kundens navn/org.nr/
+      // e-post og selgeropplysninger leses ferskt (adresseendringer skal med).
+      const laast = kunde?.id ? await prisHentLaast(db, kunde.id, maaned) : null;
+      let grunnlag;
+      if (laast) {
+        grunnlag = laast.grunnlag;
+        plan = laast.plan || plan;
+        const lagret = alt.kunder.find((k) => k.id === kunde.id);
+        if (lagret) kunde = { ...lagret };
+      } else {
+        let rows = [];
+        if (kunde && kunde.enhetskilde === 'plattform') { try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { rows = []; } }
+        grunnlag = prisBeregnGrunnlag(rows, plan, kunde, alt.settings, maaned);
+      }
+      const faktura = prisByggFaktura({ settings: alt.settings, plan, kunde, grunnlag, maaned, spesifiserPerEnhet: spesifiser, laast: laast ? { tid: laast.laast, av: laast.laastAv } : null });
 
       if (somPdf) {
         try {
@@ -4990,21 +5040,38 @@ async function handleRoute(request, { params }) {
       const alt = await prisHentAlt(db);
       const kunde = (alt.kunder || []).find((k) => k.id === body.kundeId);
       if (!kunde) return cors(NextResponse.json({ ok: false, feil: 'Ukjent kunde — lagre kunden først' }, { status: 404 }));
-      const plan = (alt.planer || []).find((p) => p.id === kunde.planId) || (alt.planer || []).find((p) => p.standard) || (alt.planer || [])[0];
-      let rows = [];
-      if (kunde.enhetskilde === 'plattform') { try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { rows = []; } }
-      const grunnlag = prisBeregnGrunnlag(rows, plan, kunde, alt.settings, maaned);
-      if (!grunnlag.linjer.length) return cors(NextResponse.json({ ok: false, feil: 'Ingen fakturerbare enheter for denne måneden' }, { status: 400 }));
+      if (maaned >= new Date().toISOString().slice(0, 7)) return cors(NextResponse.json({ ok: false, feil: 'Måneden er ikke avsluttet — utkast kan først lages fra den 1. i måneden etter.' }, { status: 400 }));
+      let plan = (alt.planer || []).find((p) => p.id === kunde.planId) || (alt.planer || []).find((p) => p.standard) || (alt.planer || [])[0];
 
       const ctx = await poFakturaCtx(db, alt.settings);
       if (!ctx || !ctx.clientKey) return cors(NextResponse.json({ ok: false, feil: 'Mangler regnskaps-selskap (klientnøkkel) for fakturering — legg til selskapet under Regnskap.' }, { status: 400 }));
 
+      // Idempotent: finnes utkastet allerede, returneres det uendret — uten å fryse
+      // eller regne noe på nytt (et eldre utkast kan være laget med en annen modell).
       const koll = db.collection('po_faktura_utkast');
       const eksisterende = await koll.findOne({ kundeId: kunde.id, maaned, env: ctx.env });
       if (eksisterende && body.tvang !== true) {
         const { _id, ...ren } = eksisterende;
         return cors(NextResponse.json({ ok: true, alleredeOpprettet: true, utkast: ren }));
       }
+
+      // Grunnlaget FRYSES før utkastet lages (eller det frosne gjenbrukes). Da er
+      // fakturaen etterprøvbar selv om plattformens øyeblikksbilde endrer seg.
+      let laast = await prisHentLaast(db, kunde.id, maaned);
+      if (!laast) {
+        let rows = []; let antallRader = null;
+        if (kunde.enhetskilde === 'plattform') {
+          try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; antallRader = rows.length; }
+          catch (e) { return cors(NextResponse.json({ ok: false, feil: 'Fikk ikke hentet leieforhold fra plattformen — prøv igjen.' }, { status: 502 })); }
+        }
+        const g = prisBeregnGrunnlag(rows, plan, kunde, alt.settings, maaned);
+        if (!g.linjer.length) return cors(NextResponse.json({ ok: false, feil: 'Ingen fakturerbare enheter for denne måneden' }, { status: 400 }));
+        laast = (await prisLaasGrunnlag(db, { kunde, plan, settings: alt.settings, grunnlag: g, maaned, av: 'poweroffice', antallRader })).laast;
+      }
+      const grunnlag = laast.grunnlag;
+      if (laast.plan) plan = laast.plan;
+      if (!grunnlag.linjer.length) return cors(NextResponse.json({ ok: false, feil: 'Ingen fakturerbare enheter for denne måneden' }, { status: 400 }));
+
       try {
         const res = await poFakturaUtkast(ctx, { kunde, grunnlag, settings: alt.settings, maaned });
         const doc = {
@@ -5012,6 +5079,7 @@ async function handleRoute(request, { params }) {
           kundeId: kunde.id, kundeNavn: kunde.navn, maaned, env: ctx.env, selskap: ctx.selskapNavn || null,
           poOrderId: res.poOrderId, poOrderNo: res.poOrderNo, poCustomerId: res.poCustomerId, poCustomerNo: res.poCustomerNo,
           extRef: res.extRef, status: res.status, sumEksMva: res.sumEksMva, gui: res.gui,
+          grunnlagLaastId: laast.id || null, antallEnheter: grunnlag.antallEnheter || 0, vektet: grunnlag.sammendrag?.vektet ?? null,
           opprettetKunde: res.opprettetKunde, opprettetProdukt: res.opprettetProdukt,
           opprettet: new Date().toISOString(),
         };

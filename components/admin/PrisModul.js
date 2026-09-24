@@ -18,25 +18,38 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Tags, Users, Plus, Trash2, Building2, ReceiptText, Save, Layers, CheckCircle2,
   Loader2, ChevronDown, ChevronRight, Sparkles, Check, CreditCard, Server, Pencil, X,
-  TrendingUp, Star, Boxes, FileText, Download, Eye, MapPin, Landmark, Settings2, Percent, ArrowUpRight,
+  TrendingUp, Star, Boxes, FileText, Download, Eye, MapPin, Landmark, Settings2, Percent, ArrowUpRight, Lock, Unlock,
 } from 'lucide-react';
 
 const LILLA = '#7a3fa8';
 const BLEKK = '#151310';
 const fmt = (n) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(Math.round(Number(n) || 0));
+const fmtV = (n) => { const x = Number(n) || 0; return Number.isInteger(x) ? fmt(x) : new Intl.NumberFormat('nb-NO', { minimumFractionDigits: 1, maximumFractionDigits: 2 }).format(x); };
 const kr = (n) => `${fmt(n)} kr`;
 const MND = ['januar', 'februar', 'mars', 'april', 'mai', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'desember'];
 const mndLabel = (ym) => { const [y, m] = String(ym).split('-').map(Number); return `${MND[(m || 1) - 1]} ${y}`; };
 const forrigeMnd = () => { const d = new Date(); const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)); return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, '0')}`; };
 const maanedValg = () => { const out = []; const d = new Date(); for (let i = 1; i <= 15; i += 1) { const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - i, 1)); const ym = `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, '0')}`; out.push({ v: ym, l: mndLabel(ym) }); } return out; };
 const datoNb = (iso) => { const s = String(iso || '').slice(0, 10); const [y, m, d] = s.split('-'); return (y && m && d) ? `${d}.${m}.${y}` : s; };
-const perNb = (iso) => { const s = String(iso || '').slice(0, 10); const [, m, d] = s.split('-'); return (m && d) ? `${d}.${m}` : ''; };
+const perNb = (iso) => { const s = String(iso || '').slice(0, 10); const [y, m, d] = s.split('-'); return (y && m && d) ? `${d}.${m}.${y.slice(2)}` : ''; };
 
+// Hva som telles (per kunde). Prorata er en egen bryter.
 const GRUNNLAG = [
-  { v: 'utleid_mnd', l: 'Utleid i måneden', d: 'Enheter som var utleid (signert) i måneden.' },
-  { v: 'prorata', l: 'Prorata per dag', d: 'Utleide dager delt på dager i måneden.' },
-  { v: 'alle', l: 'Alle under forvaltning', d: 'Alle aktive enheter, også ledige.' },
+  { v: 'alle', l: 'Alle enheter under forvaltning', d: 'Også ledige — plattformen jobber for enheten uansett (annonse, visning, signering). Anbefalt.' },
+  { v: 'utleid_mnd', l: 'Kun utleide enheter', d: 'Bare enheter med faktisk leieforhold i måneden. Tomgang faktureres ikke.' },
 ];
+const LEDIG_VALG = [
+  { v: 100, l: 'Full pris (100 %)' }, { v: 75, l: '75 % av prisen' }, { v: 50, l: 'Halv pris (50 %)' }, { v: 25, l: '25 % av prisen' }, { v: 0, l: 'Faktureres ikke (0 %)' },
+];
+// Speiler lib/pris.fordelPaaTrinn — kun til eksempeltall i planeditoren.
+const eksempelBelop = (trinn, n, modell) => {
+  const s = [...(trinn || [])].map((t) => ({ fraEnheter: Number(t.fraEnheter) || 0, pris: Number(t.pris) || 0 })).sort((a, b) => a.fraEnheter - b.fraEnheter);
+  if (!s.length || n <= 0) return 0;
+  if (modell !== 'progressiv') { let pris = s[0].pris; for (const t of s) if (n >= t.fraEnheter) pris = t.pris; return n * pris; }
+  let rest = n; let sum = 0;
+  for (let i = 0; i < s.length && rest > 0; i += 1) { const fra = Math.max(1, s[i].fraEnheter); const neste = i + 1 < s.length ? s[i + 1].fraEnheter : Infinity; const kap = neste - fra; if (kap <= 0) continue; const ant = Math.min(rest, kap); sum += ant * s[i].pris; rest -= ant; }
+  return sum;
+};
 const STATUS = { aktiv: { l: 'Aktiv', c: '#1f9d55', bg: 'rgba(31,157,85,0.1)' }, prove: { l: 'Prøve', c: '#b45309', bg: 'rgba(180,83,9,0.1)' }, inaktiv: { l: 'Inaktiv', c: '#6b7280', bg: 'rgba(107,114,128,0.1)' } };
 
 const inputCls = 'w-full rounded-xl border border-black/[0.1] bg-white px-3 py-2 text-[14px] tabular-nums outline-none transition-colors focus:border-[#7a3fa8]';
@@ -98,11 +111,15 @@ function TrinnEditor({ trinn, setTrinn }) {
 }
 
 /* ── Rik proforma-faktura: sammendrag + enhetsspesifikasjon + PDF ── */
-function FakturaPanel({ faktura, kundeNavn, maaned, laster, spesifiser, onSpesifiser, onForhaandsvis, onLastNed, pdfLaster, onPoUtkast, poLaster, poUtkast, poKundeLagret }) {
+function FakturaPanel({ faktura, kundeNavn, maaned, laster, spesifiser, onSpesifiser, onForhaandsvis, onLastNed, pdfLaster, onPoUtkast, poLaster, poUtkast, poKundeLagret, onFrys, onLaasOpp, laasLaster, maanedAvsluttet }) {
   const [åpen, setÅpen] = useState(false);
   const mva = faktura?.mvaSats ?? 25;
   const spec = faktura?.spesifikasjon || [];
   const tom = !faktura || !(faktura.linjer || []).length;
+  const laast = faktura?.grunnlagLaast || null;
+  const s = faktura?.sammendrag || null;
+  const m = faktura?.modell || {};
+  const visLedig = m.grunnlag === 'alle' && s && (s.ledig + s.delvis) > 0;
   return (
     <div className="overflow-hidden rounded-2xl border border-black/[0.06] shadow-[0_20px_50px_-30px_rgba(0,0,0,0.28)]">
       {/* Toppfelt */}
@@ -113,7 +130,11 @@ function FakturaPanel({ faktura, kundeNavn, maaned, laster, spesifiser, onSpesif
         </div>
         <div className="flex items-center gap-2">
           {laster ? <Loader2 className="h-4 w-4 animate-spin text-white/60" /> : null}
-          <span className="rounded-full px-2.5 py-1 text-[10.5px] font-semibold" style={{ background: 'rgba(212,150,255,0.22)', color: '#e9d5ff' }}>UTKAST</span>
+          {laast ? (
+            <span className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold" style={{ background: 'rgba(52,211,153,0.18)', color: '#a7f3d0' }} title={`Grunnlaget ble frosset ${datoNb(laast.tid)} (${laast.av === 'poweroffice' ? 'ved PowerOffice-utkast' : laast.av === 'auto' ? 'automatisk' : 'manuelt'}). Endringer i kunde/plan påvirker ikke denne måneden.`}><Lock className="h-3 w-3" /> LÅST · {datoNb(laast.tid)}</span>
+          ) : (
+            <span className="rounded-full px-2.5 py-1 text-[10.5px] font-semibold" style={{ background: 'rgba(212,150,255,0.22)', color: '#e9d5ff' }} title="Beregnes live fra plattformens øyeblikksbilde. Frys grunnlaget før fakturering.">UTKAST · LIVE</span>
+          )}
         </div>
       </div>
 
@@ -125,8 +146,22 @@ function FakturaPanel({ faktura, kundeNavn, maaned, laster, spesifiser, onSpesif
             <p className="mt-1 text-[34px] font-semibold leading-none tabular-nums tracking-[-0.03em] text-black/90">{kr(faktura?.sumInkMva || 0)}</p>
             <p className="mt-1.5 text-[12.5px] text-black/45">{faktura?.mvaRegistrert === false ? 'uten mva (ikke mva-registrert)' : `inkl. ${mva}% mva`}</p>
           </div>
-          <span className="rounded-full px-3 py-1 text-[11.5px] font-semibold" style={{ background: 'rgba(122,63,168,0.1)', color: LILLA }}>{fmt(faktura?.antallEnheter || 0)} enheter</span>
+          <div className="flex flex-col items-end gap-1">
+            <span className="rounded-full px-3 py-1 text-[11.5px] font-semibold" style={{ background: 'rgba(122,63,168,0.1)', color: LILLA }}>{fmt(faktura?.antallEnheter || 0)} enheter</span>
+            {s && s.vektet !== s.enheter && faktura?.grunnlagType !== 'manuell' ? <span className="text-[11px] tabular-nums text-black/40">vektet {fmtV(s.vektet)}</span> : null}
+          </div>
         </div>
+
+        {/* Modell-linje: hva som telles, hvordan */}
+        {faktura && faktura.grunnlagType !== 'manuell' && m.grunnlag ? (
+          <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-black/45">
+            <span className="rounded-md bg-black/[0.04] px-1.5 py-0.5">{m.grunnlag === 'alle' ? 'Alle under forvaltning' : 'Kun utleide'}</span>
+            <span className="rounded-md bg-black/[0.04] px-1.5 py-0.5">{m.prorata ? 'Prorata per dag' : 'Hel måned per enhet'}</span>
+            {visLedig ? <span className="rounded-md bg-black/[0.04] px-1.5 py-0.5">Ledige {m.ledigFaktor ?? 100} %</span> : null}
+            <span className="rounded-md bg-black/[0.04] px-1.5 py-0.5">{m.trinnModell === 'progressiv' ? 'Progressive trinn' : 'Én trinnpris'}</span>
+            {s ? <span className="ml-auto tabular-nums">{s.utleid} utleid · {s.ledig} ledig{s.delvis ? ` · ${s.delvis} delvis` : ''}</span> : null}
+          </p>
+        ) : null}
 
         {/* Meta */}
         <div className="mt-4 grid grid-cols-3 gap-2 border-t border-black/[0.06] pt-4 text-[12px]">
@@ -139,7 +174,12 @@ function FakturaPanel({ faktura, kundeNavn, maaned, laster, spesifiser, onSpesif
         <div className="mt-4 space-y-2.5 border-t border-black/[0.06] pt-4">
           {(faktura?.linjer || []).map((l, i) => (
             <div key={i} className="flex items-start justify-between gap-3">
-              <div className="min-w-0"><p className="truncate text-[13.5px] font-medium text-black/80">{l.beskrivelse}</p><p className="text-[12px] text-black/45">{l.vekt !== l.antall ? `${fmt(l.vekt)} av ${fmt(l.antall)} (prorata)` : `${fmt(l.antall)} enhet${l.antall === 1 ? '' : 'er'}`} × {kr(l.pris)}</p></div>
+              <div className="min-w-0">
+                <p className="truncate text-[13.5px] font-medium text-black/80">{l.beskrivelse}</p>
+                <p className="text-[12px] text-black/45">
+                  {l.type === 'minstepris' ? 'Sum under planens minstepris' : (l.vekt !== l.antall ? `${fmtV(l.vekt)} av ${fmt(l.antall)} (vektet)` : `${fmtV(l.antall)} enhet${l.antall === 1 ? '' : 'er'}`)}{l.type === 'minstepris' ? '' : ` × ${kr(l.pris)}`}
+                </p>
+              </div>
               <p className="shrink-0 text-[14px] font-semibold tabular-nums text-black/85">{kr(l.belop)}</p>
             </div>
           ))}
@@ -168,7 +208,8 @@ function FakturaPanel({ faktura, kundeNavn, maaned, laster, spesifiser, onSpesif
                       <th className="px-3.5 py-2 font-medium">Adresse</th>
                       <th className="px-2 py-2 font-medium">Leietaker</th>
                       <th className="px-2 py-2 font-medium">Periode</th>
-                      <th className="px-2 py-2 text-right font-medium">Dager</th>
+                      <th className="px-2 py-2 text-right font-medium" title="Utleide dager / dager under forvaltning">Dager</th>
+                      <th className="px-2 py-2 text-right font-medium">Vekt</th>
                       <th className="px-3.5 py-2 text-right font-medium">Beløp</th>
                     </tr>
                   </thead>
@@ -176,9 +217,10 @@ function FakturaPanel({ faktura, kundeNavn, maaned, laster, spesifiser, onSpesif
                     {spec.map((e, i) => (
                       <tr key={i} className="border-b border-black/[0.04] last:border-0">
                         <td className="max-w-[160px] truncate px-3.5 py-1.5 font-medium text-black/80" title={e.address}>{e.address || e.enhet_id || '—'}</td>
-                        <td className="max-w-[120px] truncate px-2 py-1.5" title={e.tenant_name}>{e.tenant_name || '—'}</td>
+                        <td className="max-w-[120px] truncate px-2 py-1.5" title={e.tenant_name}>{e.tenant_name ? e.tenant_name : (e.status === 'ledig' ? <span className="rounded px-1.5 py-0.5 text-[10.5px] font-medium" style={{ background: 'rgba(180,83,9,0.08)', color: '#b45309' }}>Ledig</span> : '—')}</td>
                         <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-black/50">{(e.move_in_date || e.move_out_date) ? `${perNb(e.move_in_date) || '—'}–${e.move_out_date ? perNb(e.move_out_date) : ''}` : '—'}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums text-black/50">{e.dager ?? ''}</td>
+                        <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-black/50">{e.status === 'ledig' ? `0/${e.dagerForvaltet ?? ''}` : (e.status === 'delvis' ? `${e.dager}/${e.dagerForvaltet}` : (e.dager ?? ''))}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-black/50">{e.vekt != null ? fmtV(e.vekt) : ''}</td>
                         <td className="px-3.5 py-1.5 text-right font-medium tabular-nums text-black/85">{kr(e.belop)}</td>
                       </tr>
                     ))}
@@ -198,6 +240,19 @@ function FakturaPanel({ faktura, kundeNavn, maaned, laster, spesifiser, onSpesif
           <button onClick={onForhaandsvis} disabled={tom || pdfLaster} className="flex h-9 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-semibold text-white transition-all disabled:opacity-40" style={{ background: LILLA }}>{pdfLaster ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Forhåndsvis PDF</button>
         </div>
 
+        {/* Frys grunnlag — gjør måneden etterprøvbar før fakturering */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-black/[0.06] bg-black/[0.02] px-3 py-2.5">
+          <span className="flex items-center gap-1.5 text-[12px] font-medium text-black/55">{laast ? <Lock className="h-3.5 w-3.5" style={{ color: '#059669' }} /> : <Unlock className="h-3.5 w-3.5" style={{ color: LILLA }} />} Grunnlag</span>
+          <span className="hidden text-[12px] text-black/45 sm:inline">
+            {laast ? `Frosset ${datoNb(laast.tid)} — fakturaen endrer seg ikke selv om plattformen gjør det.` : (maanedAvsluttet ? 'Plattformens øyeblikksbilde endrer seg. Frys før du fakturerer.' : 'Kan fryses fra den 1. i måneden etter.')}
+          </span>
+          {laast ? (
+            <button onClick={onLaasOpp} disabled={laasLaster || !!poUtkast} title={poUtkast ? 'Det finnes et PowerOffice-utkast for måneden' : 'Slett det frosne grunnlaget og beregn på nytt'} className="ml-auto flex h-8 items-center gap-1.5 rounded-lg border border-black/10 px-2.5 text-[12.5px] font-medium text-black/70 hover:bg-black/[0.03] disabled:opacity-40">{laasLaster ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlock className="h-3.5 w-3.5" />} Lås opp</button>
+          ) : (
+            <button onClick={onFrys} disabled={tom || laasLaster || !poKundeLagret || !maanedAvsluttet} title={!poKundeLagret ? 'Lagre kunden først' : (!maanedAvsluttet ? 'Måneden er ikke avsluttet' : '')} className="ml-auto flex h-8 items-center gap-1.5 rounded-lg border border-black/10 px-2.5 text-[12.5px] font-medium text-black/70 hover:bg-black/[0.03] disabled:opacity-40">{laasLaster ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lock className="h-3.5 w-3.5" />} Frys grunnlag</button>
+          )}
+        </div>
+
         {/* PowerOffice Go — opprett USENDT fakturautkast (Draft) i regnskapet */}
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-black/[0.06] bg-black/[0.02] px-3 py-2.5">
           <span className="flex items-center gap-1.5 text-[12px] font-medium text-black/55"><Landmark className="h-3.5 w-3.5" style={{ color: LILLA }} /> PowerOffice Go</span>
@@ -207,9 +262,9 @@ function FakturaPanel({ faktura, kundeNavn, maaned, laster, spesifiser, onSpesif
               {poUtkast.gui ? <a href={poUtkast.gui} target="_blank" rel="noreferrer" className="flex h-8 items-center gap-1.5 rounded-lg border border-black/10 px-2.5 text-[12.5px] font-medium text-black/70 hover:bg-black/[0.03]">Åpne i Go <ArrowUpRight className="h-3.5 w-3.5" /></a> : null}
             </>
           ) : (
-            <span className="hidden text-[12px] text-black/45 sm:inline">Lag et usendt utkast i regnskapet — du kontrollerer og sender det i Go.</span>
+            <span className="hidden text-[12px] text-black/45 sm:inline">Fryser grunnlaget og lager et usendt utkast i regnskapet — du kontrollerer og sender det i Go.</span>
           )}
-          <button onClick={onPoUtkast} disabled={tom || poLaster || !poKundeLagret || !!poUtkast} title={!poKundeLagret ? 'Lagre kunden først' : (poUtkast ? 'Allerede opprettet for denne måneden' : '')} className="ml-auto flex h-9 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-semibold text-white transition-all disabled:opacity-40" style={{ background: BLEKK }}>{poLaster ? <Loader2 className="h-4 w-4 animate-spin" /> : <ReceiptText className="h-4 w-4" />} {poUtkast ? 'Opprettet' : 'Opprett utkast'}</button>
+          <button onClick={onPoUtkast} disabled={tom || poLaster || !poKundeLagret || !!poUtkast || !maanedAvsluttet} title={!poKundeLagret ? 'Lagre kunden først' : (poUtkast ? 'Allerede opprettet for denne måneden' : (!maanedAvsluttet ? 'Måneden er ikke avsluttet' : ''))} className="ml-auto flex h-9 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-semibold text-white transition-all disabled:opacity-40" style={{ background: BLEKK }}>{poLaster ? <Loader2 className="h-4 w-4 animate-spin" /> : <ReceiptText className="h-4 w-4" />} {poUtkast ? 'Opprettet' : 'Opprett utkast'}</button>
         </div>
       </div>
     </div>
@@ -259,7 +314,10 @@ export default function PrisModul({ apiKey = '' }) {
   const [pdfLaster, setPdfLaster] = useState(false);
   const [poStatus, setPoStatus] = useState([]); // opprettede PowerOffice-utkast for valgt måned
   const [poLaster, setPoLaster] = useState(false);
+  const [laasLaster, setLaasLaster] = useState(false);
   const forhRef = useRef(0);
+  // Grunnlag kan først fryses/faktureres når måneden er avsluttet (fra den 1. i måneden etter).
+  const maanedAvsluttet = maaned < new Date().toISOString().slice(0, 7);
 
   const lastData = useCallback(async () => {
     try { const r = await fetch(`/api/admin/pris/data?${q}`, { cache: 'no-store' }); const d = await r.json(); if (d.ok) { setData(d); setSettUtkast(d.settings); } } catch (e) {}
@@ -315,21 +373,48 @@ export default function PrisModul({ apiKey = '' }) {
 
   const lukkPdf = useCallback(() => { setPdfUrl((u) => { if (u) setTimeout(() => URL.revokeObjectURL(u), 500); return ''; }); }, []);
 
-  // PowerOffice: opprett usendt fakturautkast (Draft) for valgt kunde + måned
+  // PowerOffice: opprett usendt fakturautkast (Draft) for valgt kunde + måned.
+  // Serveren fryser grunnlaget først — derfor lastes fakturaen på nytt etterpå.
   const opprettPoUtkast = useCallback(async () => {
     if (!kUtkast?.id) { window.alert('Lagre kunden først, så kan du opprette utkast i PowerOffice.'); return; }
     setPoLaster(true);
     try {
       const r = await fetch(`/api/admin/pris/poweroffice/utkast?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kundeId: kUtkast.id, maaned }) });
       const d = await r.json();
-      if (d.ok) { await lastPoStatus(maaned); setOk('po'); setTimeout(() => setOk(''), 2500); }
+      if (d.ok) { await lastPoStatus(maaned); await lastMrr(maaned); forhaandsvis(kUtkast, spesifiser); setOk('po'); setTimeout(() => setOk(''), 2500); }
       else { window.alert(`${d.feil || 'Kunne ikke opprette utkast'}${d.hint ? '\n\n' + d.hint : ''}`); }
     } catch (e) { window.alert('Kunne ikke kontakte PowerOffice akkurat nå.'); }
     setPoLaster(false);
-  }, [q, kUtkast, maaned, lastPoStatus]);
+  }, [q, kUtkast, maaned, lastPoStatus, lastMrr, forhaandsvis, spesifiser]);
+
+  // Frys / lås opp faktureringsgrunnlaget for valgt kunde + måned
+  const frysGrunnlag = useCallback(async () => {
+    if (!kUtkast?.id) return;
+    if (!window.confirm(`Fryse grunnlaget for ${kUtkast.navn} · ${mndLabel(maaned)}?\n\nEnhetslisten og prisen lagres slik de er nå. Senere endringer i plattformen, kunden eller planen påvirker ikke denne måneden.`)) return;
+    setLaasLaster(true);
+    try {
+      const r = await fetch(`/api/admin/pris/grunnlag/laas?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kundeId: kUtkast.id, maaned }) });
+      const d = await r.json();
+      if (!d.ok) window.alert(d.feil || 'Kunne ikke fryse grunnlaget');
+      await lastMrr(maaned); forhaandsvis(kUtkast, spesifiser);
+    } catch (e) { window.alert('Kunne ikke fryse grunnlaget akkurat nå.'); }
+    setLaasLaster(false);
+  }, [q, kUtkast, maaned, lastMrr, forhaandsvis, spesifiser]);
+  const laasOppGrunnlag = useCallback(async () => {
+    if (!kUtkast?.id) return;
+    if (!window.confirm(`Låse opp ${mndLabel(maaned)} for ${kUtkast.navn}? Grunnlaget beregnes på nytt fra dagens øyeblikksbilde.`)) return;
+    setLaasLaster(true);
+    try {
+      const r = await fetch(`/api/admin/pris/grunnlag/laas?${q}&kundeId=${encodeURIComponent(kUtkast.id)}&maaned=${maaned}`, { method: 'DELETE' });
+      const d = await r.json();
+      if (!d.ok) window.alert(d.feil || 'Kunne ikke låse opp');
+      await lastMrr(maaned); forhaandsvis(kUtkast, spesifiser);
+    } catch (e) { window.alert('Kunne ikke låse opp akkurat nå.'); }
+    setLaasLaster(false);
+  }, [q, kUtkast, maaned, lastMrr, forhaandsvis, spesifiser]);
 
   const velgKunde = (k) => { setValgtKundeId(k.id); setKUtkast({ ...k }); };
-  const nyKunde = () => { setValgtKundeId('ny'); setKUtkast({ navn: '', orgnr: '', epost: '', planId: planFor()?.id || '', enhetskilde: 'manuell', manueltAntall: 0, grunnlag: 'utleid_mnd', grunnlagSelvbetjent: 'utleid_mnd', status: 'aktiv', notat: '' }); };
+  const nyKunde = () => { setValgtKundeId('ny'); setKUtkast({ navn: '', orgnr: '', epost: '', planId: planFor()?.id || '', enhetskilde: 'manuell', manueltAntall: 0, grunnlag: 'alle', grunnlagSelvbetjent: 'alle', prorata: true, status: 'aktiv', notat: '' }); };
   const lukkKunde = () => { setValgtKundeId(null); setKUtkast(null); };
 
   const lagreKunde = async () => {
@@ -354,7 +439,7 @@ export default function PrisModul({ apiKey = '' }) {
   };
 
   const velgPlan = (p) => { setValgtPlanId(p.id); setPUtkast({ ...p, trinn: p.trinn.map((t) => ({ ...t })) }); };
-  const nyPlan = () => { setValgtPlanId('ny'); setPUtkast({ navn: '', beskrivelse: '', prisModell: 'blandet', trinn: [{ fraEnheter: 0, pris: 200 }], selvbetjentPris: 79, aktiv: true, standard: false }); };
+  const nyPlan = () => { setValgtPlanId('ny'); setPUtkast({ navn: '', beskrivelse: '', prisModell: 'blandet', trinn: [{ fraEnheter: 0, pris: 200 }], trinnModell: 'progressiv', selvbetjentPris: 79, minstepris: 0, ledigFaktor: 100, aktiv: true, standard: false }); };
   const lagrePlan = async () => {
     if (!pUtkast?.navn) return; setLagrer(true);
     try { const r = await fetch(`/api/admin/pris/planer?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pUtkast) }); const d = await r.json(); if (d.ok) { await lastData(); setOk('plan'); setTimeout(() => setOk(''), 2000); setValgtPlanId(null); setPUtkast(null); } } catch (e) {}
@@ -433,7 +518,7 @@ export default function PrisModul({ apiKey = '' }) {
                         <span className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ color: st.c, background: st.bg }}>{st.l}</span>
                       </div>
                       <div className="mt-3 flex items-end justify-between">
-                        <span className="text-[12px] text-black/45">{fmt(km?.antallEnheter || 0)} enheter · {mndLabel(maaned)}</span>
+                        <span className="flex items-center gap-1.5 text-[12px] text-black/45">{km?.laast ? <Lock className="h-3 w-3" style={{ color: '#059669' }} title={`Grunnlag frosset ${datoNb(km.laast.tid)}`} /> : null}{fmt(km?.antallEnheter || 0)} enheter{km?.vektet != null && km.vektet !== km.antallEnheter ? <span className="text-black/35">· vektet {fmtV(km.vektet)}</span> : null} · {mndLabel(maaned)}</span>
                         <span className="text-[15px] font-semibold tabular-nums text-black/85">{kr(km?.sumEksMva || 0)}<span className="ml-1 text-[11px] font-normal text-black/40">/ mnd</span></span>
                       </div>
                     </button>
@@ -463,10 +548,15 @@ export default function PrisModul({ apiKey = '' }) {
                       {kUtkast.enhetskilde === 'manuell' ? (
                         <Felt label="Antall enheter"><input type="number" min={0} value={kUtkast.manueltAntall} onChange={(e) => setKUtkast({ ...kUtkast, manueltAntall: Number(e.target.value) })} className={inputCls} /></Felt>
                       ) : (
-                        <Felt label="Faktureringsgrunnlag" hint={GRUNNLAG.find((g) => g.v === kUtkast.grunnlag)?.d}><Nedtrekk verdi={kUtkast.grunnlag} valg={GRUNNLAG} onChange={(v) => setKUtkast({ ...kUtkast, grunnlag: v })} /></Felt>
+                        <Felt label="Hva som telles" hint={GRUNNLAG.find((g) => g.v === kUtkast.grunnlag)?.d}><Nedtrekk verdi={kUtkast.grunnlag} valg={GRUNNLAG} onChange={(v) => setKUtkast({ ...kUtkast, grunnlag: v })} /></Felt>
                       )}
                       {kUtkast.enhetskilde === 'plattform' && planFor(kUtkast.planId)?.prisModell === 'per_type' ? (
-                        <Felt label="Grunnlag selvbetjente"><Nedtrekk verdi={kUtkast.grunnlagSelvbetjent} valg={GRUNNLAG} onChange={(v) => setKUtkast({ ...kUtkast, grunnlagSelvbetjent: v })} /></Felt>
+                        <Felt label="Telles for selvbetjente"><Nedtrekk verdi={kUtkast.grunnlagSelvbetjent} valg={GRUNNLAG} onChange={(v) => setKUtkast({ ...kUtkast, grunnlagSelvbetjent: v })} /></Felt>
+                      ) : null}
+                      {kUtkast.enhetskilde === 'plattform' ? (
+                        <div className="rounded-xl bg-black/[0.02] p-3 sm:col-span-2">
+                          <Bryter på={kUtkast.prorata !== false} onChange={(v) => setKUtkast({ ...kUtkast, prorata: v })} label="Prorata ved inn- og utflytting" hint={kUtkast.prorata !== false ? 'Enheten vektes med dager i måneden den var med (10 av 31 dager = 0,32). Rettferdig ved bytte av leietaker.' : 'Av: én dag i måneden teller som hel måned.'} />
+                        </div>
                       ) : null}
                     </div>
                     <div className="mt-4 flex items-center justify-between">
@@ -488,6 +578,10 @@ export default function PrisModul({ apiKey = '' }) {
                     poLaster={poLaster}
                     poUtkast={(poStatus || []).find((u) => u.kundeId === kUtkast.id) || null}
                     poKundeLagret={!!kUtkast.id}
+                    onFrys={frysGrunnlag}
+                    onLaasOpp={laasOppGrunnlag}
+                    laasLaster={laasLaster}
+                    maanedAvsluttet={maanedAvsluttet}
                   />
                 </div>
               ) : (
@@ -519,7 +613,10 @@ export default function PrisModul({ apiKey = '' }) {
                     {p.beskrivelse ? <p className="mt-1 text-[12px] text-black/45">{p.beskrivelse}</p> : null}
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {p.trinn.map((t, i) => <span key={i} className="rounded-md bg-black/[0.04] px-2 py-1 text-[11.5px] tabular-nums text-black/60">{t.fraEnheter === 0 ? '0+' : `${t.fraEnheter}+`}: {t.pris} kr</span>)}
+                      <span className="rounded-md px-2 py-1 text-[11.5px] font-medium" style={{ color: LILLA }}>{p.trinnModell === 'alle' ? 'én trinnpris' : 'progressiv'}</span>
                       <span className="rounded-md px-2 py-1 text-[11.5px] font-medium" style={{ color: LILLA }}>{p.prisModell === 'per_type' ? 'per enhetstype' : 'blandet'}</span>
+                      {(p.ledigFaktor ?? 100) !== 100 ? <span className="rounded-md bg-black/[0.04] px-2 py-1 text-[11.5px] text-black/60">ledige {p.ledigFaktor} %</span> : null}
+                      {p.minstepris > 0 ? <span className="rounded-md bg-black/[0.04] px-2 py-1 text-[11.5px] tabular-nums text-black/60">min. {fmt(p.minstepris)} kr</span> : null}
                     </div>
                   </button>
                 );
@@ -545,6 +642,39 @@ export default function PrisModul({ apiKey = '' }) {
                     </div>
                   </div>
                   <div><span className="mb-2 block text-[12px] font-medium text-black/55">Volumtrinn (kr / enhet / mnd, eks. mva)</span><TrinnEditor trinn={pUtkast.trinn} setTrinn={(t) => setPUtkast({ ...pUtkast, trinn: t })} /></div>
+                  {/* Trinnmodell — progressiv (anbefalt) vs. én pris for hele porteføljen */}
+                  <div>
+                    <span className="text-[12px] font-medium text-black/55">Hvordan trinnene virker</span>
+                    <div className="mt-1.5 grid grid-cols-2 gap-2.5">
+                      {[{ v: 'progressiv', t: 'Progressiv', d: 'Hvert trinn priser kun enhetene i sitt intervall. Jevn pris, ingen hopp.' }, { v: 'alle', t: 'Én trinnpris', d: 'Antallet bestemmer én pris for alle enheter. Gir hopp ved trinngrensene.' }].map((o) => {
+                        const on = (pUtkast.trinnModell || 'progressiv') === o.v;
+                        return <button key={o.v} onClick={() => setPUtkast({ ...pUtkast, trinnModell: o.v })} className="rounded-xl border p-3 text-left transition-all" style={{ borderColor: on ? LILLA : 'rgba(0,0,0,0.1)', background: on ? 'rgba(122,63,168,0.05)' : '#fff' }}><p className="text-[13px] font-semibold" style={{ color: on ? LILLA : BLEKK }}>{o.t}</p><p className="mt-0.5 text-[11.5px] text-black/45">{o.d}</p></button>;
+                      })}
+                    </div>
+                    {(() => {
+                      const sortert = [...(pUtkast.trinn || [])].map((t) => Number(t.fraEnheter) || 0).sort((a, b) => a - b);
+                      const grense = sortert.find((x) => x > 0);
+                      if (!grense) return null;
+                      const n1 = grense - 1; const n2 = grense;
+                      const rad = (n) => ({ n, p: eksempelBelop(pUtkast.trinn, n, 'progressiv'), a: eksempelBelop(pUtkast.trinn, n, 'alle') });
+                      const r1 = rad(n1); const r2 = rad(n2);
+                      return (
+                        <div className="mt-2 grid grid-cols-[auto_1fr_1fr] gap-x-4 gap-y-1 rounded-xl bg-black/[0.02] px-3 py-2.5 text-[11.5px] tabular-nums text-black/55">
+                          <span className="text-black/40">Eksempel</span><span className="font-medium text-black/60">Progressiv</span><span className="font-medium text-black/60">Én trinnpris</span>
+                          <span>{r1.n} enheter</span><span>{kr(r1.p)}</span><span>{kr(r1.a)}</span>
+                          <span>{r2.n} enheter</span><span>{kr(r2.p)}</span><span className={r2.a < r1.a ? 'text-amber-700' : ''}>{kr(r2.a)}{r2.a < r1.a ? ' ↓' : ''}</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Felt label="Ledige enheter under forvaltning" hint="Gjelder kunder som fakturerer «alle enheter under forvaltning». Plattformen jobber også for ledige enheter (annonse, visning, signering).">
+                      <Nedtrekk verdi={String(pUtkast.ledigFaktor ?? 100)} valg={LEDIG_VALG.map((o) => ({ v: String(o.v), l: o.l }))} onChange={(v) => setPUtkast({ ...pUtkast, ledigFaktor: Number(v) })} />
+                    </Felt>
+                    <Felt label="Minstepris per måned (eks. mva)" hint={pUtkast.minstepris > 0 ? 'Er summen lavere, legges en justeringslinje på fakturaen.' : '0 = ingen minstepris. Dekker onboarding og support for små kunder.'}>
+                      <div className="relative"><input type="number" min={0} step={10} value={pUtkast.minstepris ?? 0} onChange={(e) => setPUtkast({ ...pUtkast, minstepris: Number(e.target.value) })} className={`${inputCls} pr-10`} placeholder="0" /><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-black/35">kr</span></div>
+                    </Felt>
+                  </div>
                   {pUtkast.prisModell === 'per_type' ? (
                     <Felt label="Sats selvbetjente enheter (kr/mnd)"><div className="relative max-w-[200px]"><input type="number" min={0} value={pUtkast.selvbetjentPris} onChange={(e) => setPUtkast({ ...pUtkast, selvbetjentPris: Number(e.target.value) })} className={`${inputCls} pr-10`} /><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-black/35">kr</span></div></Felt>
                   ) : null}
