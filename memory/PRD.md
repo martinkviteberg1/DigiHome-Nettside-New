@@ -1,6 +1,20 @@
 # PRD — DigiHome markedsside (Next.js) · oppdatert 2. juli 2026
 
 ## Siste leveranser (sesjon · sep 2026)
+0. **Fakturering-modul (erstatter Pris-modulen) — ekte økonomimodul.** Admin-meny «Fakturering»
+   (nøkkel `pris` beholdt for tilgangsstyring; URL `/admin/fakturering`, `/admin/pris` normaliseres).
+   `components/admin/FaktureringModul.js` + `fakturering/{felles,Maanedskjoring,Fakturaer,Kunder,
+   Planer,Innstillinger,FakturaPanel}.js`. Fem faner: Månedskjøring (KPI, 4 steg: frys → kontroller →
+   utkast i PowerOffice → send i Go, bulk «Frys alle»/«Opprett alle utkast», én rad per kunde m/
+   låst/live, utkast-status, avvik-varsel når Go-utkast ≠ grunnlag, klar-sjekk org.nr/e-post),
+   Fakturaer (historikk frosne måneder + utkast, år/kunde-filter), Kunder (register + editor, faktura
+   i skuff), Prisplaner, Innstillinger (PowerOffice-selskap, selger, betaling, faktura — KUN her).
+   Nye API: `GET /api/admin/fakturering/oversikt`, `POST …/frys-alle`, `POST …/utkast-alle`,
+   `GET …/fakturaer`, `DELETE /api/admin/pris/poweroffice/utkast` (sletter usendt utkast i Go +
+   lokalt; 409 hvis overført), `tvang:true` på POST erstatter (sletter gammelt i Go først).
+   Bugfix `lib/poweroffice.js`: SalesOrderDate = fakturadag i MÅNEDEN ETTER (før: i grunnlagsmåneden),
+   linjebeskrivelse «Plattformlisens · august 2026». `PrisModul.js` slettet. Backend testet 11/11.
+   PowerOffice er fortsatt DEMO — utsending/bokføring skjer manuelt i Go; ingen automatikk.
 1. **Pris-modul → verdensklasse faktura (økonomisjef-visning).** Proforma-faktura per B2B-kunde
    med full enhetsspesifikasjon (adresse, leietaker, leieperiode, dager, beløp) + ekte PDF
    (pdf-lib, DigiHome-fonter, «PROFORMA/UTKAST»-merke, paginerer). Nye filer: `lib/faktura.js`,

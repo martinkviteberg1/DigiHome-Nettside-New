@@ -10,7 +10,7 @@ import {
 import { promises as fsp } from 'fs';
 import nodePath from 'path';
 import { getDb, clean } from '@/lib/mongodb';
-import { poFellesKonfigurert, poKlientInfo, poResultat, poSaldobalanse, poFakturaUtkast, PO_DEFAULT_ENV, PO_BOOTSTRAP_CLIENT_KEY } from '@/lib/poweroffice';
+import { poFellesKonfigurert, poKlientInfo, poResultat, poSaldobalanse, poFakturaUtkast, poSlettUtkast, PO_DEFAULT_ENV, PO_BOOTSTRAP_CLIENT_KEY } from '@/lib/poweroffice';
 import { getObject, putObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
 import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels, computeLandingPages, buildPaidFunnel, computeVelocity, computeMarketingTrends } from '@/lib/analytics-server';
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
@@ -2424,6 +2424,109 @@ async function poFakturaCtx(db, settings = {}) {
   if (!s) s = alle.find((x) => /tech/i.test(x.navn || ''));
   if (!s) s = alle[0];
   return { clientKey: s.clientKey, env: s.env || PO_DEFAULT_ENV, selskapNavn: s.navn };
+}
+
+// ── Lisensfaktura: frys grunnlag + opprett USENDT utkast (SalesOrder Draft) i PowerOffice ──
+// Brukes av både enkelt-kunde-ruten og «opprett alle». Returnerer { status, body }.
+// Idempotent per kunde+måned+miljø: finnes utkastet, returneres det uendret (uten å
+// fryse noe — et eldre utkast kan være laget med en annen modell).
+async function opprettLisensUtkast(db, alt, kunde, maaned, { tvang = false } = {}) {
+  const svar = (status, body) => ({ status, body });
+  if (!poFellesKonfigurert()) return svar(400, { ok: false, feil: 'PowerOffice er ikke konfigurert (mangler app-/abonnementsnøkkel)' });
+  if (maaned >= new Date().toISOString().slice(0, 7)) return svar(400, { ok: false, feil: 'Måneden er ikke avsluttet — utkast kan først lages fra den 1. i måneden etter.' });
+  if (kunde.status === 'inaktiv') return svar(400, { ok: false, feil: 'Kunden er inaktiv' });
+  let plan = (alt.planer || []).find((p) => p.id === kunde.planId) || (alt.planer || []).find((p) => p.standard) || (alt.planer || [])[0];
+  const ctx = await poFakturaCtx(db, alt.settings);
+  if (!ctx || !ctx.clientKey) return svar(400, { ok: false, feil: 'Mangler regnskaps-selskap (klientnøkkel) for fakturering — legg til selskapet under Regnskap.' });
+  const koll = db.collection('po_faktura_utkast');
+  const eksisterende = await koll.findOne({ kundeId: kunde.id, maaned, env: ctx.env });
+  if (eksisterende && !tvang) { const { _id, ...ren } = eksisterende; return svar(200, { ok: true, alleredeOpprettet: true, utkast: ren }); }
+  // Erstatt: det gamle utkastet slettes i Go FØRST (kun usendte utkast kan slettes).
+  // Feiler slettingen, lages det ikke noe nytt — aldri to fakturaer for samme måned.
+  let erstattet = null;
+  if (eksisterende && tvang && eksisterende.poOrderId) {
+    try { const s = await poSlettUtkast(ctx, eksisterende.poOrderId); erstattet = { poOrderId: eksisterende.poOrderId, poOrderNo: eksisterende.poOrderNo ?? null, slettet: s.slettet, fantesIkke: s.fantesIkke }; }
+    catch (e) { return svar(409, { ok: false, feil: `Det gamle utkastet (ordre ${eksisterende.poOrderNo || eksisterende.poOrderId}) kunne ikke slettes i Go — det er trolig allerede overført til faktura. Ingen nytt utkast ble laget.`, hint: String(e.message || e).slice(0, 200) }); }
+  }
+  // Kundedata som PowerOffice trenger for å kunne LEVERE fakturaen
+  if (!String(kunde.orgnr || '').replace(/\D/g, '').length && !String(kunde.epost || '').includes('@')) {
+    return svar(400, { ok: false, feil: 'Kunden mangler org.nr og faktura-e-post — fyll inn minst ett av dem før utkast lages.' });
+  }
+  let laast = await prisHentLaast(db, kunde.id, maaned);
+  if (!laast) {
+    let rows = []; let antallRader = null;
+    if (kunde.enhetskilde === 'plattform') {
+      try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; antallRader = rows.length; }
+      catch (e) { return svar(502, { ok: false, feil: 'Fikk ikke hentet leieforhold fra plattformen — prøv igjen.' }); }
+    }
+    const g = prisBeregnGrunnlag(rows, plan, kunde, alt.settings, maaned);
+    if (!g.linjer.length) return svar(400, { ok: false, feil: 'Ingen fakturerbare enheter for denne måneden' });
+    laast = (await prisLaasGrunnlag(db, { kunde, plan, settings: alt.settings, grunnlag: g, maaned, av: 'poweroffice', antallRader })).laast;
+  }
+  const grunnlag = laast.grunnlag;
+  if (laast.plan) plan = laast.plan;
+  if (!grunnlag.linjer.length) return svar(400, { ok: false, feil: 'Ingen fakturerbare enheter for denne måneden' });
+  try {
+    const res = await poFakturaUtkast(ctx, { kunde, grunnlag, settings: alt.settings, maaned });
+    const doc = {
+      id: (eksisterende && eksisterende.id) || uuidv4(),
+      kundeId: kunde.id, kundeNavn: kunde.navn, maaned, env: ctx.env, selskap: ctx.selskapNavn || null,
+      poOrderId: res.poOrderId, poOrderNo: res.poOrderNo, poCustomerId: res.poCustomerId, poCustomerNo: res.poCustomerNo,
+      extRef: res.extRef, status: res.status, sumEksMva: res.sumEksMva, gui: res.gui,
+      grunnlagLaastId: laast.id || null, antallEnheter: grunnlag.antallEnheter || 0, vektet: grunnlag.sammendrag?.vektet ?? null,
+      opprettetKunde: res.opprettetKunde, opprettetProdukt: res.opprettetProdukt,
+      opprettet: new Date().toISOString(),
+      ...(erstattet ? { erstattet: { ...erstattet, tid: new Date().toISOString() } } : {}),
+    };
+    await koll.updateOne({ kundeId: kunde.id, maaned, env: ctx.env }, { $set: doc }, { upsert: true });
+    return svar(200, { ok: true, utkast: doc, erstattet: Boolean(erstattet) });
+  } catch (e) {
+    const status = e.status === 403 ? 403 : 502;
+    const hint = e.status === 403 ? 'PowerOffice mangler skrivetilgang (SalesOrders_Full). Be PowerOffice aktivere det på integrasjonsnøkkelen.' : '';
+    return svar(status, { ok: false, feil: String(e.message || e).slice(0, 300), hint });
+  }
+}
+
+// Månedskjøring: én rad per kunde med grunnlag (frosset vinner), utkast-status og «klar»-sjekk.
+async function faktureringOversikt(db, maaned) {
+  const alt = await prisHentAlt(db);
+  const planFor = (id) => alt.planer.find((p) => p.id === id) || alt.planer.find((p) => p.standard) || alt.planer[0];
+  const laaste = await prisHentLaastForMaaned(db, maaned);
+  const utkast = await db.collection('po_faktura_utkast').find({ maaned }).toArray();
+  let rows = null; let plattformFeil = null;
+  const hentRows = async () => { if (rows === null) { try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { rows = []; plattformFeil = 'Fikk ikke kontakt med plattformen — live-tall kan mangle'; } } return rows; };
+  const per = [];
+  for (const kunde of alt.kunder) {
+    const laast = laaste.get(kunde.id) || null;
+    let g;
+    if (laast) g = laast.grunnlag;
+    else { const r = kunde.enhetskilde === 'plattform' ? await hentRows() : []; g = prisBeregnGrunnlag(r, planFor(kunde.planId), kunde, alt.settings, maaned); }
+    const u = utkast.find((x) => x.kundeId === kunde.id) || null;
+    const plan = planFor(kunde.planId);
+    per.push({
+      kundeId: kunde.id, navn: kunde.navn, status: kunde.status, forste: !!kunde.forste, orgnr: kunde.orgnr || '', epost: kunde.epost || '',
+      planId: kunde.planId, planNavn: plan?.navn || '—', enhetskilde: kunde.enhetskilde, grunnlagType: kunde.enhetskilde === 'manuell' ? 'manuell' : (g.modell?.grunnlag || kunde.grunnlag),
+      antallEnheter: g.antallEnheter || 0, vektet: g.sammendrag?.vektet ?? null, sammendrag: g.sammendrag || null,
+      sumEksMva: g.sumEksMva || 0, mva: g.mva || 0, sumInkMva: g.sumInkMva || 0, linjer: (g.linjer || []).length,
+      laast: laast ? { tid: laast.laast, av: laast.laastAv } : null,
+      utkast: u ? { id: u.id, env: u.env, status: u.status, gui: u.gui || null, opprettet: u.opprettet, selskap: u.selskap || null, sumEksMva: u.sumEksMva ?? null, poOrderNo: u.poOrderNo ?? null } : null,
+      klar: { orgnr: /\d{9}/.test(String(kunde.orgnr || '').replace(/\s/g, '')), epost: String(kunde.epost || '').includes('@') },
+    });
+  }
+  const fakturerbare = per.filter((p) => p.status !== 'inaktiv');
+  const sum = fakturerbare.reduce((a, p) => ({ enheter: a.enheter + p.antallEnheter, vektet: Math.round((a.vektet + (p.vektet ?? p.antallEnheter)) * 100) / 100, eks: a.eks + p.sumEksMva, mva: a.mva + p.mva, ink: a.ink + p.sumInkMva }), { enheter: 0, vektet: 0, eks: 0, mva: 0, ink: 0 });
+  // PowerOffice-kontekst (uten nøkler)
+  const selskaper = await db.collection('regnskap_selskaper').find({}).sort({ opprettet: 1 }).toArray();
+  const ctx = await poFakturaCtx(db, alt.settings).catch(() => null);
+  const valgt = ctx ? selskaper.find((x) => x.navn === ctx.selskapNavn) : null;
+  return {
+    ok: true, maaned, maanedAvsluttet: maaned < new Date().toISOString().slice(0, 7), per, sum,
+    antallKunder: alt.kunder.length, aktive: alt.kunder.filter((k) => k.status === 'aktiv').length,
+    laaste: fakturerbare.filter((p) => p.laast).length, utkast: fakturerbare.filter((p) => p.utkast).length, fakturerbare: fakturerbare.filter((p) => p.linjer > 0).length,
+    plattformFeil,
+    po: { konfigurert: poFellesKonfigurert(), env: ctx?.env || PO_DEFAULT_ENV, selskapNavn: ctx?.selskapNavn || null, selskapId: valgt?.id || null, valgtEksplisitt: Boolean(alt.settings?.poSelskapId), selskaper: selskaper.map((x) => ({ id: x.id, navn: x.navn, env: x.env || PO_DEFAULT_ENV, klientNavn: x.klientNavn || null, sistTestet: x.sistTestet || null })) },
+    settings: { fakturadag: alt.settings?.fakturadag, betalingsfristDager: alt.settings?.betalingsfristDager, levering: alt.settings?.levering, produktnavn: alt.settings?.produktnavn, selgerNavn: alt.settings?.selgerNavn, selgerOrgnr: alt.settings?.selgerOrgnr || '', bankkonto: alt.settings?.bankkonto || '' },
+  };
 }
 
 // Sammenstilt PowerOffice-regnskap (alle selskaper) for ett år. Speiler logikken i
@@ -5029,67 +5132,97 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ ok: true, faktura }));
     }
 
+    // ═══ FAKTURERING (modul): månedskjøring, historikk, bulk-handlinger ═══
+    if (route === '/admin/fakturering/oversikt' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const url = new URL(request.url);
+      const m = url.searchParams.get('maaned');
+      const maaned = (String(m || '').match(/^\d{4}-\d{2}$/) ? m : prisForrigeMaaned());
+      return cors(NextResponse.json(await faktureringOversikt(db, maaned)));
+    }
+    // Frys grunnlaget for alle fakturerbare kunder (idempotent — låste hoppes over)
+    if (route === '/admin/fakturering/frys-alle' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const body = await request.json().catch(() => ({}));
+      const maaned = (String(body.maaned || '').match(/^\d{4}-\d{2}$/) ? body.maaned : prisForrigeMaaned());
+      if (maaned >= new Date().toISOString().slice(0, 7)) return cors(NextResponse.json({ ok: false, feil: 'Måneden er ikke avsluttet ennå.' }, { status: 400 }));
+      const alt = await prisHentAlt(db);
+      const planFor = (id) => alt.planer.find((p) => p.id === id) || alt.planer.find((p) => p.standard) || alt.planer[0];
+      let rows = null;
+      const resultat = [];
+      for (const kunde of alt.kunder.filter((k) => k.status !== 'inaktiv')) {
+        const finnes = await prisHentLaast(db, kunde.id, maaned);
+        if (finnes) { resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: true, alleredeLaast: true }); continue; }
+        let r = []; let antallRader = null;
+        if (kunde.enhetskilde === 'plattform') {
+          if (rows === null) { try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { rows = false; } }
+          if (rows === false) { resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: false, feil: 'Plattformen svarte ikke' }); continue; }
+          r = rows; antallRader = rows.length;
+        }
+        const g = prisBeregnGrunnlag(r, planFor(kunde.planId), kunde, alt.settings, maaned);
+        if (!g.linjer.length) { resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: false, feil: 'Ingen fakturerbare enheter' }); continue; }
+        const l = await prisLaasGrunnlag(db, { kunde, plan: planFor(kunde.planId), settings: alt.settings, grunnlag: g, maaned, av: 'manuell', antallRader });
+        resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: true, alleredeLaast: l.alleredeLaast, sumEksMva: g.sumEksMva });
+      }
+      return cors(NextResponse.json({ ok: true, maaned, resultat, frosset: resultat.filter((x) => x.ok && !x.alleredeLaast).length }));
+    }
+    // Opprett PowerOffice-utkast for alle fakturerbare kunder (sekvensielt, idempotent)
+    if (route === '/admin/fakturering/utkast-alle' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const body = await request.json().catch(() => ({}));
+      const maaned = (String(body.maaned || '').match(/^\d{4}-\d{2}$/) ? body.maaned : prisForrigeMaaned());
+      const alt = await prisHentAlt(db);
+      const resultat = [];
+      for (const kunde of alt.kunder.filter((k) => k.status === 'aktiv')) {
+        const r = await opprettLisensUtkast(db, alt, kunde, maaned, {});
+        resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: !!r.body.ok, alleredeOpprettet: !!r.body.alleredeOpprettet, feil: r.body.feil || null, hint: r.body.hint || null, utkast: r.body.utkast || null });
+      }
+      return cors(NextResponse.json({ ok: true, maaned, resultat, opprettet: resultat.filter((x) => x.ok && !x.alleredeOpprettet).length, feilet: resultat.filter((x) => !x.ok).length }));
+    }
+    // Historikk: alle frosne måneder + utkast, nyeste først. ?aar=YYYY filtrerer.
+    if (route === '/admin/fakturering/fakturaer' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const url = new URL(request.url);
+      const aar = String(url.searchParams.get('aar') || '').match(/^\d{4}$/) ? url.searchParams.get('aar') : null;
+      const filt = aar ? { maaned: { $regex: `^${aar}-` } } : {};
+      const [laaste, utkast, alt] = await Promise.all([
+        db.collection('pris_grunnlag_laast').find(filt).project({ 'grunnlag.linjer': 0 }).toArray(),
+        db.collection('po_faktura_utkast').find(filt).toArray(),
+        prisHentAlt(db),
+      ]);
+      const navnFor = (id) => alt.kunder.find((k) => k.id === id)?.navn || null;
+      const rader = new Map();
+      for (const l of laaste) {
+        rader.set(`${l.kundeId}|${l.maaned}`, {
+          kundeId: l.kundeId, kundeNavn: navnFor(l.kundeId) || l.kunde?.navn || '—', maaned: l.maaned,
+          antallEnheter: l.grunnlag?.antallEnheter || 0, vektet: l.grunnlag?.sammendrag?.vektet ?? null,
+          sumEksMva: l.grunnlag?.sumEksMva || 0, mva: l.grunnlag?.mva || 0, sumInkMva: l.grunnlag?.sumInkMva || 0,
+          laast: { tid: l.laast, av: l.laastAv }, utkast: null, planNavn: l.plan?.navn || null,
+        });
+      }
+      for (const u of utkast) {
+        const k = `${u.kundeId}|${u.maaned}`;
+        const eks = rader.get(k) || { kundeId: u.kundeId, kundeNavn: navnFor(u.kundeId) || u.kundeNavn || '—', maaned: u.maaned, antallEnheter: u.antallEnheter || 0, vektet: u.vektet ?? null, sumEksMva: u.sumEksMva || 0, mva: Math.round((u.sumEksMva || 0) * 0.25), sumInkMva: Math.round((u.sumEksMva || 0) * 1.25), laast: null, planNavn: null };
+        eks.utkast = { id: u.id, env: u.env, status: u.status, gui: u.gui || null, opprettet: u.opprettet, selskap: u.selskap || null, poOrderNo: u.poOrderNo ?? null };
+        rader.set(k, eks);
+      }
+      const liste = [...rader.values()].sort((a, b) => (b.maaned.localeCompare(a.maaned)) || a.kundeNavn.localeCompare(b.kundeNavn));
+      const aarListe = [...new Set([...laaste, ...utkast].map((x) => String(x.maaned).slice(0, 4)))].sort().reverse();
+      return cors(NextResponse.json({ ok: true, aar, aarListe, fakturaer: liste, sum: liste.reduce((a, r) => ({ eks: a.eks + r.sumEksMva, ink: a.ink + r.sumInkMva }), { eks: 0, ink: 0 }) }));
+    }
+
     // ── PowerOffice: opprett fakturautkast (SalesOrder Draft) for lisensen ──
     // POST { kundeId, maaned, tvang? } → finn/opprett produkt + kunde i Go, lag et
     // USENDT Draft-utkast. Idempotent per kunde+måned+miljø (lagres i po_faktura_utkast).
     if (route === '/admin/pris/poweroffice/utkast' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      if (!poFellesKonfigurert()) return cors(NextResponse.json({ ok: false, feil: 'PowerOffice er ikke konfigurert (mangler app-/abonnementsnøkkel)' }, { status: 400 }));
       const body = await request.json().catch(() => ({}));
       const maaned = (String(body.maaned || '').match(/^\d{4}-\d{2}$/) ? body.maaned : prisForrigeMaaned());
       const alt = await prisHentAlt(db);
       const kunde = (alt.kunder || []).find((k) => k.id === body.kundeId);
       if (!kunde) return cors(NextResponse.json({ ok: false, feil: 'Ukjent kunde — lagre kunden først' }, { status: 404 }));
-      if (maaned >= new Date().toISOString().slice(0, 7)) return cors(NextResponse.json({ ok: false, feil: 'Måneden er ikke avsluttet — utkast kan først lages fra den 1. i måneden etter.' }, { status: 400 }));
-      let plan = (alt.planer || []).find((p) => p.id === kunde.planId) || (alt.planer || []).find((p) => p.standard) || (alt.planer || [])[0];
-
-      const ctx = await poFakturaCtx(db, alt.settings);
-      if (!ctx || !ctx.clientKey) return cors(NextResponse.json({ ok: false, feil: 'Mangler regnskaps-selskap (klientnøkkel) for fakturering — legg til selskapet under Regnskap.' }, { status: 400 }));
-
-      // Idempotent: finnes utkastet allerede, returneres det uendret — uten å fryse
-      // eller regne noe på nytt (et eldre utkast kan være laget med en annen modell).
-      const koll = db.collection('po_faktura_utkast');
-      const eksisterende = await koll.findOne({ kundeId: kunde.id, maaned, env: ctx.env });
-      if (eksisterende && body.tvang !== true) {
-        const { _id, ...ren } = eksisterende;
-        return cors(NextResponse.json({ ok: true, alleredeOpprettet: true, utkast: ren }));
-      }
-
-      // Grunnlaget FRYSES før utkastet lages (eller det frosne gjenbrukes). Da er
-      // fakturaen etterprøvbar selv om plattformens øyeblikksbilde endrer seg.
-      let laast = await prisHentLaast(db, kunde.id, maaned);
-      if (!laast) {
-        let rows = []; let antallRader = null;
-        if (kunde.enhetskilde === 'plattform') {
-          try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; antallRader = rows.length; }
-          catch (e) { return cors(NextResponse.json({ ok: false, feil: 'Fikk ikke hentet leieforhold fra plattformen — prøv igjen.' }, { status: 502 })); }
-        }
-        const g = prisBeregnGrunnlag(rows, plan, kunde, alt.settings, maaned);
-        if (!g.linjer.length) return cors(NextResponse.json({ ok: false, feil: 'Ingen fakturerbare enheter for denne måneden' }, { status: 400 }));
-        laast = (await prisLaasGrunnlag(db, { kunde, plan, settings: alt.settings, grunnlag: g, maaned, av: 'poweroffice', antallRader })).laast;
-      }
-      const grunnlag = laast.grunnlag;
-      if (laast.plan) plan = laast.plan;
-      if (!grunnlag.linjer.length) return cors(NextResponse.json({ ok: false, feil: 'Ingen fakturerbare enheter for denne måneden' }, { status: 400 }));
-
-      try {
-        const res = await poFakturaUtkast(ctx, { kunde, grunnlag, settings: alt.settings, maaned });
-        const doc = {
-          id: (eksisterende && eksisterende.id) || uuidv4(),
-          kundeId: kunde.id, kundeNavn: kunde.navn, maaned, env: ctx.env, selskap: ctx.selskapNavn || null,
-          poOrderId: res.poOrderId, poOrderNo: res.poOrderNo, poCustomerId: res.poCustomerId, poCustomerNo: res.poCustomerNo,
-          extRef: res.extRef, status: res.status, sumEksMva: res.sumEksMva, gui: res.gui,
-          grunnlagLaastId: laast.id || null, antallEnheter: grunnlag.antallEnheter || 0, vektet: grunnlag.sammendrag?.vektet ?? null,
-          opprettetKunde: res.opprettetKunde, opprettetProdukt: res.opprettetProdukt,
-          opprettet: new Date().toISOString(),
-        };
-        await koll.updateOne({ kundeId: kunde.id, maaned, env: ctx.env }, { $set: doc }, { upsert: true });
-        return cors(NextResponse.json({ ok: true, utkast: doc }));
-      } catch (e) {
-        const status = e.status === 403 ? 403 : 502;
-        const hint = e.status === 403 ? 'PowerOffice mangler skrivetilgang (SalesOrders_Full). Be PowerOffice aktivere det på integrasjonsnøkkelen.' : '';
-        return cors(NextResponse.json({ ok: false, feil: String(e.message || e).slice(0, 300), hint }, { status }));
-      }
+      const r = await opprettLisensUtkast(db, alt, kunde, maaned, { tvang: body.tvang === true });
+      return cors(NextResponse.json(r.body, { status: r.status }));
     }
     // GET ?maaned= → status for opprettede utkast (så UI kan vise «allerede opprettet»)
     if (route === '/admin/pris/poweroffice/utkast' && method === 'GET') {
@@ -5098,6 +5231,29 @@ async function handleRoute(request, { params }) {
       const maaned = (String(url.searchParams.get('maaned') || '').match(/^\d{4}-\d{2}$/) ? url.searchParams.get('maaned') : prisForrigeMaaned());
       const liste = await db.collection('po_faktura_utkast').find({ maaned }).toArray();
       return cors(NextResponse.json({ ok: true, maaned, konfigurert: poFellesKonfigurert(), env: PO_DEFAULT_ENV, utkast: liste.map((d) => { const { _id, ...ren } = d; return ren; }) }));
+    }
+    // DELETE ?kundeId=&maaned= → slett utkastet i Go (kun usendte) og fjern sporet lokalt.
+    // Er ordren allerede overført til faktura, nektes slettingen (409) — bilaget står.
+    if (route === '/admin/pris/poweroffice/utkast' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const url = new URL(request.url);
+      const kundeId = url.searchParams.get('kundeId') || '';
+      const maaned = (String(url.searchParams.get('maaned') || '').match(/^\d{4}-\d{2}$/) ? url.searchParams.get('maaned') : prisForrigeMaaned());
+      const koll = db.collection('po_faktura_utkast');
+      const doc = await koll.findOne({ kundeId, maaned });
+      if (!doc) return cors(NextResponse.json({ ok: false, feil: 'Fant ikke noe utkast for kunden og måneden' }, { status: 404 }));
+      let go = { slettet: false, fantesIkke: true };
+      if (doc.poOrderId) {
+        const alt = await prisHentAlt(db);
+        const selskaper = await db.collection('regnskap_selskaper').find({}).toArray();
+        const s = selskaper.find((x) => x.navn === doc.selskap) || null;
+        const ctx = s ? { clientKey: s.clientKey, env: s.env || PO_DEFAULT_ENV, selskapNavn: s.navn } : await poFakturaCtx(db, alt.settings).catch(() => null);
+        if (!ctx || !ctx.clientKey) return cors(NextResponse.json({ ok: false, feil: 'Mangler klientnøkkel for selskapet utkastet ble laget i' }, { status: 400 }));
+        try { go = await poSlettUtkast(ctx, doc.poOrderId); }
+        catch (e) { return cors(NextResponse.json({ ok: false, feil: `Utkastet (ordre ${doc.poOrderNo || doc.poOrderId}) kunne ikke slettes i Go — det er trolig allerede overført til faktura.`, hint: String(e.message || e).slice(0, 200) }, { status: 409 })); }
+      }
+      await koll.deleteOne({ _id: doc._id });
+      return cors(NextResponse.json({ ok: true, slettetIGo: go.slettet, fantesIkkeIGo: go.fantesIkke, poOrderNo: doc.poOrderNo ?? null }));
     }
 
 

@@ -8,7 +8,7 @@ import {
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
   ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User, Eye, EyeOff,
-  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar, Network, BookMarked, Camera, Presentation, Receipt, Tags, FileBarChart,
+  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar, Network, BookMarked, Camera, Presentation, Receipt, ReceiptText, FileBarChart,
 } from 'lucide-react';
 import Brukere from '@/components/admin/Brukere';
 import Salgsradar from '@/components/admin/Salgsradar';
@@ -28,7 +28,7 @@ import InvestorRoomTab from '@/components/admin/InvestorRoomTab';
 import DeckModul from '@/components/admin/DeckModul';
 import RegnskapModul from '@/components/admin/RegnskapModul';
 import Styrerapport from '@/components/admin/Styrerapport';
-import PrisModul from '@/components/admin/PrisModul';
+import FaktureringModul from '@/components/admin/FaktureringModul';
 import SeoAeoTab from '@/components/admin/SeoAeoTab';
 import TasksTab from '@/components/admin/TasksTab';
 import MeetingsTab from '@/components/admin/MeetingsTab';
@@ -69,10 +69,11 @@ const NAV = [
       { k: 'nokkeltall', l: 'Nøkkeltall', icon: TrendingUp, desc: 'Investorklare KPIer · CAC · LTV · konvertering' },
       { k: 'okonomi', l: 'Resultat & likviditet', icon: Wallet, desc: 'Resultat · likviditet · burn · runway (modell)' },
       { k: 'regnskap', l: 'Regnskap · PowerOffice', icon: Receipt, desc: 'Faktiske regnskapstall fra PowerOffice Go — resultat per måned, konto for konto og balanse' },
+      // Nøkkelen 'pris' beholdes (tilgangsstyring/lagrede moduler) — URL og navn er «fakturering».
+      { k: 'pris', l: 'Fakturering', icon: ReceiptText, desc: 'Lisensfakturering fra DigiHome Tech AS — månedskjøring, fakturaer, kunder, prisplaner og innstillinger' },
       { k: 'dr-resultat', datarom: 'resultat', l: 'Resultat', icon: BarChart3, desc: 'Månedlig resultat fra oppstart — inntekter, kostnader og akkumulert' },
       { k: 'budsjett', l: 'Budsjett', icon: Target, desc: 'Enkle periodebudsjetter — honorar fra leieforholdene, del med investorrommet om ønskelig' },
       { k: 'dr-enheter', datarom: 'enheter', l: 'Enhetsøkonomi', icon: Scale, desc: 'Hva én ny enhet er verdt — bidrag, CAC payback, LTV og prisverktøy' },
-      { k: 'pris', l: 'Pris', icon: Tags, desc: 'DigiHome Tech sin B2B-prisliste + faktureringsgrunnlag — konsernlisensen til DigiHome AS' },
     ],
   },
   {
@@ -154,6 +155,7 @@ const SECTION_TITLES = {
   playbook: { t: 'Playbook', s: 'Head of Marketing-strategi · Utleiemegleren-analyse · 90-dagersplan · budsjettmatematikk' },
   innsikt: { t: 'Analyse & vekst', s: 'Trafikk · leads · annonser · trakt · konkurrenter · ytelse · AI — førsteparts, cookieless, GDPR-trygt' },
   okonomi: { t: 'Økonomi', s: 'Resultat & likviditet · honorar (prosent av leie) · burn rate & runway' },
+  pris: { t: 'Fakturering', s: 'Lisensfakturering fra DigiHome Tech AS — månedskjøring, fakturaer, kunder, prisplaner og innstillinger' },
   leieforhold: { t: 'Leieforhold & inntekter', s: 'Inntektstrappen — leie i dag, sikret, pipeline og ledig · honorar & netto · Excel-eksport' },
   budsjett: { t: 'Budsjett', s: 'Velg fra/til måned — honorar hentes ferdig utfylt fra leieforholdene' },
   saker: { t: 'Saker', s: 'Internt sakssystem — fang, fordel og følg opp saker til de er ferdige. N = ny sak' },
@@ -211,7 +213,8 @@ const SLUG_TIL_SEKSJON = {
   nokkeltall: { section: 'nokkeltall' },
   okonomi: { section: 'okonomi' },
   regnskap: { section: 'regnskap' },
-  pris: { section: 'pris' },
+  fakturering: { section: 'pris' },
+  pris: { section: 'pris' }, // gammel adresse — normaliseres til /admin/fakturering ved første synk
   leieforhold: { section: 'leieforhold' },
   budsjett: { section: 'budsjett' },
   saker: { section: 'saker' },
@@ -266,7 +269,8 @@ const DATAROM_TAB_SLUG = {
 const seksjonTilSlug = (section, tab, dtab) => (
   section === 'innsikt' ? (INNSIKT_TAB_SLUG[tab] || 'oversikt')
     : section === 'datarom' ? (DATAROM_TAB_SLUG[dtab] || 'datarom')
-      : section
+      : section === 'pris' ? 'fakturering'
+        : section
 );
 
 
@@ -919,7 +923,7 @@ export default function AdminPage({ params }) {
           {section === 'seo' && <SeoAeoTab apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
           {section === 'regnskap' && <RegnskapModul apiKey={token} />}
-          {section === 'pris' && <PrisModul apiKey={token} />}
+          {section === 'pris' && <FaktureringModul apiKey={token} onNaviger={(k) => setSection(k)} />}
           {erBegrenset && begrensning.length === 0 && (
             <ComingSoon icon={Lock} title="Ingen moduler tildelt ennå" body="Kontoen din er opprettet, men ingen moduler er delt med deg riktig ennå. Be administratoren om å tildele modulene du skal se — de dukker opp her automatisk." />
           )}
