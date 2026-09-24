@@ -338,10 +338,19 @@ export default function PrisModul({ apiKey = '' }) {
     try { const r = await fetch(`/api/admin/pris/kunder?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(kUtkast) }); const d = await r.json(); if (d.ok) { await lastData(); await lastMrr(maaned); setOk('kunde'); setTimeout(() => setOk(''), 2000); setValgtKundeId(d.kunde.id); setKUtkast({ ...d.kunde }); } } catch (e) {}
     setLagrer(false);
   };
+  // Konsernintern kunde («forste») kan bare slettes hvis det finnes flere av den
+  // (rest fra gammel seeding) — da rydder vi, og utkastene flyttes på serveren.
+  const antForste = (data?.kunder || []).filter((k) => k.forste).length;
+  const kanSlette = Boolean(kUtkast?.id) && (!kUtkast?.forste || antForste > 1);
   const slettKunde = async () => {
-    if (!kUtkast?.id || kUtkast.forste) return;
-    if (!window.confirm(`Slette ${kUtkast.navn}?`)) return;
-    try { await fetch(`/api/admin/pris/kunder?${q}&id=${kUtkast.id}`, { method: 'DELETE' }); await lastData(); await lastMrr(maaned); lukkKunde(); } catch (e) {}
+    if (!kanSlette) return;
+    if (!window.confirm(kUtkast.forste ? `Slette duplikatet av ${kUtkast.navn}? PowerOffice-utkast flyttes til den som beholdes.` : `Slette ${kUtkast.navn}?`)) return;
+    try {
+      const r = await fetch(`/api/admin/pris/kunder?${q}&id=${kUtkast.id}`, { method: 'DELETE' });
+      const d = await r.json().catch(() => ({}));
+      if (!d.ok) { window.alert(d.feil || 'Kunne ikke slette kunden'); return; }
+      await lastData(); await lastMrr(maaned); lukkKunde();
+    } catch (e) {}
   };
 
   const velgPlan = (p) => { setValgtPlanId(p.id); setPUtkast({ ...p, trinn: p.trinn.map((t) => ({ ...t })) }); };
@@ -461,7 +470,7 @@ export default function PrisModul({ apiKey = '' }) {
                       ) : null}
                     </div>
                     <div className="mt-4 flex items-center justify-between">
-                      <button onClick={slettKunde} disabled={!kUtkast.id || kUtkast.forste} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-red-600/80 transition-colors hover:bg-red-50 disabled:opacity-30"><Trash2 className="h-4 w-4" /> Slett</button>
+                      <button onClick={slettKunde} disabled={!kanSlette} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-red-600/80 transition-colors hover:bg-red-50 disabled:opacity-30"><Trash2 className="h-4 w-4" /> Slett</button>
                       <button onClick={lagreKunde} disabled={!kUtkast.navn || lagrer} className="flex h-9 items-center gap-2 rounded-xl px-4 text-[13.5px] font-semibold text-white transition-all disabled:opacity-40" style={{ background: LILLA }}>{lagrer ? <Loader2 className="h-4 w-4 animate-spin" /> : ok === 'kunde' ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}{ok === 'kunde' ? 'Lagret' : 'Lagre kunde'}</button>
                     </div>
                   </Kort>
