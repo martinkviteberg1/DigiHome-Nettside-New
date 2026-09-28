@@ -84,6 +84,19 @@ export default function FakturaPanel({ q, kunde, plan, maaned, onEndret, kompakt
               {s ? <span className="ml-auto tabular-nums">{s.utleid} utleid · {s.ledig} ledig{s.delvis ? ` · ${s.delvis} delvis` : ''}</span> : null}
             </p>
           ) : null}
+          {/* Selvbetjente enheter — hvorfor tallet er lavere enn antall registrerte */}
+          {s?.selvbetjent ? (
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-black/[0.06] bg-black/[0.015] px-2.5 py-1.5 text-[11.5px] text-black/55">
+              <span className="font-semibold text-black/65">Selvbetjente</span>
+              <span className="tabular-nums">{s.selvbetjent.registrert} registrert</span>
+              <span className="text-black/25">·</span>
+              <span className="tabular-nums">{s.selvbetjent.medLeieforhold} med leieforhold</span>
+              {s.selvbetjent.prove ? <><span className="text-black/25">·</span><span className="tabular-nums text-emerald-700">{s.selvbetjent.prove} i prøveperiode</span></> : null}
+              {s.selvbetjent.dvale ? <><span className="text-black/25">·</span><span className="tabular-nums text-black/40">{s.selvbetjent.dvale} i dvale</span></> : null}
+              <span className="ml-auto rounded-md bg-white px-1.5 py-0.5 font-semibold tabular-nums text-black/70 ring-1 ring-black/[0.06]">→ {s.selvbetjent.fakturert} fakturert</span>
+              <span className="w-full text-[10.5px] text-black/35">{s.selvbetjent.regel === 'leieforhold' ? 'Teller kun måneder med leietaker (prorata)' : 'Følger kundens grunnlag'}{s.selvbetjent.proveDager ? ` · ${s.selvbetjent.proveDager} dager gratis fra første innflytting` : ''}{s.selvbetjent.dvaleDager ? ` · dvale etter ${s.selvbetjent.dvaleDager} dager uten leieforhold` : ''}</span>
+            </div>
+          ) : null}
 
           {/* Meta */}
           <div className="mt-4 grid grid-cols-3 gap-2 border-t border-black/[0.06] pt-4 text-[12px]">
@@ -141,6 +154,7 @@ export default function FakturaPanel({ q, kunde, plan, maaned, onEndret, kompakt
                           <td className="max-w-[180px] px-3.5 py-1.5 font-medium text-black/80" title={`${e.address || ''}${e.unit_room ? ` · ${e.unit_room}` : ''}`}>
                             <span className="block truncate">{e.address || e.enhet_id || '—'}</span>
                             {e.unit_room ? <span className="block truncate text-[10.5px] font-normal text-black/45">{e.unit_room}{e.romFaktor != null && e.romFaktor !== 100 ? ` · ${e.romFaktor} %` : ''}</span> : null}
+                            {e.type === 'selvbetjent' || e.dagerProve > 0 ? <span className="mt-0.5 flex flex-wrap gap-1">{e.type === 'selvbetjent' ? <span className="rounded bg-black/[0.05] px-1 py-px text-[9.5px] font-medium uppercase tracking-[0.04em] text-black/45">selvbetjent</span> : null}{e.dagerProve > 0 ? <span className="rounded bg-emerald-50 px-1 py-px text-[9.5px] font-medium text-emerald-700" title="Prøveperiode — dagene er trukket fra">{e.dagerProve} d prøve</span> : null}</span> : null}
                           </td>
                           <td className="max-w-[120px] truncate px-2 py-1.5" title={e.tenant_name}>{e.tenant_name ? e.tenant_name : (e.status === 'ledig' ? <Pille farge="#b45309" bg="rgba(180,83,9,0.08)">Ledig</Pille> : '—')}</td>
                           <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-black/50">{(e.move_in_date || e.move_out_date) ? `${perNb(e.move_in_date) || '—'}–${e.move_out_date ? perNb(e.move_out_date) : ''}` : '—'}</td>

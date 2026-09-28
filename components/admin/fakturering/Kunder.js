@@ -4,7 +4,7 @@
    som månedskjøringen), slik at kunde-editoren holder seg ren. */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Save, CheckCircle2, Loader2, X, Star, Server, Building2, ReceiptText, Users, Lock, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Save, CheckCircle2, Loader2, X, Star, Server, Building2, ReceiptText, Users, Lock, ChevronRight, Sparkles } from 'lucide-react';
 import { LILLA, fmt, fmtV, kr, mndLabel, datoNb, Kort, Felt, Nedtrekk, Bryter, StatusPille, Tomt, GRUNNLAG, STATUS, inputCls, knappPrimær, knappSekundær, th, thR, td, tdR } from './felles';
 import { FakturaSkuff } from './FakturaPanel';
 
@@ -104,9 +104,11 @@ export default function Kunder({ q, data, maaned, onLagret, tick }) {
                 ) : (
                   <Felt label="Hva som telles" hint={GRUNNLAG.find((g) => g.v === utkast.grunnlag)?.d}><Nedtrekk verdi={utkast.grunnlag} valg={GRUNNLAG} onChange={(v) => setUtkast({ ...utkast, grunnlag: v })} /></Felt>
                 )}
-                {utkast.enhetskilde === 'plattform' && planFor(utkast.planId)?.prisModell === 'per_type' ? (
+                {utkast.enhetskilde === 'plattform' && planFor(utkast.planId)?.prisModell === 'per_type' && planFor(utkast.planId)?.selvbetjentGrunnlag === 'kunde' ? (
                   <Felt label="Telles for selvbetjente"><Nedtrekk verdi={utkast.grunnlagSelvbetjent} valg={GRUNNLAG} onChange={(v) => setUtkast({ ...utkast, grunnlagSelvbetjent: v })} /></Felt>
-                ) : null}
+                ) : (utkast.enhetskilde === 'plattform' && (planFor(utkast.planId)?.selvbetjentGrunnlag || 'leieforhold') === 'leieforhold' ? (
+                  <div className="flex items-start gap-2 rounded-xl bg-black/[0.02] px-3 py-2.5 text-[11.5px] leading-[1.5] text-black/50"><Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: LILLA }} /><span>Selvbetjente enheter teller kun måneder med leietaker{(planFor(utkast.planId)?.selvbetjentProveDager ?? 30) > 0 ? `, med ${planFor(utkast.planId)?.selvbetjentProveDager ?? 30} dager prøveperiode` : ''} — styres på prisplanen «{planFor(utkast.planId)?.navn || ''}».</span></div>
+                ) : null)}
                 {utkast.enhetskilde === 'plattform' ? (
                   <div className="rounded-xl bg-black/[0.02] p-3 sm:col-span-2">
                     <Bryter på={utkast.prorata !== false} onChange={(v) => setUtkast({ ...utkast, prorata: v })} label="Prorata ved inn- og utflytting" hint={utkast.prorata !== false ? 'Enheten vektes med dager i måneden den var med (10 av 31 dager = 0,32). Rettferdig ved bytte av leietaker.' : 'Av: én dag i måneden teller som hel måned.'} />

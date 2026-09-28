@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import { Plus, Trash2, Save, CheckCircle2, Loader2, X, Layers } from 'lucide-react';
-import { LILLA, BLEKK, fmt, kr, Kort, Felt, Nedtrekk, TrinnEditor, Tomt, LEDIG_VALG, ROM_VALG, romValgVerdi, romValgTilPlan, eksempelBelop, inputCls, knappPrimær } from './felles';
+import { LILLA, BLEKK, fmt, kr, Kort, Felt, Nedtrekk, TrinnEditor, Tomt, LEDIG_VALG, ROM_VALG, romValgVerdi, romValgTilPlan, SELV_GRUNNLAG_VALG, PROVE_VALG, DVALE_VALG, eksempelBelop, inputCls, knappPrimær } from './felles';
 
 function Valgkort({ valg, verdi, onChange }) {
   return (
@@ -26,7 +26,7 @@ export default function Planer({ q, data, onLagret }) {
   const kunder = data?.kunder || [];
 
   const velg = (p) => { setValgtId(p.id); setUtkast({ ...p, trinn: p.trinn.map((t) => ({ ...t })) }); setOk(false); };
-  const ny = () => { setValgtId('ny'); setUtkast({ navn: '', beskrivelse: '', prisModell: 'blandet', trinn: [{ fraEnheter: 0, pris: 200 }], trinnModell: 'progressiv', selvbetjentPris: 79, minstepris: 0, ledigFaktor: 100, romModell: 'rom', romFaktor: 100, aktiv: true, standard: false }); };
+  const ny = () => { setValgtId('ny'); setUtkast({ navn: '', beskrivelse: '', prisModell: 'blandet', trinn: [{ fraEnheter: 0, pris: 200 }], trinnModell: 'progressiv', selvbetjentPris: 79, minstepris: 0, ledigFaktor: 100, romModell: 'rom', romFaktor: 100, selvbetjentGrunnlag: 'leieforhold', selvbetjentProveDager: 30, selvbetjentDvaleDager: 90, aktiv: true, standard: false }); };
   const lukk = () => { setValgtId(null); setUtkast(null); };
   const lagre = async () => {
     if (!utkast?.navn) return; setLagrer(true);
@@ -69,6 +69,7 @@ export default function Planer({ q, data, onLagret }) {
                   {(p.ledigFaktor ?? 100) !== 100 ? <span className="rounded-md bg-black/[0.04] px-2 py-1 text-[11.5px] text-black/60">ledige {p.ledigFaktor} %</span> : null}
                   {p.romModell === 'bolig' ? <span className="rounded-md bg-black/[0.04] px-2 py-1 text-[11.5px] text-black/60">bofellesskap = 1 enhet</span> : ((p.romFaktor ?? 100) !== 100 ? <span className="rounded-md bg-black/[0.04] px-2 py-1 text-[11.5px] text-black/60">rom {p.romFaktor} %</span> : null)}
                   {p.minstepris > 0 ? <span className="rounded-md bg-black/[0.04] px-2 py-1 text-[11.5px] tabular-nums text-black/60">min. {fmt(p.minstepris)} kr</span> : null}
+                  <span className="rounded-md bg-black/[0.04] px-2 py-1 text-[11.5px] text-black/60" title="Selvbetjente enheter">selvbetjent: {(p.selvbetjentGrunnlag || 'leieforhold') === 'leieforhold' ? 'kun m/ leieforhold' : 'som kunden'}{(p.selvbetjentProveDager ?? 30) > 0 ? ` · ${p.selvbetjentProveDager ?? 30} d prøve` : ''}{(p.selvbetjentDvaleDager ?? 90) > 0 ? ` · dvale ${p.selvbetjentDvaleDager ?? 90} d` : ''}</span>
                 </div>
               </button>
             );
@@ -125,6 +126,23 @@ export default function Planer({ q, data, onLagret }) {
                 <Felt label="Minstepris per måned (eks. mva)" hint={utkast.minstepris > 0 ? 'Er summen lavere, legges en justeringslinje på fakturaen.' : '0 = ingen minstepris. Dekker onboarding og support for små kunder.'}>
                   <div className="relative"><input type="number" min={0} step={10} value={utkast.minstepris ?? 0} onChange={(e) => setUtkast({ ...utkast, minstepris: Number(e.target.value) })} className={`${inputCls} pr-10`} placeholder="0" /><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-black/35">kr</span></div>
                 </Felt>
+              </div>
+
+              <div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-[12px] font-medium text-black/55">Selvbetjente enheter</span>
+                  <span className="text-[11px] text-black/40">Gratis å prøve — betal når det er ekte</span>
+                </div>
+                <Valgkort verdi={utkast.selvbetjentGrunnlag || 'leieforhold'} onChange={(v) => setUtkast({ ...utkast, selvbetjentGrunnlag: v })} valg={SELV_GRUNNLAG_VALG} />
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <Felt label="Prøveperiode" hint={(utkast.selvbetjentProveDager ?? 30) > 0 ? 'Regnes fra første innflytting vi har sett i enheten — gis én gang, ikke ved leietakerbytte.' : 'Fakturering fra første dag med leietaker.'}>
+                    <Nedtrekk verdi={String(utkast.selvbetjentProveDager ?? 30)} valg={PROVE_VALG} onChange={(v) => setUtkast({ ...utkast, selvbetjentProveDager: Number(v) })} />
+                  </Felt>
+                  <Felt label="Dvale" hint={(utkast.selvbetjentDvaleDager ?? 90) > 0 ? 'Enheter uten leieforhold så lenge telles ikke og vises som «i dvale». Rydder bort testere.' : 'Registrerte enheter telles så lenge de finnes (kun relevant med «Følg kundens grunnlag»).'}>
+                    <Nedtrekk verdi={String(utkast.selvbetjentDvaleDager ?? 90)} valg={DVALE_VALG} onChange={(v) => setUtkast({ ...utkast, selvbetjentDvaleDager: Number(v) })} />
+                  </Felt>
+                </div>
+                <p className="mt-2 text-[11.5px] leading-[1.5] text-black/40">Fakturaen viser alltid «N registrert · M med leieforhold · P i prøve · D i dvale → F fakturert», så det er sporbart hvorfor tallet er lavere enn antall registrerte. {utkast.prisModell === 'per_type' ? `Selvbetjente prises til ${utkast.selvbetjentPris} kr.` : 'Selvbetjente prises etter volumtrinnene (velg «Egen sats» over for lavere pris).'}</p>
               </div>
 
               <div className="flex items-center gap-5">

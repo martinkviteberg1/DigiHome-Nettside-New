@@ -25,7 +25,7 @@ import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads
 import { recordWonConversions } from '@/lib/closed-loop';
 import { runDueReminders } from '@/lib/reminders';
 import { hentLeieforhold } from '@/lib/leieforhold';
-import { hentAlt as prisHentAlt, lagreInnstillinger as prisLagreInnstillinger, lagrePlan as prisLagrePlan, slettPlan as prisSlettPlan, lagreKunde as prisLagreKunde, slettKunde as prisSlettKunde, beregnGrunnlag as prisBeregnGrunnlag, forrigeMaaned as prisForrigeMaaned, hentLaast as prisHentLaast, hentLaastForMaaned as prisHentLaastForMaaned, laasGrunnlag as prisLaasGrunnlag, laasOpp as prisLaasOpp } from '@/lib/pris';
+import { hentAlt as prisHentAlt, lagreInnstillinger as prisLagreInnstillinger, lagrePlan as prisLagrePlan, slettPlan as prisSlettPlan, lagreKunde as prisLagreKunde, slettKunde as prisSlettKunde, beregnGrunnlag as prisBeregnGrunnlag, beregnGrunnlagDb as prisBeregnGrunnlagDb, forrigeMaaned as prisForrigeMaaned, hentLaast as prisHentLaast, hentLaastForMaaned as prisHentLaastForMaaned, laasGrunnlag as prisLaasGrunnlag, laasOpp as prisLaasOpp } from '@/lib/pris';
 import { byggFaktura as prisByggFaktura } from '@/lib/faktura';
 import { fakturaPdf as prisFakturaPdf } from '@/lib/faktura-pdf';
 import { synkFraBrreg, hentOrganisasjon, lagrePerson, slettPerson, nyRolle, oppdaterRolle, slettRolle, oppdaterSelskap, hentEierbok, lagreEier, slettEier, lagreKlasse, slettKlasse, nyTransaksjon, slettTransaksjon, sokBrregEnheter, lagreStotte } from '@/lib/selskap';
@@ -2459,7 +2459,7 @@ async function opprettLisensUtkast(db, alt, kunde, maaned, { tvang = false } = {
       try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; antallRader = rows.length; }
       catch (e) { return svar(502, { ok: false, feil: 'Fikk ikke hentet leieforhold fra plattformen — prøv igjen.' }); }
     }
-    const g = prisBeregnGrunnlag(rows, plan, kunde, alt.settings, maaned);
+    const g = await prisBeregnGrunnlagDb(db, rows, plan, kunde, alt.settings, maaned);
     if (!g.linjer.length) return svar(400, { ok: false, feil: 'Ingen fakturerbare enheter for denne måneden' });
     laast = (await prisLaasGrunnlag(db, { kunde, plan, settings: alt.settings, grunnlag: g, maaned, av: 'poweroffice', antallRader })).laast;
   }
@@ -2500,7 +2500,7 @@ async function faktureringOversikt(db, maaned) {
     const laast = laaste.get(kunde.id) || null;
     let g;
     if (laast) g = laast.grunnlag;
-    else { const r = kunde.enhetskilde === 'plattform' ? await hentRows() : []; g = prisBeregnGrunnlag(r, planFor(kunde.planId), kunde, alt.settings, maaned); }
+    else { const r = kunde.enhetskilde === 'plattform' ? await hentRows() : []; g = await prisBeregnGrunnlagDb(db, r, planFor(kunde.planId), kunde, alt.settings, maaned); }
     const u = utkast.find((x) => x.kundeId === kunde.id) || null;
     const plan = planFor(kunde.planId);
     per.push({
@@ -5019,7 +5019,7 @@ async function handleRoute(request, { params }) {
         if (laast) return cors(NextResponse.json({ ok: true, grunnlag: laast.grunnlag, laast: laastInfo(laast) }));
         const plan = body.plan || planId(kunde.planId);
         const r = kunde.enhetskilde === 'plattform' ? await hentRows() : [];
-        return cors(NextResponse.json({ ok: true, grunnlag: prisBeregnGrunnlag(r, plan, kunde, alt.settings, maaned), laast: null }));
+        return cors(NextResponse.json({ ok: true, grunnlag: await prisBeregnGrunnlagDb(db, r, plan, kunde, alt.settings, maaned), laast: null }));
       }
       // GET ?kunde=<id> → én lagret kunde
       const kundeId = url.searchParams.get('kunde');
@@ -5029,7 +5029,7 @@ async function handleRoute(request, { params }) {
         const laast = await prisHentLaast(db, kunde.id, maaned);
         if (laast) return cors(NextResponse.json({ ok: true, kunde, grunnlag: laast.grunnlag, laast: laastInfo(laast) }));
         const r = kunde.enhetskilde === 'plattform' ? await hentRows() : [];
-        return cors(NextResponse.json({ ok: true, kunde, grunnlag: prisBeregnGrunnlag(r, planId(kunde.planId), kunde, alt.settings, maaned), laast: null }));
+        return cors(NextResponse.json({ ok: true, kunde, grunnlag: await prisBeregnGrunnlagDb(db, r, planId(kunde.planId), kunde, alt.settings, maaned), laast: null }));
       }
       // Uten kunde → alle kunder (MRR-oversikt). Frosne måneder leses som de ble låst.
       const laaste = await prisHentLaastForMaaned(db, maaned);
@@ -5038,7 +5038,7 @@ async function handleRoute(request, { params }) {
         const laast = laaste.get(kunde.id) || null;
         let g;
         if (laast) g = laast.grunnlag;
-        else { const r = kunde.enhetskilde === 'plattform' ? await hentRows() : []; g = prisBeregnGrunnlag(r, planId(kunde.planId), kunde, alt.settings, maaned); }
+        else { const r = kunde.enhetskilde === 'plattform' ? await hentRows() : []; g = await prisBeregnGrunnlagDb(db, r, planId(kunde.planId), kunde, alt.settings, maaned); }
         per.push({ kundeId: kunde.id, navn: kunde.navn, status: kunde.status, planId: kunde.planId, antallEnheter: g.antallEnheter, sumEksMva: g.sumEksMva, sumInkMva: g.sumInkMva, vektet: g.sammendrag?.vektet ?? null, laast: laastInfo(laast) });
       }
       const sum = per.reduce((a, p) => ({ enheter: a.enheter + p.antallEnheter, eks: a.eks + p.sumEksMva, ink: a.ink + p.sumInkMva }), { enheter: 0, eks: 0, ink: 0 });
@@ -5070,7 +5070,7 @@ async function handleRoute(request, { params }) {
         try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; antallRader = rows.length; }
         catch (e) { return cors(NextResponse.json({ ok: false, feil: 'Fikk ikke hentet leieforhold fra plattformen — grunnlaget ble ikke frosset.' }, { status: 502 })); }
       }
-      const grunnlag = prisBeregnGrunnlag(rows, plan, kunde, alt.settings, maaned);
+      const grunnlag = await prisBeregnGrunnlagDb(db, rows, plan, kunde, alt.settings, maaned);
       const r = await prisLaasGrunnlag(db, { kunde, plan, settings: alt.settings, grunnlag, maaned, av: 'manuell', antallRader });
       return cors(NextResponse.json({ ok: true, ...r }));
     }
@@ -5109,7 +5109,7 @@ async function handleRoute(request, { params }) {
       } else {
         let rows = [];
         if (kunde && kunde.enhetskilde === 'plattform') { try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { rows = []; } }
-        grunnlag = prisBeregnGrunnlag(rows, plan, kunde, alt.settings, maaned);
+        grunnlag = await prisBeregnGrunnlagDb(db, rows, plan, kunde, alt.settings, maaned);
       }
       const faktura = prisByggFaktura({ settings: alt.settings, plan, kunde, grunnlag, maaned, spesifiserPerEnhet: spesifiser, laast: laast ? { tid: laast.laast, av: laast.laastAv } : null });
 
@@ -5159,7 +5159,7 @@ async function handleRoute(request, { params }) {
           if (rows === false) { resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: false, feil: 'Plattformen svarte ikke' }); continue; }
           r = rows; antallRader = rows.length;
         }
-        const g = prisBeregnGrunnlag(r, planFor(kunde.planId), kunde, alt.settings, maaned);
+        const g = await prisBeregnGrunnlagDb(db, r, planFor(kunde.planId), kunde, alt.settings, maaned);
         if (!g.linjer.length) { resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: false, feil: 'Ingen fakturerbare enheter' }); continue; }
         const l = await prisLaasGrunnlag(db, { kunde, plan: planFor(kunde.planId), settings: alt.settings, grunnlag: g, maaned, av: 'manuell', antallRader });
         resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: true, alleredeLaast: l.alleredeLaast, sumEksMva: g.sumEksMva });

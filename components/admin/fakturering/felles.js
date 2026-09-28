@@ -46,6 +46,24 @@ export const ROM_VALG = [
   { v: 'bolig', l: 'Hele boligen = én enhet', d: 'Uavhengig av antall rom. Utleid-andel = utleide rom / alle rom.' },
 ];
 export const romValgVerdi = (p) => (p?.romModell === 'bolig' ? 'bolig' : `rom:${p?.romFaktor ?? 100}`);
+
+// Selvbetjente enheter — «gratis å prøve, betal når det er ekte»
+export const SELV_GRUNNLAG_VALG = [
+  { v: 'leieforhold', t: 'Kun med leieforhold', d: 'Teller bare måneder enheten har leietaker, prorata per dag. Test-enheter uten leietaker koster 0 kr.' },
+  { v: 'kunde', t: 'Følg kundens grunnlag', d: 'Samme regel som forvaltede enheter — registrerte enheter teller også når de står tomme.' },
+];
+export const PROVE_VALG = [
+  { v: '0', l: 'Ingen prøveperiode' },
+  { v: '30', l: '30 dager gratis fra første leietaker' },
+  { v: '60', l: '60 dager gratis fra første leietaker' },
+  { v: '90', l: '90 dager gratis fra første leietaker' },
+];
+export const DVALE_VALG = [
+  { v: '0', l: 'Aldri' },
+  { v: '60', l: 'Etter 60 dager uten leieforhold' },
+  { v: '90', l: 'Etter 90 dager uten leieforhold' },
+  { v: '180', l: 'Etter 180 dager uten leieforhold' },
+];
 export const romValgTilPlan = (v) => (v === 'bolig' ? { romModell: 'bolig' } : { romModell: 'rom', romFaktor: Number(String(v).split(':')[1]) || 100 });
 export const STATUS = {
   aktiv: { l: 'Aktiv', c: '#1f9d55', bg: 'rgba(31,157,85,0.1)' },

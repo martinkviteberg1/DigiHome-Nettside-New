@@ -1,6 +1,17 @@
 # PRD — DigiHome markedsside (Next.js) · oppdatert 2. juli 2026
 
 ## Siste leveranser (sesjon · sep 2026)
+00. **Selvbetjente enheter — «gratis å prøve, betal når det er ekte» (modell v4).** Nye planfelt m/
+   opsjoner i Prisplaner → «Selvbetjente enheter»: `selvbetjentGrunnlag` leieforhold (default; teller
+   kun måneder med leietaker, alltid prorata) | kunde (som forvaltede); `selvbetjentProveDager` 0/30/60/90
+   (default 30, fra FØRSTE innflytting — gis én gang, ikke ved leietakerbytte); `selvbetjentDvaleDager`
+   0/60/90/180 (default 90; enhet uten leieforhold så lenge telles ikke). Enhetsminne `pris_enhet_minne`
+   (forstSett/sistSett/forsteInnflytting/sisteUtflytting/sistUtleid per enhet_id; oppdateres av
+   `beregnGrunnlagDb`, maks hvert 10. min). `sammendrag.selvbetjent` {registrert, medLeieforhold, prove,
+   dvale, fakturert} vises i faktura-skuff, månedskjøring-rad («2/4 selvbetj.») og PDF; spesifiser-linjer
+   viser «· selvbetjent» og «(X d prøve trukket)». Kunder-editor: «Telles for selvbetjente» kun når planen
+   følger kundens grunnlag. Effekt DigiHome AS aug 2026: 29 → 27 enheter, 5 562 → 5 162 kr.
+   Enhetstest `_perf/test_selvbetjent.mjs` 38/38, backend-agent 9/9.
 0. **Fakturering-modul (erstatter Pris-modulen) — ekte økonomimodul.** Admin-meny «Fakturering»
    (nøkkel `pris` beholdt for tilgangsstyring; URL `/admin/fakturering`, `/admin/pris` normaliseres).
    `components/admin/FaktureringModul.js` + `fakturering/{felles,Maanedskjoring,Fakturaer,Kunder,
