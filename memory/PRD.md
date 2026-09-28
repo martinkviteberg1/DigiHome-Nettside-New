@@ -1,6 +1,18 @@
 # PRD — DigiHome markedsside (Next.js) · oppdatert 2. juli 2026
 
 ## Siste leveranser (sesjon · sep 2026)
+000. **Leieforhold — datakvalitet (rett i appen, aldri stille hos oss).** Funn fra brukers sammenligning
+   med appen: (a) Øvregaten 15/Helene: appens kontrakt har sluttdato = startdato + terminert 08.08 men
+   status active → vises likt begge steder (rettes i appen); (b) Tullins gate 6 hybel/Jonathan: VÅR
+   cache-tilbakefyll arvet forrige leietakers sluttdato → fikset (lease-felt fylles kun ved samme
+   leietaker, utflytting aldri); (c) honorar-KPI 40 562 vs appens 35 042 = tre rader beregnet fra avtalt
+   sats (Olaf Ryes vei 11C 10 %, Lien 7 15 %, Nygårdsvegen 27 5 %) der appen viser 0 til første oppgjør.
+   Selvbetjening = 5 % (bekreftet av eier): Lien 7 har 15 % i avtalen → merket «Avvik». Nytt:
+   `rad.kvalitet[]` (samme_dag, terminert_men_aktiv, sats_avvik, avtalt_ikke_fakturert),
+   `totals.fee_avtalt_ikke_fakturert/-antall/kvalitet_antall`, badge SJEKK/AVVIK/AVTALT i tabell+mobil,
+   KPI-subline «hvorav X kr avtalt · ikke fakturert i appen ennå», skuff-seksjon «Datakvalitet», Excel
+   kolonne P «Merknad». `FORVENTET_SATS_INKL = { Selvbetjening: 5 }` i lib/leieforhold.js. Backend 10/10.
+   Bi-funn: appens Excel «Sats» er inkl. mva (10) mens appens skjerm viser eks. (8 %) — meldes app-teamet.
 00. **Selvbetjente enheter — «gratis å prøve, betal når det er ekte» (modell v4).** Nye planfelt m/
    opsjoner i Prisplaner → «Selvbetjente enheter»: `selvbetjentGrunnlag` leieforhold (default; teller
    kun måneder med leietaker, alltid prorata) | kunde (som forvaltede); `selvbetjentProveDager` 0/30/60/90

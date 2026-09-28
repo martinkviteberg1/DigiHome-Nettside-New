@@ -25,7 +25,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   KeyRound, Search, Download, FileSpreadsheet, RefreshCw, ChevronDown, ChevronRight,
   Check, AlertTriangle, Megaphone, Pencil, X,
-  FileText, ExternalLink, SlidersHorizontal, CalendarClock, Eye, HelpCircle,
+  FileText, ExternalLink, SlidersHorizontal, CalendarClock, Eye, HelpCircle, Info,
 } from 'lucide-react';
 import {
   TOM_FILTER, anvendScenario, filtrerRader, antallAktiveFiltre, harFilter,
@@ -165,6 +165,50 @@ function StatusChip({ row }) {
   );
 }
 
+/* Datakvalitet: plattformens rådata kan være inkonsistente (sluttdato = startdato,
+   terminert men aktiv, selvbetjening med feil sats). Vi retter aldri stille —
+   raden får et merke med forklaring og hva som må rettes i appen. */
+const KVALITET_STIL = {
+  feil: { farge: '#b91c1c', bg: '#fee2e2', ring: 'rgba(185,28,28,0.18)' },
+  advarsel: { farge: '#b45309', bg: '#fef3c7', ring: 'rgba(180,83,9,0.18)' },
+  info: { farge: '#6d28d9', bg: '#ede9fe', ring: 'rgba(109,40,217,0.16)' },
+};
+const kvalitetAlvor = (r) => {
+  const k = Array.isArray(r?.kvalitet) ? r.kvalitet : [];
+  if (k.some((x) => x.alvor === 'feil')) return 'feil';
+  if (k.some((x) => x.alvor === 'advarsel')) return 'advarsel';
+  return k.length ? 'info' : null;
+};
+function KvalitetMerke({ r, kompakt = true }) {
+  const k = Array.isArray(r?.kvalitet) ? r.kvalitet : [];
+  if (!k.length) return null;
+  const alvor = kvalitetAlvor(r);
+  const s = KVALITET_STIL[alvor];
+  const Ikon = alvor === 'info' ? Info : AlertTriangle;
+  const tittel = k.map((x) => `• ${x.tekst}`).join('\n');
+  if (kompakt) {
+    return (
+      <span className="ml-1.5 inline-flex h-[16px] items-center gap-1 rounded-[4px] px-1 align-middle text-[9px] font-bold uppercase tracking-wide" style={{ color: s.farge, background: s.bg }} title={tittel} data-testid="kvalitet-merke">
+        <Ikon className="h-2.5 w-2.5" /> {alvor === 'feil' ? 'Sjekk' : alvor === 'advarsel' ? 'Avvik' : 'Avtalt'}
+      </span>
+    );
+  }
+  return (
+    <div className="space-y-1.5">
+      {k.map((x) => {
+        const st = KVALITET_STIL[x.alvor] || KVALITET_STIL.info;
+        const I = x.alvor === 'info' ? Info : AlertTriangle;
+        return (
+          <div key={x.kode} className="flex items-start gap-2 rounded-[8px] px-2.5 py-2 text-[11.5px] leading-[1.45]" style={{ color: st.farge, background: st.bg }}>
+            <I className="mt-[2px] h-3.5 w-3.5 shrink-0" />
+            <span>{x.tekst}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function AdresseCelle({ r }) {
   const erRom = r.unit_type === 'Rom i bofellesskap';
   const [gate, ...resten] = String(r.address || '').split(',');
@@ -173,11 +217,12 @@ function AdresseCelle({ r }) {
   const sub = [omraade, r.bolig_type || (erRom ? 'Rom' : '')].filter(Boolean).join(' · ');
   return (
     <>
-      <p className="max-w-[240px] truncate text-[12.5px] font-medium text-[#1c1917]" title={r.address}>
+      <p className="max-w-[260px] truncate text-[12.5px] font-medium text-[#1c1917]" title={r.address}>
         {(gate || '').trim() || '—'}
         {erRom && (
           <span className="ml-1.5 rounded-[4px] bg-[#f4f0fb] px-1 py-[1px] text-[9px] font-bold uppercase tracking-wide text-[#8b5cf6]">{r.enhet_detalj || 'Rom'}</span>
         )}
+        <KvalitetMerke r={r} />
       </p>
       {sub && <p className="mt-[1px] max-w-[240px] truncate text-[10.5px] text-[#a8a29a]">{sub}</p>}
     </>
@@ -873,6 +918,15 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 <p className="text-[21px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading}>{laster ? '…' : <TallOpp verdi={honorarTrapp.iDag} />}</p>
                 <p className="truncate text-[10.5px] tabular-nums text-[#b3ada3]">→ {honorarTrapp.estFull ? '≈' : ''}{kr(honorarTrapp.potensial)} full utleie</p>
               </div>
+              {(() => {
+                const avtalt = (filtrert || []).filter((r) => r.group === 'leased' && r.fee_from_agreement);
+                const sum = avtalt.reduce((s, r) => s + (r.fee_amount || 0), 0);
+                return sum > 0 ? (
+                  <p className="relative mt-0.5 truncate text-[10px] tabular-nums text-[#8b5cf6]" title={`${avtalt.map((r) => `${String(r.address || '').split(',')[0]} · ${kr(r.fee_amount)}`).join('\n')}\n\nAppen viser 0 kr for disse til første oppgjør er kjørt — derfor er appens KPI ${kr(honorarTrapp.iDag - sum)}.`} data-testid="lf-avtalt-subline">
+                    hvorav {kr(sum)} avtalt · ikke fakturert i appen ennå ({avtalt.length})
+                  </p>
+                ) : null;
+              })()}
               <div className="relative mt-1.5 flex h-[3px] w-full gap-[2px] overflow-hidden rounded-full bg-[#f4f2ee]">
                 {[[honorarTrapp.iDag, '#7c3aed'], [honorarTrapp.sikret - honorarTrapp.iDag, '#a78bfa'], [honorarTrapp.medAnnonsert - honorarTrapp.sikret, '#c4b5fd'], [honorarTrapp.potensial - honorarTrapp.medAnnonsert, '#e5dcfa']].map(([v, f], i) => (
                   (v || 0) > 0 ? <span key={i} className="rounded-full transition-all duration-700" style={{ width: `${honorarTrapp.potensial > 0 ? Math.max(0, Math.min(100, (v / honorarTrapp.potensial) * 100)) : 0}%`, background: f }} /> : null
@@ -1086,7 +1140,9 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                       <td className="whitespace-nowrap px-3 py-2 text-[12px] text-[#78716c]">{r.move_in_date ? dato(r.move_in_date) : '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[12px]">
                         {r.move_out_date
-                          ? <span className="text-[#78716c]">{dato(r.move_out_date)}</span>
+                          ? (r.move_in_date && String(r.move_in_date).slice(0, 10) === String(r.move_out_date).slice(0, 10)
+                            ? <span className="rounded-[4px] bg-[#fee2e2] px-1.5 py-[2px] text-[11px] font-semibold text-[#b91c1c]" title="Utflytting = innflytting — sluttdato er satt lik startdato i appen. Sjekk kontrakten.">{dato(r.move_out_date)}</span>
+                            : <span className="text-[#78716c]">{dato(r.move_out_date)}</span>)
                           : r.tenant_name
                             ? <span className="rounded-[4px] bg-[#e7f4ec] px-1.5 py-[2px] text-[10px] font-semibold text-[#1f7a45]">Løpende</span>
                             : <span className="text-[#78716c]">—</span>}
@@ -1108,7 +1164,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                       </td>
                       <td className={`whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums ${r.group === 'leased' ? 'font-semibold' : ''}`} style={{ color: r.group === 'leased' ? '#7c3aed' : '#c2beb8' }} title={estimatFor(r) ? (estimatFor(r).avtalt ? 'Estimert av avtalt sats — forvaltningsavtalen venter signering' : 'Estimert honorar (porteføljens snittsats) — forvaltningsavtalen mangler sats') : r.group === 'leased' ? 'Realisert honorar' : 'Potensielt honorar — ikke realisert ennå'}>
                         {(() => {
-                          if (r.fee_amount) return kr(r.fee_amount);
+                          if (r.fee_amount) return <span className="inline-flex items-center gap-1">{r.fee_from_agreement ? <span className="rounded-[3px] bg-[#ede9fe] px-1 py-[1px] text-[8.5px] font-bold uppercase tracking-wide text-[#6d28d9]" title="Beregnet fra avtalt sats — appen viser 0 kr til første oppgjør er kjørt">avtalt</span> : null}{kr(r.fee_amount)}</span>;
                           const e = estimatFor(r);
                           return e ? <span style={{ color: '#a78bfa' }}>~{kr(e.honorar)}</span> : '—';
                         })()}
@@ -1158,6 +1214,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                           {r.unit_type === 'Rom i bofellesskap' && (
                             <span className="ml-1.5 rounded-[4px] bg-[#f4f0fb] px-1 py-[1px] text-[9px] font-bold uppercase tracking-wide text-[#8b5cf6]">Rom</span>
                           )}
+                          <KvalitetMerke r={r} />
                         </p>
                         <p className="mt-0.5 truncate text-[11px] text-[#a8a29a]">{r.address}</p>
                       </div>
@@ -1240,11 +1297,18 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
               </div>
 
               <div className="flex-1 px-5 pb-6">
+                {Array.isArray(r.kvalitet) && r.kvalitet.length ? (
+                  <div className="mb-4" data-testid="leieforhold-skuff-kvalitet">
+                    <p className="mb-1.5 text-[9.5px] font-bold uppercase tracking-[0.09em] text-[#b5b0a8]">Datakvalitet · rettes i appen</p>
+                    <KvalitetMerke r={r} kompakt={false} />
+                  </div>
+                ) : null}
                 <Seksjon t="Leieforhold">
                   <Rad l="Leietaker" v={r.tenant_name || '—'} />
                   <Rad l="Beløp / mnd" v={r.monthly_rent ? kr(r.monthly_rent) : 'Ikke satt'} />
                   <Rad l="Innflytting" v={r.move_in_date ? dato(r.move_in_date) : '—'} />
-                  <Rad l="Utflytting" v={r.move_out_date ? dato(r.move_out_date) : (r.tenant_name ? 'Løpende' : '—')} farge={!r.move_out_date && r.tenant_name ? '#1f7a45' : undefined} />
+                  <Rad l="Utflytting" v={r.move_out_date ? dato(r.move_out_date) : (r.tenant_name ? 'Løpende' : '—')} farge={!r.move_out_date && r.tenant_name ? '#1f7a45' : (r.move_out_date && r.move_in_date && String(r.move_in_date).slice(0, 10) === String(r.move_out_date).slice(0, 10) ? '#b91c1c' : undefined)} />
+                  {r.lease_terminated_at ? <Rad l="Terminert i appen" v={dato(r.lease_terminated_at)} farge="#b91c1c" /> : null}
                   <Rad l="Depositum" v={r.deposit != null ? kr(r.deposit) : '—'} />
                 </Seksjon>
 
