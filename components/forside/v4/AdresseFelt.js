@@ -28,9 +28,9 @@ function postFraSub(sub = '') {
 
 /* variant: 'lilla' (standard) eller 'ink' — mørk knapp, så lilla kan reserveres for «Godkjenn».
    stil: 'boks' (pill med ramme) eller 'linje' — én typografisk setning med hårlinje under (heroen).
-   Linje-stilen: i ro bare tekst + linje; fokus/hover tegner en myk, varm flate bak og linjen blir lilla
-   (samme lilla som punktumet i tittelen — «her handler du»). Pilen i enden er ink og vokser til
-   «Sjekk adressen» når du skriver. På mobil er flaten alltid på (44 px trykkflate, ingen hover). */
+   Linje-stilen: i ro bare tekst + hårlinje + en tynn sirkel; linjen «tegnes» i ink ved fokus, sirkelen
+   fylles når adressen kan sjekkes. Lilla lever kun i careten (punktumet i tittelen). Forslagene
+   kommer i et lett, svevende panel i feltets bredde. Ingen flater, ingen piller. */
 export default function AdresseFelt({ className = '', onValgt, variant = 'lilla', gjennomsiktig = false, stil = 'boks' }) {
   const ink = variant === 'ink';
   const linje = stil === 'linje';
@@ -142,10 +142,12 @@ export default function AdresseFelt({ className = '', onValgt, variant = 'lilla'
     ? { background: fokus ? 'rgba(251,250,248,0.82)' : 'rgba(251,250,248,0.58)', backdropFilter: 'blur(18px) saturate(1.15)', WebkitBackdropFilter: 'blur(18px) saturate(1.15)' }
     : { background: '#FBFAF8' };
 
-  /* ── Linje-stil: én setning i heroens skala, hårlinje under, pil i enden ── */
+  /* ── Linje-stil: én setning i heroens skala, hårlinje under, en sirkel i enden ──
+     Ett system, ingen flater: i ro er det tekst + linje + en tynn sirkel. Linjen «tegnes» i ink når du
+     går inn i feltet; sirkelen fylles når adressen kan sjekkes. Lilla lever kun i careten — som
+     punktumet i tittelen. Forslagene kommer i et lett, svevende panel i nøyaktig samme bredde. */
   if (linje) {
     const harTekst = verdi.trim().length >= 3;
-    const aktivFlate = fokus || hover;
     const inputEgenskaper = {
       ref: inputRef,
       type: 'text',
@@ -166,87 +168,79 @@ export default function AdresseFelt({ className = '', onValgt, variant = 'lilla'
       'aria-activedescendant': aktiv >= 0 ? `${listeId}-${aktiv}` : undefined,
       readOnly: sender,
     };
+    const q = verdi.trim().toLowerCase();
+    // Uthev den delen av forslaget som matcher det du har skrevet — stille, med vekt, ikke farge.
+    const uthev = (tekst) => {
+      const t = String(tekst || '');
+      const i = q ? t.toLowerCase().indexOf(q) : -1;
+      if (i < 0) return t;
+      return (<>{t.slice(0, i)}<span className="font-medium text-[#15130F]">{t.slice(i, i + q.length)}</span>{t.slice(i + q.length)}</>);
+    };
     return (
       <div ref={boksRef} className={`relative ${className}`} data-testid="v4-adressefelt" data-stil="linje">
         <form onSubmit={send} role="search" aria-label="Start med din adresse" className="relative">
           <div
-            className="relative flex items-center gap-3"
+            className="relative flex items-center gap-4"
             onPointerEnter={() => setHover(true)}
             onPointerLeave={() => setHover(false)}
           >
-            {/* Den varme flaten: usynlig i ro på desktop, glir inn ved hover/fokus. Alltid på under sm (trykkflate). */}
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 -bottom-1 -top-1 rounded-[14px] opacity-100 sm:-inset-x-4 sm:rounded-[16px] sm:opacity-0"
-              style={{
-                background: 'rgba(21,19,15,0.04)',
-                opacity: aktivFlate ? 1 : undefined,
-                transform: aktivFlate ? 'scale(1)' : 'scale(0.985)',
-                transition: `opacity 220ms ${EASE}, transform 320ms ${EASE}`,
-              }}
-            />
             <input
               {...inputEgenskaper}
-              className="relative h-14 min-w-0 flex-1 appearance-none border-0 bg-transparent px-4 text-[22px] sm:px-0 tracking-[-0.012em] text-[#15130F] shadow-none outline-none ring-0 placeholder:text-[#15130F]/40 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:outline-none sm:h-16 sm:text-[28px]"
+              className="relative h-14 min-w-0 flex-1 appearance-none border-0 bg-transparent px-0 text-[22px] font-normal tracking-[-0.014em] text-[#15130F] shadow-none outline-none ring-0 placeholder:text-[#15130F]/[0.38] focus:shadow-none focus:outline-none focus:ring-0 focus-visible:outline-none sm:h-[68px] sm:text-[30px]"
               style={{ outline: 'none', boxShadow: 'none', WebkitAppearance: 'none', caretColor: T.lilla, opacity: sender ? 0.45 : 1, transition: `opacity 260ms ${EASE}` }}
               data-testid="v4-adresse-input"
             />
-            {/* Pilen: ink-sirkel i ro; vokser til «Sjekk adressen» når du skriver (desktop). Alltid 44 px trykkflate. */}
+            {/* Sirkelen: tynn kontur i ro → fylles i ink når adressen kan sjekkes. 44 px, alltid. */}
             <button
               type="submit"
               aria-label={harTekst ? 'Sjekk adressen' : 'Skriv inn adressen først'}
+              title={harTekst ? 'Sjekk adressen' : undefined}
               disabled={sender}
-              className="relative mr-2 flex h-11 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-60 sm:mr-0"
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-60"
               style={{
-                background: '#15130F',
-                paddingLeft: harTekst ? 18 : 0,
-                paddingRight: harTekst ? 14 : 0,
-                width: harTekst ? 'auto' : 44,
-                opacity: harTekst || aktivFlate ? 1 : 0.82,
-                transform: aktivFlate && !harTekst ? 'scale(1.04)' : 'scale(1)',
-                transition: `padding 260ms ${EASE}, opacity 200ms ${EASE}, transform 260ms ${EASE}, background-color 200ms ${EASE}`,
+                background: harTekst ? '#15130F' : 'transparent',
+                color: harTekst ? '#FFFFFF' : 'rgba(21,19,15,0.62)',
+                boxShadow: harTekst ? 'none' : `inset 0 0 0 1px rgba(21,19,15,${fokus || hover ? 0.42 : 0.22})`,
+                transform: harTekst && (fokus || hover) ? 'scale(1.04)' : 'scale(1)',
+                transition: `background-color 260ms ${EASE}, color 260ms ${EASE}, box-shadow 260ms ${EASE}, transform 260ms ${EASE}`,
               }}
               data-testid="v4-adresse-knapp"
             >
-              <span
-                className="hidden overflow-hidden whitespace-nowrap text-[14.5px] font-medium sm:inline-block"
-                style={{ maxWidth: harTekst ? 160 : 0, opacity: harTekst ? 1 : 0, marginRight: harTekst ? 8 : 0, transition: `max-width 280ms ${EASE}, opacity 200ms ${EASE}, margin 260ms ${EASE}` }}
-              >
-                Sjekk adressen
-              </span>
               {sender ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                <span className="h-4 w-4 animate-spin rounded-full border-[1.5px] border-white/30 border-t-white" />
               ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
               )}
             </button>
           </div>
-          {/* Hårlinjen — mørk nok i ro (kontrast), lilla og 2 px når du er i feltet. */}
-          <span
-            aria-hidden
-            className="relative block w-full"
-            style={{
-              height: 2,
-              background: fokus ? T.lilla : 'rgba(21,19,15,0.34)',
-              transform: fokus ? 'scaleY(1)' : 'scaleY(0.5)',
-              transformOrigin: 'bottom',
-              transition: `background-color 220ms ${EASE}, transform 220ms ${EASE}`,
-            }}
-          />
+          {/* Linjen: hårfin i ro, mørkere ved hover — og «tegnes» i ink fra venstre når du går inn i feltet. */}
+          <span aria-hidden className="relative block h-px w-full" style={{ background: `rgba(21,19,15,${hover && !fokus ? 0.38 : 0.2})`, transition: `background-color 220ms ${EASE}` }}>
+            <span
+              className="absolute inset-y-0 left-0 w-full"
+              style={{
+                background: '#15130F',
+                transform: fokus ? 'scaleX(1)' : 'scaleX(0)',
+                transformOrigin: 'left',
+                transition: `transform 380ms ${EASE}`,
+              }}
+            />
+          </span>
 
-          {/* Forslag: ren liste på lerretet — hårlinjer, ingen kort, ingen skygge. Samme venstrekant som teksten. */}
+          {/* Forslag: et lett panel i nøyaktig feltets bredde — hårlinje, myk skygge, luft. */}
           <ul
             id={listeId}
             role="listbox"
             aria-label="Adresseforslag"
-            className="absolute inset-x-0 top-full z-30"
+            className="absolute inset-x-0 z-30 rounded-[18px] p-2"
             style={{
-              background: T.canvas,
-              borderBottom: '1px solid rgba(21,19,15,0.12)',
+              top: 'calc(100% + 12px)',
+              background: '#FDFCFA',
+              boxShadow: '0 0 0 1px rgba(21,19,15,0.07), 0 1px 2px rgba(21,19,15,0.04), 0 28px 56px -20px rgba(21,19,15,0.22)',
               opacity: apen ? 1 : 0,
-              transform: apen ? 'none' : 'translateY(-4px)',
+              transform: apen ? 'translateY(0) scale(1)' : 'translateY(-6px) scale(0.985)',
+              transformOrigin: 'top center',
               pointerEvents: apen ? 'auto' : 'none',
-              transition: `opacity 160ms ${EASE}, transform 160ms ${EASE}`,
+              transition: `opacity 180ms ${EASE}, transform 220ms ${EASE}`,
             }}
             data-testid="v4-adresse-forslag"
           >
@@ -258,11 +252,11 @@ export default function AdresseFelt({ className = '', onValgt, variant = 'lilla'
                 aria-selected={i === aktiv}
                 onPointerDown={(e) => { e.preventDefault(); velg(s); }}
                 onMouseEnter={() => setAktiv(i)}
-                className={`flex cursor-pointer items-baseline justify-between gap-4 px-4 py-3.5 text-left text-[17px] sm:-mx-2 sm:rounded-[8px] sm:px-2 sm:text-[18px] ${i > 0 ? 'border-t border-[#15130F]/[0.08]' : ''}`}
-                style={{ background: i === aktiv ? 'rgba(21,19,15,0.045)' : 'transparent', transition: 'background 120ms' }}
+                className="flex cursor-pointer items-baseline justify-between gap-4 rounded-[12px] px-3.5 py-3 text-left text-[16.5px] sm:px-4 sm:text-[17px]"
+                style={{ background: i === aktiv ? 'rgba(21,19,15,0.045)' : 'transparent', transition: `background-color 140ms ${EASE}` }}
               >
-                <span className="truncate text-[#15130F]">{s.text}</span>
-                <span className="shrink-0 text-[14px] text-[#15130F]/50">{s.sub}</span>
+                <span className="truncate text-[#15130F]/[0.78]">{uthev(s.text)}</span>
+                <span className="shrink-0 text-[13.5px] tabular-nums text-[#15130F]/45">{s.sub}</span>
               </li>
             ))}
           </ul>

@@ -1,13 +1,13 @@
 # PRD — DigiHome markedsside (Next.js) · oppdatert 2. juli 2026
 
 ## Siste leveranser (sesjon · sep 2026)
-0000. **Adressefeltet i heroen — «én setning med en linje under».** `AdresseFelt` har ny `stil="linje"`
-   (boks-stilen beholdt): tekst i heroens skala (22/28 px), hårlinje (ink 34 %) som blir lilla 2 px ved fokus,
-   lilla caret (= punktumet i tittelen), ink-pil (44 px) som vokser til «Sjekk adressen →» når du skriver,
-   myk varm flate bak ved hover/fokus (alltid på under sm — trykkflate), forslagsliste som ren liste på
-   lerretet (hårlinjer, ingen kort/skygge). Standard på forsiden (`ForsideV4`) og /boligeiere; `?hero=boks`
-   viser gammel pill for sammenligning (leses på klienten — siden forblir statisk). Finalen
-   (`AvslutningSeksjon`, mørkt foto) beholder lys pill bevisst. Enter + pil-klikk → /bli-utleier/start verifisert.
+0000. **Adressefeltet i heroen — «én setning med en linje under» (v2, raffinert etter tilbakemelding).**
+   `AdresseFelt` `stil="linje"` (boks-stilen beholdt): tekst 22/30 px, hårlinje (ink 20 %, 38 % ved hover)
+   som «tegnes» i ink fra venstre ved fokus (scaleX 380 ms), lilla caret (= punktumet i tittelen), 44 px
+   sirkel: tynn kontur i ro → fylt ink når ≥3 tegn. INGEN grå flate, INGEN pille/tekstknapp (v1 ble
+   avvist: «tre systemer på én gang»). Forslag i lett svevende panel i feltets bredde (#FDFCFA, radius 18,
+   hårlinje-ring + myk skygge, 12 px under linjen, treff uthevet med vekt). Standard på forsiden
+   (`ForsideV4`) og /boligeiere; `?hero=boks` viser gammel pill. Finalen beholder lys pill på mørkt foto.
 000. **Leieforhold — datakvalitet (rett i appen, aldri stille hos oss).** Funn fra brukers sammenligning
    med appen: (a) Øvregaten 15/Helene: appens kontrakt har sluttdato = startdato + terminert 08.08 men
    status active → vises likt begge steder (rettes i appen); (b) Tullins gate 6 hybel/Jonathan: VÅR
