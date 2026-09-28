@@ -105,11 +105,11 @@ export default function BoligeiereV4({ label = 'For boligeiere', tittel = 'Bolig
               <span className="sm:hidden">{ingressKort || 'Én bolig eller fem. Lei ut selv, med et system som tar rutinen — eller la oss ta alt.'}</span>
               <span className="hidden sm:inline">{ingressLang || 'Én bolig eller fem. Lei ut selv, med et system som tar rutinen — eller la en fast forvalter hos oss ta alt. Du har oversikten og siste ord uansett.'}</span>
             </p>
-            {/* Handlingen er feltet. relative z-20: forslagslisten skal ligge over scenen. */}
-            <div className="dh-cover-inn relative z-20 mx-auto mt-7 w-full max-w-[520px] sm:mt-9" style={{ animationDelay: '.14s' }}>
-              <AdresseFelt onValgt={valgt} variant="ink" />
+            {/* Handlingen er feltet — samme setning-med-linje som forsiden. relative z-20: forslagslisten over scenen. */}
+            <div className="dh-cover-inn relative z-20 mx-auto mt-8 w-full max-w-[560px] sm:mt-11 sm:max-w-[640px]" style={{ animationDelay: '.14s' }}>
+              <AdresseFelt onValgt={valgt} variant="ink" stil="linje" />
             </div>
-            <p className="dh-cover-inn mt-4 text-[13.5px] sm:text-[14px]" style={{ color: 'rgba(21,19,15,0.5)', animationDelay: '.2s' }} data-testid="v4b-under">
+            <p className="dh-cover-inn mt-5 text-[13.5px] sm:text-[14px]" style={{ color: 'rgba(21,19,15,0.5)', animationDelay: '.2s' }} data-testid="v4b-under">
               {under || 'Hele Norge · ingen bindingstid · fra 5 % av husleien'}
             </p>
           </div>

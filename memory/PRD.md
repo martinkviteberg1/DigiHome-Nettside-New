@@ -1,6 +1,13 @@
 # PRD — DigiHome markedsside (Next.js) · oppdatert 2. juli 2026
 
 ## Siste leveranser (sesjon · sep 2026)
+0000. **Adressefeltet i heroen — «én setning med en linje under».** `AdresseFelt` har ny `stil="linje"`
+   (boks-stilen beholdt): tekst i heroens skala (22/28 px), hårlinje (ink 34 %) som blir lilla 2 px ved fokus,
+   lilla caret (= punktumet i tittelen), ink-pil (44 px) som vokser til «Sjekk adressen →» når du skriver,
+   myk varm flate bak ved hover/fokus (alltid på under sm — trykkflate), forslagsliste som ren liste på
+   lerretet (hårlinjer, ingen kort/skygge). Standard på forsiden (`ForsideV4`) og /boligeiere; `?hero=boks`
+   viser gammel pill for sammenligning (leses på klienten — siden forblir statisk). Finalen
+   (`AvslutningSeksjon`, mørkt foto) beholder lys pill bevisst. Enter + pil-klikk → /bli-utleier/start verifisert.
 000. **Leieforhold — datakvalitet (rett i appen, aldri stille hos oss).** Funn fra brukers sammenligning
    med appen: (a) Øvregaten 15/Helene: appens kontrakt har sluttdato = startdato + terminert 08.08 men
    status active → vises likt begge steder (rettes i appen); (b) Tullins gate 6 hybel/Jonathan: VÅR

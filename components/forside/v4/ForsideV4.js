@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import NavV4 from './NavV4';
@@ -67,6 +67,12 @@ export default function ForsideV4({ bilde = null, produkt = 'ramme' }) {
   const valgt = useCallback(() => {}, []);
   const eiendom = null;
   useForvarm();
+  /* Heroens felt: 'linje' (én setning + hårlinje) er standard. ?hero=boks viser den gamle pillen
+     for sammenligning — leses på klienten så siden forblir statisk. */
+  const [heroStil, setHeroStil] = useState('linje');
+  useEffect(() => {
+    try { if (new URLSearchParams(window.location.search).get('hero') === 'boks') setHeroStil('boks'); } catch (e) { /* ignorer */ }
+  }, []);
 
   return (
     <div className="min-h-screen overflow-x-clip antialiased" style={{ background: T.canvas, color: T.ink }} data-testid="forside-v4">
@@ -87,10 +93,11 @@ export default function ForsideV4({ bilde = null, produkt = 'ramme' }) {
                 <span className="sm:hidden">Annonse, husleie og saker går automatisk. Du godkjenner det som koster.</span>
                 <span className="hidden sm:inline">Annonsen skrives, husleien kreves inn, leietakeren får svar.<br className="hidden md:inline" /> Du godkjenner det som koster.</span>
               </p>
-              {/* Handlingen er feltet. Ink-knapp: lilla er reservert for det ene du gjør i scenen — «Godkjenn». */}
-              <div className="dh-cover-inn relative z-20 mx-auto mt-7 w-full max-w-[520px] sm:mt-9" style={{ animationDelay: '.14s' }}>
-                <AdresseFelt onValgt={valgt} variant="ink" />
-                <p className="mt-3.5 text-[14.5px]" style={{ color: 'rgba(21,19,15,0.6)' }}>
+              {/* Handlingen er feltet — én setning med en linje under, i heroens egen skala. Ink-pil: lilla er
+                  reservert for det ene du gjør i scenen — «Godkjenn» — og for linjen/careten når du skriver. */}
+              <div className={`dh-cover-inn relative z-20 mx-auto mt-8 w-full sm:mt-11 ${heroStil === 'linje' ? 'max-w-[560px] sm:max-w-[640px]' : 'max-w-[520px]'}`} style={{ animationDelay: '.14s' }}>
+                <AdresseFelt onValgt={valgt} variant="ink" stil={heroStil} />
+                <p className={`text-[14.5px] ${heroStil === 'linje' ? 'mt-5 text-center' : 'mt-3.5'}`} style={{ color: 'rgba(21,19,15,0.6)' }}>
                   Skal du bare lage en leiekontrakt? <Link href="/utleier/husleiekontrakt" className="font-medium underline underline-offset-4 transition-colors hover:decoration-current" style={{ color: T.ink, textDecorationColor: 'rgba(21,19,15,0.28)' }}>Lag en gratis husleiekontrakt</Link> med BankID.
                 </p>
               </div>
