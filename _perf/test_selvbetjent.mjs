@@ -20,7 +20,7 @@ const ledigSelv = (id, ekstra = {}) => ({ enhet_id: id, address: `S ${id}`, serv
   const g = beregnGrunnlag([forv('f1'), ledigSelv('s1')], planStd, kunde, settings, '2026-08');
   ok('1 antall', g.antallEnheter, 1);
   ok('1 sum', g.sumEksMva, 200);
-  ok('1 selv', g.sammendrag.selvbetjent, { registrert: 1, medLeieforhold: 0, prove: 0, dvale: 0, fakturert: 0, regel: 'leieforhold', proveDager: 30, dvaleDager: 90 });
+  ok('1 selv', g.sammendrag.selvbetjent, { registrert: 1, medLeieforhold: 0, prove: 0, dvale: 0, fakturert: 0, forRegistrering: 0, regel: 'leieforhold', proveDager: 30, dvaleDager: 90 });
 }
 // 2) Selvbetjent med leietaker siden januar → full enhet (prøve utløpt)
 {
@@ -85,7 +85,7 @@ const ledigSelv = (id, ekstra = {}) => ({ enhet_id: id, address: `S ${id}`, serv
 {
   const g = beregnGrunnlag([forv('f1'), selv('s1'), selv('s2', { move_in_date: '2026-08-15' }), ledigSelv('s3')], planPerType, kunde, settings, '2026-08');
   ok('8 linjer', g.linjer.map((l) => [l.type, l.belop]), [['forvaltet', 200], ['selvbetjent', 79]]);
-  ok('8 selv', g.sammendrag.selvbetjent, { registrert: 3, medLeieforhold: 2, prove: 1, dvale: 0, fakturert: 1, regel: 'leieforhold', proveDager: 30, dvaleDager: 90 });
+  ok('8 selv', g.sammendrag.selvbetjent, { registrert: 3, medLeieforhold: 2, prove: 1, dvale: 0, fakturert: 1, forRegistrering: 0, regel: 'leieforhold', proveDager: 30, dvaleDager: 90 });
   ok('8 antall', g.antallEnheter, 2);
 }
 // 9) Blandet: forvaltet + selvbetjent under samme trinn, progressivt over 49
@@ -133,6 +133,54 @@ const ledigSelv = (id, ekstra = {}) => ({ enhet_id: id, address: `S ${id}`, serv
   ok('14 utleid_mnd antall', u.antallEnheter, 1);
   const m = beregnGrunnlag([forv('f1')], { ...planStd, minstepris: 990 }, kunde, settings, '2026-08');
   ok('14 minstepris', [m.sumEksMva, m.linjer.at(-1).type], [990, 'minstepris']);
+}
+
+// 15) REGISTRERING PÅ PLATTFORMEN: enhet lagt inn i september med leietaker siden 2021
+{
+  const gammelLeietaker = selv('s1', { move_in_date: '2021-03-01', registrert: '2026-09-10' });
+  // August: fantes ikke → telles ikke, verken i antall eller stats.fakturert
+  const aug = beregnGrunnlag([gammelLeietaker], planStd, kunde, settings, '2026-08');
+  ok('15 aug antall', aug.antallEnheter, 0);
+  ok('15 aug sum', aug.sumEksMva, 0);
+  ok('15 aug forRegistrering', aug.sammendrag?.selvbetjent?.forRegistrering ?? null, 1);
+  // September: registrert 10.9 → 21 utleide dager, men prøven (30 d) starter 10.9 → alt gratis
+  const sep = beregnGrunnlag([gammelLeietaker], planStd, kunde, settings, '2026-09');
+  ok('15 sep sum', sep.sumEksMva, 0);
+  ok('15 sep stats', [sep.sammendrag.selvbetjent.medLeieforhold, sep.sammendrag.selvbetjent.prove, sep.sammendrag.selvbetjent.fakturert], [1, 1, 0]);
+  // Oktober: prøve til 9.10 → 22 av 31 dager fakturert
+  const okt = beregnGrunnlag([gammelLeietaker], planStd, kunde, settings, '2026-10');
+  nær('15 okt vekt', okt.linjer[0].vekt, 22 / 31);
+  ok('15 okt ny-flagg', okt.linjer[0].enheter[0].nyIMaaneden, false);
+  ok('15 okt registrert', okt.linjer[0].enheter[0].registrert, '2026-09-10');
+  // Uten prøve: september = 21/30
+  const sepUtenProve = beregnGrunnlag([gammelLeietaker], { ...planStd, selvbetjentProveDager: 0 }, kunde, settings, '2026-09');
+  nær('15 sep u/prøve', sepUtenProve.linjer[0].vekt, 21 / 30);
+  ok('15 sep ny-flagg', sepUtenProve.linjer[0].enheter[0].nyIMaaneden, true);
+  ok('15 sep nye', sepUtenProve.sammendrag.nye, 1);
+}
+// 16) Registrering gjelder også FORVALTEDE enheter (grunnlag 'alle'): lagt inn 20.8 → aug 12/31
+{
+  const f = forv('f1', { move_in_date: '2024-01-01', forvaltning_start: '2024-01-01', registrert: '2026-08-20' });
+  const aug = beregnGrunnlag([f], planStd, kunde, settings, '2026-08');
+  nær('16 aug vekt', aug.linjer[0].vekt, 12 / 31);
+  ok('16 aug nye', aug.sammendrag.nye, 1);
+  const jul = beregnGrunnlag([f], planStd, kunde, settings, '2026-07');
+  ok('16 jul ikke med', [jul.antallEnheter, jul.sammendrag?.forRegistrering ?? null], [0, null]);
+  // uten prorata: registrert i måneden → hel enhet (kundens valg)
+  const augU = beregnGrunnlag([f], planStd, { ...kunde, prorata: false }, settings, '2026-08');
+  ok('16 aug u/prorata', augU.linjer[0].vekt, 1);
+}
+// 17) Registrert-dato fra minnet når raden mangler den
+{
+  const minne = new Map([['s1', { enhet_id: 's1', registrert: '2026-09-10', forsteInnflytting: '2021-03-01' }]]);
+  const aug = beregnGrunnlag([selv('s1', { move_in_date: '2021-03-01' })], planStd, kunde, settings, '2026-08', { minne });
+  ok('17 aug via minne', aug.antallEnheter, 0);
+}
+// 18) Bofellesskap 'bolig': rom registrert i ulike måneder → bare eksisterende rom teller
+{
+  const rom = (n, reg) => forv(`b1:rom-${n}`, { unit_type: 'Rom i bofellesskap', unit_room: `Rom ${n}`, move_in_date: '2025-01-01', forvaltning_start: '2025-01-01', registrert: reg });
+  const g = beregnGrunnlag([rom(1, '2026-01-01'), rom(2, '2026-01-01'), rom(3, '2026-09-15')], { ...planStd, romModell: 'bolig' }, kunde, settings, '2026-08');
+  ok('18 aug bolig', [g.antallEnheter, g.linjer[0].enheter[0].rom], [1, 2]);
 }
 
 console.log(`${pass} PASS, ${fail} FAIL`);

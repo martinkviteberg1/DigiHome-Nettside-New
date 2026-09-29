@@ -18,6 +18,8 @@ export const AMBER = '#b45309';
 export const fmt = (n) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(Math.round(Number(n) || 0));
 export const fmtV = (n) => { const x = Number(n) || 0; return Number.isInteger(x) ? fmt(x) : new Intl.NumberFormat('nb-NO', { minimumFractionDigits: 1, maximumFractionDigits: 2 }).format(x); };
 export const kr = (n) => `${fmt(n)} kr`;
+// «Johannes Bruns gate 6, 5008 Bergen, Norge» → uten landet (speiler lib/faktura.adresseKort)
+export const adresseKort = (adr) => String(adr || '').replace(/,?\s*(Norge|Norway)\s*$/i, '').replace(/\s+/g, ' ').trim();
 const MND = ['januar', 'februar', 'mars', 'april', 'mai', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'desember'];
 const MND_KORT = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
 export const mndLabel = (ym) => { const [y, m] = String(ym).split('-').map(Number); return `${MND[(m || 1) - 1]} ${y}`; };

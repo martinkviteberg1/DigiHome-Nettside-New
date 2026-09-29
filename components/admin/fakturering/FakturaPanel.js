@@ -6,7 +6,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ReceiptText, Loader2, Lock, Unlock, MapPin, ChevronRight, Download, Eye, Landmark, CheckCircle2, ArrowUpRight, FileText, X, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
-import { LILLA, BLEKK, GRONN, AMBER, fmt, fmtV, kr, mndLabel, datoNb, perNb, Pille, useFaktura } from './felles';
+import { LILLA, BLEKK, GRONN, AMBER, fmt, fmtV, kr, mndLabel, datoNb, perNb, adresseKort, Pille, useFaktura } from './felles';
 
 export function PdfModal({ url, tittel, onLukk }) {
   useEffect(() => { const h = (e) => { if (e.key === 'Escape') onLukk(); }; window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h); }, [onLukk]);
@@ -105,19 +105,33 @@ export default function FakturaPanel({ q, kunde, plan, maaned, onEndret, kompakt
             <div><p className="text-black/40">Forfall</p><p className="mt-0.5 font-medium tabular-nums text-black/75">{datoNb(faktura?.forfallsDato) || '—'}</p></div>
           </div>
 
-          {/* Linjer */}
+          {/* Linjer — per enhet grupperes de under produktnavnet, med markører (ny/prøve/ledig/delvis) */}
           <div className="mt-4 space-y-2.5 border-t border-black/[0.06] pt-4">
-            {(faktura?.linjer || []).map((l, i) => (
-              <div key={i} className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[13.5px] font-medium text-black/80">{l.beskrivelse}</p>
-                  <p className="text-[12px] text-black/45">
-                    {l.type === 'minstepris' ? 'Sum under planens minstepris' : (l.vekt !== l.antall ? `${fmtV(l.vekt)} av ${fmt(l.antall)} (vektet)` : `${fmtV(l.antall)} enhet${l.antall === 1 ? '' : 'er'}`)}{l.type === 'minstepris' ? '' : ` × ${kr(l.pris)}`}
-                  </p>
-                </div>
-                <p className="shrink-0 text-[14px] font-semibold tabular-nums text-black/85">{kr(l.belop)}</p>
-              </div>
-            ))}
+            {(faktura?.linjer || []).map((l, i, arr) => {
+              const nyGruppe = l.gruppe && l.gruppe !== arr[i - 1]?.gruppe;
+              const antallIGruppe = l.gruppe ? arr.filter((x) => x.gruppe === l.gruppe).length : 0;
+              return (
+                <React.Fragment key={i}>
+                  {nyGruppe ? (
+                    <div className={`flex items-baseline justify-between gap-3 ${i > 0 ? 'mt-3 border-t border-black/[0.05] pt-3' : ''}`}>
+                      <p className="text-[13px] font-semibold text-black/75">{l.gruppe}</p>
+                      <p className="text-[11.5px] text-black/40">{antallIGruppe} enhet{antallIGruppe === 1 ? '' : 'er'}</p>
+                    </div>
+                  ) : null}
+                  <div className={`flex items-start justify-between gap-3 ${l.gruppe ? 'pl-3' : ''}`}>
+                    <div className="min-w-0">
+                      <p className={`break-words ${l.gruppe ? 'text-[13px] text-black/75' : 'text-[13.5px] font-medium text-black/80'}`}>{l.beskrivelse}</p>
+                      {l.detalj ? <p className="text-[11px] text-black/40">{l.detalj}</p> : null}
+                      <p className="flex flex-wrap items-center gap-x-1.5 text-[12px] text-black/45">
+                        <span>{l.type === 'minstepris' ? 'Sum under planens minstepris' : (l.vekt !== l.antall ? `${fmtV(l.vekt)}${l.gruppe ? '' : ` av ${fmt(l.antall)} (vektet)`}` : `${fmtV(l.antall)} enhet${l.antall === 1 ? '' : 'er'}`)}{l.type === 'minstepris' ? '' : ` × ${kr(l.pris)}`}</span>
+                        {(l.merker || []).map((mk) => <span key={mk.k} className={`rounded px-1 py-px text-[10px] font-medium ${mk.k === 'ny' || mk.k === 'prove' ? 'bg-emerald-50 text-emerald-700' : mk.k === 'ledig' ? 'bg-black/[0.05] text-black/45' : mk.k === 'delvis' ? 'bg-amber-50 text-amber-700' : 'bg-black/[0.05] text-black/50'}`}>{mk.t}</span>)}
+                      </p>
+                    </div>
+                    <p className={`shrink-0 tabular-nums ${l.gruppe ? 'text-[13px] font-medium text-black/75' : 'text-[14px] font-semibold text-black/85'}`}>{kr(l.belop)}</p>
+                  </div>
+                </React.Fragment>
+              );
+            })}
             {tom ? <p className="text-[13px] text-black/40">Ingen enheter i grunnlaget for {mndLabel(maaned)}.</p> : null}
           </div>
 
@@ -151,16 +165,16 @@ export default function FakturaPanel({ q, kunde, plan, maaned, onEndret, kompakt
                     <tbody className="text-black/70">
                       {spec.map((e, i) => (
                         <tr key={i} className="border-b border-black/[0.04] last:border-0">
-                          <td className="max-w-[180px] px-3.5 py-1.5 font-medium text-black/80" title={`${e.address || ''}${e.unit_room ? ` · ${e.unit_room}` : ''}`}>
-                            <span className="block truncate">{e.address || e.enhet_id || '—'}</span>
-                            {e.unit_room ? <span className="block truncate text-[10.5px] font-normal text-black/45">{e.unit_room}{e.romFaktor != null && e.romFaktor !== 100 ? ` · ${e.romFaktor} %` : ''}</span> : null}
+                          <td className="max-w-[200px] px-3.5 py-1.5 font-medium text-black/80" title={`${e.address || ''}${e.detalj || e.unit_room ? ` · ${e.detalj || e.unit_room}` : ''}`}>
+                            <span className="block break-words">{adresseKort(e.address) || e.enhet_id || '—'}{e.erRom && e.unit_room ? <span className="text-black/50"> · {String(e.unit_room).match(/\brom\s*\d+/i)?.[0] || ''}</span> : null}</span>
+                            {(e.detalj || e.unit_room) ? <span className="block text-[10.5px] font-normal text-black/45">{e.unit_type === 'Bofellesskap' ? e.unit_room : (e.detalj || e.unit_room).replace(/\s*·\s*rom\s*\d+\s*$/i, '')}{e.romFaktor != null && e.romFaktor !== 100 ? ` · ${e.romFaktor} %` : ''}</span> : null}
                             {e.type === 'selvbetjent' || e.dagerProve > 0 ? <span className="mt-0.5 flex flex-wrap gap-1">{e.type === 'selvbetjent' ? <span className="rounded bg-black/[0.05] px-1 py-px text-[9.5px] font-medium uppercase tracking-[0.04em] text-black/45">selvbetjent</span> : null}{e.dagerProve > 0 ? <span className="rounded bg-emerald-50 px-1 py-px text-[9.5px] font-medium text-emerald-700" title="Prøveperiode — dagene er trukket fra">{e.dagerProve} d prøve</span> : null}</span> : null}
                           </td>
                           <td className="max-w-[120px] truncate px-2 py-1.5" title={e.tenant_name}>{e.tenant_name ? e.tenant_name : (e.status === 'ledig' ? <Pille farge="#b45309" bg="rgba(180,83,9,0.08)">Ledig</Pille> : '—')}</td>
                           <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-black/50">{(e.move_in_date || e.move_out_date) ? `${perNb(e.move_in_date) || '—'}–${e.move_out_date ? perNb(e.move_out_date) : ''}` : '—'}</td>
                           <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-black/50">{e.status === 'ledig' ? `0/${e.dagerForvaltet ?? ''}` : (e.status === 'delvis' ? `${e.dager}/${e.dagerForvaltet}` : (e.dager ?? ''))}</td>
                           <td className="px-2 py-1.5 text-right tabular-nums text-black/50">{e.vekt != null ? fmtV(e.vekt) : ''}</td>
-                          <td className="px-3.5 py-1.5 text-right font-medium tabular-nums text-black/85">{kr(e.belop)}</td>
+                          <td className="whitespace-nowrap px-3.5 py-1.5 text-right font-medium tabular-nums text-black/85">{kr(e.belop)}</td>
                         </tr>
                       ))}
                     </tbody>

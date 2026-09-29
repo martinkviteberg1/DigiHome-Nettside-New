@@ -94,6 +94,12 @@ export default function Kunder({ q, data, maaned, onLagret, tick }) {
                 <Felt label="Kundenavn"><input value={utkast.navn} onChange={(e) => setUtkast({ ...utkast, navn: e.target.value })} className={inputCls} placeholder="F.eks. Bergen Eiendom AS" /></Felt>
                 <Felt label="Org.nr" hint={!/\d{9}/.test(String(utkast.orgnr || '').replace(/\s/g, '')) ? 'Kreves for EHF-levering' : undefined}><input value={utkast.orgnr} onChange={(e) => setUtkast({ ...utkast, orgnr: e.target.value })} className={inputCls} placeholder="9 siffer" /></Felt>
                 <Felt label="Faktura-e-post" hint={!String(utkast.epost || '').includes('@') ? 'Kreves for PDF på e-post' : undefined}><input value={utkast.epost} onChange={(e) => setUtkast({ ...utkast, epost: e.target.value })} className={inputCls} placeholder="faktura@…" /></Felt>
+                <Felt label="Deres referanse" hint="Vises på fakturaen (f.eks. kontaktperson eller PO-nummer)"><input value={utkast.referanse || ''} onChange={(e) => setUtkast({ ...utkast, referanse: e.target.value })} className={inputCls} placeholder="Valgfritt" /></Felt>
+                <Felt label="Fakturaadresse"><input value={utkast.adresse || ''} onChange={(e) => setUtkast({ ...utkast, adresse: e.target.value })} className={inputCls} placeholder="Gateadresse" /></Felt>
+                <div className="grid grid-cols-[110px_1fr] gap-3">
+                  <Felt label="Postnr"><input value={utkast.postnr || ''} onChange={(e) => setUtkast({ ...utkast, postnr: e.target.value })} className={inputCls} placeholder="0000" /></Felt>
+                  <Felt label="Sted"><input value={utkast.sted || ''} onChange={(e) => setUtkast({ ...utkast, sted: e.target.value })} className={inputCls} placeholder="Sted" /></Felt>
+                </div>
                 <Felt label="Prisplan"><Nedtrekk verdi={utkast.planId} valg={planer.map((p) => ({ v: p.id, l: p.navn }))} onChange={(v) => setUtkast({ ...utkast, planId: v })} /></Felt>
                 <Felt label="Status"><Nedtrekk verdi={utkast.status} valg={Object.entries(STATUS).map(([v, s]) => ({ v, l: s.l }))} onChange={(v) => setUtkast({ ...utkast, status: v })} /></Felt>
                 <Felt label="Enhetskilde" hint={utkast.enhetskilde === 'plattform' ? 'Teller enheter fra plattformens leieforhold' : 'Sett antall manuelt inntil kunden er på plattformen'}>

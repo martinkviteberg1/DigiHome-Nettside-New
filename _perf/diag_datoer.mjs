@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+const env = Object.fromEntries(fs.readFileSync('/app/.env', 'utf8').split('\n').filter((l) => l.includes('=') && !l.startsWith('#')).map((l) => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim().replace(/^"|"$/g, '')]; }));
+const base = (env.DIGIHOME_API_URL_PROD || 'https://app.digihome.no').replace(/\/+$/, '');
+const key = env.DIGIHOME_API_KEY_PROD || env.DIGIHOME_API_KEY;
+const get = async (p) => { const r = await fetch(`${base}${p}`, { headers: { 'X-API-Key': key }, signal: AbortSignal.timeout(30000) }); if (!r.ok) throw new Error(`${p} → ${r.status}`); return r.json(); };
+const [li, un, co] = await Promise.all([get('/api/lease-income/export?limit=500'), get('/api/units/export?limit=500'), get('/api/contracts/export?status=all&limit=500')]);
+const rows = li.rows || []; const units = un.units || []; const contracts = co.contracts || [];
+console.log('LEASE-INCOME felter:', Object.keys(rows[0] || {}).join(', '));
+console.log('UNITS felter:', Object.keys(units[0] || {}).join(', '));
+console.log('CONTRACTS felter:', Object.keys(contracts[0] || {}).join(', '));
+const datoFelt = (o) => Object.fromEntries(Object.entries(o).filter(([k, v]) => /date|_at$|At$|start|created|since|registered/i.test(k) && v));
+for (const r of rows) if (/Lien 7|Loddefjordveien|Nygårdsvegen 27|Knøsesmauet/.test(r.address)) console.log('\nLI', r.address, JSON.stringify(datoFelt(r)));
+for (const u of units) if (/Lien 7|Loddefjordveien|Nygårdsvegen 27|Knøsesmauet/.test(u?.address?.full || '')) console.log('UN', u.address.full, JSON.stringify(datoFelt(u)), 'ownerSince?', JSON.stringify(datoFelt(u.owner || {})));
+for (const c of contracts) if (/Lien 7|Loddefjordveien|Nygårdsvegen 27|Knøsesmauet/.test(c?.property?.address || '')) console.log('CO', c.type, c.property.address, JSON.stringify(datoFelt(c)));
