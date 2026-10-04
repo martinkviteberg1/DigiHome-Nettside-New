@@ -8536,6 +8536,19 @@ frontend:
         -agent: "main"
         -comment: "v2 (egen scrollside) ble avvist som «AI-slop». v3 kopierer layouten fra AFA-repoets InvitationPage.tsx 1:1 (12-kolonners rutenett, klebrig venstremarg m/ kapittelnummer+kicker, Statement som måles mot kolonnen, Rows/Cells m/ hårlinjer, 4:5-portretter i gråtone, term sheet på mørk flate, Rise/whileInView, fremdriftslinje). Tekstene er skrevet om i AFA-brevets register (hele setninger, personlig, konkret). Kapitler: brev, 01 Hvorfor dere, 02 Målbildet, 03 Hva vi bygger (+EierApp), 04 Tech og forvaltning, 05 Teamet, 06 Hvor vi står (live-tall per 04.10.2026: 39 enheter, ~540 000 kr/mnd), 07 Tilbudet (10 % · 10 MNOK · ingen vesting), 08 Som medeiere, 09 Hva skjer herfra. Aksent #7F3FBF (lys) / #D496FF (mørk). Diatype 500 til titler (som Inter 500 i forbildet). Gate restylet (.brev-gate). Skjermbildeverifisert 1920/390, scrollWidth==clientWidth. Frontend-testagent IKKE kjørt (krever tillatelse). Gamle deck-filer (Deck.js, cine.js, demo.js, slides/, register.js, DeckPrint.js, deck.css, theme.js, content.js) ligger ubrukt – slettes ved godkjenning."
 
+  - task: "SAMARBEID v4 – ekte produktmockups (forvalterens oversikt + eierens mobilhjem) gjenskapt fra DigiHome-repoet, ny hero/footer, tech-fokusert innhold, laget framover (7 personer)"
+    implemented: true
+    working: "NA"
+    file: "/app/components/samarbeid/brev/produkt.js (NY), /app/components/samarbeid/brev/Brev.js, /app/components/samarbeid/brev/innhold.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Kun frontend (ingen API-endringer). produkt.js: HTML/CSS-replika av DigiHome-repoets DashboardHome.tsx + AdminLayout-rail (branch branky, 1280 px designflate, Skaler m/ ResizeObserver) og mobile/app/owner/index.tsx i Telefon-ramme (390×844) – samme tokens/fonter som appen; tallene er illustrative for 35 enheter. Brev.js: hero m/ stor logo (32 px), fit-to-width-tittel, avatarer + CTA, produkt-scene (dashboard klippet 600 px, telefon overlappende; stablet på mobil); 03 bruker EierTelefon (EierApp fjernet); 05 Teamet = TEAM (Sarah, Martin K, Erik, Jens-Petter, Kevin, Martin V + Øyvind som initial-fliser); 06 får to komponentfigurer 1:1 (KpiStripe; SakerListe + VenterKort); term sheet 4 celler (+ «Q1 2027 · Neste runde»); footer m/ stor logo, avsendere, «Til toppen». Radial-glød fjernet fra cover og mørk seksjon. innhold.js: mindre Bergen/forvaltning, mer Tech (pilot 35 enheter → 1–2 eksterne pilotkunder → større kapitalrunde tidlig Q1 2027). Screenshot-verifisert 1920 og 390 (scrollWidth==clientWidth). Bruker har ikke sett det ennå; frontend-testagent ikke kjørt."
+
+
 
 test_plan:
   current_focus: []

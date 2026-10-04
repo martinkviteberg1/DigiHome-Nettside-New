@@ -5,9 +5,9 @@
  *  Ni kapitler, ingen skjema – bare «ring oss». Innholdet bor i ./innhold.js. */
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
-import { ArrowDown } from 'lucide-react';
-import EierApp from '../../forside/v4/EierApp';
-import { AVSENDERE, BREV, INV } from './innhold';
+import { ArrowDown, ArrowUp } from 'lucide-react';
+import { AVSENDERE, BREV, INV, TEAM } from './innhold';
+import { DASH_H, DASH_W, EierTelefon, KpiStripe, Oversikt, SakerListe, Skaler, VenterKort } from './produkt';
 
 const EASE = [0.16, 1, 0.3, 1];
 const PAPER = '#fafaf9';
@@ -110,22 +110,28 @@ const Statement = ({ lines, testid, dark }) => {
 };
 
 const Section = ({ children, testid, tint = false, dark = false, id }) => (
-  <section id={id} className="relative overflow-hidden py-28 lg:py-40 scroll-mt-4" style={{ background: dark ? INK : tint ? FILL : undefined }} data-testid={testid}>
-    {dark && <div aria-hidden className="pointer-events-none absolute" style={{ right: '-10%', top: '-30%', width: '55%', paddingBottom: '45%', borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(212,150,255,0.10), rgba(212,150,255,0.02) 55%, rgba(212,150,255,0) 75%)' }} />}
+  <section id={id} className="relative py-28 lg:py-40 scroll-mt-4" style={{ background: dark ? INK : tint ? FILL : undefined }} data-testid={testid}>
     <Container><div className="relative">{children}</div></Container>
   </section>
 );
 
-/** Ett portrett med navn og rolle under. Sort-hvitt i ro; farge når du nærmer deg. */
-const Person = ({ name, role, img, pos, sizes, testid }) => (
+/** Ett portrett med navn og rolle under. Sort-hvitt i ro; farge når du nærmer deg. Uten bilde: initialer på dempet flate. */
+const Person = ({ name, role, img, pos, sizes, testid, initials, bio, invited }) => (
   <figure className="m-0 group" data-testid={testid}>
-    <div className="relative rounded-[24px] overflow-hidden" style={{ aspectRatio: '4 / 5', background: FILL }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={img} sizes={sizes} alt={name} loading="eager" decoding="async" className="absolute inset-0 w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-[1.03] transition-[filter,transform] duration-700 ease-out" style={{ objectPosition: pos }} />
+    <div className="relative rounded-[24px] overflow-hidden" style={{ aspectRatio: '4 / 5', background: invited ? 'rgba(127,63,191,0.06)' : FILL, border: invited ? `1px dashed rgba(127,63,191,0.35)` : undefined }}>
+      {img ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={img} sizes={sizes} alt={name} loading="eager" decoding="async" className="absolute inset-0 w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-[1.03] transition-[filter,transform] duration-700 ease-out" style={{ objectPosition: pos }} />
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="font-medium tracking-[-0.04em] leading-none" style={{ color: ACCENT, fontSize: 'clamp(40px, 4vw, 64px)' }}>{initials}</span>
+        </div>
+      )}
     </div>
     <figcaption style={{ marginTop: 14 }}>
       <span className="block text-[15.5px] font-medium leading-tight" style={{ color: INK }}>{name}</span>
-      <span className="block text-[13px] leading-snug" style={{ margin: '4px 0 0', color: MUTED }} data-testid={`${testid}-role`}>{role}</span>
+      <span className="block text-[13px] leading-snug" style={{ margin: '4px 0 0', color: invited ? ACCENT : MUTED }} data-testid={`${testid}-role`}>{role}</span>
+      {bio && <span className="block text-[13px] leading-[1.5]" style={{ margin: '8px 0 0', color: MUTED }}>{bio}</span>}
     </figcaption>
   </figure>
 );
@@ -170,47 +176,67 @@ const Progress = () => {
 
 const Header = () => (
   <header className="absolute inset-x-0 top-0 z-20 brev-print-hide" data-testid="letter-header">
-    <Container className="h-[72px] flex items-center justify-between">
+    <Container className="h-[84px] lg:h-[96px] flex items-center justify-between">
       <span className="inline-flex items-center" style={{ color: INK }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/digihome-wordmark-ink.svg" alt={BREV.brand} className="h-[18px] w-auto" />
+        <img src="/digihome-wordmark-ink.svg" alt={BREV.brand} className="h-[26px] lg:h-[32px] w-auto" data-testid="letter-logo" />
       </span>
-      <span className="inline-flex items-center gap-2 text-[12px] font-medium uppercase tracking-[0.12em]" style={{ color: MUTED }} data-testid="letter-private">
-        <span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT }} />{BREV.eyebrow}
+      <span className="inline-flex items-center gap-2.5 h-9 pl-3.5 pr-4 rounded-full text-[12.5px] font-medium whitespace-nowrap" style={{ color: INK, border: `1px solid ${HAIR}`, background: 'rgba(255,255,255,0.55)' }} data-testid="letter-private">
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: ACCENT }} />{BREV.eyebrow}<span className="hidden sm:inline" style={{ color: MUTED }}>· {BREV.confidential}</span>
       </span>
     </Container>
   </header>
 );
 
-/* ─── Heroen: tittelen, én setning – og de tre som skriver. ─── */
+/** De tre som skriver – små, overlappende portretter. */
+const Avatarer = ({ size = 36, testid }) => (
+  <span className="inline-flex items-center shrink-0" data-testid={testid}>
+    {AVSENDERE.map((p, i) => (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img key={p.key} src={p.img} alt={p.name} className="rounded-full object-cover" style={{ width: size, height: size, objectPosition: p.pos, marginLeft: i ? -size * 0.3 : 0, boxShadow: `0 0 0 2px ${PAPER}`, background: FILL }} />
+    ))}
+  </span>
+);
+
+/* ─── Heroen: brevhodet i full bredde – så produktet, slik det står i dag: forvalterens oversikt og eierens hjem i appen. ─── */
 const Cover = () => {
   const toLetter = () => { const el = document.getElementById('brevet'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const fade = (delay) => ({ initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 1, delay, ease: EASE } });
-  const { ref, size, wrap } = useFitLines(BREV.h1, 76, 42);
+  const { ref, size, wrap } = useFitLines(BREV.h1, 116, 44);
   return (
-    <section className="relative overflow-hidden" data-testid="letter-cover">
-      <div aria-hidden className="pointer-events-none absolute" style={{ left: '-8%', top: '-24%', width: '58%', paddingBottom: '46%', borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(127,63,191,0.07), rgba(127,63,191,0.02) 55%, rgba(127,63,191,0) 75%)' }} />
-      <Container className="relative pt-[132px] lg:pt-[168px] pb-16 lg:pb-24">
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_auto] gap-x-16 gap-y-14 items-end">
-          <div className="min-w-0">
-            <motion.p {...fade(0)} className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid="letter-role">
-              {BREV.eyebrow} · {BREV.role}
-            </motion.p>
-            <h1 ref={ref} className="font-medium tracking-[-0.035em] leading-[0.98]" style={{ margin: '22px 0 0', color: INK, fontSize: size, whiteSpace: wrap ? 'normal' : 'nowrap' }} data-testid="letter-title">
-              {BREV.h1.map((line, i) => (
-                <span key={line} className="block overflow-hidden pb-[0.06em] -mb-[0.06em]"><motion.span className="block" initial={{ y: '110%' }} animate={{ y: 0 }} transition={{ duration: 1.15, delay: 0.15 + i * 0.12, ease: EASE }}>{line}</motion.span></span>
-              ))}
-            </h1>
-            <motion.p {...fade(0.5)} className="text-[18px] lg:text-[20px] leading-[1.55] max-w-[560px] text-pretty" style={{ margin: '28px 0 0', color: MUTED }} data-testid="letter-sub">{BREV.sub}</motion.p>
-            <motion.div {...fade(0.8)} className="flex flex-wrap items-center gap-x-6 gap-y-4" style={{ marginTop: 36 }}>
-              <button type="button" onClick={toLetter} className={`${PILL_DARK} h-12 pl-6 pr-5 text-[15px]`} data-testid="letter-cta-read">{BREV.cta}<ArrowDown className="w-4 h-4" strokeWidth={2.2} /></button>
-              <span className="text-[15px]" style={{ color: MUTED }} data-testid="letter-to">{INV.to} · {INV.date}</span>
-            </motion.div>
-          </div>
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.2, delay: 0.4, ease: EASE }} className="grid grid-cols-3 gap-4 lg:gap-5 w-full lg:w-[540px]" data-testid="letter-founders">
-            {AVSENDERE.map((p) => <Person key={p.key} name={p.name} role={p.role} img={p.img} pos={p.pos} sizes="(max-width: 1024px) 30vw, 170px" testid={`letter-founder-${p.key}`} />)}
+    <section className="relative" data-testid="letter-cover">
+      <Container className="relative pt-[132px] lg:pt-[176px]">
+        <motion.p {...fade(0)} className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid="letter-role">
+          {INV.toLong} <span style={{ color: MUTED }}>· {INV.date}</span>
+        </motion.p>
+        <h1 ref={ref} className="font-medium tracking-[-0.04em] leading-[0.96]" style={{ margin: '26px 0 0', color: INK, fontSize: size, whiteSpace: wrap ? 'normal' : 'nowrap' }} data-testid="letter-title">
+          {BREV.h1.map((line, i) => (
+            <span key={line} className="block overflow-hidden pb-[0.06em] -mb-[0.06em]"><motion.span className="block" initial={{ y: '110%' }} animate={{ y: 0 }} transition={{ duration: 1.15, delay: 0.15 + i * 0.12, ease: EASE }}>{line}</motion.span></span>
+          ))}
+        </h1>
+        <div className="mt-10 lg:mt-12 grid lg:grid-cols-12 gap-x-8 gap-y-8 items-end">
+          <motion.p {...fade(0.5)} className="lg:col-span-7 text-[18px] lg:text-[21px] leading-[1.5] text-pretty max-w-[640px]" style={{ margin: 0, color: MUTED }} data-testid="letter-sub">{BREV.sub}</motion.p>
+          <motion.div {...fade(0.7)} className="lg:col-span-5 lg:col-start-8 flex flex-wrap items-center gap-x-5 gap-y-4 lg:justify-end">
+            <span className="inline-flex items-center gap-3 text-[15px]" style={{ color: MUTED }} data-testid="letter-to"><Avatarer size={38} testid="letter-founders" />{INV.from}</span>
+            <button type="button" onClick={toLetter} className={`${PILL_DARK} h-12 pl-6 pr-5 text-[15px]`} data-testid="letter-cta-read">{BREV.cta}<ArrowDown className="w-4 h-4" strokeWidth={2.2} /></button>
           </motion.div>
         </div>
+      </Container>
+
+      {/* Scenen: forvalterens oversikt på en rolig flate, telefonen med eierens hjem foran. Ekte komponenter, ingen illustrasjon. */}
+      <Container className="relative mt-14 lg:mt-20">
+        <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.3, delay: 0.5, ease: EASE }} className="relative" data-testid="letter-stage">
+          <div className="rounded-[24px] lg:rounded-[32px] overflow-hidden pt-7 px-5 sm:pt-10 sm:px-10 lg:pt-14 lg:px-14" style={{ background: FILL }}>
+            <div className="lg:mr-[220px] rounded-t-[12px] lg:rounded-t-[16px] overflow-hidden h-[260px] sm:h-[420px] lg:h-[600px]" style={{ border: `1px solid ${HAIR}`, borderBottom: 0, boxShadow: '0 40px 80px -48px rgba(10,10,10,0.35)' }} data-testid="letter-stage-desktop">
+              <Skaler w={DASH_W} h={DASH_H}><Oversikt /></Skaler>
+            </div>
+          </div>
+          <div className="hidden lg:block absolute right-6 -bottom-20 w-[280px]" data-testid="letter-stage-phone"><EierTelefon /></div>
+          <div className="lg:hidden relative mx-auto -mt-14 sm:-mt-24 w-[220px] sm:w-[260px]" data-testid="letter-stage-phone-m"><EierTelefon /></div>
+        </motion.div>
+        <motion.div {...fade(1.1)} className="mt-8 lg:mt-28 flex flex-wrap gap-x-10 gap-y-2 text-[13px]" style={{ color: MUTED }} data-testid="letter-stage-captions">
+          {BREV.stage.map((s, i) => <span key={s} className="inline-flex items-baseline gap-2.5"><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>0{i + 1}</span>{s}</span>)}
+        </motion.div>
       </Container>
     </section>
   );
@@ -235,7 +261,7 @@ const Letter = () => (
             const strong = i === BREV.letterStrong;
             return <Rise key={i} delay={0.04}><p className="text-[19px] lg:text-[21px] leading-[1.6] text-pretty" style={{ margin: i === 0 ? '32px 0 0' : '22px 0 0', color: i === BREV.letter.length - 1 ? MUTED : INK, fontWeight: strong ? 500 : 400 }} data-testid={`letter-p-${i + 1}`}>{p}</p></Rise>;
           })}
-          <Rise delay={0.05}><p className="text-[19px] lg:text-[21px] font-medium" style={{ margin: '40px 0 0', color: INK }} data-testid="letter-signature">{BREV.signature}</p></Rise>
+          <Rise delay={0.05}><p className="text-[19px] lg:text-[21px] font-medium inline-flex items-center gap-4" style={{ margin: '40px 0 0', color: INK }} data-testid="letter-signature"><Avatarer size={40} />{BREV.signature}</p></Rise>
         </div>
       </Grid>
     </Container>
@@ -303,10 +329,10 @@ const Build = () => {
               </ol>
               <Rise delay={0.1}><p className="text-[18px] lg:text-[19px] font-medium leading-[1.5] tracking-[-0.01em] max-w-[52ch]" style={{ margin: '32px 0 0', color: INK }} data-testid="letter-build-guarantee">{c.guarantee}</p></Rise>
             </div>
-            <Rise delay={0.2} className="justify-self-center lg:justify-self-end lg:sticky lg:top-28">
+            <Rise delay={0.2} className="justify-self-center lg:justify-self-end lg:sticky lg:top-28 w-[264px]">
               <figure className="m-0" data-testid="letter-phone">
-                <EierApp k={3} kl="20:41" adresse="Nygårdsgaten 5" />
-                <figcaption className="text-[13px] leading-snug text-center" style={{ margin: '14px 0 0', color: MUTED }}>{c.phoneCaption}</figcaption>
+                <EierTelefon />
+                <figcaption className="text-[13px] leading-snug text-center" style={{ margin: '18px 0 0', color: MUTED }}>{c.phoneCaption}</figcaption>
               </figure>
             </Rise>
           </div>
@@ -333,7 +359,7 @@ const Structure = () => {
   );
 };
 
-/* ─── 05 Teamet ─── */
+/* ─── 05 Teamet – laget fremover: de som bygger, styret, og de to vi inviterer inn ─── */
 const Team = () => {
   const t = BREV.team;
   return (
@@ -345,8 +371,8 @@ const Team = () => {
           <Paragraphs items={t.paragraphs} testid="letter-team-p" strong={t.paragraphs.length - 1} />
         </Main>
       </Grid>
-      <div className="mt-16 lg:mt-20 grid grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-8" data-testid="letter-team">
-        {AVSENDERE.map((p, i) => <Rise key={p.key} delay={0.08 + i * 0.07} y={22}><Person name={p.name} role={p.role} img={p.img} pos={p.pos} sizes="(max-width: 1024px) 42vw, 360px" testid={`letter-team-${p.key}`} /></Rise>)}
+      <div className="mt-16 lg:mt-20 grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-12 lg:gap-x-8" data-testid="letter-team">
+        {TEAM.map((p, i) => <Rise key={p.key} delay={0.06 + i * 0.05} y={22}><Person name={p.name} role={p.role} img={p.img} pos={p.pos} initials={p.initials} bio={p.bio} invited={!p.img} sizes="(max-width: 1024px) 42vw, 280px" testid={`letter-team-${p.key}`} /></Rise>)}
       </div>
     </Section>
   );
@@ -371,6 +397,22 @@ const Built = () => {
               </div></Rise>
             ))}
           </div>
+
+          {/* Komponentene slik de står i appen – i naturlig størrelse, ikke skalert. */}
+          <div className="mt-20 lg:mt-24 space-y-14" data-testid="letter-built-figures">
+            <Rise delay={0.1} y={20}>
+              <figure className="m-0">
+                <div className="rounded-[20px] p-6 lg:p-8" style={{ background: '#fbfaf8', border: `1px solid ${HAIR}` }} data-testid="letter-figure-kpi"><KpiStripe /></div>
+                <figcaption className="mt-4 flex items-baseline gap-3 text-[13.5px] leading-snug" style={{ color: MUTED }}><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>01</span><span><span className="font-medium" style={{ color: INK }}>{c.figures[0][0]}</span> · {c.figures[0][1]}</span></figcaption>
+              </figure>
+            </Rise>
+            <Rise delay={0.1} y={20}>
+              <figure className="m-0">
+                <div className="rounded-[20px] p-6 lg:p-8 grid lg:grid-cols-[minmax(0,1fr)_300px] gap-x-10 gap-y-10" style={{ background: '#fbfaf8', border: `1px solid ${HAIR}` }} data-testid="letter-figure-saker"><SakerListe /><VenterKort /></div>
+                <figcaption className="mt-4 flex items-baseline gap-3 text-[13.5px] leading-snug" style={{ color: MUTED }}><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>02</span><span><span className="font-medium" style={{ color: INK }}>{c.figures[1][0]}</span> · {c.figures[1][1]}</span></figcaption>
+              </figure>
+            </Rise>
+          </div>
           <Rise delay={0.1}><p className="text-[15.5px] leading-[1.65] max-w-[62ch]" style={{ margin: '40px 0 0', color: MUTED }} data-testid="letter-built-note">{c.note}</p></Rise>
         </Main>
       </Grid>
@@ -392,12 +434,12 @@ const Offer = () => {
         </Main>
       </Grid>
       <Rise delay={0.1} y={22}>
-        <div className="mt-14 lg:mt-20 grid sm:grid-cols-3 max-sm:divide-y sm:divide-x divide-white/[0.12] rounded-[28px] overflow-hidden" style={{ border: `1px solid ${D.hair}`, background: D.fill }} data-testid="letter-offer-terms">
+        <div className="mt-14 lg:mt-20 grid sm:grid-cols-2 lg:grid-cols-4 rounded-[28px] overflow-hidden" style={{ border: `1px solid ${D.hair}`, background: D.fill }} data-testid="letter-offer-terms">
           {c.terms.map(([n, label, l], i) => (
-            <div key={label} className="p-7 lg:p-10" data-testid={`letter-offer-term-${i + 1}`}>
+            <div key={label} className={`p-7 lg:p-9 border-white/[0.12] ${['', 'max-sm:border-t sm:border-l', 'max-sm:border-t sm:border-t lg:border-t-0 lg:border-l', 'max-sm:border-t sm:border-l sm:border-t lg:border-t-0'][i]}`} data-testid={`letter-offer-term-${i + 1}`}>
               <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.muted }}>{label}</p>
-              <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '22px 0 0', color: i === 0 ? D.accent : D.ink, fontSize: T.num }}>{n}</p>
-              <p className="text-[15px] leading-snug" style={{ margin: '14px 0 0', color: D.muted }}>{l}</p>
+              <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '22px 0 0', color: i === 0 ? D.accent : D.ink, fontSize: 'clamp(30px, 2.3vw, 42px)' }}>{n}</p>
+              <p className="text-[14.5px] leading-snug" style={{ margin: '14px 0 0', color: D.muted }}>{l}</p>
             </div>
           ))}
         </div>
@@ -486,14 +528,22 @@ export default function Brev({ start }) {
       <Offer />
       <Owners />
       <Next />
-      <footer className="py-10" style={{ borderTop: `1px solid ${HAIR}` }} data-testid="letter-footer">
+      <footer className="pt-16 pb-10 lg:pt-20 lg:pb-12" style={{ borderTop: `1px solid ${HAIR}` }} data-testid="letter-footer">
         <Container>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-[13px]" style={{ color: MUTED }}>
-            <span className="inline-flex items-center gap-2">
+          <div className="grid lg:grid-cols-12 gap-x-8 gap-y-10 items-end">
+            <div className="lg:col-span-7">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/digihome-wordmark-ink.svg" alt="" className="h-[12px] w-auto opacity-60" />
-            </span>
-            <span data-testid="letter-noindex">{BREV.footer}</span>
+              <img src="/digihome-wordmark-ink.svg" alt={BREV.brand} className="h-[30px] lg:h-[36px] w-auto" data-testid="letter-footer-logo" />
+              <p className="text-[15px] leading-[1.6] max-w-[44ch]" style={{ margin: '22px 0 0', color: MUTED }} data-testid="letter-noindex">{BREV.footer}</p>
+            </div>
+            <div className="lg:col-span-5 lg:col-start-8 flex flex-col lg:items-end gap-4">
+              <span className="inline-flex items-center gap-3 text-[15px]" style={{ color: INK }}><Avatarer size={34} />{INV.from}</span>
+              <span className="text-[13px]" style={{ color: MUTED }}>{INV.toLong} · {INV.date}</span>
+            </div>
+          </div>
+          <div className="mt-12 pt-6 flex items-center justify-between text-[12.5px] brev-print-hide" style={{ borderTop: `1px solid ${HAIR}`, color: MUTED }}>
+            <span className="inline-flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT }} />{BREV.eyebrow} · {BREV.confidential}</span>
+            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="inline-flex items-center gap-1.5 font-medium transition-colors hover:text-[#0a0a0a]" style={{ color: MUTED }} data-testid="letter-footer-top">{BREV.footerTop}<ArrowUp className="w-3.5 h-3.5" strokeWidth={2} /></button>
           </div>
         </Container>
       </footer>
