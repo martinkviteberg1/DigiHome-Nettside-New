@@ -2691,6 +2691,25 @@ async function handleRoute(request, { params }) {
       return cors(res);
     }
 
+    // --- Samarbeid-deck (tilbud til navngitte mottakere) passord-gate; eget passord, faller tilbake på DECK_PASSWORD ---
+    if (route === '/samarbeid/auth' && (method === 'GET' || method === 'POST')) {
+      const SAMARBEID_PASSWORD = process.env.SAMARBEID_PASSWORD || DECK_PASSWORD || '';
+      const samToken = () => crypto.createHash('sha256').update(`dh-samarbeid::${SAMARBEID_PASSWORD}`).digest('hex');
+      if (method === 'GET') {
+        const token = request.cookies.get('dh_samarbeid')?.value || '';
+        return cors(NextResponse.json({ authed: !!SAMARBEID_PASSWORD && token === samToken() }));
+      }
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const pw = (body.password || '').toString();
+      if (!SAMARBEID_PASSWORD || pw !== SAMARBEID_PASSWORD) {
+        return cors(NextResponse.json({ ok: false, error: 'Feil passord' }, { status: 401 }));
+      }
+      const res = NextResponse.json({ ok: true });
+      res.cookies.set('dh_samarbeid', samToken(), { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30, secure: process.env.NODE_ENV === 'production' });
+      return cors(res);
+    }
+
     // --- STYRERAPPORT: ekstern delingslenke (offentlig, token-basert, les-only) ---
     // Token = uuid v4 (ugjettbar). Lenken kan utløpe og trekkes tilbake av admin.
     // Hver åpning telles (visninger, sistApnet, siste 100 åpninger m/ anonymisert IP-hash).
