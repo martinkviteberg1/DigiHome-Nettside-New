@@ -1,8 +1,8 @@
-import '../../components/samarbeid/deck.css';
+import '../../components/samarbeid/forslag/forslag.css';
 
 export const metadata = {
-  title: 'DigiHome Tech – tilbud',
-  description: 'Konfidensiell presentasjon.',
+  title: 'Privat forslag – DigiHome Tech',
+  description: 'Konfidensielt. Delt med navngitte mottakere.',
   robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
 };
 

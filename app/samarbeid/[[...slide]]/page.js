@@ -1,18 +1,14 @@
 'use client';
-/* /samarbeid[/<seksjon>] – tilbudsdecket. `?print=1[&auto=1]` – PDF-siden: én 16:9-side per seksjon fra samme register. */
+/* /samarbeid[/<seksjon>] – det private forslaget som én lang scrollside bak passordgaten. */
 import React, { Suspense } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Gate from '../../../components/samarbeid/Gate';
-import Deck from '../../../components/samarbeid/Deck';
-import DeckPrint from '../../../components/samarbeid/DeckPrint';
-import { CONFIG, indexIn } from '../../../components/samarbeid/register';
+import Forslag from '../../../components/samarbeid/forslag/Forslag';
 
 function Inner() {
   const params = useParams();
-  const sp = useSearchParams();
-  const param = Array.isArray(params?.slide) ? params.slide[0] : params?.slide;
-  if (sp.get('print') === '1') return <DeckPrint auto={sp.get('auto') === '1'} config={CONFIG} />;
-  return <Deck initial={indexIn(param)} config={CONFIG} />;
+  const start = Array.isArray(params?.slide) ? params.slide[0] : params?.slide;
+  return <Forslag start={start || ''} />;
 }
 
 export default function SamarbeidPage() {
