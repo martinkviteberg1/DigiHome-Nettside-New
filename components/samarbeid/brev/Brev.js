@@ -3,7 +3,7 @@
  *  Layouten er tatt fra AFA-repoets InvitationPage: redaksjonelt rutenett (12 kolonner), smal klebrig venstremarg med kapittelnummer og
  *  kicker – innholdet i de ni til høyre. De store utsagnene fyller kolonnen (målt), tilbudet står som et term sheet på mørk flate.
  *  Rekkefølgen er investeringscasets: brevet rett under brevhodet → hvorfor dere → dette er bygget → målbildet → Tech og forvaltning →
- *  hvorfor nå → neste verdiløft → roadmap → forretningsmodell → kapitalplan → laget og rollen → tilbudet → neste steg.
+ *  hva som er gjort → roadmap → forretningsmodell → kapitalplan → laget og rollen → tilbudet → veien videre. (11 kapitler.)
  *  INNHOLDET KOMMER SOM PROPS fra server-komponenten (app/samarbeid/page.js) – teksten importeres ikke her, så den ligger ikke i JS-bundlen. */
 import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
@@ -411,7 +411,7 @@ const Target = () => {
   );
 };
 
-/* ─── 05 Hvorfor nå – investeringstesen: bygget → nå → neste runde, og fire typer risiko med status. ─── */
+/* ─── 05 Hva som er gjort frem til nå: det som er brukt og bygget, bygget → nå → skalere, og hvor risikoen står (fire spørsmål). ─── */
 const Naa = () => {
   const { BREV } = useInnhold();
   const c = BREV.naa;
@@ -456,27 +456,7 @@ const Naa = () => {
   );
 };
 
-/* ─── 06 Neste verdiløft: én–to eksterne piloter – det emisjonen skal oppnå, beviset før neste runde, og hva det betyr ─── */
-const Loft = () => {
-  const { BREV } = useInnhold();
-  const c = BREV.loft;
-  return (
-    <Section id="verdiloft" testid="letter-loft">
-      <Grid>
-        <Aside n="06" label={c.eyebrow} />
-        <Main>
-          <Statement lines={c.title} testid="letter-loft-title" />
-          <Paragraphs items={c.paragraphs} testid="letter-loft-p" strong={c.paragraphs.length - 1} first={32} />
-          <Sub testid="letter-loft-bevis-h">{c.bevisH}</Sub>
-          <div className="mt-6"><Liste items={c.bevis} testid="letter-loft-bevis" cols="grid-cols-1" /></div>
-          <Paragraphs items={c.verdi} testid="letter-loft-verdi" strong={0} first={56} />
-        </Main>
-      </Grid>
-    </Section>
-  );
-};
-
-/* ─── 07 Roadmap: fire faser – periode, fokus (med hva som bygges) og resultatet som må være sant før vi går videre ─── */
+/* ─── 06 Roadmap: fire faser – periode, fokus (med hva som bygges) og målet som skal være nådd før vi går videre ─── */
 const roadmapCell = (i, v, r) => {
   if (i === 0) return <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap" style={{ color: ACCENT }}>{v}</span>;
   if (i === 1) return (
@@ -495,7 +475,7 @@ const Roadmap = () => {
   return (
     <Section id="roadmap" testid="letter-roadmap" tint>
       <Grid>
-        <Aside n="07" label={c.eyebrow} />
+        <Aside n="06" label={c.eyebrow} />
         <Main>
           <Statement lines={c.title} testid="letter-roadmap-title" />
           <Paragraphs items={c.paragraphs} testid="letter-roadmap-p" strong={0} first={32} />
@@ -516,7 +496,7 @@ const Roadmap = () => {
   );
 };
 
-/* ─── 09 Kapitalplan: budsjettet og basisbehovet, hva emisjonen skal finansiere, use of funds, og runway-regnestykket ─── */
+/* ─── 08 Kapitalplan: budsjettet og basisbehovet, hva emisjonen skal brukes til, use of funds, og runway-regnestykket ─── */
 const budsjettCell = (i, v) => (i === 0
   ? <span className="text-[17px] font-medium leading-snug" style={{ color: INK }}>{v}</span>
   : <span className="text-[17px] tabular-nums whitespace-nowrap" style={{ color: MUTED }}>{v}</span>);
@@ -527,7 +507,7 @@ const Kapital = () => {
   return (
     <Section id="kapital" testid="letter-kapital">
       <Grid>
-        <Aside n="09" label={c.eyebrow} />
+        <Aside n="08" label={c.eyebrow} />
         <Main>
           <Title title={c.title} testid="letter-kapital-head" />
           <Paragraphs items={c.paragraphs} testid="letter-kapital-p" strong={0} />
@@ -573,7 +553,7 @@ const Kapital = () => {
   );
 };
 
-/* ─── 08 Forretningsmodell: prising, hva en enhet er, regnestykket, fem tilsvarende kunder, base case ─── */
+/* ─── 07 Forretningsmodell: prising, hva en enhet er, regnestykket, fem tilsvarende kunder, base case ─── */
 const baseCell = (i, v) => {
   if (i === 0) return <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap" style={{ color: ACCENT }}>{v}</span>;
   if (i === 1) return <span className="text-[16px] leading-snug" style={{ color: MUTED }}>{v}</span>;
@@ -586,7 +566,7 @@ const Modell = () => {
   return (
     <Section id="modell" testid="letter-modell" tint>
       <Grid>
-        <Aside n="08" label={c.eyebrow} />
+        <Aside n="07" label={c.eyebrow} />
         <Main>
           <Statement lines={c.title} testid="letter-modell-title" />
           <Paragraphs items={c.paragraphs} testid="letter-modell-p" strong={0} first={32} />
@@ -629,14 +609,14 @@ const Structure = () => {
   );
 };
 
-/* ─── 10 Laget og rollen deres: tre rader med portretter – så hva vi ser for oss, som hårlinjerader ─── */
+/* ─── 09 Laget – og rollen vi ser for oss: tre rader med portretter, så hva det innebærer i praksis (radene vises bare om de finnes) ─── */
 const Team = () => {
   const { BREV, TEAM, TEAM_GRUPPER } = useInnhold();
   const t = BREV.team;
   return (
     <Section id="teamet" testid="letter-team-section" tint>
       <Grid>
-        <Aside n="10" label={t.eyebrow} />
+        <Aside n="09" label={t.eyebrow} />
         <Main>
           <Title title={t.title} testid="letter-team-head" />
           <Paragraphs items={t.paragraphs} testid="letter-team-p" strong={t.paragraphs.length - 1} />
@@ -661,21 +641,21 @@ const Team = () => {
         <Aside label={t.rolleH} testid="letter-owners-aside" />
         <Main>
           <Rise><p className={BODY} style={{ margin: 0, color: INK }} data-testid="letter-owners-lead">{t.rolleLead}</p></Rise>
-          <div className="mt-12"><Rows rows={t.rolle} testid="letter-owners-rows" /></div>
+          {t.rolle?.length > 0 && <div className="mt-12"><Rows rows={t.rolle} testid="letter-owners-rows" /></div>}
         </Main>
       </Grid>
     </Section>
   );
 };
 
-/* ─── 11 Tilbudet: term sheet på mørk flate (investering · pre · post · eierandel), én linje om aksjene, så gjennomføringen ─── */
+/* ─── 10 Tilbudet: term sheet på mørk flate (investering · pre · post · eierandel), én linje om aksjene, så gjennomføringen ─── */
 const Offer = () => {
   const { BREV } = useInnhold();
   const c = BREV.offer;
   return (
     <Section id="tilbudet" testid="letter-offer" dark>
       <Grid>
-        <Aside n="11" label={c.eyebrow} dark />
+        <Aside n="10" label={c.eyebrow} dark />
         <Main>
           <Title title={c.title} testid="letter-offer-head" dark />
           <Paragraphs items={c.paragraphs} testid="letter-offer-p" strong={0} dark />
@@ -715,17 +695,17 @@ const Offer = () => {
   );
 };
 
-/* ─── 12 Hva skjer herfra? Personlig avslutning. Ingen skjema. ─── */
+/* ─── 11 Veien videre. Personlig avslutning. Ingen skjema. ─── */
 const Next = () => {
   const { BREV } = useInnhold();
   const c = BREV.next;
   return (
     <Section id="videre" testid="letter-next">
       <Grid>
-        <Aside n="12" label={c.eyebrow} />
+        <Aside n="11" label={c.eyebrow} />
         <Main>
           <Title title={c.title} testid="letter-next-head" />
-          <Paragraphs items={c.paragraphs} testid="letter-next-p" strong={1} />
+          <Paragraphs items={c.paragraphs} testid="letter-next-p" strong={c.paragraphs.length - 1} />
           <Rise delay={0.1}><p className="text-[19px] lg:text-[21px] font-medium" style={{ margin: '36px 0 0', color: INK }} data-testid="letter-closing">{BREV.signature}</p></Rise>
         </Main>
       </Grid>
@@ -782,7 +762,6 @@ export default function Brev({ start, innhold }) {
         <Target />
         <Structure />
         <Naa />
-        <Loft />
         <Roadmap />
         <Modell />
         <Kapital />
