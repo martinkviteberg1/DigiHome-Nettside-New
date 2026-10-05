@@ -883,7 +883,8 @@ const Team = () => {
         <Aside label={t.rolleH} testid="letter-owners-aside" />
         <Main>
           <Rise><p className={BODY} style={{ margin: 0, color: INK }} data-testid="letter-owners-lead">{t.rolleLead}</p></Rise>
-          {t.rolle?.length > 0 && <div className="mt-12"><Rows rows={t.rolle} testid="letter-owners-rows" /></div>}
+          {t.rolleListH && <Rise delay={0.06}><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: '40px 0 0', color: ACCENT }} data-testid="letter-owners-list-h">{t.rolleListH}</p></Rise>}
+          {t.rolle?.length > 0 && <div className={t.rolleListH ? 'mt-5' : 'mt-12'}><Rows rows={t.rolle} testid="letter-owners-rows" /></div>}
         </Main>
       </Grid>
     </Section>

@@ -163,8 +163,8 @@ export const TEAM = [
   { key: 'erik', name: 'Erik Hoffmann-Dahl', role: 'Styreleder · Chief Legal Officer', ...PORTRETT.erik, bio: 'Advokat og partner i Hoffmann Thinn. Har jobbet med selskapsstruktur og juridiske rammer rundt DigiHome.' },
   { key: 'jens', name: 'Jens-Petter Glittenberg', role: 'Styremedlem', ...PORTRETT.jens, bio: 'Medgründer av Meltwater og styreleder i CARN Capital. Har erfaring med internasjonal skalering, kapitalmarked og selskapsbygging.' },
   { key: 'kevin', name: 'Kevin Ha', role: 'Utvikling', ...PORTRETT.kevin, bio: 'Bistår Martin i utviklingen av plattformen. Siviløkonom fra NHH med kompetanse innen KI-drevet utvikling og automatisering.' },
-  { key: 'vikesland', name: 'Martin Vikesland', role: 'Inviteres inn som medeier', ...PORTRETT.vikesland, invited: true, bio: 'Økonomi og finans. Den vi vil diskutere tallene, kapitalplanen og finansieringen med – og ha med oss i investordialogen når neste runde kommer.' },
-  { key: 'hoel', name: 'Øyvind Storli Hoel', role: 'Inviteres inn som medeier', ...PORTRETT.hoel, invited: true, bio: 'Kjenner eiendomsmarkedet, kundene og den kommersielle siden. Viktig for oss på marked, produkt og veien inn mot større eiendomsaktører.' },
+  { key: 'vikesland', name: 'Martin Vikesland', role: 'Inviteres inn som medeier', ...PORTRETT.vikesland, invited: true, bio: 'Økonomi og finans. Vi ønsker ham med på økonomiske modeller, kapitalplan og finansiering – og i investordialogen når neste runde kommer.' },
+  { key: 'hoel', name: 'Øyvind Storli Hoel', role: 'Inviteres inn som medeier', ...PORTRETT.hoel, invited: true, bio: 'Kjenner eiendomsmarkedet, kundene og den kommersielle siden. Marked, produkt, kommersialisering og relasjonene inn mot eiendomsselskapene er der vi trenger ham mest.' },
 ];
 
 /** srcset/sizes for et portrett – samme logikk i hero (Person) og i gatens forhåndslasting, så nettleseren varmer akkurat den varianten den senere velger. */
@@ -197,7 +197,7 @@ export const BREV = {
     'DigiHome er nå på et naturlig punkt mellom to faser.',
     'Den første har handlet om å bygge produktet og bruke det i vår egen forvaltning. Det har gitt oss en plattform som allerede håndterer reelle eiendommer, eiere, leietakere, kontrakter, innbetalinger og saker.',
     'Den neste handler om å gjøre det samme produktet klart for andre.',
-    'Det er i denne fasen vi ønsker dere med – ikke bare som investorer, men som medeiere vi kan diskutere de viktigste valgene med underveis.',
+    'Det er i denne fasen vi ønsker dere med – ikke bare som investorer, men som aktive medeiere som er med på de viktigste valgene og bidrar til å bygge selskapet videre.',
     'Her har vi samlet det vi mener dere trenger for å vurdere det: hva som er bygget, hvor vi vil med DigiHome, hva kapitalen skal brukes til og tilbudet vi ønsker å gi dere.',
   ],
   letterStrong: 5,
@@ -209,7 +209,7 @@ export const BREV = {
     paragraphs: [
       'Martin kommer med en sterk økonomisk og finansiell bakgrunn. Øyvind kjenner eiendomsmarkedet, kundene og den kommersielle siden godt. Det utfyller laget vi allerede har.',
       'Samtidig er det samtalene vi har hatt som gjør at vi ønsker akkurat dere med. Vi har diskutert produkt, prismodell, kapitalbehov, marked og hvordan DigiHome kan bygges som et eget teknologiselskap. Det er nettopp slike diskusjoner vi kommer til å ha mange av det neste året.',
-      'Vi ser derfor for oss Martin som en viktig sparringspartner på økonomi, finansiering og kapital, og Øyvind som en viktig sparringspartner på marked, produkt og veien inn mot større eiendomsaktører.',
+      'Vi ser derfor for oss at Martin bidrar særlig på økonomi, finansiering og kapital, og Øyvind på marked, produkt og veien inn mot større eiendomsaktører. Nøyaktig hvordan, blir vi enige om sammen.',
       'Vi ønsker dere rundt bordet når disse valgene skal tas.',
     ],
   },
@@ -223,8 +223,15 @@ export const BREV = {
       'Når DigiHome nå skal ut til større eksterne kunder, ønsker vi særlig å styrke to områder: økonomi og kapital på den ene siden, og marked og eiendom på den andre. Det er her vi mener dere passer godt inn.',
     ],
     rolleH: 'Hva innebærer det for dere?',
-    rolleLead: 'Vi forventer ikke at dere skal gå inn i operative stillinger eller få en liste med faste arbeidsoppgaver. Men dette er heller ikke tenkt som en helt passiv investering. Vi ønsker at dere deltar når vi diskuterer de viktigste valgene for selskapet, og at vi kan bruke dere som sparringspartnere på områdene dere kjenner best. Hvor ofte og i hvilken form finner vi en praktisk løsning på sammen. Poenget er at dere blir reelle medeiere i selskapet vi nå skal bygge videre.',
-    rolle: [],
+    rolleLead: 'Vi ønsker dere inn som aktive medeiere som bidrar til å utvikle DigiHome videre. Ikke i operative stillinger, og ikke med en liste over faste arbeidsoppgaver – men heller ikke som passive investorer. Det innebærer at dere er med når de sentrale strategiske valgene tas, og at dere bidrar konkret på de områdene vi blir enige om sammen. Rollene, ansvarsområdene, forventet innsats, omfang og samarbeidsform skal vi konkretisere sammen og beskrive i aksjonæravtalen før investeringen gjennomføres.',
+    rolleListH: 'Det vi skal avklare og beskrive i aksjonæravtalen',
+    /* Avklaringer – ikke avtalte vilkår. Fagområdene er utgangspunkt for samtalen, ingen tildelte roller. */
+    rolle: [
+      ['Hvem bidrar på hvilke områder', 'Utgangspunktet er det dere kjenner best: Martin på økonomiske modeller, kapitalplan, finansiering og investordialog – Øyvind på marked, produkt, kommersialisering og relasjonene inn mot eiendomsselskapene. Den endelige fordelingen blir vi enige om sammen.'],
+      ['Bidrag og forventninger', 'Hvilke konkrete bidrag vi blir enige om på hvert område, og hva vi kan forvente av hverandre – dere av oss, og vi av dere.'],
+      ['Kapasitet og omfang', 'Hvor mye tid og innsats som er realistisk for hver av dere, slik at forventningene er avstemt fra starten.'],
+      ['Samarbeidsform og oppfølging', 'Hvordan og hvor ofte vi møtes, og hvordan vi følger opp og justerer innsatsen underveis etter hvert som selskapet og behovene endrer seg.'],
+    ],
   },
 
   /* ── 02 DigiHome i dag – produktbeviset. Skjermbildene står uten bildetekster. ── */
@@ -472,12 +479,13 @@ export const BREV = {
     fordelingH: 'Fordelingen mellom dere',
     fordeling: DEAL.fordeling,
     aksjerH: 'Aksjene',
-    aksjer: 'Aksjene er ordinære aksjer i samme aksjeklasse som dagens aksjer. Det knyttes ikke vesting eller arbeidsplikt til aksjene. Øvrige rettigheter reguleres gjennom vedtekter og aksjonæravtale.',
+    aksjer: 'Aksjene er ordinære aksjer i samme aksjeklasse som dagens aksjer. Dette er ikke en ansettelse: det knyttes ikke vesting eller arbeidsplikt til aksjene. Rollene og innsatsen vi forventer av hverandre som medeiere, beskriver vi i stedet i aksjonæravtalen. Øvrige rettigheter reguleres gjennom vedtekter og aksjonæravtale.',
     formal: {
       h: 'Før gjennomføring',
       text: 'Vi lager et kort term sheet og blir enige om aksjonæravtalen.',
       listH: 'Der avklarer vi blant annet',
       list: [
+        'roller, ansvarsområder, forventet innsats og samarbeidsform mellom medeierne',
         'pro rata-rett og senere utvanning',
         'forkjøpsrett, tag-along og drag-along',
         'informasjon og rapportering',
@@ -496,7 +504,7 @@ export const BREV = {
     title: 'Vi håper dere har lyst til å være med.',
     paragraphs: [
       'Ta dere gjerne tid til å gå gjennom materialet.',
-      'Hvis dette fortsatt ser interessant ut, foreslår vi at vi setter oss ned sammen og går gjennom business caset, kostnadene og kapitalplanen med de faktiske regnearkene på bordet. Da kan vi også diskutere roadmapen, pilotstrategien, prisingen og hvilke beslutninger vi bør ta først.',
+      'Hvis dette fortsatt ser interessant ut, foreslår vi at vi setter oss ned sammen og går gjennom business caset, kostnadene og kapitalplanen med de faktiske regnearkene på bordet. Da kan vi også diskutere roadmapen, pilotstrategien, prisingen, hvilke beslutninger vi bør ta først – og hvordan vi konkret skal jobbe sammen som medeiere.',
       'Hvis vi fortsatt er enige om retningen etter det, lager vi et kort term sheet og tar de juridiske dokumentene derfra.',
       'Vi har stor tro på DigiHome. Og etter samtalene vi har hatt med dere, har vi lyst til å bygge neste del sammen.',
     ],
