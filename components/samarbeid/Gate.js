@@ -1,11 +1,29 @@
 'use client';
 /* Passordgaten til /samarbeid. Selve tilgangssjekken skjer server-side (app/samarbeid/page.js) – denne komponenten bare tar imot passordet,
  *  poster det til /api/samarbeid/auth (httpOnly-cookie, 7 dager) og ber serveren rendre på nytt. Papir og blekk – stiler i brev/brev.css (.brev-gate). */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function Gate({ configured = true }) {
+/** Legger <link rel="preload" as="image"> i <head> for hero-portrettene mens passordet skrives (srcset/sizes = de samme som i brevet,
+ *  så nettleseren varmer nøyaktig den varianten den velger etterpå). Bare bilde-URL-er – ingen tekst fra invitasjonen. */
+function useVarmBilder(varm) {
+  useEffect(() => {
+    if (!Array.isArray(varm) || !varm.length || typeof document === 'undefined') return undefined;
+    const links = varm.filter((b) => b && b.src).map((b) => {
+      const l = document.createElement('link');
+      l.rel = 'preload'; l.as = 'image'; l.href = b.src;
+      if (b.srcSet) l.setAttribute('imagesrcset', b.srcSet);
+      if (b.sizes) l.setAttribute('imagesizes', b.sizes);
+      document.head.appendChild(l);
+      return l;
+    });
+    return () => links.forEach((l) => l.remove());
+  }, [varm]);
+}
+
+export default function Gate({ configured = true, varm = [] }) {
   const router = useRouter();
+  useVarmBilder(varm);
   const [pw, setPw] = useState('');
   const [feil, setFeil] = useState('');
   const [sender, setSender] = useState(false);

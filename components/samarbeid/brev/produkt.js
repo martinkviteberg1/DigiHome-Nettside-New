@@ -103,7 +103,7 @@ export const Rail = ({ user, active = 'Oversikt' }) => (
     <div className="px-2 pb-3 pt-2" style={{ borderTop: `1px solid ${A.hair}` }}>
       <div className="flex items-center gap-2.5 h-11 pl-[11px] pr-2 rounded-[8px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={user.img} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.06)', objectPosition: user.pos }} />
+        <img loading="lazy" decoding="async" src={user.img} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.06)', objectPosition: user.pos }} />
         <span className="min-w-0 flex-1">
           <span className="block text-[13px] font-medium truncate leading-tight" style={{ color: A.ink }}>{user.name}</span>
           <span className="block text-[11px] truncate leading-tight mt-0.5" style={{ color: A.ink3 }}>{user.email}</span>
@@ -416,7 +416,7 @@ export const EierHjem = () => (
           <p className={`${H} text-[30px] font-bold leading-[34px]`} style={{ letterSpacing: -0.8, color: A.ink, margin: 0 }}>God morgen, {EIER.first}.</p>
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={EIER.img} alt="" className="w-[38px] h-[38px] rounded-full object-cover shrink-0 mt-[22px]" style={{ background: A.canvas2 }} />
+        <img loading="lazy" decoding="async" src={EIER.img} alt="" className="w-[38px] h-[38px] rounded-full object-cover shrink-0 mt-[22px]" style={{ background: A.canvas2 }} />
       </div>
       <p className="text-[15.5px] leading-[23px] mt-2.5" style={{ color: A.ink2, margin: '10px 0 0' }}>{EIER.summary}</p>
 
@@ -456,7 +456,7 @@ export const EierHjem = () => (
             <div key={t} className="rounded-[16px] overflow-hidden" style={{ background: A.field, border: `1px solid ${A.hair}` }}>
               <div className="relative w-full" style={{ aspectRatio: '16 / 9', background: A.canvas2 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                <img loading="lazy" decoding="async" src={img} alt="" className="absolute inset-0 w-full h-full object-cover" />
                 <span className="absolute left-3 top-3 inline-flex items-center h-6 px-2.5 rounded-full text-[11.5px] font-medium" style={{ background: 'rgba(250,249,246,0.92)', color: A.ok }}>Utleid</span>
               </div>
               <div className="flex items-center gap-2.5 px-3.5 py-3">
@@ -512,14 +512,14 @@ export const LeietakerHjem = () => (
           <p className={`${H} text-[30px] font-bold leading-[34px]`} style={{ letterSpacing: -0.8, color: A.ink, margin: 0 }}>God morgen, {LEIE.first}.</p>
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={LEIE.img} alt="" className="w-[38px] h-[38px] rounded-full object-cover shrink-0 mt-[22px]" style={{ background: A.canvas2 }} />
+        <img loading="lazy" decoding="async" src={LEIE.img} alt="" className="w-[38px] h-[38px] rounded-full object-cover shrink-0 mt-[22px]" style={{ background: A.canvas2 }} />
       </div>
       <p className="text-[15.5px] leading-[23px] mt-2.5" style={{ color: A.ink2, margin: '10px 0 0' }}>{LEIE.status}</p>
 
       <div className="mt-6 rounded-[16px] overflow-hidden" style={{ background: A.field, border: `1px solid ${A.hair}` }}>
         <div className="relative w-full" style={{ aspectRatio: '16 / 9', background: A.canvas2 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LEIE.cover} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img loading="lazy" decoding="async" src={LEIE.cover} alt="" className="absolute inset-0 w-full h-full object-cover" />
           <span className="absolute left-3 bottom-3 inline-flex items-center gap-1.5 h-7 pl-2.5 pr-3 rounded-full text-[12px] font-medium" style={{ background: 'rgba(250,249,246,0.92)', color: A.ink }}><MapPin className="w-3 h-3" strokeWidth={1.8} />{LEIE.adresse}</span>
           <span className="absolute right-3 bottom-3 inline-flex items-center h-7 px-2.5 rounded-full text-[12px] font-medium tabular-nums" style={{ background: 'rgba(26,26,26,0.72)', color: A.onInk }}>{LEIE.bilder} bilder</span>
         </div>
@@ -545,7 +545,7 @@ export const LeietakerHjem = () => (
 
       <div className="mt-6 rounded-[16px] p-4 flex items-center gap-3" style={{ background: A.field, border: `1px solid ${A.hair}` }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={LEIE.forvalter.img} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" style={{ objectPosition: LEIE.forvalter.pos }} />
+        <img loading="lazy" decoding="async" src={LEIE.forvalter.img} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" style={{ objectPosition: LEIE.forvalter.pos }} />
         <span className="flex-1 min-w-0"><span className={`${H} block text-[15px] font-bold leading-[20px] truncate`} style={{ color: A.ink }}>{LEIE.forvalter.name}</span><span className="block text-[12.5px] truncate" style={{ color: A.ink3 }}>{LEIE.forvalter.role}</span></span>
         <span className="inline-flex items-center h-9 px-4 rounded-full text-[13px] font-medium shrink-0" style={{ background: A.ink, color: A.onInk }}>Ta kontakt</span>
       </div>

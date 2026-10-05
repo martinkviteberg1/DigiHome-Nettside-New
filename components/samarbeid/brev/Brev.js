@@ -127,12 +127,13 @@ const Section = ({ children, testid, tint = false, dark = false, id }) => (
 );
 
 /** Ett portrett med navn og rolle under. Sort-hvitt i ro; farge når du nærmer deg. De som inviteres inn får en lilla ramme og rollen i lilla. Uten bilde: initialer. */
-const Person = ({ name, role, img, pos, sizes, testid, initials, bio, invited }) => (
+/** Portrett med navn, rolle og ev. bio. `priority` = over bretten (hero): lastes først; ellers lazy. srcset: 600 px-variant for kort/mobil, originalen for store skjermer. */
+const Person = ({ name, role, img, imgSm, imgW, pos, sizes, testid, initials, bio, invited, priority = false }) => (
   <figure className="m-0 group" data-testid={testid}>
     <div className="relative rounded-[24px] overflow-hidden" style={{ aspectRatio: '4 / 5', background: invited ? 'rgba(127,63,191,0.06)' : FILL, boxShadow: invited ? `0 0 0 1.5px ${ACCENT}` : undefined }}>
       {img ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={img} sizes={sizes} alt={name} loading="eager" decoding="async" className="absolute inset-0 w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-[1.03] transition-[filter,transform] duration-700 ease-out" style={{ objectPosition: pos }} />
+        <img src={img} srcSet={imgSm ? `${imgSm} 600w, ${img} ${imgW || 1000}w` : undefined} sizes={sizes} alt={name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" className="absolute inset-0 w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-[1.03] transition-[filter,transform] duration-700 ease-out" style={{ objectPosition: pos }} />
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="font-medium tracking-[-0.04em] leading-none" style={{ color: ACCENT, fontSize: 'clamp(40px, 4vw, 64px)' }}>{initials}</span>
@@ -215,11 +216,11 @@ const Cover = () => {
           </motion.div>
         </div>
 
-        {/* De tre som skriver – i full bredde. På mobil en rad å dra i. */}
-        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.3, delay: 0.55, ease: EASE }} className="brev-strip mt-14 lg:mt-20 flex sm:grid sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 overflow-x-auto sm:overflow-visible snap-x snap-mandatory -mx-5 px-5 sm:mx-0 sm:px-0" data-testid="letter-founders">
+        {/* De tre som skriver – i full bredde. På mobil en rad å dra i. Portrettene lastes med høy prioritet (over bretten). */}
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.4, ease: EASE }} className="brev-strip mt-14 lg:mt-20 flex sm:grid sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 overflow-x-auto sm:overflow-visible snap-x snap-mandatory -mx-5 px-5 sm:mx-0 sm:px-0" data-testid="letter-founders">
           {AVSENDERE.map((p) => (
             <div key={p.key} className="w-[72vw] sm:w-auto shrink-0 snap-start">
-              <Person name={p.name} role={p.role} img={p.img} pos={p.pos} sizes="(max-width: 640px) 72vw, 400px" testid={`letter-founder-${p.key}`} />
+              <Person name={p.name} role={p.role} img={p.img} imgSm={p.imgSm} imgW={p.imgW} pos={p.pos} sizes="(max-width: 640px) 72vw, 400px" priority testid={`letter-founder-${p.key}`} />
             </div>
           ))}
         </motion.div>
@@ -874,7 +875,7 @@ const Team = () => {
       <div className="mt-16 lg:mt-20 pt-10" style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-team">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-12 lg:gap-x-8">
           {TEAM.map((p, i) => (
-            <Rise key={p.key} delay={0.06 + i * 0.05} y={22}><Person name={p.name} role={p.role} img={p.img} pos={p.pos} initials={p.initials} bio={p.bio} invited={!!p.invited} sizes="(max-width: 1024px) 42vw, 280px" testid={`letter-team-${p.key}`} /></Rise>
+            <Rise key={p.key} delay={0.06 + i * 0.05} y={22}><Person name={p.name} role={p.role} img={p.img} imgSm={p.imgSm} imgW={p.imgW} pos={p.pos} initials={p.initials} bio={p.bio} invited={!!p.invited} sizes="(max-width: 1024px) 42vw, 280px" testid={`letter-team-${p.key}`} /></Rise>
           ))}
         </div>
       </div>

@@ -247,6 +247,55 @@ function mediaContentType(rel, fallback) {
 const MEDIA_RESIZE_CACHE = new Map();
 const MEDIA_RESIZE_MAX = 160;
 
+// In-memory cache for ORIGINALENE (okt. 2026 – «bildene laster tregt på prod»):
+// hver CDN-miss gikk hele veien pod → objektlagring (300–700 ms TTFB). Nå holdes
+// små/mellomstore filer (≤ 4 MB, totalt ≤ 64 MB, LRU) varme i prosessen i inntil
+// 15 min, så en miss koster millisekunder. Video o.l. over grensen caches ikke.
+const MEDIA_ORIG_CACHE = new Map(); // rel → { obj, size, until }
+const MEDIA_ORIG_MAX_ITEM = 4 * 1024 * 1024;
+const MEDIA_ORIG_MAX_TOTAL = 64 * 1024 * 1024;
+const MEDIA_ORIG_TTL_MS = 15 * 60 * 1000;
+let mediaOrigTotal = 0;
+
+function mediaOrigGet(rel) {
+  const hit = MEDIA_ORIG_CACHE.get(rel);
+  if (!hit) return null;
+  if (hit.until < Date.now()) { MEDIA_ORIG_CACHE.delete(rel); mediaOrigTotal -= hit.size; return null; }
+  // LRU: flytt bakerst.
+  MEDIA_ORIG_CACHE.delete(rel); MEDIA_ORIG_CACHE.set(rel, hit);
+  return hit.obj;
+}
+
+function mediaOrigSet(rel, obj) {
+  const size = obj?.buffer?.length || 0;
+  if (!size || size > MEDIA_ORIG_MAX_ITEM) return;
+  const prev = MEDIA_ORIG_CACHE.get(rel);
+  if (prev) { MEDIA_ORIG_CACHE.delete(rel); mediaOrigTotal -= prev.size; }
+  while (mediaOrigTotal + size > MEDIA_ORIG_MAX_TOTAL && MEDIA_ORIG_CACHE.size) {
+    const eldsteKey = MEDIA_ORIG_CACHE.keys().next().value;
+    mediaOrigTotal -= MEDIA_ORIG_CACHE.get(eldsteKey).size;
+    MEDIA_ORIG_CACHE.delete(eldsteKey);
+  }
+  MEDIA_ORIG_CACHE.set(rel, { obj, size, until: Date.now() + MEDIA_ORIG_TTL_MS });
+  mediaOrigTotal += size;
+}
+
+// Mediene i /samarbeid er i tillegg tracet inn i standalone-bygget (next.config.js →
+// SAMARBEID_MEDIA) og ligger fysisk i <standalone>/public – Next serverer dem da som
+// vanlige statiske filer FØR fallback-rewriten, så de når aldri hit i prod.
+// NB: IKKE les fra <cwd>/public her med fs: byggets filsporing (@vercel/nft) analyserer
+// fs-kall statisk, og `readFile(join(cwd, 'public', ukjent))` tracet HELE /public
+// (134 MB) inn i standalone-bygget (verifisert 05.10.2026).
+
+// Henter en mediefil: minne → objektlagring. Kaster ved lagerfeil.
+async function hentMedia(rel) {
+  const cached = mediaOrigGet(rel);
+  if (cached) return cached;
+  const obj = await getObject(`${PUBLIC_PREFIX}/${rel}`);
+  if (obj) mediaOrigSet(rel, obj);
+  return obj;
+}
+
 // Serverer en fil fra objektlagring. Støtter HTTP Range (206) for video-seeking.
 async function serveMedia(request, segments) {
   const rel = segments.join('/');
@@ -255,7 +304,7 @@ async function serveMedia(request, segments) {
   }
   let obj;
   try {
-    obj = await getObject(`${PUBLIC_PREFIX}/${rel}`);
+    obj = await hentMedia(rel);
   } catch (e) {
     // Lageret returnerer 500 for ikke-eksisterende objekter (ikke 404). For
     // mediaservering behandler vi enhver henting-feil som «ikke funnet» — det

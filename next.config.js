@@ -1,3 +1,21 @@
+// Mediene i den private invitasjonen (/samarbeid). To ting skjer med disse:
+//  1) de traces inn i standalone-bygget (outputFileTracingIncludes) → ligger fysisk i <standalone>/public og serveres
+//     som vanlige statiske filer av Next i prod – ingen tur til objektlagringen, ingen «glemte å laste opp»-404;
+//  2) de får eksakt-sti Cache-Control immutable (filene finnes garantert, så regelen kan aldri treffe en 404 –
+//     jf. advarselen under headers()). Alt annet i /public går fortsatt via fallback-rewriten til /api/media.
+// Portrett-variantene (-600) lages av scripts/samarbeid-portretter.mjs.
+const SAMARBEID_MEDIA = [
+  '/digihome-wordmark-ink.svg',
+  '/team-erik.webp',
+  '/brand/sarah-sleeman-1000.webp', '/brand/sarah-sleeman-600.webp', '/brand/sarah-sleeman-360.webp',
+  '/v4/martin.webp', '/v4/martin-600.webp', '/v4/jonas.webp',
+  '/v4/annonse/kjokken-600.webp', '/v4/annonse/leietaker-emma.webp', '/v4/annonse/stue-moblert-700.webp',
+  '/team/jens-petter-glittenberg.webp', '/team/jens-petter-glittenberg-600.webp',
+  '/team/kevin-ai-v2.webp', '/team/kevin-ai-v2-600.webp',
+  '/team/martin-vikesland.webp', '/team/martin-vikesland-600.webp',
+  '/team/oyvind-storli-hoel.webp', '/team/oyvind-storli-hoel-600.webp',
+];
+
 const nextConfig = {
   output: 'standalone',
   // Måling: `NEXT_DIST_DIR=.next-prod yarn build` gir et produksjonsbygg ved siden av dev-serverens .next
@@ -62,7 +80,7 @@ const nextConfig = {
     // docx-to-pdf.wasm leses med fs.readFile i lib/dokumenter.js og blir IKKE
     // auto-tracet — uten denne linjen feiler DOCX→PDF-konvertering i produksjon.
     outputFileTracingIncludes: {
-      '/**': ['./public/fonts/**/*.woff', './lib/llms-content.txt', './lib/llms-full-content.txt', './node_modules/docx-to-pdf-wasm/build/docx-to-pdf.wasm', './node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs'],
+      '/**': ['./public/fonts/**/*.woff', './lib/llms-content.txt', './lib/llms-full-content.txt', './node_modules/docx-to-pdf-wasm/build/docx-to-pdf.wasm', './node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs', ...SAMARBEID_MEDIA.map((p) => `./public${p}`)],
     },
   },
   webpack(config, { dev }) {
@@ -100,6 +118,12 @@ const nextConfig = {
         source: "/fonts/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
+      // Mediene i /samarbeid: eksakte stier til filer som er tracet inn i bygget (se SAMARBEID_MEDIA øverst) –
+      // de finnes alltid, så regelen kan ikke treffe en 404. Uten denne ville Next servert dem med max-age=0.
+      ...SAMARBEID_MEDIA.map((source) => ({
+        source,
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      })),
       // Bilder/medier: INGEN sti-basert Cache-Control her. I produksjon serveres alle medier
       // via fallback-rewriten til /api/media (serveMedia), som selv setter riktig header:
       // 200 → «public, max-age=31536000, immutable», 404 → «no-store». En sti-regel her

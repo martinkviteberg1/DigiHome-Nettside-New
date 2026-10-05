@@ -135,24 +135,44 @@ export const INV = {
   fullNames: 'Martin Vikesland og Øyvind Storli Hoel',
 };
 
+/** Portrettene – én definisjon per person, brukt både i hero-stripen og i laget. `sm` er en 600 px-variant (scripts/samarbeid-portretter.mjs)
+ *  som nettleseren velger på kort og mobil via srcset; `w` er originalens bredde. HUSK: nye/endrede filer i /public må også lastes opp til
+ *  objektlagringen (scripts/upload_public_to_storage.mjs) – i tillegg traces de inn i standalone-bygget (next.config.js → SAMARBEID_MEDIA). */
+const PORTRETT = {
+  erik: { img: '/team-erik.webp', imgW: 600, pos: '50% 18%' },
+  sarah: { img: '/brand/sarah-sleeman-1000.webp', imgSm: '/brand/sarah-sleeman-600.webp', imgW: 1000, pos: '50% 28%' },
+  martin: { img: '/v4/martin.webp', imgSm: '/v4/martin-600.webp', imgW: 800, pos: '50% 22%' },
+  /* ?v=2: den gamle filen (13 KB) lå igjen i Cloudflare-cachen med immutable-header etter at filen ble byttet 05.10. */
+  jens: { img: '/team/jens-petter-glittenberg.webp?v=2', imgSm: '/team/jens-petter-glittenberg-600.webp', imgW: 900, pos: '50% 28%' },
+  kevin: { img: '/team/kevin-ai-v2.webp', imgSm: '/team/kevin-ai-v2-600.webp', imgW: 800, pos: '50% 22%' },
+  vikesland: { img: '/team/martin-vikesland.webp', imgSm: '/team/martin-vikesland-600.webp', imgW: 900, pos: '50% 30%' },
+  hoel: { img: '/team/oyvind-storli-hoel.webp', imgSm: '/team/oyvind-storli-hoel-600.webp', imgW: 759, pos: '50% 22%' },
+};
+
 export const AVSENDERE = [
-  { key: 'erik', name: 'Erik Hoffmann-Dahl', role: 'Styreleder · Chief Legal Officer', img: '/team-erik.webp', pos: '50% 18%' },
-  { key: 'sarah', name: 'Sarah Sleeman', role: 'Daglig leder · styremedlem', img: '/brand/sarah-sleeman-1000.webp', pos: '50% 28%' },
-  { key: 'martin', name: 'Martin C. Kviteberg', role: 'Produktsjef · styremedlem', img: '/v4/martin.webp', pos: '50% 22%' },
+  { key: 'erik', name: 'Erik Hoffmann-Dahl', role: 'Styreleder · Chief Legal Officer', ...PORTRETT.erik },
+  { key: 'sarah', name: 'Sarah Sleeman', role: 'Daglig leder · styremedlem', ...PORTRETT.sarah },
+  { key: 'martin', name: 'Martin C. Kviteberg', role: 'Produktsjef · styremedlem', ...PORTRETT.martin },
 ];
 
 /** Hele laget i ett rutenett (rekkefølgen her er rekkefølgen på siden): daglig leder, produktsjef, styreleder/CLO, styremedlem, utvikling – så de to vi inviterer inn.
- *  Ingen definerte roller på Martin og Øyvind før de har investert. Bioene er korte og ulikt bygget opp – kapittel 01 sier allerede «vi ser for oss …», så det gjentas ikke her.
- *  Jens-Petters bilde har ?v=2 fordi den gamle filen (13 KB) lå igjen i Cloudflare-cachen med immutable-header etter at filen ble byttet 05.10. */
+ *  Ingen definerte roller på Martin og Øyvind før de har investert. Bioene er korte og ulikt bygget opp – kapittel 01 sier allerede «vi ser for oss …», så det gjentas ikke her. */
 export const TEAM = [
-  { key: 'sarah', name: 'Sarah Sleeman', role: 'Daglig leder', img: '/brand/sarah-sleeman-1000.webp', pos: '50% 28%', bio: 'Eiendomsmegler med seks år i DNB. Leder kundeakkvisisjon og forvaltning og sitter tett på den operative driften og kundene.' },
-  { key: 'martin', name: 'Martin C. Kviteberg', role: 'Produktsjef', img: '/v4/martin.webp', pos: '50% 22%', bio: 'Grunnla BnbSpesialisten og jobbet ti år i Adonis frem mot exit. Leder produkt- og teknologiutviklingen i DigiHome.' },
-  { key: 'erik', name: 'Erik Hoffmann-Dahl', role: 'Styreleder · Chief Legal Officer', img: '/team-erik.webp', pos: '50% 18%', bio: 'Advokat og partner i Hoffmann Thinn. Har jobbet med selskapsstruktur og juridiske rammer rundt DigiHome.' },
-  { key: 'jens', name: 'Jens-Petter Glittenberg', role: 'Styremedlem', img: '/team/jens-petter-glittenberg.webp?v=2', pos: '50% 28%', bio: 'Medgründer av Meltwater og styreleder i CARN Capital. Har erfaring med internasjonal skalering, kapitalmarked og selskapsbygging.' },
-  { key: 'kevin', name: 'Kevin Ha', role: 'Utvikling', img: '/team/kevin-ai-v2.webp', pos: '50% 22%', bio: 'Bistår Martin i utviklingen av plattformen. Siviløkonom fra NHH med kompetanse innen KI-drevet utvikling og automatisering.' },
-  { key: 'vikesland', name: 'Martin Vikesland', role: 'Inviteres inn som medeier', img: '/team/martin-vikesland.webp', pos: '50% 30%', invited: true, bio: 'Økonomi og finans. Den vi vil diskutere tallene, kapitalplanen og finansieringen med – og ha med oss i investordialogen når neste runde kommer.' },
-  { key: 'hoel', name: 'Øyvind Storli Hoel', role: 'Inviteres inn som medeier', img: '/team/oyvind-storli-hoel.webp', pos: '50% 22%', invited: true, bio: 'Kjenner eiendomsmarkedet, kundene og den kommersielle siden. Viktig for oss på marked, produkt og veien inn mot større eiendomsaktører.' },
+  { key: 'sarah', name: 'Sarah Sleeman', role: 'Daglig leder', ...PORTRETT.sarah, bio: 'Eiendomsmegler med seks år i DNB. Leder kundeakkvisisjon og forvaltning og sitter tett på den operative driften og kundene.' },
+  { key: 'martin', name: 'Martin C. Kviteberg', role: 'Produktsjef', ...PORTRETT.martin, bio: 'Grunnla BnbSpesialisten og jobbet ti år i Adonis frem mot exit. Leder produkt- og teknologiutviklingen i DigiHome.' },
+  { key: 'erik', name: 'Erik Hoffmann-Dahl', role: 'Styreleder · Chief Legal Officer', ...PORTRETT.erik, bio: 'Advokat og partner i Hoffmann Thinn. Har jobbet med selskapsstruktur og juridiske rammer rundt DigiHome.' },
+  { key: 'jens', name: 'Jens-Petter Glittenberg', role: 'Styremedlem', ...PORTRETT.jens, bio: 'Medgründer av Meltwater og styreleder i CARN Capital. Har erfaring med internasjonal skalering, kapitalmarked og selskapsbygging.' },
+  { key: 'kevin', name: 'Kevin Ha', role: 'Utvikling', ...PORTRETT.kevin, bio: 'Bistår Martin i utviklingen av plattformen. Siviløkonom fra NHH med kompetanse innen KI-drevet utvikling og automatisering.' },
+  { key: 'vikesland', name: 'Martin Vikesland', role: 'Inviteres inn som medeier', ...PORTRETT.vikesland, invited: true, bio: 'Økonomi og finans. Den vi vil diskutere tallene, kapitalplanen og finansieringen med – og ha med oss i investordialogen når neste runde kommer.' },
+  { key: 'hoel', name: 'Øyvind Storli Hoel', role: 'Inviteres inn som medeier', ...PORTRETT.hoel, invited: true, bio: 'Kjenner eiendomsmarkedet, kundene og den kommersielle siden. Viktig for oss på marked, produkt og veien inn mot større eiendomsaktører.' },
 ];
+
+/** srcset/sizes for et portrett – samme logikk i hero (Person) og i gatens forhåndslasting, så nettleseren varmer akkurat den varianten den senere velger. */
+export const portrettKilder = (p) => ({
+  src: p.img,
+  srcSet: p.imgSm ? `${p.imgSm} 600w, ${p.img} ${p.imgW || 1000}w` : undefined,
+});
+export const HERO_SIZES = '(max-width: 640px) 72vw, 400px';
 
 export const BREV = {
   eyebrow: 'Privat invitasjon',

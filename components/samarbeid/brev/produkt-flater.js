@@ -26,7 +26,7 @@ const initials = (n) => n.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]
 const Avatar = ({ name, size = 36, photo, pos, tone, className = '' }) => (
   <span className={`rounded-full shrink-0 inline-flex items-center justify-center overflow-hidden ${H} font-medium ${className}`} style={{ width: size, height: size, background: tone === 'ai' ? A.purpleBg : A.canvas2, color: tone === 'ai' ? A.purple : A.ink2, fontSize: Math.max(11, Math.round(size * 0.34)), boxShadow: `0 0 0 1px ${A.hair}` }}>
     {/* eslint-disable-next-line @next/next/no-img-element */}
-    {photo ? <img src={photo} alt="" className="w-full h-full object-cover" style={{ objectPosition: pos }} /> : tone === 'ai' ? <Sparkles style={{ width: size * 0.45, height: size * 0.45 }} strokeWidth={1.75} /> : initials(name)}
+    {photo ? <img loading="lazy" decoding="async" src={photo} alt="" className="w-full h-full object-cover" style={{ objectPosition: pos }} /> : tone === 'ai' ? <Sparkles style={{ width: size * 0.45, height: size * 0.45 }} strokeWidth={1.75} /> : initials(name)}
   </span>
 );
 const IconBtn = ({ icon: Icon, size = 18, className = '', tone }) => (
@@ -323,13 +323,13 @@ export const Enhet = () => (
             <div className="flex flex-col gap-9 min-w-0">
               <div className="relative h-[300px] rounded-[16px] overflow-hidden grid gap-1.5" style={{ gridTemplateColumns: '1.6fr 1fr' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={FOTO[0]} alt="" className="w-full h-full object-cover" style={{ background: A.canvas2 }} />
+                <img loading="lazy" decoding="async" src={FOTO[0]} alt="" className="w-full h-full object-cover" style={{ background: A.canvas2 }} />
                 <div className="grid gap-1.5" style={{ gridTemplateRows: '1fr 1fr' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={FOTO[1]} alt="" className="w-full h-full object-cover" style={{ background: A.canvas2 }} />
+                  <img loading="lazy" decoding="async" src={FOTO[1]} alt="" className="w-full h-full object-cover" style={{ background: A.canvas2 }} />
                   <div className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={FOTO[2]} alt="" className="w-full h-full object-cover" style={{ background: A.canvas2 }} />
+                    <img loading="lazy" decoding="async" src={FOTO[2]} alt="" className="w-full h-full object-cover" style={{ background: A.canvas2 }} />
                     <span className="absolute inset-0 flex items-center justify-center text-[22px] font-semibold text-white" style={{ background: 'rgba(26,26,26,0.38)' }}>+9</span>
                   </div>
                 </div>
