@@ -4,8 +4,9 @@ import 'server-only';
  *  SERVER-ONLY: teksten leses av server-komponenten i app/samarbeid og sendes bare til nettlesere med gyldig sesjon – den ligger ikke i JS-bundlen.
  *  Én kilde til sannhet for tall: DEAL (emisjonen), PORTEFOLJE (aktive enheter). Alt annet refererer hit.
  *  v8 (05.10.2026): teksten skrevet på nytt av brukeren – si hva som er gjort, hvorfor vi vil ha dem med, og hva som skjer videre.
- *  Ingen «investor-presentasjon»-språk (verdiløft, SaaS-bevis, risikoreduksjon). 11 kapitler: «Hva som er gjort» og «Det neste vi skal
- *  bevise» er slått sammen, og de fire bevispunktene ligger i roadmapens resultatkolonne. Skjermbildene i produkt.js er uendret. */
+ *  Ingen «investor-presentasjon»-språk (verdiløft, SaaS-bevis, risikoreduksjon). «Hva som er gjort» og «Det neste vi skal bevise» er
+ *  slått sammen, og de fire bevispunktene ligger i roadmapens resultatkolonne. Skjermbildene i produkt.js er uendret.
+ *  v9: nytt kapittel 04 Strategi (B2B / B2C / kombinasjon – vår hypotese, et diskusjonsgrunnlag). 12 kapitler. Ingen tall endret. */
 
 /* ── Emisjonen – én kilde til sannhet. Pre-money 10,0 MNOK, 10 % samlet etter emisjonen, delt likt. Alt regnes herfra. ── */
 const PRE_MONEY = 10_000_000;
@@ -98,7 +99,7 @@ export const BREV = {
     ],
   },
 
-  /* ── 09 Laget – og rollen vi ser for oss for dere ── */
+  /* ── 10 Laget – og rollen vi ser for oss for dere ── */
   team: {
     eyebrow: 'Laget – og rollen vi ser for oss',
     title: 'Vi mener dere vil styrke laget vesentlig.',
@@ -147,7 +148,25 @@ export const BREV = {
     principle: 'Egen forvaltning har latt oss bygge og teste produktet tett på virkeligheten. Nå skal vi finne ut hvor godt det fungerer hos andre – de første eksterne kundene blir den viktigste milepælen for selskapet.',
   },
 
-  /* ── 04 Tech og forvaltning ── */
+  /* ── 04 Strategi – B2B, B2C eller begge. Et veivalg vi vil ta sammen med investorene. Formulert som vår vurdering/hypotese,
+   *     ikke som dokumentert markedsfakta. Et diskusjonsgrunnlag – ikke en endelig besluttet roadmap. Ingen tall her. ── */
+  strategi: {
+    eyebrow: 'Strategi',
+    title: 'B2B, B2C eller begge. Et veivalg vi vil ta sammen med dere.',
+    paragraphs: [
+      'DigiHome kan gå flere veier ut i markedet: til eiendomsselskaper og profesjonelle forvaltere (B2B), direkte til private utleiere (B2C) – eller en kombinasjon av de to. Det er en av de viktigste strategiske diskusjonene vi ønsker å ta sammen med dere.',
+      'Foreløpig holder vi en knapp på B2B i Norge først. Vår vurdering er at det finnes et stort og åpent marked for slike systemer blant norske eiendomsselskaper og forvaltere. Det er en hypotese vi ønsker å teste med de første eksterne kundene – ikke noe vi har dokumentert ennå. B2C opplever vi som mer konkurranseutsatt, og vi er bevisste på å ikke gape over for mye.',
+    ],
+    alternativer: [
+      ['B2B', 'Vår foreløpige prioritet', 'Plattformen selges til eiendomsselskaper og profesjonelle forvaltere i Norge. Vi mener markedet er stort og åpent – en vurdering vi vil teste med de første eksterne kundene.'],
+      ['B2C', 'Mer konkurranseutsatt', 'DigiHome tilbys direkte til private utleiere. Et marked vi opplever som mer konkurranseutsatt, og som vi ikke ønsker å gape over samtidig med B2B.'],
+      ['Kombinasjon', 'Åpent spørsmål', 'B2B som inngang og B2C på sikt – eller en annen rekkefølge. Om og når det er riktig, vil vi vurdere sammen med dere.'],
+    ],
+    noteH: 'Diskusjonsgrunnlag',
+    note: 'Dette er vår foreløpige vurdering og et grunnlag for diskusjon – ikke en endelig besluttet roadmap. Veivalget ønsker vi å ta sammen med dere.',
+  },
+
+  /* ── 05 Tech og forvaltning ── */
   structure: {
     eyebrow: 'Tech og forvaltning',
     title: 'To selskaper med forskjellige roller.',
@@ -164,7 +183,7 @@ export const BREV = {
     ],
   },
 
-  /* ── 05 Hva som er gjort frem til nå – og hvor risikoen står ── */
+  /* ── 06 Hva som er gjort frem til nå – og hvor risikoen står ── */
   naa: {
     eyebrow: 'Hva som er gjort frem til nå',
     title: ['Den første byggefasen', 'er allerede tatt.'],
@@ -188,7 +207,7 @@ export const BREV = {
     ],
   },
 
-  /* ── 06 Roadmap – fire faser, hver med et mål som skal være nådd før vi går videre ── */
+  /* ── 07 Roadmap – fire faser, hver med et mål som skal være nådd før vi går videre ── */
   roadmap: {
     eyebrow: 'Roadmap',
     title: ['Fra egen drift', 'til et produkt flere kan kjøpe.'],
@@ -210,7 +229,7 @@ export const BREV = {
     maalNote: 'Det er dette som gjør DigiHome til et skalerbart programvareselskap. Når det er dokumentert, står selskapet etter vår vurdering i en helt annen posisjon enn i dag – og det er denne fasen vi ønsker å finansiere nå.',
   },
 
-  /* ── 07 Forretningsmodell ── */
+  /* ── 08 Forretningsmodell ── */
   modell: {
     eyebrow: 'Forretningsmodell',
     title: ['DigiHome skal prises', 'som programvare.'],
@@ -233,7 +252,7 @@ export const BREV = {
     baseResult: ['1,5–3 MNOK', 'Kontrakts-ARR ved utgangen av år 1', 'Ambisjon: 2–3 betalende kunder og 1 500–3 000 enheter. Et nøkternt scenario med pilotvilkår og rabatter i den første fasen – større kunder kan gi vesentlig høyere inntekter.'],
   },
 
-  /* ── 08 Kapitalplan: budsjett, hva emisjonen skal brukes til, og runway ── */
+  /* ── 09 Kapitalplan: budsjett, hva emisjonen skal brukes til, og runway ── */
   kapital: {
     eyebrow: 'Kapitalplan',
     title: 'Hva trenger vi de neste 12 månedene?',
@@ -266,7 +285,7 @@ export const BREV = {
     runwayNote: 'Dette regnestykket går vi gjennom sammen med dere, med de faktiske forutsetningene og regnearket på bordet. Ambisjonen er å hente en større runde når den første eksterne valideringen er på plass – og dermed gå inn i den med et sterkere selskap enn i dag.',
   },
 
-  /* ── 10 Tilbudet – alle tall fra DEAL ── */
+  /* ── 11 Tilbudet – alle tall fra DEAL ── */
   offer: {
     eyebrow: 'Tilbudet',
     title: 'Vi ønsker dere med som medeiere i DigiHome Tech.',
@@ -299,7 +318,7 @@ export const BREV = {
     },
   },
 
-  /* ── 11 Veien videre ── */
+  /* ── 12 Veien videre ── */
   next: {
     eyebrow: 'Veien videre',
     title: 'Vi håper dere har lyst til å være med.',

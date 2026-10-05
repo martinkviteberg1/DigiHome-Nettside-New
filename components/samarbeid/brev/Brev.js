@@ -2,8 +2,8 @@
 /** Privat invitasjon til Martin og Øyvind – et personlig brev fra Erik, Sarah og Martin, ikke en landingsside. /samarbeid, ikke søkbar.
  *  Layouten er tatt fra AFA-repoets InvitationPage: redaksjonelt rutenett (12 kolonner), smal klebrig venstremarg med kapittelnummer og
  *  kicker – innholdet i de ni til høyre. De store utsagnene fyller kolonnen (målt), tilbudet står som et term sheet på mørk flate.
- *  Rekkefølgen er investeringscasets: brevet rett under brevhodet → hvorfor dere → dette er bygget → målbildet → Tech og forvaltning →
- *  hva som er gjort → roadmap → forretningsmodell → kapitalplan → laget og rollen → tilbudet → veien videre. (11 kapitler.)
+ *  Rekkefølgen er investeringscasets: brevet rett under brevhodet → hvorfor dere → dette er bygget → målbildet → strategi (B2B/B2C) →
+ *  Tech og forvaltning → hva som er gjort → roadmap → forretningsmodell → kapitalplan → laget og rollen → tilbudet → veien videre. (12 kapitler.)
  *  INNHOLDET KOMMER SOM PROPS fra server-komponenten (app/samarbeid/page.js) – teksten importeres ikke her, så den ligger ikke i JS-bundlen. */
 import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
@@ -409,7 +409,47 @@ const Target = () => {
   );
 };
 
-/* ─── 05 Hva som er gjort frem til nå: det som er brukt og bygget, bygget → nå → skalere, og hvor risikoen står (fire spørsmål). ─── */
+/* ─── 04 Strategi: B2B, B2C eller begge – tre alternativer side om side (vår foreløpige prioritet markert i lilla), og en tydelig
+ *     merkelapp om at dette er et diskusjonsgrunnlag, ikke en besluttet roadmap. Ingen tall. ─── */
+const Strategi = () => {
+  const { BREV } = useInnhold();
+  const c = BREV.strategi;
+  const dot = (valgt) => (valgt ? { background: ACCENT, boxShadow: '0 0 0 4px rgba(127,63,191,0.18)' } : { background: PAPER, border: `1.5px solid ${INK}` });
+  return (
+    <Section id="strategi" testid="letter-strategy">
+      <Grid>
+        <Aside n="04" label={c.eyebrow} />
+        <Main>
+          <Title title={c.title} testid="letter-strategy-title" />
+          <Paragraphs items={c.paragraphs} testid="letter-strategy-p" strong={c.paragraphs.length - 1} />
+
+          {/* B2B · B2C · Kombinasjon – samme form som fasene i kapittel 06. Prikken og lilla linje viser hva vi foreløpig holder en knapp på. */}
+          <div className="mt-16 lg:mt-20 grid sm:grid-cols-3 gap-x-8 gap-y-12" data-testid="letter-strategy-alternativer">
+            {c.alternativer.map(([h, label, text], i) => {
+              const valgt = i === 0;
+              return (
+                <Rise key={h} delay={0.05 + i * 0.08}><div className="relative pt-7" style={{ borderTop: `1px solid ${valgt ? ACCENT : INK}` }} data-testid={`letter-strategy-alt-${i + 1}`}>
+                  <span aria-hidden className="absolute left-0 -top-[5px] w-[9px] h-[9px] rounded-full" style={dot(valgt)} />
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: valgt ? ACCENT : MUTED }}>{label}</p>
+                  <p className="font-medium tracking-[-0.03em] leading-none" style={{ margin: '14px 0 0', color: INK, fontSize: T.num }}>{h}</p>
+                  <p className="text-[15px] leading-[1.6] max-w-[32ch]" style={{ margin: '14px 0 0', color: MUTED }}>{text}</p>
+                </div></Rise>
+              );
+            })}
+          </div>
+
+          {/* Diskusjonsgrunnlag – ikke besluttet. Samme form som prinsippet i kapittel 03. */}
+          <Rise delay={0.1}><div className="mt-16 lg:mt-20 pt-8" style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-strategy-note">
+            <p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid="letter-strategy-note-h">{c.noteH}</p>
+            <p className="font-medium leading-[1.3] tracking-[-0.02em] max-w-[40ch] text-balance" style={{ margin: '16px 0 0', color: INK, fontSize: 'clamp(22px, 2vw, 30px)' }} data-testid="letter-strategy-note-text">{c.note}</p>
+          </div></Rise>
+        </Main>
+      </Grid>
+    </Section>
+  );
+};
+
+/* ─── 06 Hva som er gjort frem til nå: det som er brukt og bygget, bygget → nå → skalere, og hvor risikoen står (fire spørsmål). ─── */
 const Naa = () => {
   const { BREV } = useInnhold();
   const c = BREV.naa;
@@ -417,7 +457,7 @@ const Naa = () => {
   return (
     <Section id="hvorfor-naa" testid="letter-naa" tint>
       <Grid>
-        <Aside n="05" label={c.eyebrow} />
+        <Aside n="06" label={c.eyebrow} />
         <Main>
           <Statement lines={c.title} testid="letter-naa-title" />
           <Paragraphs items={c.paragraphs} testid="letter-naa-p" strong={c.paragraphs.length - 1} first={32} />
@@ -454,7 +494,7 @@ const Naa = () => {
   );
 };
 
-/* ─── 06 Roadmap: fire faser – periode, fokus (med hva som bygges) og målet som skal være nådd før vi går videre ─── */
+/* ─── 07 Roadmap: fire faser – periode, fokus (med hva som bygges) og målet som skal være nådd før vi går videre ─── */
 const roadmapCell = (i, v, r) => {
   if (i === 0) return <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap" style={{ color: ACCENT }}>{v}</span>;
   if (i === 1) return (
@@ -473,7 +513,7 @@ const Roadmap = () => {
   return (
     <Section id="roadmap" testid="letter-roadmap" tint>
       <Grid>
-        <Aside n="06" label={c.eyebrow} />
+        <Aside n="07" label={c.eyebrow} />
         <Main>
           <Statement lines={c.title} testid="letter-roadmap-title" />
           <Paragraphs items={c.paragraphs} testid="letter-roadmap-p" strong={0} first={32} />
@@ -505,7 +545,7 @@ const Kapital = () => {
   return (
     <Section id="kapital" testid="letter-kapital">
       <Grid>
-        <Aside n="08" label={c.eyebrow} />
+        <Aside n="09" label={c.eyebrow} />
         <Main>
           <Title title={c.title} testid="letter-kapital-head" />
           <Paragraphs items={c.paragraphs} testid="letter-kapital-p" strong={0} />
@@ -564,7 +604,7 @@ const Modell = () => {
   return (
     <Section id="modell" testid="letter-modell" tint>
       <Grid>
-        <Aside n="07" label={c.eyebrow} />
+        <Aside n="08" label={c.eyebrow} />
         <Main>
           <Statement lines={c.title} testid="letter-modell-title" />
           <Paragraphs items={c.paragraphs} testid="letter-modell-p" strong={0} first={32} />
@@ -589,14 +629,14 @@ const Modell = () => {
   );
 };
 
-/* ─── 04 Tech og forvaltning ─── */
+/* ─── 05 Tech og forvaltning ─── */
 const Structure = () => {
   const { BREV } = useInnhold();
   const c = BREV.structure;
   return (
     <Section id="struktur" testid="letter-structure" tint>
       <Grid>
-        <Aside n="04" label={c.eyebrow} />
+        <Aside n="05" label={c.eyebrow} />
         <Main>
           <Title title={c.title} testid="letter-structure-head" />
           <Paragraphs items={c.paragraphs} testid="letter-structure-p" strong={c.paragraphs.length - 1} />
@@ -607,14 +647,14 @@ const Structure = () => {
   );
 };
 
-/* ─── 09 Laget – og rollen vi ser for oss: tre rader med portretter, så hva det innebærer i praksis (radene vises bare om de finnes) ─── */
+/* ─── 10 Laget – og rollen vi ser for oss: tre rader med portretter, så hva det innebærer i praksis (radene vises bare om de finnes) ─── */
 const Team = () => {
   const { BREV, TEAM } = useInnhold();
   const t = BREV.team;
   return (
     <Section id="teamet" testid="letter-team-section" tint>
       <Grid>
-        <Aside n="09" label={t.eyebrow} />
+        <Aside n="10" label={t.eyebrow} />
         <Main>
           <Title title={t.title} testid="letter-team-head" />
           <Paragraphs items={t.paragraphs} testid="letter-team-p" strong={t.paragraphs.length - 1} />
@@ -639,14 +679,14 @@ const Team = () => {
   );
 };
 
-/* ─── 10 Tilbudet: term sheet på mørk flate (investering · pre · post · eierandel), én linje om aksjene, så gjennomføringen ─── */
+/* ─── 11 Tilbudet: term sheet på mørk flate (investering · pre · post · eierandel), én linje om aksjene, så gjennomføringen ─── */
 const Offer = () => {
   const { BREV } = useInnhold();
   const c = BREV.offer;
   return (
     <Section id="tilbudet" testid="letter-offer" dark>
       <Grid>
-        <Aside n="10" label={c.eyebrow} dark />
+        <Aside n="11" label={c.eyebrow} dark />
         <Main>
           <Title title={c.title} testid="letter-offer-head" dark />
           <Paragraphs items={c.paragraphs} testid="letter-offer-p" strong={0} dark />
@@ -686,14 +726,14 @@ const Offer = () => {
   );
 };
 
-/* ─── 11 Veien videre. Personlig avslutning. Ingen skjema. ─── */
+/* ─── 12 Veien videre. Personlig avslutning. Ingen skjema. ─── */
 const Next = () => {
   const { BREV } = useInnhold();
   const c = BREV.next;
   return (
     <Section id="videre" testid="letter-next">
       <Grid>
-        <Aside n="11" label={c.eyebrow} />
+        <Aside n="12" label={c.eyebrow} />
         <Main>
           <Title title={c.title} testid="letter-next-head" />
           <Paragraphs items={c.paragraphs} testid="letter-next-p" strong={c.paragraphs.length - 1} />
@@ -751,6 +791,7 @@ export default function Brev({ start, innhold }) {
         <Why />
         <Built />
         <Target />
+        <Strategi />
         <Structure />
         <Naa />
         <Roadmap />
