@@ -24,4 +24,7 @@
   .brev-print-hide { display: none !important; }
   .brev section { break-inside: avoid; padding-top: 36px !important; padding-bottom: 36px !important; }
   .brev [data-testid="letter-offer"] { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Forutsetningene bak kapitalplanen skal alltid med på papir, selv om blokken er lukket på skjermen */
+  .brev .brev-print-show[hidden] { display: block !important; }
+  .brev [data-testid="letter-kapital-forutsetninger-toggle"] svg { display: none; }
 }

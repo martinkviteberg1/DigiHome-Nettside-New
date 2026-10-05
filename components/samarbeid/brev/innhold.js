@@ -6,34 +6,120 @@ import 'server-only';
  *  v8 (05.10.2026): teksten skrevet på nytt av brukeren – si hva som er gjort, hvorfor vi vil ha dem med, og hva som skjer videre.
  *  Ingen «investor-presentasjon»-språk (verdiløft, SaaS-bevis, risikoreduksjon). «Hva som er gjort» og «Det neste vi skal bevise» er
  *  slått sammen, og de fire bevispunktene ligger i roadmapens resultatkolonne. Skjermbildene i produkt.js er uendret.
- *  v9: nytt kapittel 04 Strategi (B2B / B2C / kombinasjon – vår hypotese, et diskusjonsgrunnlag). 12 kapitler. Ingen tall endret. */
+ *  v9: nytt kapittel 04 Strategi (B2B / B2C / kombinasjon – vår hypotese, et diskusjonsgrunnlag). 12 kapitler.
+ *  v10 (05.10.2026, økonomi): DEAL = 1 000 000 kr ny kapital, 10 % samlet, 9,0 pre / 10,0 post – ingen antatt fordeling. KAPITAL = foreløpig
+ *  3-månedersplan (226 000 kr/mnd · 678 000 kr + 20 000 emisjon/juridisk + 50 000 buffer = 748 000 avsatt; 252 000 ikke disponert). PRIS = ett
+ *  hypotetisk oppsideeksempel (1 000 enheter → 130 000 kr/mnd → 1,56 MNOK ARR; 780 000 kr fakturert år 1 fra måned 7). Base case/7,8 MNOK fjernet. */
 
-/* ── Emisjonen – én kilde til sannhet. Pre-money 10,0 MNOK, 10 % samlet etter emisjonen, delt likt. Alt regnes herfra. ── */
-const PRE_MONEY = 10_000_000;
+/* ── Emisjonen – én kilde til sannhet (v10, 05.10.2026): 1 000 000 kr ny kapital for 10 % SAMLET eierandel etter emisjonen
+ *     → 9,0 MNOK pre-money, 10,0 MNOK post-money. Fordelingen mellom de to er IKKE bestemt – ingen «500 000 kr» eller «5 % hver». ── */
+const INVESTERING = 1_000_000;
 const EIERANDEL = 0.10;
-const ANTALL = 2;
-const INVESTERING = Math.round((PRE_MONEY * EIERANDEL) / (1 - EIERANDEL)); // 1 111 111 kr
+const POST_MONEY = INVESTERING / EIERANDEL; // 10 000 000 kr
+const PRE_MONEY = POST_MONEY - INVESTERING; // 9 000 000 kr
 const kr = (n) => `${Math.round(n).toLocaleString('nb-NO').replace(/\s/g, '\u00a0')}\u00a0kr`;
 const mnok = (n, d = 1) => `${(n / 1e6).toLocaleString('nb-NO', { minimumFractionDigits: d, maximumFractionDigits: d })}\u00a0MNOK`;
 const pct = (p) => `${(p * 100).toLocaleString('nb-NO', { maximumFractionDigits: 1 })}\u00a0%`;
 
 export const DEAL = {
   preMoney: PRE_MONEY,
-  postMoney: PRE_MONEY + INVESTERING,
+  postMoney: POST_MONEY,
   investering: INVESTERING,
-  perPerson: INVESTERING / ANTALL,
   eierandel: EIERANDEL,
-  eierandelPerPerson: EIERANDEL / ANTALL,
   investorer: ['Martin Vikesland', 'Øyvind Storli Hoel'],
   /* Ferdig formaterte strenger – brukes i teksten. */
   f: {
     investering: kr(INVESTERING),
-    investeringKort: mnok(INVESTERING, 2),
-    perPerson: kr(INVESTERING / ANTALL),
+    investeringKort: mnok(INVESTERING),
     preMoney: mnok(PRE_MONEY),
-    postMoney: mnok(PRE_MONEY + INVESTERING),
+    postMoney: mnok(POST_MONEY),
     eierandel: pct(EIERANDEL),
-    eierandelPerPerson: pct(EIERANDEL / ANTALL),
+    regnestykke: `${mnok(PRE_MONEY)} før + ${mnok(INVESTERING)} ny kapital = ${mnok(POST_MONEY)} etter · ${mnok(INVESTERING)} ÷ ${mnok(POST_MONEY)} = ${pct(EIERANDEL)} samlet`,
+  },
+  fordeling: 'Fordelingen mellom dere er ikke bestemt. Om dere tegner likt eller ulikt, avklarer vi sammen med dere før term sheet.',
+};
+
+/* ── Kapitalplanen – én kilde til sannhet for de første tre månedene. Grunnplanen tåler null ekstern inntekt. Ingen inntekt lagt inn.
+ *     kilde 'bekreftet' = inngangsverdi oppgitt av oss (gründerlønn 600 000 kr/år brutto = 50 000 kr/mnd, utviklingskreditter, hosting).
+ *     kilde 'estimat' = planleggingsestimat, ikke innhentet tilbud. Gründerressursen: 50 000 kr brutto (bekreftet) + en avrundet, konservativ
+ *     arbeidsgiverreserve (estimat) – ikke en nøyaktig årsberegning. Ingen lønn eller forpliktelse for Sarah er lagt inn. ── */
+const PLAN_MND = 3;
+const LONN_BRUTTO_AAR = 600_000;
+const LONN_BRUTTO_MND = LONN_BRUTTO_AAR / 12; // 50 000 kr
+const FERIEPENGER = 0.12;
+const AGA = 0.141; // sone I
+const PENSJON = 0.02; // OTP
+const GRUNDER_RESERVE_MND = 66_000; // avrundet opp fra ≈ 65 000 kr
+const RESERVE_BEREGNET = LONN_BRUTTO_MND * (1 + FERIEPENGER) * (1 + AGA) + LONN_BRUTTO_MND * PENSJON * (1 + AGA); // ≈ 65 037 kr
+const POSTER = [
+  { key: 'grunder', post: 'Gründerressurs', sub: `${kr(LONN_BRUTTO_MND)} brutto lønn/mnd (bekreftet) + foreløpig arbeidsgiverreserve for feriepenger, arbeidsgiveravgift og pensjon (estimat)`, kilde: 'estimat', mnd: GRUNDER_RESERVE_MND, lonn: true },
+  { key: 'kreditter', post: 'Utviklingskreditter', sub: 'Utviklingskapasitet. Føres én gang – ikke dobbelt.', kilde: 'bekreftet', mnd: 150_000 },
+  { key: 'hosting', post: 'Hosting', sub: 'Dekker ikke nødvendigvis KI/API-, signerings-, integrasjons- og transaksjonskostnader – avklares før prising.', kilde: 'bekreftet', mnd: 500 },
+  { key: 'regnskap', post: 'Regnskap', sub: 'Løpende regnskapsføring.', kilde: 'estimat', mnd: 4_000 },
+  { key: 'bank', post: 'Bank og verktøy', sub: 'Bank, lisenser og programvare.', kilde: 'estimat', mnd: 1_500 },
+  { key: 'forsikring', post: 'Bedriftsforsikring', sub: 'Ikke innhentet tilbud.', kilde: 'estimat', mnd: 1_000 },
+  { key: 'pilot', post: 'Pilot og reise', sub: 'Møter og pilotarbeid hos kunde.', kilde: 'estimat', mnd: 3_000 },
+];
+const SUM_MND = POSTER.reduce((s, p) => s + p.mnd, 0); // 226 000 kr
+const SUM_PLAN = SUM_MND * PLAN_MND; // 678 000 kr
+const EMISJON_JUR = 20_000; // estimat, engang
+const BUFFER = 50_000; // avsatt, engang
+const AVSATT = SUM_PLAN + EMISJON_JUR + BUFFER; // 748 000 kr
+const IKKE_DISPONERT = INVESTERING - AVSATT; // 252 000 kr
+const EKSTRA_MND = IKKE_DISPONERT / SUM_MND; // ≈ 1,1 måned
+
+export const KAPITAL = {
+  planMnd: PLAN_MND,
+  poster: POSTER.map((p) => ({ ...p, tre: p.mnd * PLAN_MND, f: { mnd: kr(p.mnd), tre: kr(p.mnd * PLAN_MND) } })),
+  sum: { mnd: SUM_MND, tre: SUM_PLAN, f: { mnd: kr(SUM_MND), tre: kr(SUM_PLAN) } },
+  engang: [
+    { key: 'emisjon', post: 'Emisjon og juridisk arbeid', sub: 'Estimat – ikke innhentet tilbud.', kilde: 'estimat', belop: EMISJON_JUR, f: kr(EMISJON_JUR) },
+    { key: 'buffer', post: 'Buffer', sub: 'Særskilt reserve. Brukes ikke i grunnplanen.', kilde: 'avsatt', belop: BUFFER, f: kr(BUFFER) },
+  ],
+  avsatt: { belop: AVSATT, f: kr(AVSATT) },
+  ikkeDisponert: { belop: IKKE_DISPONERT, f: kr(IKKE_DISPONERT), ekstraMnd: EKSTRA_MND },
+  emisjon: { belop: INVESTERING, f: kr(INVESTERING) },
+  /* Disponeringen av emisjonen – fire deler som summerer til 1 000 000 kr. */
+  disponering: [
+    ['Løpende plan · 3 mnd', SUM_PLAN, kr(SUM_PLAN)],
+    ['Emisjon og juridisk', EMISJON_JUR, kr(EMISJON_JUR)],
+    ['Buffer', BUFFER, kr(BUFFER)],
+    ['Ikke disponert', IKKE_DISPONERT, kr(IKKE_DISPONERT)],
+  ],
+  /* Forutsetningene bak gründerressursen – vises i en åpne/lukke-blokk (tastatur) og alltid i utskrift. */
+  lonn: {
+    bruttoAar: kr(LONN_BRUTTO_AAR),
+    bruttoMnd: kr(LONN_BRUTTO_MND),
+    steg: [
+      ['Brutto lønn per måned', kr(LONN_BRUTTO_MND), 'bekreftet inngangsverdi – 600 000 kr brutto i året'],
+      ['+ feriepenger 12 %', kr(LONN_BRUTTO_MND * FERIEPENGER), 'forutsetning'],
+      ['+ arbeidsgiveravgift 14,1 % (sone I)', kr(LONN_BRUTTO_MND * (1 + FERIEPENGER) * AGA), 'forutsetning – av lønn og feriepenger'],
+      ['+ pensjon 2 % (OTP) inkl. avgift', kr(LONN_BRUTTO_MND * PENSJON * (1 + AGA)), 'forutsetning'],
+      ['≈ beregnet', kr(Math.round(RESERVE_BEREGNET / 100) * 100), 'avrundet opp til likviditetsreserve'],
+      ['Lagt inn i planen', kr(GRUNDER_RESERVE_MND), `per måned · ${kr(GRUNDER_RESERVE_MND * PLAN_MND)} for tre måneder`],
+    ],
+  },
+};
+
+/* ── Prismodellen – IKKE validert. Tallene under er ett hypotetisk oppsideeksempel (stor kunde etter full utrulling), ikke prisliste. ── */
+const PRIS_FAST = 30_000;
+const PRIS_ENHET = 100;
+const EKS_ENHETER = 1_000;
+const EKS_MND = PRIS_FAST + EKS_ENHETER * PRIS_ENHET; // 130 000 kr
+const EKS_ARR = EKS_MND * 12; // 1 560 000 kr
+const EKS_FRA_MND = 7;
+const EKS_FAKTURERT_AAR1 = EKS_MND * (12 - EKS_FRA_MND + 1); // 6 × 130 000 = 780 000 kr
+export const PRIS = {
+  fast: kr(PRIS_FAST),
+  enhet: kr(PRIS_ENHET),
+  eks: {
+    enheter: EKS_ENHETER.toLocaleString('nb-NO').replace(/\s/g, '\u00a0'),
+    variabel: kr(EKS_ENHETER * PRIS_ENHET),
+    mnd: kr(EKS_MND),
+    arr: mnok(EKS_ARR, 2),
+    fraMnd: EKS_FRA_MND,
+    mndFakturert: 12 - EKS_FRA_MND + 1,
+    fakturertAar1: kr(EKS_FAKTURERT_AAR1),
   },
 };
 
@@ -195,8 +281,8 @@ export const BREV = {
     ],
     steg: [
       ['Bygget', 'Fase 1 · gjennomført', 'Merkevare, produkt, arbeidsflyter, integrasjoner og grunnplattform. DigiHome er i bruk i egen drift.'],
-      ['Nå', 'Fase 2 · første eksterne kunder', 'Plattformen gjøres kundeuavhengig og klar for profesjonelle eiendomsselskaper. Målet er én til to større pilotkunder.'],
-      ['Skalere', 'Fase 3', 'Når eksterne kunder har tatt DigiHome i bruk, tar vi sikte på en større kapitalrunde for å bygge salg, produkt og organisasjon videre.'],
+      ['Nå', 'Fase 2 · første eksterne pilot', 'Plattformen gjøres kundeuavhengig og klar for profesjonelle eiendomsselskaper. Målet er én ekstern pilot – deretter eventuelt en til.'],
+      ['Skalere', 'Fase 3 · betinget', 'Når en ekstern kunde har tatt DigiHome i bruk, tar vi sikte på en større kapitalrunde for å bygge salg, produkt og organisasjon videre. Tidspunkt og vilkår er ikke gitt.'],
     ],
     risikoH: 'Hvor står risikoen i dag?',
     risiko: [
@@ -207,99 +293,123 @@ export const BREV = {
     ],
   },
 
-  /* ── 07 Roadmap – fire faser, hver med et mål som skal være nådd før vi går videre ── */
+  /* ── 07 Roadmap – det denne emisjonen finansierer (måned 1–3), beslutningspunktet ved slutten av måned 2, og det som er betinget av
+   *     finansiering. Mål, ikke garantier. Lover ikke pilotbevis etter at kapitalen er brukt opp. ── */
   roadmap: {
     eyebrow: 'Roadmap',
     title: ['Fra egen drift', 'til et produkt flere kan kjøpe.'],
     paragraphs: [
-      'Den viktigste jobben de kommende månedene er ikke å legge til flest mulig nye funksjoner. Den er å få DigiHome fra egen drift og inn hos profesjonelle eksterne kunder.',
-      'Kapitalen skal derfor først og fremst brukes til å gjøre DigiHome klart for eksterne kunder – i fire faser, hver med et mål som skal være nådd før vi går videre.',
+      'Den viktigste jobben de kommende månedene er ikke å legge til flest mulig nye funksjoner. Den er å få DigiHome fra egen drift og inn hos én ekstern pilotkunde.',
+      'Denne emisjonen finansierer de første tre månedene: produktisering og pilotberedskap. Det som kommer etter, er betinget av kundetilgang, faktisk fremdrift og finansiering. Fasene under er mål, ikke garantier.',
     ],
     head: ['Periode', 'Fokus', 'Målet'],
+    /* [periode, fokus, hva som gjøres, målet, status] – status: 'emisjon' (finansiert av denne emisjonen), 'beslutning', 'betinget'. */
     faser: [
-      ['Nå → 3 mnd', 'Produktisering', 'Multi-tenant-arkitektur, roller og tilgangsstyring, onboarding, datamodell, integrasjonslag, sikkerhet og tydelig separasjon fra egen forvaltning.', 'En ny kunde kan få sitt eget miljø med egne brukere, data, roller og integrasjoner – uten at vi bygger en separat versjon av produktet.'],
-      ['3 → 6 mnd', 'Første eksterne kunder', 'Én til to eksterne pilotkunder implementeres og tas i bruk.', 'Minst én større eiendomsaktør har reelle boliger, brukere og arbeidsflyter i produksjon.'],
-      ['6 → 12 mnd', 'Standardisere leveransen', 'Avtaler, onboarding, support og prismodell standardiseres.', 'Kunde nummer to kan settes opp vesentlig raskere og enklere enn kunde nummer én.'],
-      ['12 → 24 mnd', 'Skalering', 'Flere kunder og større porteføljer, flere integrasjoner og stadig mer automatisering og KI.', 'Veksten fortsetter uten at hver ny kunde utløser ny grunnutvikling.'],
+      ['Måned 1–3', 'Produktisering og pilotberedskap', 'Multi-tenant-arkitektur, roller og tilgangsstyring, onboarding, datamodell, integrasjonslag, sikkerhet og tydelig separasjon fra egen forvaltning. Pilotkandidat avklares.', 'En ny kunde kan få sitt eget miljø med egne brukere, data, roller og integrasjoner – og én avgrenset pilot er klar til å settes i drift.', 'emisjon'],
+      ['Slutten av måned 2', 'Beslutningspunkt', 'Kostnader, pilotfremdrift og finansiering vurderes – før kapitalen er brukt opp.', 'Avklart om vi fortsetter som planlagt, reduserer kostnader, henter brofinansiering eller ny kapital.', 'beslutning'],
+      ['Måned 4–6', 'Første eksterne pilot', 'Én avgrenset pilot på en del av en eiendomsaktørs portefølje settes i drift og følges tett. Pilotvilkår er ikke fastsatt.', 'Dokumentert nytte og betalingsvilje hos én ekstern kunde.', 'betinget'],
+      ['Måned 6–12', 'Gradvis utrulling', 'Fra pilot til betalende aktive enheter. Eventuelt pilot nummer to, avhengig av kundetilgang og fremdrift. Avtaler, onboarding og pris valideres.', 'De første betalende aktive enhetene i produksjon – og grunnlag for å vurdere en større runde.', 'betinget'],
     ],
+    status: { emisjon: 'Finansiert av denne emisjonen', beslutning: 'Beslutningspunkt', betinget: 'Betinget av finansiering' },
     maal: [
-      ['Hovedmål de første seks månedene', 'DigiHome i produksjon hos minst én større ekstern eiendomsaktør.'],
-      ['Mål innen tolv måneder', '2–5 betalende selskaper – og dokumentert at en ny kunde kan implementeres uten at produktet bygges om fra bunnen av.'],
+      ['Mål for de første tre månedene', 'Produktisert plattform og én avgrenset pilot klar til drift – finansiert av denne emisjonen.'],
+      ['Deretter – betinget', 'Én ekstern pilot i drift, så eventuelt en til. Mål, ikke garantier.'],
     ],
-    maalNote: 'Det er dette som gjør DigiHome til et skalerbart programvareselskap. Når det er dokumentert, står selskapet etter vår vurdering i en helt annen posisjon enn i dag – og det er denne fasen vi ønsker å finansiere nå.',
+    maalNote: 'Pilotbeviset kommer etter at kapitalen fra denne emisjonen etter planen er brukt. Derfor ligger beslutningspunktet ved slutten av måned 2 – slik at kostnadsreduksjon, brofinansiering eller ny kapital er på plass i tide, ikke etterpå.',
   },
 
-  /* ── 08 Forretningsmodell ── */
+  /* ── 08 Forretningsmodell – prisen er IKKE validert og fastsettes ikke her. Rekkefølge: avgrenset pilot → dokumentert nytte og
+   *     betalingsvilje → gradvis utrulling av betalende aktive enheter. Ett hypotetisk oppsideeksempel (PRIS), tydelig merket.
+   *     Fjernet: «fem like kunder / 7,8 MNOK» og «nøkternt base case 1,5–3 MNOK ARR». Ingen pilotpris, ingen garantert besparelse. ── */
   modell: {
     eyebrow: 'Forretningsmodell',
-    title: ['DigiHome skal prises', 'som programvare.'],
+    title: ['DigiHome skal prises som programvare.', 'Prisen er ikke validert ennå.'],
     paragraphs: [
-      'Vi ser for oss en kombinasjon av en fast plattformavgift og en pris per aktiv boenhet. For større porteføljer vil enhetsprisen være lavere, mens den faste plattformkomponenten blir viktigere. Det gir kundene en forutsigbar kostnad, og gjør samtidig at kontraktsverdien øker når DigiHome brukes på større porteføljer.',
-      'For store kunder arbeider vi foreløpig med en effektiv pris på rundt 100–150 kroner per enhet per måned, avhengig av størrelse, funksjonalitet og fast plattformavgift. Den endelige prismodellen skal testes sammen med de første eksterne kundene.',
+      'Vi ser for oss en fast plattformavgift pluss en pris per aktiv boenhet. Endelig kommersiell pris er ikke validert, og vi fastsetter den ikke nå – den skal testes mot de første eksterne kundene. Vi har ikke dokumentert signert pipeline, konvertering, betalingsvilje eller hele porteføljer i drift.',
+      'Rekkefølgen vi ser for oss: en avgrenset pilot på en del av kundens portefølje, dokumentert nytte og betalingsvilje – og deretter gradvis utrulling av faktisk betalende aktive enheter.',
     ],
-    enhet: 'Med «enhet» mener vi en boenhet som forvaltes i DigiHome og har et aktivt leieforhold.',
-    eksempelH: 'Illustrativt eksempel – kunde med 1 000 enheter',
-    eksempel: ['1 000 enheter', '30 000 kr plattformavgift + 1 000 × 100 kr', '130 000 kr/mnd', '1,56 MNOK ARR'],
-    skalering: ['7,8 MNOK', 'ARR · fem kunder av samme størrelse', 'Poenget er ikke at alle kunder vil ha samme pris eller størrelse – men at noen få store porteføljer kan gi DigiHome betydelig gjentakende programvareinntekt.'],
-    baseH: 'Base case – første 12 måneder',
-    baseHead: ['Periode', 'Hva skjer', 'Inntekt'],
-    base: [
-      ['Måned 1–3', 'Produktisering.', 'Ingen ekstern inntekt lagt til grunn'],
-      ['Måned 4–6', 'Første pilotkunde tas i bruk.', 'Gratis, rabattert eller betalt pilot'],
-      ['Måned 7–9', 'Første pilot går over i kommersiell avtale. Kunde nummer to implementeres.', '1–2 betalende kunder'],
-      ['Måned 10–12', 'Videre onboarding av nye kunder med en mer standardisert leveransemodell.', '2–3 betalende kunder'],
+    enhet: 'Med «aktiv enhet» mener vi en boenhet som forvaltes i DigiHome og har et aktivt leieforhold. Et selskaps totale portefølje er ikke det samme som enhetene som faktisk er i bruk og kan faktureres.',
+    stegH: 'Rekkefølgen',
+    steg: [
+      ['Avgrenset pilot', 'På en del av porteføljen. Pilotvilkår er ikke fastsatt.'],
+      ['Dokumentert nytte og betalingsvilje', 'Hva kunden faktisk sparer og vil betale for – målt, ikke antatt.'],
+      ['Gradvis utrulling', 'Flere aktive enheter tas i bruk og faktureres etter hvert som de er i drift.'],
     ],
-    baseResult: ['1,5–3 MNOK', 'Kontrakts-ARR ved utgangen av år 1', 'Ambisjon: 2–3 betalende kunder og 1 500–3 000 enheter. Et nøkternt scenario med pilotvilkår og rabatter i den første fasen – større kunder kan gi vesentlig høyere inntekter.'],
+    eksempelH: 'Hypotetisk oppsideeksempel',
+    eksempelSub: 'Én stor kunde etter full utrulling. Ikke godkjent prisliste, ikke signert kontrakt, ikke forventet førsteårsinntekt.',
+    eksempelRader: [
+      ['Aktive boenheter i drift', PRIS.eks.enheter, 'enheter'],
+      ['Fast plattformavgift', PRIS.fast, 'per måned'],
+      ['Per aktiv boenhet', `${PRIS.eks.enheter} × ${PRIS.enhet} = ${PRIS.eks.variabel}`, 'per måned'],
+      ['Abonnement', PRIS.eks.mnd, 'per måned'],
+      ['Årlig gjentakende inntektsrate (ARR)', PRIS.eks.arr, 'årsrate · 12 × abonnement'],
+    ],
+    arrH: 'ARR er en årsrate – ikke opptjent omsetning, fakturering eller innbetaling',
+    arr: [
+      [PRIS.eks.arr, 'Årsrate ved årsslutt', 'ARR · hvis hele kunden er i drift'],
+      [PRIS.eks.fakturertAar1, 'Fakturert abonnement år 1', `${PRIS.eks.mndFakturert} × ${PRIS.eks.mnd} · hvis full utrulling først faktureres fra måned ${PRIS.eks.fraMnd}`],
+    ],
+    arrNote: 'Matematisk illustrasjon, ikke prognose. Hva som faktisk faktureres og innbetales i et første år, avhenger av pilotens omfang, når enheter tas i bruk, og betalingsvilkår. Separat betaling for onboarding og integrasjoner er noe som kan vurderes i prisvalideringen – ikke en avtalt pris.',
   },
 
-  /* ── 09 Kapitalplan: budsjett, hva emisjonen skal brukes til, og runway ── */
+  /* ── 09 Kapitalplan – foreløpig plan for de første tre månedene (tallene i KAPITAL). Ikke et årsbudsjett. Grunnplanen tåler null ekstern
+   *     inntekt. Finansierer IKKE seks eller tolv måneder. Beslutningspunkt ved slutten av måned 2. Senere runde er betinget. ── */
   kapital: {
     eyebrow: 'Kapitalplan',
-    title: 'Hva trenger vi de neste 12 månedene?',
+    title: 'En foreløpig plan for de første tre månedene.',
     paragraphs: [
-      'Vi ønsker å være åpne om at denne emisjonen ikke alene finansierer hele de neste tolv månedene. Med planlagt produkt- og utviklingskapasitet, gründerressurs og øvrige kostnader anslår vi et basisbudsjett på rundt 3,5 MNOK for det første året.',
+      'Vi har byttet ut et grovt årsbudsjett med en konkret plan for de tre første månedene – perioden denne emisjonen faktisk skal finansiere. Grunnplanen tåler null ekstern inntekt: det er ikke lagt inn pilot- eller kundeinntekt før en betalt pilot er validert.',
+      `Tre av tallene er bekreftede inngangsverdier fra oss: én gründerlønn på ${KAPITAL.lonn.bruttoAar} brutto i året (${KAPITAL.lonn.bruttoMnd} per måned), utviklingskreditter på ${KAPITAL.poster[1].f.mnd} per måned og hosting på ${KAPITAL.poster[2].f.mnd} per måned. Resten er planleggingsestimater – ikke innhentede tilbud. Det er ikke lagt inn lønn eller andre forpliktelser for Sarah.`,
     ],
-    head: ['Kostnad', '12 mnd, indikativt'],
-    budsjett: [
-      ['Produkt- og softwareutvikling', '1,35–1,80 MNOK'],
-      ['Produkt- og teknologiledelse / gründerressurs', '1,0–1,2 MNOK'],
-      ['Hosting, KI, API-er, data og sikkerhet', '0,25–0,40 MNOK'],
-      ['Pilotimplementering og integrasjoner', '0,20–0,40 MNOK'],
-      ['Juridisk, regnskap og forsikring', '0,10–0,20 MNOK'],
-      ['Salg, reise og marked', '0,15–0,30 MNOK'],
+    legend: { bekreftet: 'Bekreftet inngangsverdi – oppgitt av oss', estimat: 'Planleggingsestimat – ikke tilbud', avsatt: 'Avsatt reserve' },
+    head: ['Post', 'Grunnlag', 'Per måned', '3 måneder'],
+    sumLabel: 'Løpende plan',
+    engangH: 'I tillegg – engangsposter',
+    avsattLabel: 'Totalt avsatt av emisjonen',
+    ikkeDisponertLabel: 'Ikke disponert',
+    ikkeDisponertNote: `Tilsvarer rundt én ekstra måned ved ${KAPITAL.sum.f.mnd} per måned – uten at bufferen brukes. Dette er ikke inntekt eller garantert overskudd.`,
+    forbehold: 'Beløp er ekskl. mva der det er relevant. Mva-likviditet og valutakurs er ikke modellert. Hostingbeløpet dokumenterer ikke at KI/API-, signerings-, integrasjons- eller transaksjonskostnader er dekket – disse, og support/onboarding, avklares før de prises.',
+    lonnH: 'Slik er gründerressursen beregnet',
+    lonnToggle: ['Vis forutsetningene', 'Skjul forutsetningene'],
+    lonnNote: [
+      `De ${KAPITAL.poster[0].f.mnd} per måned er en avrundet, konservativ likviditetsreserve for tre måneders lønn og arbeidsgiverkostnad – ikke en nøyaktig årsberegning. Feriepengene er lagt inn som reserve for perioden, ikke som et tillegg til full årslønn.`,
+      'Forutsetningene (12 % feriepenger, arbeidsgiveravgift 14,1 % i sone I, 2 % pensjon) må verifiseres mot faktisk arbeidsgiver, sone, avtale og pensjonsplikt.',
     ],
-    total: ['Totalt estimert', 'ca. 3,1–4,3 MNOK'],
-    basis: ['3,5 MNOK', 'Planlagt basisbudsjett', 'tilsvarende omtrent 290 000 kroner per måned i gjennomsnitt'],
-    budsjettNote: 'Daglig leders kostnad ligger i dag i forvaltningsselskapet. Hvilken del av ressursen som fremover skal belastes Tech, avklares og tas inn i den endelige kapitalplanen.',
-    bruddH: 'Hva skal denne emisjonen brukes til?',
+    disponeringH: 'Slik disponeres emisjonen',
+    bruddH: 'Hva denne emisjonen finansierer – og ikke',
     brudd: [
-      `Emisjonen på ${DEAL.f.investeringKort} finansierer ikke tolv måneders drift. Den er kapital til den neste konkrete fasen: produktisere DigiHome, gjøre løsningen klar for eksterne kunder, få den første større pilotkunden i produksjon – og stå sterkere når vi henter neste kapitalrunde.`,
-      'Beløpet tilsvarer isolert sett omtrent tre til fire måneders planlagt kostnadsbase før nye inntekter. I praksis avhenger runway også av kontantbeholdning ved closing, eksisterende inntekter i Tech, eventuelle pilotinntekter og når kostnadene trappes opp.',
+      `Emisjonen på ${DEAL.f.investering} finansierer den løpende planen i tre måneder (${KAPITAL.sum.f.tre}), emisjon og juridisk arbeid (${KAPITAL.engang[0].f}) og en buffer (${KAPITAL.engang[1].f}). De ${KAPITAL.ikkeDisponert.f} som ikke er disponert, tilsvarer rundt én ekstra måned ved ${KAPITAL.sum.f.mnd} per måned – uten at bufferen brukes.`,
+      'Den finansierer ikke seks eller tolv måneders drift. Tar piloten fire til seks måneder, trengs kostnadsreduksjon, brofinansiering eller ny kapital – i tide, ikke når pengene er brukt opp.',
     ],
-    kobling: [
-      ['Denne emisjonen', ['Produktisere DigiHome', 'Gjøre løsningen klar for eksterne kunder', 'Første større pilotkunde i produksjon', 'Et sterkere utgangspunkt for neste runde']],
-      ['Neste runde og kundeinntekter', ['Pilotimplementering i skala', 'Standardisert leveranse og support', 'Flere integrasjoner', 'Salg og organisasjon']],
+    beslutningH: 'Beslutningspunkt · slutten av måned 2',
+    beslutningLead: 'Før kapitalen er brukt opp, tar vi stilling til tre ting sammen med dere:',
+    beslutning: [
+      ['Kostnader', `Holder vi planen på ${KAPITAL.sum.f.mnd} per måned, eller må den ned?`],
+      ['Pilotfremdrift', 'Har vi en avgrenset pilot klar til drift – hos en navngitt kunde?'],
+      ['Finansiering', 'Er brofinansiering eller ny kapital i gang, slik at den er på plass før måned 3 er over?'],
     ],
-    runwayH: 'Runway til neste runde',
-    runway: ['Kontantbeholdning ved closing', `+ emisjonen (${DEAL.f.investeringKort})`, '+ eksisterende inntekter i Tech', '+ eventuelle pilotinntekter', '– månedlig kostnadsbase', '= runway til neste runde'],
-    runwayNote: 'Dette regnestykket går vi gjennom sammen med dere, med de faktiske forutsetningene og regnearket på bordet. Ambisjonen er å hente en større runde når den første eksterne valideringen er på plass – og dermed gå inn i den med et sterkere selskap enn i dag.',
+    rundeNote: 'En senere kapitalrunde, tidspunktet for den og en eventuell høyere verdsettelse er betinget av faktisk fremdrift – ikke noe vi kan garantere. Regnestykket går vi gjennom sammen med dere, med regnearket på bordet.',
   },
 
-  /* ── 11 Tilbudet – alle tall fra DEAL ── */
+  /* ── 11 Tilbudet – alle tall fra DEAL. 1 000 000 kr ny kapital · 10 % samlet · 9,0 MNOK pre · 10,0 MNOK post. Ingen antatt fordeling. ── */
   offer: {
     eyebrow: 'Tilbudet',
     title: 'Vi ønsker dere med som medeiere i DigiHome Tech.',
     paragraphs: [
-      `Vi tilbyr ${DEAL.investorer[0]} og ${DEAL.investorer[1]} å tegne nye aksjer for samlet ${DEAL.f.investering}, fordelt likt mellom dere. Etter emisjonen eier dere ${DEAL.f.eierandelPerPerson} hver – samlet ${DEAL.f.eierandel} av DigiHome Tech AS.`,
-      'Prisingen er satt i den fasen selskapet er i nå: produktet er bygget og brukes i egen drift, men vi har ennå ikke dokumentert kommersiell utrulling hos større eksterne kunder. Det er også grunnen til at vi ønsker å gjøre runden nå – lykkes vi med produktiseringen og de første større kundene, mener vi utgangspunktet for en senere kapitalrunde blir vesentlig sterkere.',
+      `Vi tilbyr ${DEAL.investorer[0]} og ${DEAL.investorer[1]} å tegne nye aksjer for samlet ${DEAL.f.investering}. Etter emisjonen eier dere samlet ${DEAL.f.eierandel} av DigiHome Tech AS. Fordelingen mellom dere er ikke bestemt – den avklarer vi sammen med dere.`,
+      `Prisingen – ${DEAL.f.preMoney} før emisjonen – er satt i den fasen selskapet er i nå: produktet er bygget og brukes i egen drift, men vi har ennå ikke dokumentert kommersiell utrulling hos eksterne kunder. Lykkes vi med produktiseringen og den første piloten, mener vi utgangspunktet for en senere kapitalrunde blir sterkere. Tidspunktet for en slik runde, og en eventuell høyere verdsettelse, er betinget av det – ikke noe vi kan garantere.`,
       'Investeringen gjelder DigiHome Tech AS, ikke forvaltningsvirksomheten.',
     ],
     terms: [
-      [DEAL.f.investeringKort, 'Investering', `${DEAL.f.investering} samlet · ${DEAL.f.perPerson} hver`],
+      [DEAL.f.investering, 'Ny kapital', 'nye aksjer · fordelingen mellom dere avklares'],
+      [DEAL.f.eierandel, 'Eierandel', 'samlet, etter emisjonen'],
       [DEAL.f.preMoney, 'Pre-money', 'verdsettelse før emisjonen'],
       [DEAL.f.postMoney, 'Post-money', 'verdsettelse etter emisjonen'],
-      [DEAL.f.eierandel, 'Eierandel', `samlet etter emisjonen · ${DEAL.f.eierandelPerPerson} hver`],
     ],
+    regnestykkeH: 'Regnestykket',
+    regnestykke: DEAL.f.regnestykke,
+    fordelingH: 'Fordelingen mellom dere',
+    fordeling: DEAL.fordeling,
     aksjer: 'Aksjene er ordinære aksjer i samme aksjeklasse som dagens aksjer. Det knyttes ingen vesting eller arbeidsplikt til aksjene. Øvrige rettigheter og spilleregler reguleres gjennom vedtekter og aksjonæravtale.',
     formal: {
       h: 'Gjennomføring',
@@ -335,4 +445,4 @@ export const BREV = {
 };
 
 /** Alt server-komponenten sender til brevet – i ett objekt. */
-export const INNHOLD = { INV, AVSENDERE, TEAM, BREV, DEAL, PORTEFOLJE };
+export const INNHOLD = { INV, AVSENDERE, TEAM, BREV, DEAL, PORTEFOLJE, KAPITAL, PRIS };

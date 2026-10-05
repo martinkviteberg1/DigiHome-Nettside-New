@@ -4,10 +4,12 @@
  *  kicker – innholdet i de ni til høyre. De store utsagnene fyller kolonnen (målt), tilbudet står som et term sheet på mørk flate.
  *  Rekkefølgen er investeringscasets: brevet rett under brevhodet → hvorfor dere → dette er bygget → målbildet → strategi (B2B/B2C) →
  *  Tech og forvaltning → hva som er gjort → roadmap → forretningsmodell → kapitalplan → laget og rollen → tilbudet → veien videre. (12 kapitler.)
- *  INNHOLDET KOMMER SOM PROPS fra server-komponenten (app/samarbeid/page.js) – teksten importeres ikke her, så den ligger ikke i JS-bundlen. */
+ *  INNHOLDET KOMMER SOM PROPS fra server-komponenten (app/samarbeid/page.js) – teksten importeres ikke her, så den ligger ikke i JS-bundlen.
+ *  Tallene (DEAL, KAPITAL, PRIS) kommer fra innhold.js – én kilde; ingen tall er skrevet inn her. Ingen telleanimasjoner, ingen grafer utover
+ *  én rolig disponeringslinje. Forutsetningene bak gründerressursen ligger i en åpne/lukke-blokk (knapp, aria-expanded) som alltid er med i utskrift. */
 import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
-import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react';
 import { DASH_H, DASH_W, EierTelefon, LeietakerTelefon, Oversikt, Skaler } from './produkt';
 
 /* Innholdet (INV, AVSENDERE, TEAM, BREV, DEAL, PORTEFOLJE) deles via kontekst – satt én gang i <Brev>. */
@@ -19,9 +21,10 @@ const PAPER = '#fafaf9';
 const INK = '#0a0a0a';
 const MUTED = '#77777d';
 const ACCENT = '#7F3FBF';
-/* To flater i tillegg til papiret: FILL for små flater (plassholdere, bokser), TINT for hele seksjoner – tydelig nok til at kapitlene skiller seg fra hverandre. */
+/* To flater i tillegg til papiret: FILL for små flater (plassholdere, bokser), TINT for hele seksjoner. Kapitlene VEKSLER papir ↔ tint hele veien
+ * (01 tint · 02 papir · 03 tint · 04 papir · 05 tint · 06 papir · 07 tint · 08 papir · 09 tint · 10 papir · 11 mørk · 12 papir) – aldri to like etter hverandre. */
 const FILL = '#f1f0ed';
-const TINT = '#efede8';
+const TINT = '#ebe8e1';
 const HAIR = 'rgba(10,10,10,0.08)';
 const D = { ink: '#ffffff', muted: 'rgba(255,255,255,0.6)', accent: '#D496FF', hair: 'rgba(255,255,255,0.12)', fill: 'rgba(255,255,255,0.04)' };
 const L = { ink: INK, muted: MUTED, accent: ACCENT, hair: HAIR, fill: FILL };
@@ -331,50 +334,6 @@ const Why = () => {
 
 /* ─── Byggeklosser for investeringscaset: tabell med hårlinjer, store tall, punktliste ─── */
 
-/** Hårlinjetabell. `cols` er grid-template-columns fra sm og opp; under stables cellene. `cell(i, v)` tegner cellen. */
-const defaultCell = (i, v) => {
-  if (i === 0) return <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap" style={{ color: ACCENT }}>{v}</span>;
-  if (i === 1) return <span className="text-[17px] font-medium leading-snug" style={{ color: INK }}>{v}</span>;
-  return <span className="text-[15.5px] leading-[1.6] max-w-[52ch]" style={{ color: MUTED }}>{v}</span>;
-};
-const Tabell = ({ head, rows, cols, testid, cell = defaultCell, foot }) => (
-  <div data-testid={testid} style={{ borderBottom: `1px solid ${HAIR}` }}>
-    {head && (
-      <div className="hidden sm:grid gap-x-8 pb-3 text-[11px] font-semibold uppercase tracking-[0.1em] sm:[grid-template-columns:var(--cols)]" style={{ '--cols': cols, color: MUTED }}>
-        {head.map((h, i) => <span key={h} className={i === head.length - 1 && foot ? 'text-right' : ''}>{h}</span>)}
-      </div>
-    )}
-    {rows.map((r, i) => (
-      <Rise key={i} delay={0.04 + i * 0.04}>
-        <div className="grid gap-x-8 gap-y-1.5 py-5 sm:py-6 sm:items-baseline sm:[grid-template-columns:var(--cols)]" style={{ '--cols': cols, borderTop: `1px solid ${HAIR}` }} data-testid={`${testid}-${i + 1}`}>
-          {r.map((v, j) => { const node = cell(j, v, r); return node == null ? null : <div key={j} className={j === r.length - 1 && foot ? 'sm:text-right' : ''}>{node}</div>; })}
-        </div>
-      </Rise>
-    ))}
-    {foot && (
-      <Rise delay={0.2}>
-        <div className="grid gap-x-8 py-5 sm:py-6 sm:items-baseline sm:[grid-template-columns:var(--cols)]" style={{ '--cols': cols, borderTop: `1px solid ${INK}` }} data-testid={`${testid}-total`}>
-          <span className="text-[17px] font-medium" style={{ color: INK }}>{foot[0]}</span>
-          <span className="text-[17px] font-medium tabular-nums sm:text-right" style={{ color: INK }}>{foot[1]}</span>
-        </div>
-      </Rise>
-    )}
-  </div>
-);
-
-/** Store tall med etikett over og forklaring under – hårlinje i blekk øverst. */
-const Tall = ({ items, testid, cols = 'sm:grid-cols-3', size = 'clamp(30px, 2.6vw, 44px)', accentFirst = false }) => (
-  <div className={`grid ${cols} gap-x-8 gap-y-10`} data-testid={testid}>
-    {items.map(([n, label, text], i) => (
-      <Rise key={label + i} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`${testid}-${i + 1}`}>
-        <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{label}</p>
-        <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '16px 0 0', color: accentFirst && i === 0 ? ACCENT : INK, fontSize: size }}>{n}</p>
-        {text && <p className="text-[15px] leading-[1.6] max-w-[36ch]" style={{ margin: '14px 0 0', color: MUTED }}>{text}</p>}
-      </div></Rise>
-    ))}
-  </div>
-);
-
 /** Kort punktliste i kolonner – nummerert, hårlinje over hvert punkt. */
 const Liste = ({ items, testid, cols = 'sm:grid-cols-2 lg:grid-cols-3' }) => (
   <ul className={`list-none p-0 m-0 grid ${cols} gap-x-8`} data-testid={testid}>
@@ -396,7 +355,7 @@ const Target = () => {
   const { BREV } = useInnhold();
   const c = BREV.target;
   return (
-    <Section id="maalbildet" testid="letter-target">
+    <Section id="maalbildet" testid="letter-target" tint>
       <Grid>
         <Aside n="03" label={c.eyebrow} />
         <Main>
@@ -453,9 +412,9 @@ const Strategi = () => {
 const Naa = () => {
   const { BREV } = useInnhold();
   const c = BREV.naa;
-  const dot = (i) => (i === 0 ? { background: INK } : i === 1 ? { background: ACCENT, boxShadow: '0 0 0 4px rgba(127,63,191,0.18)' } : { background: TINT, border: `1.5px solid ${INK}` });
+  const dot = (i) => (i === 0 ? { background: INK } : i === 1 ? { background: ACCENT, boxShadow: '0 0 0 4px rgba(127,63,191,0.18)' } : { background: PAPER, border: `1.5px solid ${INK}` });
   return (
-    <Section id="hvorfor-naa" testid="letter-naa" tint>
+    <Section id="hvorfor-naa" testid="letter-naa">
       <Grid>
         <Aside n="06" label={c.eyebrow} />
         <Main>
@@ -494,19 +453,38 @@ const Naa = () => {
   );
 };
 
-/* ─── 07 Roadmap: fire faser – periode, fokus (med hva som bygges) og målet som skal være nådd før vi går videre ─── */
-const roadmapCell = (i, v, r) => {
-  if (i === 0) return <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap" style={{ color: ACCENT }}>{v}</span>;
-  if (i === 1) return (
-    <span className="block">
-      <span className="block text-[17px] font-medium leading-snug" style={{ color: INK }}>{v}</span>
-      <span className="block text-[14px] leading-[1.55] max-w-[34ch]" style={{ margin: '8px 0 0', color: MUTED }}>{r[2]}</span>
+/* ─── Felles for tallene: kilde-merke (bekreftet / estimat / avsatt) og beløpscelle med etikett på mobil ─── */
+const KILDE = {
+  bekreftet: { dot: { background: INK }, color: INK, label: 'Bekreftet' },
+  estimat: { dot: { background: 'transparent', border: `1.5px solid ${MUTED}` }, color: MUTED, label: 'Estimat' },
+  avsatt: { dot: { background: ACCENT }, color: ACCENT, label: 'Avsatt' },
+};
+const Kilde = ({ type, map = KILDE, testid }) => {
+  const k = map[type];
+  if (!k) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] whitespace-nowrap" style={{ color: k.color }} data-testid={testid}>
+      <span aria-hidden className="w-[7px] h-[7px] rounded-full shrink-0" style={k.dot} />{k.label}
     </span>
   );
-  if (i === 2) return null;
-  return <span className="text-[15.5px] leading-[1.6] max-w-[46ch]" style={{ color: INK }}>{v}</span>;
 };
 
+/** Beløp med periode-etikett. Etiketten vises på mobil (kolonneoverskriften er skjult der); på sm+ står den i overskriftsraden. */
+const Belop = ({ v, label, strong = false, color, testid }) => (
+  <span className="block sm:text-right" data-testid={testid}>
+    <span className="block sm:hidden text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: MUTED }}>{label}</span>
+    <span className={`block tabular-nums whitespace-nowrap ${strong ? 'text-[17px] font-medium' : 'text-[16px]'}`} style={{ margin: '4px 0 0', color: color || (strong ? INK : MUTED) }}>{v}</span>
+  </span>
+);
+
+const ROADMAP_COLS = 'sm:[grid-template-columns:150px_minmax(0,1fr)_minmax(0,1.1fr)]';
+const STATUS = {
+  emisjon: { dot: { background: INK }, color: INK, label: 'Finansiert av denne emisjonen' },
+  beslutning: { dot: { background: ACCENT, boxShadow: '0 0 0 3px rgba(127,63,191,0.18)' }, color: ACCENT, label: 'Beslutningspunkt' },
+  betinget: { dot: { background: 'transparent', border: `1.5px solid ${MUTED}` }, color: MUTED, label: 'Betinget av finansiering' },
+};
+
+/* ─── 07 Roadmap: det denne emisjonen finansierer (måned 1–3), beslutningspunktet ved slutten av måned 2, og det som er betinget ─── */
 const Roadmap = () => {
   const { BREV } = useInnhold();
   const c = BREV.roadmap;
@@ -517,12 +495,41 @@ const Roadmap = () => {
         <Main>
           <Statement lines={c.title} testid="letter-roadmap-title" />
           <Paragraphs items={c.paragraphs} testid="letter-roadmap-p" strong={0} first={32} />
-          <div className="mt-14 lg:mt-16"><Tabell head={c.head} rows={c.faser} cols="110px minmax(0,1fr) minmax(0,1.15fr)" cell={roadmapCell} testid="letter-roadmap-faser" /></div>
+
+          <div className="mt-14 lg:mt-16" style={{ borderBottom: `1px solid ${HAIR}` }} data-testid="letter-roadmap-faser">
+            <div className={`hidden sm:grid gap-x-8 pb-3 text-[11px] font-semibold uppercase tracking-[0.1em] ${ROADMAP_COLS}`} style={{ color: MUTED }}>
+              {c.head.map((h) => <span key={h}>{h}</span>)}
+            </div>
+            {c.faser.map(([periode, fokus, hva, maal, status], i) => {
+              const s = STATUS[status] || STATUS.betinget;
+              const besl = status === 'beslutning';
+              return (
+                <Rise key={periode} delay={0.04 + i * 0.04}>
+                  <div className={`grid gap-x-8 gap-y-3 py-6 sm:py-7 ${ROADMAP_COLS}`} style={{ borderTop: `1px solid ${besl ? ACCENT : HAIR}` }} data-testid={`letter-roadmap-fase-${i + 1}`}>
+                    <div>
+                      <span className="block text-[13px] font-semibold tabular-nums whitespace-nowrap" style={{ color: besl ? ACCENT : INK }}>{periode}</span>
+                      <span className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: s.color }} data-testid={`letter-roadmap-fase-${i + 1}-status`}>
+                        <span aria-hidden className="w-[7px] h-[7px] rounded-full shrink-0" style={s.dot} />{s.label}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[17px] font-medium leading-snug" style={{ color: INK }}>{fokus}</span>
+                      <span className="block text-[14px] leading-[1.55] max-w-[36ch]" style={{ margin: '8px 0 0', color: MUTED }}>{hva}</span>
+                    </div>
+                    <div>
+                      <span className="sm:hidden block text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: MUTED }}>{c.head[2]}</span>
+                      <span className="block text-[15.5px] leading-[1.6] max-w-[46ch]" style={{ margin: '4px 0 0', color: INK }}>{maal}</span>
+                    </div>
+                  </div>
+                </Rise>
+              );
+            })}
+          </div>
 
           <div className="mt-20 lg:mt-24 grid sm:grid-cols-2 gap-x-8 gap-y-12" data-testid="letter-roadmap-maal">
             {c.maal.map(([h, t], i) => (
-              <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-roadmap-maal-${i + 1}`}>
-                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }}>{h}</p>
+              <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${i === 0 ? INK : HAIR}` }} data-testid={`letter-roadmap-maal-${i + 1}`}>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: i === 0 ? ACCENT : MUTED }}>{h}</p>
                 <p className="font-medium tracking-[-0.025em] leading-[1.25]" style={{ margin: '16px 0 0', color: INK, fontSize: 'clamp(21px, 1.8vw, 27px)' }}>{t}</p>
               </div></Rise>
             ))}
@@ -534,75 +541,187 @@ const Roadmap = () => {
   );
 };
 
-/* ─── 08 Kapitalplan: budsjettet og basisbehovet, hva emisjonen skal brukes til, use of funds, og runway-regnestykket ─── */
-const budsjettCell = (i, v) => (i === 0
-  ? <span className="text-[17px] font-medium leading-snug" style={{ color: INK }}>{v}</span>
-  : <span className="text-[17px] tabular-nums whitespace-nowrap" style={{ color: MUTED }}>{v}</span>);
+/* ─── 09 Kapitalplan: tre måneder – post · grunnlag · per måned · 3 måneder, engangsposter, totalt avsatt og ikke disponert, disponeringen
+ *     som én rolig linje, forutsetningene bak gründerressursen (åpne/lukke, tastatur, alltid med i utskrift), og beslutningspunktet. ─── */
+const BUDSJETT_COLS = 'sm:[grid-template-columns:minmax(0,1fr)_120px_140px_150px]';
+
+const Forutsetninger = ({ h, toggle, steg, notes, testid }) => {
+  const [open, setOpen] = useState(false);
+  const id = `${testid}-panel`;
+  return (
+    <div className="mt-10 rounded-[20px] overflow-hidden" style={{ border: `1px solid ${HAIR}`, background: '#fbfaf8' }} data-testid={testid}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-black/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7F3FBF] focus-visible:ring-inset"
+        data-testid={`${testid}-toggle`}
+      >
+        <span className="min-w-0">
+          <span className="block text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ color: ACCENT }}>{h}</span>
+          <span className="block text-[15px]" style={{ margin: '6px 0 0', color: MUTED }}>{open ? toggle[1] : toggle[0]}</span>
+        </span>
+        <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} style={{ color: INK }} strokeWidth={2} aria-hidden />
+      </button>
+      <div id={id} hidden={!open} className="brev-print-show px-6 pb-6" role="region" aria-label={h} data-testid={id}>
+        <dl className="m-0" style={{ borderBottom: `1px solid ${HAIR}` }}>
+          {steg.map(([label, v, note], i) => {
+            const last = i === steg.length - 1;
+            const sum = label.startsWith('≈');
+            return (
+              <div key={label} className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_120px_minmax(0,1fr)] gap-x-6 gap-y-1 py-3" style={{ borderTop: `1px solid ${sum || last ? INK : HAIR}` }} data-testid={`${testid}-steg-${i + 1}`}>
+                <dt className="text-[15px] leading-snug" style={{ color: last || sum ? INK : MUTED, fontWeight: last ? 500 : 400 }}>{label}</dt>
+                <dd className="m-0 text-[15px] tabular-nums whitespace-nowrap sm:text-right" style={{ color: last ? ACCENT : INK, fontWeight: last || sum ? 500 : 400 }}>{v}</dd>
+                <dd className="m-0 col-span-2 sm:col-span-1 text-[13px] leading-snug" style={{ color: MUTED }}>{note}</dd>
+              </div>
+            );
+          })}
+        </dl>
+        {notes.map((n, i) => <p key={i} className="text-[14.5px] leading-[1.6] max-w-[66ch]" style={{ margin: i === 0 ? '18px 0 0' : '10px 0 0', color: i === 0 ? INK : MUTED }}>{n}</p>)}
+      </div>
+    </div>
+  );
+};
 
 const Kapital = () => {
-  const { BREV } = useInnhold();
+  const { BREV, KAPITAL } = useInnhold();
   const c = BREV.kapital;
+  const k = KAPITAL;
+  const engangLabel = 'Engang';
+  const swatch = (i) => [{ background: INK }, { background: '#b4b4ba' }, { background: ACCENT }, { background: 'transparent', boxShadow: `inset 0 0 0 1.5px ${INK}` }][i];
   return (
-    <Section id="kapital" testid="letter-kapital">
+    <Section id="kapital" testid="letter-kapital" tint>
       <Grid>
         <Aside n="09" label={c.eyebrow} />
         <Main>
           <Title title={c.title} testid="letter-kapital-head" />
           <Paragraphs items={c.paragraphs} testid="letter-kapital-p" strong={0} />
-          <div className="mt-14 lg:mt-16 grid lg:grid-cols-[minmax(0,1fr)_240px] gap-x-12 gap-y-12 items-start">
-            <Tabell head={c.head} rows={c.budsjett} cols="minmax(0,1fr) 180px" cell={budsjettCell} foot={c.total} testid="letter-budsjett" />
-            <Rise delay={0.15}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-budsjett-basis">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{c.basis[1]}</p>
-              <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '16px 0 0', color: ACCENT, fontSize: 'clamp(36px, 3vw, 52px)' }}>{c.basis[0]}</p>
-              <p className="text-[15px] leading-[1.6]" style={{ margin: '14px 0 0', color: MUTED }}>{c.basis[2]}</p>
-            </div></Rise>
-          </div>
-          <Rise delay={0.1}><p className="text-[14.5px] leading-[1.6] max-w-[62ch]" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-budsjett-note">{c.budsjettNote}</p></Rise>
 
-          {/* Hva emisjonen skal finansiere – boksen som kobler beløpet til milepælen. */}
-          <Rise delay={0.1}><div className="mt-16 lg:mt-20 rounded-[20px] px-6 py-7 lg:px-8 lg:py-8" style={{ background: INK, color: '#fff' }} data-testid="letter-kapital-brudd">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.accent }}>{c.bruddH}</p>
-            {c.brudd.map((p, i) => <p key={i} className="text-[17px] lg:text-[18px] leading-[1.6] max-w-[62ch]" style={{ margin: i === 0 ? '16px 0 0' : '12px 0 0', color: i === 0 ? '#fff' : D.muted, fontWeight: i === 0 ? 500 : 400 }}>{p}</p>)}
+          {/* Tegnforklaring – bekreftet vs. estimat, før tallene */}
+          <Rise delay={0.08}><div className="mt-14 lg:mt-16 flex flex-wrap gap-x-7 gap-y-2" data-testid="letter-budsjett-legend">
+            {['bekreftet', 'estimat', 'avsatt'].map((t) => (
+              <span key={t} className="inline-flex items-center gap-2 text-[13px]" style={{ color: MUTED }}><Kilde type={t} />{c.legend[t]}</span>
+            ))}
           </div></Rise>
 
-          <div className="mt-14 lg:mt-16 grid sm:grid-cols-2 gap-x-8 gap-y-12" data-testid="letter-kapital-kobling">
-            {c.kobling.map(([h, items], i) => (
-              <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-kapital-kobling-${i + 1}`}>
-                <p className="font-medium tracking-[-0.025em] leading-[1.15]" style={{ margin: 0, color: i === 0 ? ACCENT : INK, fontSize: 'clamp(22px, 1.9vw, 28px)' }}>{h}</p>
-                <ul className="list-none p-0 m-0 mt-6">
-                  {items.map((t) => <li key={t} className="flex items-center gap-3 py-2.5 text-[16px]" style={{ color: INK }}><ArrowRight className="w-4 h-4 shrink-0" style={{ color: MUTED }} strokeWidth={1.75} />{t}</li>)}
-                </ul>
+          {/* Budsjettet: post · grunnlag · per måned · 3 måneder */}
+          <div className="mt-6" style={{ borderBottom: `1px solid ${HAIR}` }} data-testid="letter-budsjett">
+            <div className={`hidden sm:grid gap-x-6 pb-3 text-[11px] font-semibold uppercase tracking-[0.1em] ${BUDSJETT_COLS}`} style={{ color: MUTED }}>
+              {c.head.map((h, i) => <span key={h} className={i >= 2 ? 'text-right' : ''}>{h}</span>)}
+            </div>
+            {k.poster.map((p, i) => (
+              <Rise key={p.key} delay={0.03 + i * 0.03}>
+                <div className={`grid grid-cols-2 gap-x-6 gap-y-3 py-5 sm:items-start ${BUDSJETT_COLS}`} style={{ borderTop: `1px solid ${HAIR}` }} data-testid={`letter-budsjett-${p.key}`}>
+                  <div className="col-span-2 sm:col-span-1 min-w-0">
+                    <span className="block text-[17px] font-medium leading-snug" style={{ color: INK }}>{p.post}</span>
+                    <span className="block text-[13.5px] leading-[1.5] max-w-[46ch]" style={{ margin: '5px 0 0', color: MUTED }}>{p.sub}</span>
+                    <span className="sm:hidden block" style={{ margin: '8px 0 0' }}><Kilde type={p.kilde} /></span>
+                  </div>
+                  <div className="hidden sm:block pt-[3px]"><Kilde type={p.kilde} testid={`letter-budsjett-${p.key}-kilde`} /></div>
+                  <Belop v={p.f.mnd} label={c.head[2]} color={INK} testid={`letter-budsjett-${p.key}-mnd`} />
+                  <Belop v={p.f.tre} label={c.head[3]} testid={`letter-budsjett-${p.key}-tre`} />
+                </div>
+              </Rise>
+            ))}
+            <Rise delay={0.2}>
+              <div className={`grid grid-cols-2 gap-x-6 gap-y-3 py-5 sm:items-baseline ${BUDSJETT_COLS}`} style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-budsjett-sum">
+                <span className="col-span-2 sm:col-span-1 text-[17px] font-medium" style={{ color: INK }}>{c.sumLabel}</span>
+                <span className="hidden sm:block" />
+                <Belop v={k.sum.f.mnd} label={c.head[2]} strong testid="letter-budsjett-sum-mnd" />
+                <Belop v={k.sum.f.tre} label={c.head[3]} strong testid="letter-budsjett-sum-tre" />
+              </div>
+            </Rise>
+          </div>
+
+          {/* Engangsposter – emisjon/juridisk og buffer */}
+          <Sub testid="letter-budsjett-engang-h" mt="mt-12">{c.engangH}</Sub>
+          <div className="mt-4" style={{ borderBottom: `1px solid ${HAIR}` }} data-testid="letter-budsjett-engang">
+            {k.engang.map((e, i) => (
+              <Rise key={e.key} delay={0.03 + i * 0.03}>
+                <div className={`grid grid-cols-2 gap-x-6 gap-y-3 py-5 sm:items-start ${BUDSJETT_COLS}`} style={{ borderTop: `1px solid ${HAIR}` }} data-testid={`letter-budsjett-${e.key}`}>
+                  <div className="col-span-2 sm:col-span-1 min-w-0">
+                    <span className="block text-[17px] font-medium leading-snug" style={{ color: INK }}>{e.post}</span>
+                    <span className="block text-[13.5px] leading-[1.5] max-w-[46ch]" style={{ margin: '5px 0 0', color: MUTED }}>{e.sub}</span>
+                    <span className="sm:hidden block" style={{ margin: '8px 0 0' }}><Kilde type={e.kilde} /></span>
+                  </div>
+                  <div className="hidden sm:block pt-[3px]"><Kilde type={e.kilde} /></div>
+                  <span className="hidden sm:block" />
+                  <Belop v={e.f} label={engangLabel} color={INK} testid={`letter-budsjett-${e.key}-belop`} />
+                </div>
+              </Rise>
+            ))}
+          </div>
+
+          {/* Emisjonen · totalt avsatt · ikke disponert – tre tall, så disponeringen som én linje */}
+          <div className="mt-14 lg:mt-16 grid sm:grid-cols-3 gap-x-8 gap-y-10" data-testid="letter-kapital-sum">
+            {[
+              ['Emisjonen', k.emisjon.f, 'ny kapital', INK],
+              [c.avsattLabel, k.avsatt.f, `${k.sum.f.tre} løpende plan + ${k.engang[0].f} emisjon og juridisk + ${k.engang[1].f} buffer`, INK],
+              [c.ikkeDisponertLabel, k.ikkeDisponert.f, c.ikkeDisponertNote, ACCENT],
+            ].map(([label, v, text, color], i) => (
+              <Rise key={label} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-kapital-sum-${i + 1}`}>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{label}</p>
+                <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '16px 0 0', color, fontSize: 'clamp(28px, 2.4vw, 40px)' }}>{v}</p>
+                <p className="text-[14px] leading-[1.55] max-w-[34ch]" style={{ margin: '12px 0 0', color: MUTED }}>{text}</p>
               </div></Rise>
             ))}
           </div>
 
-          {/* Runway-regnestykket – som en oppstilling, uten tall vi ikke har vist. */}
-          <Sub testid="letter-kapital-runway-h">{c.runwayH}</Sub>
-          <dl className="m-0 mt-6 max-w-[520px]" style={{ borderBottom: `1px solid ${INK}` }} data-testid="letter-kapital-runway">
-            {c.runway.map((r, i) => {
-              const sum = i === c.runway.length - 1;
-              return <Rise key={r} delay={0.03 + i * 0.03}><div className="py-3 text-[16px] tabular-nums" style={{ borderTop: `1px solid ${sum ? INK : HAIR}`, color: sum ? INK : MUTED, fontWeight: sum ? 500 : 400 }} data-testid={`letter-kapital-runway-${i + 1}`}>{r}</div></Rise>;
-            })}
-          </dl>
-          <Rise delay={0.1}><p className="text-[14.5px] leading-[1.6] max-w-[62ch]" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-kapital-runway-note">{c.runwayNote}</p></Rise>
+          <Rise delay={0.1}><div className="mt-12" data-testid="letter-kapital-disponering">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{c.disponeringH} · {k.emisjon.f}</p>
+            <div className="mt-4 flex h-[10px] rounded-full overflow-hidden gap-[2px]" role="img" aria-label={k.disponering.map(([l, , f]) => `${l}: ${f}`).join(', ')}>
+              {k.disponering.map(([l, n], i) => <span key={l} className="block h-full" style={{ width: `${(n / k.emisjon.belop) * 100}%`, ...swatch(i), borderRadius: 2 }} />)}
+            </div>
+            <ul className="list-none p-0 m-0 mt-5 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">
+              {k.disponering.map(([l, n, f], i) => (
+                <li key={l} className="min-w-0" data-testid={`letter-kapital-disponering-${i + 1}`}>
+                  <span className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.1em]" style={{ color: MUTED }}><span aria-hidden className="w-[9px] h-[9px] rounded-[2px] shrink-0" style={swatch(i)} />{l}</span>
+                  <span className="block text-[16px] font-medium tabular-nums" style={{ margin: '6px 0 0', color: i === 3 ? ACCENT : INK }}>{f}</span>
+                  <span className="block text-[12.5px]" style={{ margin: '2px 0 0', color: MUTED }}>{Math.round((n / k.emisjon.belop) * 100)}&nbsp;% av emisjonen</span>
+                </li>
+              ))}
+            </ul>
+          </div></Rise>
+
+          {/* Forutsetningene bak gründerressursen – kan åpnes med tastatur; alltid med i utskrift */}
+          <Forutsetninger h={c.lonnH} toggle={c.lonnToggle} steg={k.lonn.steg} notes={c.lonnNote} testid="letter-kapital-forutsetninger" />
+          <Rise delay={0.08}><p className="text-[14px] leading-[1.6] max-w-[70ch]" style={{ margin: '18px 0 0', color: MUTED }} data-testid="letter-kapital-forbehold">{c.forbehold}</p></Rise>
+
+          {/* Hva emisjonen finansierer – og ikke */}
+          <Rise delay={0.1}><div className="mt-16 lg:mt-20 rounded-[20px] px-6 py-7 lg:px-8 lg:py-8" style={{ background: INK, color: '#fff' }} data-testid="letter-kapital-brudd">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.accent }}>{c.bruddH}</p>
+            {c.brudd.map((p, i) => <p key={i} className="text-[17px] lg:text-[18px] leading-[1.6] max-w-[66ch]" style={{ margin: i === 0 ? '16px 0 0' : '12px 0 0', color: i === 0 ? '#fff' : D.muted, fontWeight: i === 0 ? 500 : 400 }}>{p}</p>)}
+          </div></Rise>
+
+          {/* Beslutningspunktet ved slutten av måned 2 – kostnader, pilotfremdrift, finansiering */}
+          <Rise delay={0.1}><div className="mt-14 lg:mt-16 pt-7 relative" style={{ borderTop: `1px solid ${ACCENT}` }} data-testid="letter-kapital-beslutning">
+            <span aria-hidden className="absolute left-0 -top-[5px] w-[9px] h-[9px] rounded-full" style={{ background: ACCENT, boxShadow: '0 0 0 4px rgba(127,63,191,0.18)' }} />
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }}>{c.beslutningH}</p>
+            <p className="text-[17px] lg:text-[18px] font-medium leading-[1.5] max-w-[56ch]" style={{ margin: '14px 0 0', color: INK }}>{c.beslutningLead}</p>
+            <div className="mt-8 grid sm:grid-cols-3 gap-x-8 gap-y-8">
+              {c.beslutning.map(([h, t], i) => (
+                <div key={h} className="pt-4" style={{ borderTop: `1px solid ${HAIR}` }} data-testid={`letter-kapital-beslutning-${i + 1}`}>
+                  <p className="text-[16px] font-medium" style={{ margin: 0, color: INK }}>{h}</p>
+                  <p className="text-[14.5px] leading-[1.6] max-w-[32ch]" style={{ margin: '8px 0 0', color: MUTED }}>{t}</p>
+                </div>
+              ))}
+            </div>
+          </div></Rise>
+          <Rise delay={0.1}><p className="text-[15.5px] leading-[1.65] max-w-[62ch]" style={{ margin: '32px 0 0', color: MUTED }} data-testid="letter-kapital-runde-note">{c.rundeNote}</p></Rise>
         </Main>
       </Grid>
     </Section>
   );
 };
 
-/* ─── 07 Forretningsmodell: prising, hva en enhet er, regnestykket, fem tilsvarende kunder, base case ─── */
-const baseCell = (i, v) => {
-  if (i === 0) return <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap" style={{ color: ACCENT }}>{v}</span>;
-  if (i === 1) return <span className="text-[16px] leading-snug" style={{ color: MUTED }}>{v}</span>;
-  return <span className="text-[16px] font-medium leading-snug" style={{ color: INK }}>{v}</span>;
-};
-
+/* ─── 08 Forretningsmodell: prisen er ikke validert – rekkefølgen (pilot → nytte og betalingsvilje → utrulling), hva en aktiv enhet er,
+ *     ett tydelig merket hypotetisk oppsideeksempel, og ARR (årsrate) mot fakturert år 1. Ingen base case, ingen «fem kunder». ─── */
 const Modell = () => {
   const { BREV } = useInnhold();
   const c = BREV.modell;
   return (
-    <Section id="modell" testid="letter-modell" tint>
+    <Section id="modell" testid="letter-modell">
       <Grid>
         <Aside n="08" label={c.eyebrow} />
         <Main>
@@ -610,19 +729,51 @@ const Modell = () => {
           <Paragraphs items={c.paragraphs} testid="letter-modell-p" strong={0} first={32} />
           <Rise delay={0.08}><p className="text-[15.5px] leading-[1.65] max-w-[62ch] pt-5" style={{ margin: '28px 0 0', color: INK, borderTop: `1px solid ${HAIR}` }} data-testid="letter-modell-enhet">{c.enhet}</p></Rise>
 
-          {/* Regnestykket: 1 000 enheter → 130 000 kr/mnd → 1,56 MNOK ARR – og fem tilsvarende kunder */}
-          <Sub testid="letter-modell-eksempel-h" mt="mt-16 lg:mt-20">{c.eksempelH}</Sub>
-          <Rise delay={0.1}><div className="mt-6 grid sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-6 gap-y-3 rounded-[20px] px-6 py-6 lg:px-8" style={{ background: '#fbfaf8', border: `1px solid ${HAIR}` }} data-testid="letter-modell-eksempel">
-            <span className="text-[17px] font-medium" style={{ color: INK }}>{c.eksempel[0]}</span>
-            <span className="text-[15.5px] tabular-nums" style={{ color: MUTED }}>{c.eksempel[1]}</span>
-            <span className="inline-flex items-center gap-3 text-[17px] font-medium tabular-nums" style={{ color: INK }}><ArrowRight className="w-4 h-4 hidden sm:block" style={{ color: ACCENT }} strokeWidth={1.75} />{c.eksempel[2]}</span>
-            <span className="inline-flex items-center gap-3 text-[17px] font-medium tabular-nums" style={{ color: ACCENT }}><ArrowRight className="w-4 h-4 hidden sm:block" style={{ color: ACCENT }} strokeWidth={1.75} />{c.eksempel[3]}</span>
-          </div></Rise>
-          <div className="mt-10"><Tall items={[c.skalering]} cols="sm:grid-cols-[minmax(0,1fr)]" testid="letter-modell-skalering" /></div>
+          {/* Rekkefølgen – tre steg */}
+          <Sub testid="letter-modell-steg-h" mt="mt-16 lg:mt-20">{c.stegH}</Sub>
+          <div className="mt-6 grid sm:grid-cols-3 gap-x-8 gap-y-8" data-testid="letter-modell-steg">
+            {c.steg.map(([h, t], i) => (
+              <Rise key={h} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-modell-steg-${i + 1}`}>
+                <p className="text-[12px] font-semibold tabular-nums" style={{ margin: 0, color: ACCENT }}>{String(i + 1).padStart(2, '0')}</p>
+                <p className="font-medium tracking-[-0.02em] leading-[1.2]" style={{ margin: '12px 0 0', color: INK, fontSize: 'clamp(19px, 1.5vw, 23px)' }}>{h}</p>
+                <p className="text-[14.5px] leading-[1.6] max-w-[30ch]" style={{ margin: '10px 0 0', color: MUTED }}>{t}</p>
+              </div></Rise>
+            ))}
+          </div>
 
-          <Sub testid="letter-modell-base-h">{c.baseH}</Sub>
-          <div className="mt-8"><Tabell head={c.baseHead} rows={c.base} cols="120px minmax(0,1fr) 260px" cell={baseCell} testid="letter-modell-base" /></div>
-          <div className="mt-12"><Tall items={[c.baseResult]} cols="sm:grid-cols-[minmax(0,1fr)]" testid="letter-modell-baseresult" /></div>
+          {/* Hypotetisk oppsideeksempel – tydelig merket, ett regnestykke */}
+          <Rise delay={0.1}><div className="mt-16 lg:mt-20 rounded-[20px] px-6 py-6 lg:px-8 lg:py-7" style={{ background: FILL, border: `1px solid ${HAIR}` }} data-testid="letter-modell-eksempel">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid="letter-modell-eksempel-h">{c.eksempelH}</p>
+              <p className="text-[13px] leading-snug max-w-[60ch]" style={{ margin: 0, color: MUTED }} data-testid="letter-modell-eksempel-sub">{c.eksempelSub}</p>
+            </div>
+            <dl className="m-0 mt-5" style={{ borderBottom: `1px solid ${INK}` }}>
+              {c.eksempelRader.map(([label, v, unit], i) => {
+                const last = i === c.eksempelRader.length - 1;
+                const sum = i === c.eksempelRader.length - 2;
+                return (
+                  <div key={label} className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_auto_150px] gap-x-6 gap-y-0.5 py-3.5 items-baseline" style={{ borderTop: `1px solid ${sum ? INK : HAIR}` }} data-testid={`letter-modell-eksempel-${i + 1}`}>
+                    <dt className="text-[15.5px] leading-snug" style={{ color: last || sum ? INK : MUTED, fontWeight: last || sum ? 500 : 400 }}>{label}</dt>
+                    <dd className="m-0 text-[16px] whitespace-nowrap text-right" style={{ color: last ? ACCENT : INK, fontWeight: last || sum ? 500 : 400 }}>{v}</dd>
+                    <dd className="m-0 col-span-2 sm:col-span-1 text-[12.5px] sm:text-right" style={{ color: MUTED }}>{unit}</dd>
+                  </div>
+                );
+              })}
+            </dl>
+          </div></Rise>
+
+          {/* ARR er en årsrate – mot det som faktisk faktureres år 1 */}
+          <Sub testid="letter-modell-arr-h">{c.arrH}</Sub>
+          <div className="mt-8 grid sm:grid-cols-2 gap-x-8 gap-y-10" data-testid="letter-modell-arr">
+            {c.arr.map(([n, label, text], i) => (
+              <Rise key={label} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-modell-arr-${i + 1}`}>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{label}</p>
+                <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '16px 0 0', color: INK, fontSize: 'clamp(28px, 2.4vw, 40px)' }}>{n}</p>
+                <p className="text-[14.5px] leading-[1.6] max-w-[38ch]" style={{ margin: '12px 0 0', color: MUTED }}>{text}</p>
+              </div></Rise>
+            ))}
+          </div>
+          <Rise delay={0.1}><p className="text-[14.5px] leading-[1.6] max-w-[66ch]" style={{ margin: '24px 0 0', color: MUTED }} data-testid="letter-modell-arr-note">{c.arrNote}</p></Rise>
         </Main>
       </Grid>
     </Section>
@@ -652,7 +803,7 @@ const Team = () => {
   const { BREV, TEAM } = useInnhold();
   const t = BREV.team;
   return (
-    <Section id="teamet" testid="letter-team-section" tint>
+    <Section id="teamet" testid="letter-team-section">
       <Grid>
         <Aside n="10" label={t.eyebrow} />
         <Main>
@@ -679,7 +830,7 @@ const Team = () => {
   );
 };
 
-/* ─── 11 Tilbudet: term sheet på mørk flate (investering · pre · post · eierandel), én linje om aksjene, så gjennomføringen ─── */
+/* ─── 11 Tilbudet: term sheet på mørk flate (ny kapital · eierandel samlet · pre · post), regnestykket og fordelingen (ikke bestemt), én linje om aksjene, så gjennomføringen ─── */
 const Offer = () => {
   const { BREV } = useInnhold();
   const c = BREV.offer;
@@ -704,7 +855,20 @@ const Offer = () => {
         </div>
       </Rise>
       <Grid className="mt-10">
-        <Main><Rise delay={0.1}><p className="text-[15.5px] leading-[1.65] max-w-[70ch]" style={{ margin: 0, color: D.muted }} data-testid="letter-offer-aksjer">{c.aksjer}</p></Rise></Main>
+        <Main>
+          {/* Regnestykket og fordelingen – to korte blokker, så ingen leter etter hvordan 10 % henger sammen, eller tror fordelingen er bestemt. */}
+          <div className="grid sm:grid-cols-2 gap-x-8 gap-y-8" data-testid="letter-offer-regnestykke">
+            <Rise delay={0.08}><div className="pt-5" style={{ borderTop: `1px solid ${D.hair}` }}>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.muted }}>{c.regnestykkeH}</p>
+              <p className="text-[15.5px] leading-[1.6]" style={{ margin: '12px 0 0', color: D.ink }} data-testid="letter-offer-regnestykke-text">{c.regnestykke}</p>
+            </div></Rise>
+            <Rise delay={0.12}><div className="pt-5" style={{ borderTop: `1px solid ${D.hair}` }}>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.muted }}>{c.fordelingH}</p>
+              <p className="text-[15.5px] leading-[1.6]" style={{ margin: '12px 0 0', color: D.ink }} data-testid="letter-offer-fordeling">{c.fordeling}</p>
+            </div></Rise>
+          </div>
+          <Rise delay={0.1}><p className="text-[15.5px] leading-[1.65] max-w-[70ch]" style={{ margin: '32px 0 0', color: D.muted }} data-testid="letter-offer-aksjer">{c.aksjer}</p></Rise>
+        </Main>
       </Grid>
 
       <Grid className="mt-24 lg:mt-28">

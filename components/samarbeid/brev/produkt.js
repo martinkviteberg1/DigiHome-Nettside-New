@@ -37,7 +37,7 @@ export const Skaler = ({ w, h, children, className = '', style, max = 1, testid 
     return () => ro.disconnect();
   }, [w, max]);
   return (
-    <div ref={ref} className={className} style={{ ...style, height: s ? h * s : undefined }} data-testid={testid}>
+    <div ref={ref} className={`overflow-hidden ${className}`} style={{ ...style, height: s ? h * s : undefined }} data-testid={testid}>
       <div style={{ width: w, height: h, transform: `scale(${s})`, transformOrigin: 'top left', visibility: s ? 'visible' : 'hidden' }}>{children}</div>
     </div>
   );
