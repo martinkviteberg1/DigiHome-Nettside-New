@@ -45,7 +45,7 @@ export const Skaler = ({ w, h, children, className = '', style, max = 1, testid 
 
 /* ═══════════════════════════════════ FORVALTERENS OVERSIKT (web) ═══════════════════════════════════ */
 
-const Dot = ({ c, size = 6 }) => <span aria-hidden className="rounded-full shrink-0" style={{ width: size, height: size, background: c }} />;
+export const Dot = ({ c, size = 6 }) => <span aria-hidden className="rounded-full shrink-0" style={{ width: size, height: size, background: c }} />;
 const Arrow = () => <ArrowRight className="w-4 h-4 shrink-0" style={{ color: A.ink3 }} strokeWidth={1.75} />;
 
 /** Tonet ikonsirkel (Tint i DashboardHome). */
@@ -64,10 +64,10 @@ const Head = ({ title, count, right, to }) => (
 
 /* ── Rail (AdminLayout.tsx · 236 px, canvas-2, tonal aktiv-fill, lilla kun som mikrosignal) ── */
 const RAIL = [
-  ['Arbeid', [[LayoutDashboard, 'Oversikt', { active: true }], [Gauge, 'Operasjonssentral'], [MessageSquare, 'Innboks', { count: 3 }], [CalendarDays, 'Kalender'], [Radio, 'Kanaler'], [ClipboardCheck, 'Oppgaver'], [Bot, 'AI-assistent']]],
-  ['Drift', [[Building2, 'Eiendommer'], [Rocket, 'Utleieprosesser'], [FileSignature, 'Leieforhold'], [FileText, 'Dokumenter'], [AlertCircle, 'Saker', { count: 7 }], [Users, 'Brukere'], [Wrench, 'Leverandører'], [BookOpen, 'Driftshåndbok']]],
+  ['', [[LayoutDashboard, 'Oversikt'], [Gauge, 'Operasjonssentral'], [MessageSquare, 'Innboks', { count: 3 }], [CalendarDays, 'Kalender'], [Radio, 'Kanaler'], [ClipboardCheck, 'Oppgaver'], [Bot, 'KI-assistent']]],
+  ['Drift', [[Building2, 'Eiendommer'], [Rocket, 'Utleie'], [FileSignature, 'Leieforhold'], [PieChart, 'Økonomi'], [FileText, 'Dokumenter'], [AlertCircle, 'Saker', { count: 7 }], [Users, 'Brukere'], [Wrench, 'Leverandører'], [BookOpen, 'Driftshåndbok']]],
   ['Verktøy', [[ImageIcon, 'Bildestudio']]],
-  ['Administrasjon', [[BarChart3, 'Analyse'], [Sparkles, 'Innsikt'], [Handshake, 'Forvaltningsavtaler'], [Megaphone, 'Salg'], [PieChart, 'Økonomi']]],
+  ['Administrasjon', [[BarChart3, 'Analyse'], [Sparkles, 'Innsikt'], [Handshake, 'Forvaltningsavtaler'], [Megaphone, 'Salg']]],
 ];
 
 const RailRow = ({ icon: Icon, label, active, count }) => (
@@ -78,7 +78,8 @@ const RailRow = ({ icon: Icon, label, active, count }) => (
   </div>
 );
 
-const Rail = ({ user }) => (
+/** Railen – `active` er etiketten på den aktive raden (Oversikt · Innboks · Eiendommer …). Eksportert så innboksen og enhetsvisningen bruker samme rail. */
+export const Rail = ({ user, active = 'Oversikt' }) => (
   <aside className="flex flex-col shrink-0 h-full" style={{ width: 236, background: A.canvas2, borderRight: `1px solid ${A.hair}` }}>
     <div className="px-2 pt-3">
       <div className="flex items-center h-10 pl-[11px] pr-2">
@@ -92,10 +93,10 @@ const Rail = ({ user }) => (
       </div>
     </div>
     <nav className="flex-1 px-2 overflow-hidden">
-      {RAIL.map(([sec, rows]) => (
-        <div key={sec}>
-          <p className="h-7 mt-2 mb-0.5 pl-[11px] flex items-center text-[11px] font-medium uppercase tracking-[0.08em]" style={{ color: A.ink3, margin: '8px 0 2px' }}>{sec}</p>
-          {rows.map(([Icon, label, o = {}]) => <RailRow key={label} icon={Icon} label={label} active={o.active} count={o.count} />)}
+      {RAIL.map(([sec, rows], gi) => (
+        <div key={sec || gi}>
+          {sec && <p className="h-7 mt-2 mb-0.5 pl-[11px] flex items-center text-[11px] font-medium uppercase tracking-[0.08em]" style={{ color: A.ink3, margin: '8px 0 2px' }}>{sec}</p>}
+          {rows.map(([Icon, label, o = {}]) => <RailRow key={label} icon={Icon} label={label} active={label === active} count={o.count} />)}
         </div>
       ))}
     </nav>
@@ -114,7 +115,7 @@ const Rail = ({ user }) => (
 );
 
 /* ── Innholdet i oversikten – i samme rekkefølge som i appen ── */
-const DATA = {
+export const DATA = {
   user: { name: 'Sarah Sleeman', first: 'Sarah', email: 'sarah@digihome.no', img: '/brand/sarah-sleeman-360.webp', pos: '50% 28%' },
   date: 'mandag 5. oktober 2026',
   brief: '3 ting venter på deg. 12 hendelser er håndtert siden i går, og husleien for oktober er 94 % inne.',
@@ -153,7 +154,7 @@ const DATA = {
 /** Porteføljehelse – KPI-stripen (border-t, hårlinjer mellom cellene, 34 px heading-tall, lilla/grønn beleggslinje). */
 export const KpiStripe = ({ bare = false }) => (
   <section>
-    {!bare && <Head title="Porteføljehelse" right={<span className="inline-flex items-center gap-1.5 text-[12px]" style={{ color: A.ink3 }}><ArrowUpRight className="w-3.5 h-3.5" style={{ color: A.ok }} strokeWidth={2} />mot forrige måned</span>} />}
+    {!bare && <Head title="Status i porteføljen" right={<span className="inline-flex items-center gap-1.5 text-[12px]" style={{ color: A.ink3 }}><ArrowUpRight className="w-3.5 h-3.5" style={{ color: A.ok }} strokeWidth={2} />mot forrige måned</span>} />}
     <div className="grid grid-cols-2 lg:grid-cols-4" style={{ borderTop: `1px solid ${A.hair}` }} data-testid="produkt-kpi">
       {DATA.kpi.map((k, i) => (
         <div key={k.label} className={`flex flex-col pt-5 pb-4 pr-4 border-[#e5dfd6] ${['', 'pl-5 border-l', 'border-t lg:border-t-0 lg:border-l lg:pl-5', 'pl-5 border-l border-t lg:border-t-0'][i]}`}>
@@ -204,7 +205,7 @@ export const VenterKort = () => {
         </div>
       </div>
       <ul className="mt-2.5 px-1 space-y-1 text-[12.5px] list-none p-0" style={{ color: A.ink2, margin: '10px 0 0' }}>
-        {v.mer.map((m) => <li key={m} className="inline-flex items-center gap-1 w-full">{m}<ArrowRight className="w-3 h-3" strokeWidth={2} /></li>)}
+        {v.mer.map((m) => <li key={m} className="flex items-center gap-1 w-full">{m}<ArrowRight className="w-3 h-3" strokeWidth={2} /></li>)}
       </ul>
     </section>
   );
@@ -326,7 +327,7 @@ export const Oversikt = () => (
           <aside className="flex flex-col gap-8 min-w-0">
             <VenterKort />
             <section>
-              <h2 className={`${H} text-[15px] font-semibold tracking-[-0.01em] flex items-center gap-2 h-8 mb-1`} style={{ color: A.ink, margin: '0 0 4px' }}><Activity className="w-4 h-4" style={{ color: A.purple }} strokeWidth={1.75} />DigiHome i arbeid</h2>
+              <h2 className={`${H} text-[15px] font-semibold tracking-[-0.01em] flex items-center gap-2 h-8 mb-1`} style={{ color: A.ink, margin: '0 0 4px' }}><Activity className="w-4 h-4" style={{ color: A.purple }} strokeWidth={1.75} />Håndtert automatisk</h2>
               <ul className="list-none p-0 m-0">
                 {DATA.autopilot.map(([Icon, t], i) => (
                   <li key={t} className="flex items-center gap-3 min-h-[44px] py-1.5" style={{ borderTop: i > 0 ? `1px solid ${A.hair}` : undefined }}>

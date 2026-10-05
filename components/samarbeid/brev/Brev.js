@@ -9,8 +9,9 @@
  *  én rolig disponeringslinje. Forutsetningene bak gründerressursen ligger i en åpne/lukke-blokk (knapp, aria-expanded) som alltid er med i utskrift. */
 import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
-import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUp, ChevronDown } from 'lucide-react';
 import { DASH_H, DASH_W, EierTelefon, LeietakerTelefon, Oversikt, Skaler } from './produkt';
+import { ENHET_H, ENHET_W, Enhet, INBOKS_H, INBOKS_W, Innboks } from './produkt-flater';
 
 /* Innholdet (INV, AVSENDERE, TEAM, BREV, DEAL, PORTEFOLJE) deles via kontekst – satt én gang i <Brev>. */
 const InnholdCtx = createContext(null);
@@ -207,7 +208,7 @@ const Cover = () => {
           ))}
         </h1>
         <div className="mt-10 lg:mt-14 grid lg:grid-cols-12 gap-x-8 gap-y-8 items-end">
-          <motion.p {...fade(0.5)} className="lg:col-span-7 text-[18px] lg:text-[21px] leading-[1.5] text-pretty max-w-[640px]" style={{ margin: 0, color: MUTED }} data-testid="letter-sub">{BREV.sub}</motion.p>
+          <motion.div {...fade(0.5)} className="lg:col-span-7 max-w-[640px]" data-testid="letter-sub">{(Array.isArray(BREV.sub) ? BREV.sub : [BREV.sub]).map((t, i) => <p key={i} className="text-[18px] lg:text-[21px] leading-[1.5] text-pretty" style={{ margin: i === 0 ? 0 : '12px 0 0', color: i === (Array.isArray(BREV.sub) ? BREV.sub.length - 1 : 0) ? INK : MUTED }}>{t}</p>)}</motion.div>
           <motion.div {...fade(0.7)} className="lg:col-span-5 lg:col-start-8 flex flex-wrap items-center gap-x-6 gap-y-4 lg:justify-end">
             <span className="text-[15px]" style={{ color: MUTED }} data-testid="letter-to">{INV.from}</span>
             <button type="button" onClick={toLetter} className={`${PILL_DARK} h-12 pl-6 pr-5 text-[15px]`} data-testid="letter-cta-read">{BREV.cta}<ArrowDown className="w-4 h-4" strokeWidth={2.2} /></button>
@@ -256,7 +257,11 @@ const Letter = () => {
   );
 };
 
-/* ─── 02 Dette er bygget – produktbeviset, kort: én desktopflate i full bredde, så seks punkter og integrasjonsstatus ved siden av de to appene. ─── */
+/* ─── 02 DigiHome i dag – produktbeviset som én komposisjon, ikke tre skjermbilder etter hverandre. Scene A: forvalterens arbeidsflate i
+ *     et beskåret vindu på tint-båndet. Scene B: innboksen (liste + tråd) med leietakerappen lagt over høyre hjørne – samme sak sett fra
+ *     begge sider. Scene C: enhetsvisningen (hovedkolonnen, tonet ut nederst) med eierappen foran til venstre. Ingen bildetekster.
+ *     Så «Dette finnes i dag» (seks punkter med én linje hver), integrasjoner og én avsluttende setning. ─── */
+const FRAME = { border: `1px solid ${HAIR}`, boxShadow: '0 48px 96px -56px rgba(10,10,10,0.4)' };
 const Built = () => {
   const { BREV } = useInnhold();
   const c = BREV.built;
@@ -268,6 +273,11 @@ const Built = () => {
           <Main>
             <Statement lines={c.title} testid="letter-product-title" />
             <Paragraphs items={c.paragraphs} testid="letter-product-p" strong={0} first={32} />
+            {/* Ett tall, stort – porteføljen i dag. */}
+            <Rise delay={0.08}><div className="mt-12 lg:mt-14 flex flex-wrap items-baseline gap-x-5 gap-y-2" data-testid="letter-product-stat">
+              <span className="font-medium tracking-[-0.045em] leading-none tabular-nums" style={{ color: INK, fontSize: 'clamp(56px, 6vw, 88px)' }}>{c.stat[0]}</span>
+              <span className="text-[17px] leading-snug" style={{ color: INK }}>{c.stat[1]}<span className="block text-[14px] mt-0.5" style={{ color: MUTED }}>{c.stat[2]}</span></span>
+            </div></Rise>
           </Main>
         </Grid>
       </Container>
@@ -275,39 +285,64 @@ const Built = () => {
       {/* Scene A: oversikten, kant til kant på en mørkere flate, vinduet klippes av flaten. */}
       <div className="mt-16 lg:mt-24 pt-10 sm:pt-14 lg:pt-20" style={{ background: TINT }} data-testid="letter-product-stage">
         <Container>
-          <Rise y={28} className="rounded-t-[14px] lg:rounded-t-[18px] overflow-hidden h-[300px] sm:h-[480px] lg:h-[760px]" style={{ border: `1px solid ${HAIR}`, borderBottom: 0, boxShadow: '0 48px 96px -56px rgba(10,10,10,0.4)' }} testid="letter-stage-desktop">
+          <Rise y={28} className="rounded-t-[14px] lg:rounded-t-[18px] overflow-hidden h-[300px] sm:h-[480px] lg:h-[720px]" style={{ ...FRAME, borderBottom: 0 }} testid="letter-stage-desktop">
             {/* På mobil: zoomet inn på arbeidsflaten (railen skjult), så teksten er lesbar. */}
             <div className="sm:hidden"><Skaler w={640} h={DASH_H}><div style={{ marginLeft: -236 }}><Oversikt /></div></Skaler></div>
             <div className="hidden sm:block"><Skaler w={DASH_W} h={DASH_H}><Oversikt /></Skaler></div>
           </Rise>
         </Container>
       </div>
-      <Container>
 
-        {/* Scene B: seks punkter og integrasjonsstatus til venstre, eierens og leietakerens app til høyre. */}
-        <div className="mt-24 lg:mt-32 grid lg:grid-cols-12 gap-x-8 gap-y-14 items-start">
-          <div className="lg:col-span-5 lg:sticky lg:top-28">
-            <Rise><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid="letter-product-list-h">{c.listH}</p></Rise>
-            <div className="mt-5"><Liste items={c.list} testid="letter-product-list" cols="grid-cols-1" /></div>
-            <Rise><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em] mt-12" style={{ margin: '48px 0 0', color: ACCENT }} data-testid="letter-product-integrasjoner-h">{c.integrasjonerH}</p></Rise>
-            <dl className="m-0 mt-5" style={{ borderBottom: `1px solid ${HAIR}` }} data-testid="letter-product-integrasjoner">
-              {c.integrasjoner.map(([status, hvem], i) => (
-                <Rise key={status} delay={0.04 + i * 0.04}><div className="grid grid-cols-[150px_minmax(0,1fr)] gap-x-6 py-3.5" style={{ borderTop: `1px solid ${HAIR}` }} data-testid={`letter-product-integrasjoner-${i + 1}`}>
-                  <dt className="text-[13px] font-medium" style={{ color: i === 0 ? INK : MUTED }}>{status}</dt>
-                  <dd className="m-0 text-[15px]" style={{ color: INK }}>{hvem}</dd>
+      <Container>
+        {/* Scene B: innboksen – samtaleliste og tråd – med leietakerappen over høyre hjørne. Samme sak (Emma, varmtvannsberederen) fra begge sider. */}
+        <div className="mt-24 lg:mt-32 relative lg:mb-16" data-testid="letter-stage-innboks">
+          <div className="lg:pr-[20%]">
+            <Rise y={28} className="rounded-[14px] lg:rounded-[18px] overflow-hidden" style={FRAME}>
+              <div className="sm:hidden"><Skaler w={564} h={INBOKS_H}><div style={{ marginLeft: -576 }}><Innboks /></div></Skaler></div>
+              {/* Liste + tråd + begynnelsen av kontekstpanelet; telefonen legger seg over kontekstpanelet, ikke over tråden. */}
+              <div className="hidden sm:block"><Skaler w={1000} h={INBOKS_H}><div style={{ marginLeft: -236 }}><Innboks /></div></Skaler></div>
+            </Rise>
+          </div>
+          <Rise delay={0.18} y={40} className="mt-10 mx-auto w-[min(72%,300px)] lg:m-0 lg:absolute lg:right-0 lg:-bottom-16 lg:w-[27%] lg:max-w-[330px]" testid="letter-stage-innboks-phone">
+            <LeietakerTelefon testid="letter-phone-2" />
+          </Rise>
+        </div>
+
+        {/* Scene C: enhetsvisningen – hovedkolonnen, tonet ut nederst – med eierappen foran til venstre. */}
+        <div className="mt-24 lg:mt-48 relative lg:mb-16" data-testid="letter-stage-enhet">
+          <div className="lg:pl-[25%]">
+            <Rise y={28} className="relative rounded-[14px] lg:rounded-[18px] overflow-hidden" style={FRAME}>
+              <div className="sm:hidden"><Skaler w={560} h={820}><div style={{ marginLeft: -496 }}><Enhet /></div></Skaler></div>
+              <div className="hidden sm:block"><Skaler w={976} h={880}><div style={{ marginLeft: -464 }}><Enhet /></div></Skaler></div>
+              <div aria-hidden className="absolute inset-x-0 bottom-0 h-32 pointer-events-none" style={{ background: `linear-gradient(to bottom, rgba(250,250,249,0), ${PAPER})` }} />
+            </Rise>
+          </div>
+          <Rise delay={0.18} y={40} className="mt-10 mx-auto w-[min(72%,300px)] lg:m-0 lg:absolute lg:left-0 lg:-bottom-16 lg:w-[27%] lg:max-w-[330px]" testid="letter-stage-enhet-phone">
+            <EierTelefon testid="letter-phone-1" />
+          </Rise>
+        </div>
+
+        {/* Dette finnes i dag – seks punkter med én linje hver, integrasjoner, én avsluttende setning. */}
+        <div className="mt-32 lg:mt-48 grid lg:grid-cols-12 gap-x-8 gap-y-10">
+          <div className="lg:col-span-3"><Sub mt="" testid="letter-product-list-h">{c.listH}</Sub></div>
+          <div className="lg:col-span-9">
+            <dl className="m-0 grid sm:grid-cols-2 gap-x-10" data-testid="letter-product-list">
+              {c.list.map(([h, t], i) => (
+                <Rise key={h} delay={0.03 + i * 0.03}><div className="py-5" style={{ borderTop: `1px solid ${HAIR}` }} data-testid={`letter-product-list-${i + 1}`}>
+                  <dt className="flex items-baseline gap-3 text-[17px] font-medium leading-snug" style={{ color: INK }}><span className="text-[11px] font-semibold tabular-nums shrink-0" style={{ color: ACCENT }}>{String(i + 1).padStart(2, '0')}</span>{h}</dt>
+                  <dd className="text-[15px] leading-[1.6] pl-[27px]" style={{ margin: '6px 0 0', color: MUTED }}>{t}</dd>
                 </div></Rise>
               ))}
             </dl>
-          </div>
-          <div className="lg:col-span-7 lg:col-start-6 grid sm:grid-cols-2 gap-x-8 gap-y-12 justify-items-center" data-testid="letter-stage-phones">
-            {[EierTelefon, LeietakerTelefon].map((Tlf, i) => (
-              <Rise key={c.phoneCaptions[i]} delay={0.1 + i * 0.12} y={24} className="w-full max-w-[340px]">
-                <figure className="m-0">
-                  <Tlf testid={`letter-phone-${i + 1}`} />
-                  <figcaption className="mt-5 flex items-baseline justify-center gap-3 text-[13.5px]" style={{ color: MUTED }}><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>0{i + 1}</span><span className="font-medium" style={{ color: INK }}>{c.phoneCaptions[i]}</span></figcaption>
-                </figure>
-              </Rise>
-            ))}
+            <dl className="m-0 mt-12 grid sm:grid-cols-2 gap-x-10 gap-y-6" data-testid="letter-product-integrasjoner">
+              {c.integrasjoner.map(([h, t], i) => (
+                <Rise key={h} delay={0.04 + i * 0.04}><div className="pt-5" style={{ borderTop: `1px solid ${i === 0 ? INK : HAIR}` }} data-testid={`letter-product-integrasjoner-${i + 1}`}>
+                  <dt className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ color: i === 0 ? ACCENT : MUTED }}>{h}</dt>
+                  <dd className={i === 0 ? 'text-[19px] font-medium tracking-[-0.01em]' : 'text-[15.5px] leading-[1.6]'} style={{ margin: '12px 0 0', color: i === 0 ? INK : MUTED }}>{t}</dd>
+                </div></Rise>
+              ))}
+            </dl>
+            <Rise delay={0.06}><p className="text-[16px] leading-[1.65] max-w-[62ch]" style={{ margin: '48px 0 0', color: MUTED }} data-testid="letter-product-note">{c.note}</p></Rise>
           </div>
         </div>
       </Container>
@@ -398,10 +433,10 @@ const Strategi = () => {
           </div>
 
           {/* Diskusjonsgrunnlag – ikke besluttet. Samme form som prinsippet i kapittel 03. */}
-          <Rise delay={0.1}><div className="mt-16 lg:mt-20 pt-8" style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-strategy-note">
+          {c.note && <Rise delay={0.1}><div className="mt-16 lg:mt-20 pt-8" style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-strategy-note">
             <p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid="letter-strategy-note-h">{c.noteH}</p>
             <p className="font-medium leading-[1.3] tracking-[-0.02em] max-w-[40ch] text-balance" style={{ margin: '16px 0 0', color: INK, fontSize: 'clamp(22px, 2vw, 30px)' }} data-testid="letter-strategy-note-text">{c.note}</p>
-          </div></Rise>
+          </div></Rise>}
         </Main>
       </Grid>
     </Section>
@@ -440,9 +475,9 @@ const Naa = () => {
               const aapen = i >= 2;
               return (
                 <Rise key={type} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${aapen ? ACCENT : INK}` }} data-testid={`letter-naa-risiko-${i + 1}`}>
-                  <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{type}</p>
-                  <p className="font-medium tracking-[-0.025em] leading-[1.1]" style={{ margin: '14px 0 0', color: aapen ? ACCENT : INK, fontSize: 'clamp(20px, 1.5vw, 24px)' }}>{status}</p>
-                  <p className="text-[14.5px] leading-[1.6]" style={{ margin: '12px 0 0', color: MUTED }}>{text}</p>
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: aapen ? ACCENT : MUTED }}>{status}</p>
+                  <p className="font-medium tracking-[-0.015em] leading-[1.3]" style={{ margin: '14px 0 0', color: INK, fontSize: 'clamp(17px, 1.3vw, 19px)' }}>{type}</p>
+                  <p className="text-[14.5px] leading-[1.6]" style={{ margin: '10px 0 0', color: MUTED }}>{text}</p>
                 </div></Rise>
               );
             })}
@@ -455,7 +490,7 @@ const Naa = () => {
 
 /* ─── Felles for tallene: kilde-merke (bekreftet / estimat / avsatt) og beløpscelle med etikett på mobil ─── */
 const KILDE = {
-  bekreftet: { dot: { background: INK }, color: INK, label: 'Bekreftet' },
+  bekreftet: { dot: { background: INK }, color: INK, label: 'Kjent' },
   estimat: { dot: { background: 'transparent', border: `1.5px solid ${MUTED}` }, color: MUTED, label: 'Estimat' },
   avsatt: { dot: { background: ACCENT }, color: ACCENT, label: 'Avsatt' },
 };
@@ -477,14 +512,23 @@ const Belop = ({ v, label, strong = false, color, testid }) => (
   </span>
 );
 
-const ROADMAP_COLS = 'sm:[grid-template-columns:150px_minmax(0,1fr)_minmax(0,1.1fr)]';
 const STATUS = {
-  emisjon: { dot: { background: INK }, color: INK, label: 'Finansiert av denne emisjonen' },
-  beslutning: { dot: { background: ACCENT, boxShadow: '0 0 0 3px rgba(127,63,191,0.18)' }, color: ACCENT, label: 'Beslutningspunkt' },
-  betinget: { dot: { background: 'transparent', border: `1.5px solid ${MUTED}` }, color: MUTED, label: 'Betinget av finansiering' },
+  emisjon: { dot: { background: INK }, color: INK },
+  betinget: { dot: { background: 'transparent', border: `1.5px solid ${MUTED}` }, color: MUTED },
 };
+const Punkter = ({ items, testid }) => (
+  <ul className={`list-none p-0 m-0 mt-5 grid gap-x-8 gap-y-2.5 ${items.length > 4 ? 'sm:grid-cols-2' : ''}`} data-testid={testid}>
+    {items.map((t) => (
+      <li key={t} className="flex items-start gap-3 text-[15.5px] leading-[1.55]" style={{ color: INK }}>
+        <span aria-hidden className="mt-[11px] w-[5px] h-[5px] rounded-full shrink-0" style={{ background: ACCENT }} />{t}
+      </li>
+    ))}
+  </ul>
+);
 
-/* ─── 07 Roadmap: det denne emisjonen finansierer (måned 1–3), beslutningspunktet ved slutten av måned 2, og det som er betinget ─── */
+/* ─── 07 Roadmap: tre perioder – gjøre DigiHome klart for eksterne kunder (måned 1–3, finansiert av emisjonen) · første eksterne pilot
+ *     (4–6) · fra pilot til repeterbar modell (6–12). Hver med periode og status i margen, tekst, punkter, eventuelle underdeler
+ *     (onboarding, integrasjoner) og «Målet». Så kjeden pilot → læring → standardisering → kunde 2 → skalering, og beslutningspunktet. ─── */
 const Roadmap = () => {
   const { BREV } = useInnhold();
   const c = BREV.roadmap;
@@ -496,45 +540,65 @@ const Roadmap = () => {
           <Statement lines={c.title} testid="letter-roadmap-title" />
           <Paragraphs items={c.paragraphs} testid="letter-roadmap-p" strong={0} first={32} />
 
-          <div className="mt-14 lg:mt-16" style={{ borderBottom: `1px solid ${HAIR}` }} data-testid="letter-roadmap-faser">
-            <div className={`hidden sm:grid gap-x-8 pb-3 text-[11px] font-semibold uppercase tracking-[0.1em] ${ROADMAP_COLS}`} style={{ color: MUTED }}>
-              {c.head.map((h) => <span key={h}>{h}</span>)}
-            </div>
-            {c.faser.map(([periode, fokus, hva, maal, status], i) => {
-              const s = STATUS[status] || STATUS.betinget;
-              const besl = status === 'beslutning';
+          <ol className="list-none p-0 m-0 mt-16 lg:mt-20" data-testid="letter-roadmap-steg">
+            {c.steg.map((st, i) => {
+              const s = STATUS[st.status] || STATUS.betinget;
               return (
-                <Rise key={periode} delay={0.04 + i * 0.04}>
-                  <div className={`grid gap-x-8 gap-y-3 py-6 sm:py-7 ${ROADMAP_COLS}`} style={{ borderTop: `1px solid ${besl ? ACCENT : HAIR}` }} data-testid={`letter-roadmap-fase-${i + 1}`}>
-                    <div>
-                      <span className="block text-[13px] font-semibold tabular-nums whitespace-nowrap" style={{ color: besl ? ACCENT : INK }}>{periode}</span>
-                      <span className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: s.color }} data-testid={`letter-roadmap-fase-${i + 1}-status`}>
-                        <span aria-hidden className="w-[7px] h-[7px] rounded-full shrink-0" style={s.dot} />{s.label}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block text-[17px] font-medium leading-snug" style={{ color: INK }}>{fokus}</span>
-                      <span className="block text-[14px] leading-[1.55] max-w-[36ch]" style={{ margin: '8px 0 0', color: MUTED }}>{hva}</span>
-                    </div>
-                    <div>
-                      <span className="sm:hidden block text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: MUTED }}>{c.head[2]}</span>
-                      <span className="block text-[15.5px] leading-[1.6] max-w-[46ch]" style={{ margin: '4px 0 0', color: INK }}>{maal}</span>
-                    </div>
+                <li key={st.n} className="grid gap-x-8 gap-y-5 py-12 lg:py-14 lg:[grid-template-columns:150px_minmax(0,1fr)]" style={{ borderTop: `1px solid ${i === 0 ? INK : HAIR}` }} data-testid={`letter-roadmap-steg-${i + 1}`}>
+                  <Rise><div className="lg:sticky lg:top-24">
+                    <span className="block text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ color: ACCENT }}>{String(i + 1).padStart(2, '0')}</span>
+                    <span className="block font-medium tracking-[-0.03em] leading-none whitespace-nowrap" style={{ margin: '12px 0 0', color: INK, fontSize: 'clamp(24px, 2vw, 30px)' }}>{st.n}</span>
+                    <span className="mt-4 inline-flex items-start gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] leading-[1.45] max-w-[16ch]" style={{ color: s.color }} data-testid={`letter-roadmap-steg-${i + 1}-status`}>
+                      <span aria-hidden className="mt-[4px] w-[7px] h-[7px] rounded-full shrink-0" style={s.dot} />{c.status[st.status]}
+                    </span>
+                  </div></Rise>
+                  <div className="min-w-0">
+                    <Rise><h3 className="font-medium tracking-[-0.025em] leading-[1.15] text-balance" style={{ margin: 0, color: INK, fontSize: 'clamp(24px, 2.2vw, 32px)' }}>{st.h}</h3></Rise>
+                    {st.avsnitt.map((t, j) => <Rise key={j} delay={0.04}><p className="text-[16.5px] lg:text-[17px] leading-[1.65] max-w-[62ch]" style={{ margin: j === 0 ? '20px 0 0' : '14px 0 0', color: j === 0 ? INK : MUTED }}>{t}</p></Rise>)}
+                    {st.punkter && <Rise delay={0.06}><Punkter items={st.punkter} testid={`letter-roadmap-steg-${i + 1}-punkter`} /></Rise>}
+                    {st.deler?.map(([h, ps], k) => (
+                      <Rise key={h} delay={0.06}><div className="mt-10 pl-6" style={{ borderLeft: `2px solid ${ACCENT}` }} data-testid={`letter-roadmap-steg-${i + 1}-del-${k + 1}`}>
+                        <p className="text-[17px] font-medium tracking-[-0.01em]" style={{ margin: 0, color: INK }}>{h}</p>
+                        {ps.map((t, j) => <p key={j} className="text-[16px] leading-[1.65] max-w-[60ch]" style={{ margin: '12px 0 0', color: MUTED }}>{t}</p>)}
+                      </div></Rise>
+                    ))}
+                    <Rise delay={0.08}><div className="mt-10 pt-6" style={{ borderTop: `1px solid ${HAIR}` }} data-testid={`letter-roadmap-steg-${i + 1}-maal`}>
+                      <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }}>{st.maalH}</p>
+                      <p className="text-[18px] lg:text-[19px] font-medium leading-[1.5] tracking-[-0.01em] max-w-[56ch]" style={{ margin: '12px 0 0', color: INK }}>{st.maal}</p>
+                    </div></Rise>
                   </div>
-                </Rise>
+                </li>
               );
             })}
-          </div>
+          </ol>
 
-          <div className="mt-20 lg:mt-24 grid sm:grid-cols-2 gap-x-8 gap-y-12" data-testid="letter-roadmap-maal">
-            {c.maal.map(([h, t], i) => (
-              <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${i === 0 ? INK : HAIR}` }} data-testid={`letter-roadmap-maal-${i + 1}`}>
-                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: i === 0 ? ACCENT : MUTED }}>{h}</p>
-                <p className="font-medium tracking-[-0.025em] leading-[1.25]" style={{ margin: '16px 0 0', color: INK, fontSize: 'clamp(21px, 1.8vw, 27px)' }}>{t}</p>
-              </div></Rise>
-            ))}
-          </div>
-          <Rise delay={0.1}><p className="text-[18px] lg:text-[19px] font-medium leading-[1.5] tracking-[-0.01em] max-w-[52ch]" style={{ margin: '32px 0 0', color: MUTED }} data-testid="letter-roadmap-maal-note">{c.maalNote}</p></Rise>
+          {/* Kjeden */}
+          <Rise delay={0.05}><div className="pt-10" style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-roadmap-kjede-wrap">
+            <ol className="list-none p-0 m-0 flex flex-wrap items-center gap-y-3" data-testid="letter-roadmap-kjede">
+              {c.kjede.map((k, i) => (
+                <li key={k} className="flex items-center">
+                  <span className="inline-flex items-center h-10 px-4 rounded-full text-[14px] font-medium whitespace-nowrap" style={i === 0 ? { background: INK, color: PAPER } : i === c.kjede.length - 1 ? { background: ACCENT, color: '#fff' } : { border: `1px solid ${INK}`, color: INK }}>{k}</span>
+                  {i < c.kjede.length - 1 && <ArrowRight aria-hidden className="w-4 h-4 mx-2.5 shrink-0" strokeWidth={1.75} style={{ color: MUTED }} />}
+                </li>
+              ))}
+            </ol>
+          </div></Rise>
+
+          {/* Beslutningspunktet ved slutten av måned 2 – produkt, pilot, kapital */}
+          <Rise delay={0.08}><div className="mt-16 lg:mt-20 pt-7 relative" style={{ borderTop: `1px solid ${ACCENT}` }} data-testid="letter-roadmap-beslutning">
+            <span aria-hidden className="absolute left-0 -top-[5px] w-[9px] h-[9px] rounded-full" style={{ background: ACCENT, boxShadow: '0 0 0 4px rgba(127,63,191,0.18)' }} />
+            <p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }}>{c.beslutningH}</p>
+            <p className="text-[17px] lg:text-[18px] leading-[1.6] max-w-[60ch]" style={{ margin: '16px 0 0', color: INK }}>{c.beslutningLead}</p>
+            <div className="mt-8 grid sm:grid-cols-3 gap-x-8 gap-y-8">
+              {c.beslutning.map(([h, t], i) => (
+                <div key={h} className="pt-4" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-roadmap-beslutning-${i + 1}`}>
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{h}</p>
+                  <p className="text-[17px] font-medium leading-[1.4] max-w-[26ch]" style={{ margin: '10px 0 0', color: INK }}>{t}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[15.5px] leading-[1.65] max-w-[62ch]" style={{ margin: '28px 0 0', color: MUTED }} data-testid="letter-roadmap-beslutning-note">{c.beslutningNote}</p>
+          </div></Rise>
         </Main>
       </Grid>
     </Section>
@@ -597,8 +661,15 @@ const Kapital = () => {
         <Main>
           <Title title={c.title} testid="letter-kapital-head" />
           <Paragraphs items={c.paragraphs} testid="letter-kapital-p" strong={0} />
+          {c.kjente && (
+            <Rise delay={0.06}><div className="mt-8 max-w-[62ch]" data-testid="letter-kapital-kjente">
+              <p className="text-[16.5px] lg:text-[17px] leading-[1.65]" style={{ margin: 0, color: INK }}>{c.kjenteH}</p>
+              <Punkter items={c.kjente} testid="letter-kapital-kjente-liste" />
+              <p className="text-[16px] leading-[1.65]" style={{ margin: '18px 0 0', color: MUTED }}>{c.kjenteNote}</p>
+            </div></Rise>
+          )}
 
-          {/* Tegnforklaring – bekreftet vs. estimat, før tallene */}
+          {/* Tegnforklaring – kjent tall vs. estimat, før tallene */}
           <Rise delay={0.08}><div className="mt-14 lg:mt-16 flex flex-wrap gap-x-7 gap-y-2" data-testid="letter-budsjett-legend">
             {['bekreftet', 'estimat', 'avsatt'].map((t) => (
               <span key={t} className="inline-flex items-center gap-2 text-[13px]" style={{ color: MUTED }}><Kilde type={t} />{c.legend[t]}</span>
@@ -656,7 +727,7 @@ const Kapital = () => {
           {/* Emisjonen · totalt avsatt · ikke disponert – tre tall, så disponeringen som én linje */}
           <div className="mt-14 lg:mt-16 grid sm:grid-cols-3 gap-x-8 gap-y-10" data-testid="letter-kapital-sum">
             {[
-              ['Emisjonen', k.emisjon.f, 'ny kapital', INK],
+              [c.emisjonLabel || 'Emisjonen', k.emisjon.f, 'ny kapital', INK],
               [c.avsattLabel, k.avsatt.f, `${k.sum.f.tre} løpende plan + ${k.engang[0].f} emisjon og juridisk + ${k.engang[1].f} buffer`, INK],
               [c.ikkeDisponertLabel, k.ikkeDisponert.f, c.ikkeDisponertNote, ACCENT],
             ].map(([label, v, text, color], i) => (
@@ -694,21 +765,6 @@ const Kapital = () => {
             {c.brudd.map((p, i) => <p key={i} className="text-[17px] lg:text-[18px] leading-[1.6] max-w-[66ch]" style={{ margin: i === 0 ? '16px 0 0' : '12px 0 0', color: i === 0 ? '#fff' : D.muted, fontWeight: i === 0 ? 500 : 400 }}>{p}</p>)}
           </div></Rise>
 
-          {/* Beslutningspunktet ved slutten av måned 2 – kostnader, pilotfremdrift, finansiering */}
-          <Rise delay={0.1}><div className="mt-14 lg:mt-16 pt-7 relative" style={{ borderTop: `1px solid ${ACCENT}` }} data-testid="letter-kapital-beslutning">
-            <span aria-hidden className="absolute left-0 -top-[5px] w-[9px] h-[9px] rounded-full" style={{ background: ACCENT, boxShadow: '0 0 0 4px rgba(127,63,191,0.18)' }} />
-            <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }}>{c.beslutningH}</p>
-            <p className="text-[17px] lg:text-[18px] font-medium leading-[1.5] max-w-[56ch]" style={{ margin: '14px 0 0', color: INK }}>{c.beslutningLead}</p>
-            <div className="mt-8 grid sm:grid-cols-3 gap-x-8 gap-y-8">
-              {c.beslutning.map(([h, t], i) => (
-                <div key={h} className="pt-4" style={{ borderTop: `1px solid ${HAIR}` }} data-testid={`letter-kapital-beslutning-${i + 1}`}>
-                  <p className="text-[16px] font-medium" style={{ margin: 0, color: INK }}>{h}</p>
-                  <p className="text-[14.5px] leading-[1.6] max-w-[32ch]" style={{ margin: '8px 0 0', color: MUTED }}>{t}</p>
-                </div>
-              ))}
-            </div>
-          </div></Rise>
-          <Rise delay={0.1}><p className="text-[15.5px] leading-[1.65] max-w-[62ch]" style={{ margin: '32px 0 0', color: MUTED }} data-testid="letter-kapital-runde-note">{c.rundeNote}</p></Rise>
         </Main>
       </Grid>
     </Section>
@@ -727,7 +783,10 @@ const Modell = () => {
         <Main>
           <Statement lines={c.title} testid="letter-modell-title" />
           <Paragraphs items={c.paragraphs} testid="letter-modell-p" strong={0} first={32} />
-          <Rise delay={0.08}><p className="text-[15.5px] leading-[1.65] max-w-[62ch] pt-5" style={{ margin: '28px 0 0', color: INK, borderTop: `1px solid ${HAIR}` }} data-testid="letter-modell-enhet">{c.enhet}</p></Rise>
+          <Rise delay={0.08}><div className="mt-8 pt-5 max-w-[62ch]" style={{ borderTop: `1px solid ${HAIR}` }} data-testid="letter-modell-enhet">
+            {c.enhetH && <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }}>{c.enhetH}</p>}
+            <p className="text-[15.5px] leading-[1.65]" style={{ margin: c.enhetH ? '10px 0 0' : 0, color: INK }}>{c.enhet}</p>
+          </div></Rise>
 
           {/* Rekkefølgen – tre steg */}
           <Sub testid="letter-modell-steg-h" mt="mt-16 lg:mt-20">{c.stegH}</Sub>
@@ -755,7 +814,7 @@ const Modell = () => {
                   <div key={label} className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_auto_150px] gap-x-6 gap-y-0.5 py-3.5 items-baseline" style={{ borderTop: `1px solid ${sum ? INK : HAIR}` }} data-testid={`letter-modell-eksempel-${i + 1}`}>
                     <dt className="text-[15.5px] leading-snug" style={{ color: last || sum ? INK : MUTED, fontWeight: last || sum ? 500 : 400 }}>{label}</dt>
                     <dd className="m-0 text-[16px] whitespace-nowrap text-right" style={{ color: last ? ACCENT : INK, fontWeight: last || sum ? 500 : 400 }}>{v}</dd>
-                    <dd className="m-0 col-span-2 sm:col-span-1 text-[12.5px] sm:text-right" style={{ color: MUTED }}>{unit}</dd>
+                    <dd className="m-0 col-span-2 sm:col-span-1 text-[12.5px] sm:text-right" style={{ color: MUTED }}>{unit || ''}</dd>
                   </div>
                 );
               })}
@@ -763,8 +822,8 @@ const Modell = () => {
           </div></Rise>
 
           {/* ARR er en årsrate – mot det som faktisk faktureres år 1 */}
-          <Sub testid="letter-modell-arr-h">{c.arrH}</Sub>
-          <div className="mt-8 grid sm:grid-cols-2 gap-x-8 gap-y-10" data-testid="letter-modell-arr">
+          {c.arrH && <Sub testid="letter-modell-arr-h">{c.arrH}</Sub>}
+          <div className={`${c.arrH ? 'mt-8' : 'mt-14 lg:mt-16'} grid sm:grid-cols-2 gap-x-8 gap-y-10`} data-testid="letter-modell-arr">
             {c.arr.map(([n, label, text], i) => (
               <Rise key={label} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-modell-arr-${i + 1}`}>
                 <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{label}</p>
@@ -860,14 +919,17 @@ const Offer = () => {
           <div className="grid sm:grid-cols-2 gap-x-8 gap-y-8" data-testid="letter-offer-regnestykke">
             <Rise delay={0.08}><div className="pt-5" style={{ borderTop: `1px solid ${D.hair}` }}>
               <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.muted }}>{c.regnestykkeH}</p>
-              <p className="text-[15.5px] leading-[1.6]" style={{ margin: '12px 0 0', color: D.ink }} data-testid="letter-offer-regnestykke-text">{c.regnestykke}</p>
+              {(Array.isArray(c.regnestykke) ? c.regnestykke : [c.regnestykke]).map((t, i) => <p key={i} className="text-[15.5px] leading-[1.6]" style={{ margin: i === 0 ? '12px 0 0' : '6px 0 0', color: D.ink }} data-testid={`letter-offer-regnestykke-text${i ? `-${i + 1}` : ''}`}>{t}</p>)}
             </div></Rise>
             <Rise delay={0.12}><div className="pt-5" style={{ borderTop: `1px solid ${D.hair}` }}>
               <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.muted }}>{c.fordelingH}</p>
               <p className="text-[15.5px] leading-[1.6]" style={{ margin: '12px 0 0', color: D.ink }} data-testid="letter-offer-fordeling">{c.fordeling}</p>
             </div></Rise>
           </div>
-          <Rise delay={0.1}><p className="text-[15.5px] leading-[1.65] max-w-[70ch]" style={{ margin: '32px 0 0', color: D.muted }} data-testid="letter-offer-aksjer">{c.aksjer}</p></Rise>
+          <Rise delay={0.1}><div className="mt-10 pt-5 max-w-[70ch]" style={{ borderTop: `1px solid ${D.hair}` }}>
+            {c.aksjerH && <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.muted }}>{c.aksjerH}</p>}
+            <p className="text-[15.5px] leading-[1.65]" style={{ margin: c.aksjerH ? '12px 0 0' : 0, color: D.ink }} data-testid="letter-offer-aksjer">{c.aksjer}</p>
+          </div></Rise>
         </Main>
       </Grid>
 
