@@ -1,8 +1,7 @@
 'use client';
 /** Privat invitasjon til Martin og Øyvind – et personlig brev fra Erik, Sarah og Martin, ikke en landingsside. /samarbeid, ikke søkbar.
- *  Layouten er bokens: alt står midt på siden. Kapittelnummer og kicker over tittelen (midtstilt), brødteksten i én lesekolonne (680 px,
- *  venstrestilt), tabeller og rutenett i en bredere midtstilt kolonne (880/1040 px). Ingen venstremarg, ingen forskjøvet hovedkolonne.
- *  De store utsagnene fyller kapittelhodet (målt), tilbudet står som et term sheet på mørk flate.
+ *  Layouten er tatt fra AFA-repoets InvitationPage: redaksjonelt rutenett (12 kolonner), smal klebrig venstremarg med kapittelnummer og
+ *  kicker – innholdet i de ni til høyre. De store utsagnene fyller kolonnen (målt), tilbudet står som et term sheet på mørk flate.
  *  Rekkefølgen er investeringscasets: brevet rett under brevhodet → hvorfor dere → dette er bygget → målbildet → Tech og forvaltning →
  *  hvorfor nå → neste verdiløft → roadmap → forretningsmodell → kapitalplan → laget og rollen → tilbudet → neste steg.
  *  INNHOLDET KOMMER SOM PROPS fra server-komponenten (app/samarbeid/page.js) – teksten importeres ikke her, så den ligger ikke i JS-bundlen. */
@@ -30,7 +29,7 @@ const tone = (dark) => (dark ? D : L);
 
 /* Typografisk skala – én for hele siden. Display-linjene (hero, utsagn) måles mot kolonnen i stedet. */
 const T = { h2: 'clamp(32px, 3.2vw, 52px)', num: 'clamp(32px, 2.6vw, 48px)', cell: 'clamp(24px, 2vw, 30px)' };
-const BODY = 'text-[18px] lg:text-[19px] leading-[1.65] text-pretty';
+const BODY = 'text-[18px] lg:text-[19px] leading-[1.65] max-w-[62ch] text-pretty';
 const PILL_DARK = 'inline-flex items-center justify-center gap-2 rounded-full font-medium transition-[background-color,box-shadow,transform,color] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7F3FBF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fafaf9] active:scale-[0.985] bg-[#0a0a0a] text-white hover:bg-[#27272a] shadow-[0_12px_28px_-18px_rgba(10,10,10,0.3)] hover:shadow-[0_22px_44px_-20px_rgba(10,10,10,0.5)]';
 
 const Container = ({ children, className = '' }) => <div className={`max-w-[1200px] mx-auto px-5 sm:px-6 lg:px-8 ${className}`}>{children}</div>;
@@ -45,34 +44,27 @@ const Rise = ({ children, delay = 0, y = 14, className, style, testid, once = tr
   );
 };
 
-/* ─── Kolonnene: alt står midt på siden, som i en bok. COL er lesekolonnen (brødtekst, venstrestilt), MID er kapittelhodet og hårlinjerader,
- *     WIDE er tabeller og rutenett. Kapittelnummer og kicker står alltid over tittelen – aldri i en egen marg. ─── */
-const Col = ({ children, className = '', testid }) => <div className={`max-w-[680px] mx-auto ${className}`} data-testid={testid}>{children}</div>;
-const Mid = ({ children, className = '', testid }) => <div className={`max-w-[880px] mx-auto ${className}`} data-testid={testid}>{children}</div>;
-const Wide = ({ children, className = '', testid }) => <div className={`max-w-[1040px] mx-auto ${className}`} data-testid={testid}>{children}</div>;
+/* ─── Rutenett og kapittelmarg ─── */
+const Grid = ({ children, className = '' }) => <div className={`grid lg:grid-cols-12 gap-x-8 ${className}`}>{children}</div>;
 
-/** Kickeren: kapittelnummer og etikett – midtstilt, over tittelen. */
-const Kicker = ({ n, label, dark, testid, className = '' }) => {
+/** Venstremargen: kapittelnummer og kicker, klebrig på store skjermer. */
+const Aside = ({ n, label, dark, testid }) => {
   const c = tone(dark);
   return (
-    <Rise className={`flex items-baseline justify-center gap-3 ${className}`} testid={testid}>
-      {n && <span className="text-[12px] font-semibold tabular-nums" style={{ color: c.accent }}>{n}</span>}
-      <span className="text-[12.5px] font-semibold uppercase tracking-[0.14em] text-center" style={{ color: c.accent }}>{label}</span>
-    </Rise>
+    <div className="lg:col-span-3 mb-8 lg:mb-0">
+      <Rise><div className="lg:sticky lg:top-28 flex items-baseline gap-3" data-testid={testid}>
+        {n && <span className="text-[12px] font-semibold tabular-nums" style={{ color: c.accent }}>{n}</span>}
+        <span className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: c.accent }}>{label}</span>
+      </div></Rise>
+    </div>
   );
 };
 
-/** Kapittelets tittel – midtstilt under kickeren. */
-const Title = ({ title, dark, testid }) => (
-  <Rise><h2 className="font-medium tracking-[-0.03em] leading-[1.04] max-w-[22ch] mx-auto text-center text-balance whitespace-pre-line" style={{ margin: '24px 0 0', color: tone(dark).ink, fontSize: T.h2 }} data-testid={testid}>{title}</h2></Rise>
-);
+const Main = ({ children, className = '' }) => <div className={`lg:col-span-9 lg:col-start-4 min-w-0 ${className}`}>{children}</div>;
 
-/** Kapittelhodet: kicker over tittel – eller over et stort utsagn på to linjer – midtstilt. */
-const Head = ({ n, label, title, lines, dark, testid, titleTestid }) => (
-  <Mid className="text-center">
-    <Kicker n={n} label={label} dark={dark} testid={testid} />
-    {lines ? <Statement lines={lines} testid={titleTestid} dark={dark} /> : <Title title={title} testid={titleTestid} dark={dark} />}
-  </Mid>
+/** Kapittelets tittel – i hovedkolonnen. */
+const Title = ({ title, dark, testid }) => (
+  <Rise><h2 className="font-medium tracking-[-0.03em] leading-[1.04] max-w-[24ch] text-balance whitespace-pre-line" style={{ margin: 0, color: tone(dark).ink, fontSize: T.h2 }} data-testid={testid}>{title}</h2></Rise>
 );
 
 /** Brødtekst-avsnitt: siste (eller `strong`-indeks) i sort, resten dempet. */
@@ -114,18 +106,18 @@ const useFitLines = (lines, max, min) => {
   return { ref, ...fit };
 };
 
-/** Ett stort utsagn over to linjer – fyller kapittelhodet, midtstilt. */
+/** Ett stort utsagn over to linjer – fyller hovedkolonnen. */
 const Statement = ({ lines, testid, dark }) => {
   const { ref, size, wrap } = useFitLines(lines, 68, 34);
   return (
-    <h2 ref={ref} className="font-medium tracking-[-0.035em] leading-[1.0] text-center" style={{ margin: '24px 0 0', color: tone(dark).ink, fontSize: size, whiteSpace: wrap ? 'normal' : 'nowrap' }} data-testid={testid}>
+    <h2 ref={ref} className="font-medium tracking-[-0.035em] leading-[1.0]" style={{ margin: 0, color: tone(dark).ink, fontSize: size, whiteSpace: wrap ? 'normal' : 'nowrap' }} data-testid={testid}>
       {lines.map((l, i) => <Rise key={l} delay={i * 0.1} y={18}><span className="block">{l}</span></Rise>)}
     </h2>
   );
 };
 
 const Section = ({ children, testid, tint = false, dark = false, id }) => (
-  <section id={id} className="relative py-24 lg:py-36 scroll-mt-4" style={{ background: dark ? INK : tint ? TINT : undefined, borderTop: dark ? undefined : `1px solid ${HAIR}` }} data-testid={testid}>
+  <section id={id} className="relative py-28 lg:py-40 scroll-mt-4" style={{ background: dark ? INK : tint ? TINT : undefined, borderTop: dark ? undefined : `1px solid ${HAIR}` }} data-testid={testid}>
     <Container><div className="relative">{children}</div></Container>
   </section>
 );
@@ -194,7 +186,7 @@ const Header = () => {
   );
 };
 
-/* ─── Heroen: brevhodet midtstilt – kicker, tittel, ingress og knapp – og de tre som skriver, store. Brevet kommer rett under. ─── */
+/* ─── Heroen: brevhodet i full bredde – og de tre som skriver, store. Brevet kommer rett under. ─── */
 const Cover = () => {
   const { BREV, INV, AVSENDERE } = useInnhold();
   const toLetter = () => { const el = document.getElementById('brevet'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
@@ -202,60 +194,60 @@ const Cover = () => {
   const { ref, size, wrap } = useFitLines(BREV.h1, 124, 44);
   return (
     <section className="relative" data-testid="letter-cover">
-      <Container className="relative pt-[124px] lg:pt-[168px] text-center">
+      <Container className="relative pt-[124px] lg:pt-[168px]">
         <motion.p {...fade(0)} className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid="letter-role">
           {INV.toLong} <span style={{ color: MUTED }}>· {INV.date}</span>
         </motion.p>
-        <h1 ref={ref} className="font-medium tracking-[-0.04em] leading-[0.95] text-center" style={{ margin: '26px 0 0', color: INK, fontSize: size, whiteSpace: wrap ? 'normal' : 'nowrap' }} data-testid="letter-title">
+        <h1 ref={ref} className="font-medium tracking-[-0.04em] leading-[0.95]" style={{ margin: '26px 0 0', color: INK, fontSize: size, whiteSpace: wrap ? 'normal' : 'nowrap' }} data-testid="letter-title">
           {BREV.h1.map((line, i) => (
             <span key={line} className="block overflow-hidden pb-[0.06em] -mb-[0.06em]"><motion.span className="block" initial={{ y: '110%' }} animate={{ y: 0 }} transition={{ duration: 1.15, delay: 0.15 + i * 0.12, ease: EASE }}>{line}</motion.span></span>
           ))}
         </h1>
-        <motion.p {...fade(0.5)} className="text-[18px] lg:text-[21px] leading-[1.5] text-pretty max-w-[640px]" style={{ margin: '36px auto 0', color: MUTED }} data-testid="letter-sub">{BREV.sub}</motion.p>
-        <motion.div {...fade(0.7)} className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-x-6 gap-y-4">
-          <button type="button" onClick={toLetter} className={`${PILL_DARK} h-12 pl-6 pr-5 text-[15px]`} data-testid="letter-cta-read">{BREV.cta}<ArrowDown className="w-4 h-4" strokeWidth={2.2} /></button>
-          <span className="text-[15px]" style={{ color: MUTED }} data-testid="letter-to">{INV.from}</span>
-        </motion.div>
-
-        {/* De tre som skriver – midtstilt rad. På mobil en rad å dra i. */}
-        <Wide>
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.3, delay: 0.55, ease: EASE }} className="brev-strip mt-16 lg:mt-24 flex sm:grid sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 overflow-x-auto sm:overflow-visible snap-x snap-mandatory -mx-5 px-5 sm:mx-0 sm:px-0 text-left" data-testid="letter-founders">
-            {AVSENDERE.map((p) => (
-              <div key={p.key} className="w-[72vw] sm:w-auto shrink-0 snap-start">
-                <Person name={p.name} role={p.role} img={p.img} pos={p.pos} sizes="(max-width: 640px) 72vw, 400px" testid={`letter-founder-${p.key}`} />
-              </div>
-            ))}
+        <div className="mt-10 lg:mt-14 grid lg:grid-cols-12 gap-x-8 gap-y-8 items-end">
+          <motion.p {...fade(0.5)} className="lg:col-span-7 text-[18px] lg:text-[21px] leading-[1.5] text-pretty max-w-[640px]" style={{ margin: 0, color: MUTED }} data-testid="letter-sub">{BREV.sub}</motion.p>
+          <motion.div {...fade(0.7)} className="lg:col-span-5 lg:col-start-8 flex flex-wrap items-center gap-x-6 gap-y-4 lg:justify-end">
+            <span className="text-[15px]" style={{ color: MUTED }} data-testid="letter-to">{INV.from}</span>
+            <button type="button" onClick={toLetter} className={`${PILL_DARK} h-12 pl-6 pr-5 text-[15px]`} data-testid="letter-cta-read">{BREV.cta}<ArrowDown className="w-4 h-4" strokeWidth={2.2} /></button>
           </motion.div>
-        </Wide>
+        </div>
+
+        {/* De tre som skriver – i full bredde. På mobil en rad å dra i. */}
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.3, delay: 0.55, ease: EASE }} className="brev-strip mt-14 lg:mt-20 flex sm:grid sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 overflow-x-auto sm:overflow-visible snap-x snap-mandatory -mx-5 px-5 sm:mx-0 sm:px-0" data-testid="letter-founders">
+          {AVSENDERE.map((p) => (
+            <div key={p.key} className="w-[72vw] sm:w-auto shrink-0 snap-start">
+              <Person name={p.name} role={p.role} img={p.img} pos={p.pos} sizes="(max-width: 640px) 72vw, 400px" testid={`letter-founder-${p.key}`} />
+            </div>
+          ))}
+        </motion.div>
       </Container>
     </section>
   );
 };
 
-/* ─── Brevet: rett under brevhodet. Dato, rolle og «konfidensielt» midtstilt over – teksten i lesekolonnen. Signert bare «Erik, Sarah og Martin». ─── */
+/* ─── Brevet: rett under brevhodet. Marginalia til venstre, teksten i sju kolonner. Signert bare «Erik, Sarah og Martin» – ingen miniatyrbilder. ─── */
 const Letter = () => {
   const { BREV, INV } = useInnhold();
   return (
-    <section id="brevet" className="pt-20 lg:pt-28 pb-24 lg:pb-36 scroll-mt-4" data-testid="letter-body">
+    <section id="brevet" className="pt-20 lg:pt-28 pb-28 lg:pb-40 scroll-mt-4" data-testid="letter-body">
       <Container>
         <div style={{ borderTop: `1px solid ${HAIR}` }} />
-        <div className="pt-16 lg:pt-24">
-          <Rise className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1 text-[12.5px] font-semibold uppercase tracking-[0.14em] text-center" testid="letter-marginalia">
-            <span style={{ color: MUTED }}>{INV.date}</span>
-            <span aria-hidden style={{ color: MUTED }}>·</span>
-            <span style={{ color: ACCENT }}>{BREV.role}</span>
-            <span aria-hidden style={{ color: MUTED }}>·</span>
-            <span style={{ color: MUTED }}>{BREV.confidential}</span>
-          </Rise>
-          <Col className="mt-12 lg:mt-16">
+        <Grid className="pt-16 lg:pt-24">
+          <div className="lg:col-span-3 mb-8 lg:mb-0">
+            <Rise><div className="lg:sticky lg:top-28 text-[12.5px] leading-[1.6] uppercase tracking-[0.12em]" style={{ color: MUTED }} data-testid="letter-marginalia">
+              <span className="block">{INV.date}</span>
+              <span className="block mt-2" style={{ color: ACCENT }}>{BREV.role}</span>
+              <span className="block mt-2">{BREV.confidential}</span>
+            </div></Rise>
+          </div>
+          <div className="lg:col-span-7 lg:col-start-4 min-w-0">
             <Rise><p className="font-medium tracking-[-0.02em]" style={{ margin: 0, color: INK, fontSize: 'clamp(28px, 2.6vw, 38px)' }} data-testid="letter-hi">{BREV.hi}</p></Rise>
             {BREV.letter.map((p, i) => {
               const strong = i === BREV.letterStrong;
               return <Rise key={i} delay={0.04}><p className="text-[19px] lg:text-[21px] leading-[1.6] text-pretty" style={{ margin: i === 0 ? '32px 0 0' : '22px 0 0', color: i === BREV.letter.length - 1 ? MUTED : INK, fontWeight: strong ? 500 : 400 }} data-testid={`letter-p-${i + 1}`}>{p}</p></Rise>;
             })}
             <Rise delay={0.05}><p className="text-[19px] lg:text-[21px] font-medium" style={{ margin: '40px 0 0', color: INK }} data-testid="letter-signature">{BREV.signature}</p></Rise>
-          </Col>
-        </div>
+          </div>
+        </Grid>
       </Container>
     </section>
   );
@@ -266,10 +258,15 @@ const Built = () => {
   const { BREV } = useInnhold();
   const c = BREV.built;
   return (
-    <section id="produktet" className="relative pt-24 lg:pt-36 pb-24 lg:pb-36 scroll-mt-4" style={{ borderTop: `1px solid ${HAIR}` }} data-testid="letter-product">
+    <section id="produktet" className="relative pt-28 lg:pt-40 pb-28 lg:pb-40 scroll-mt-4" style={{ borderTop: `1px solid ${HAIR}` }} data-testid="letter-product">
       <Container>
-        <Head n="02" label={c.eyebrow} lines={c.title} testid="letter-product-aside" titleTestid="letter-product-title" />
-        <Col><Paragraphs items={c.paragraphs} testid="letter-product-p" strong={0} first={32} /></Col>
+        <Grid>
+          <Aside n="02" label={c.eyebrow} testid="letter-product-aside" />
+          <Main>
+            <Statement lines={c.title} testid="letter-product-title" />
+            <Paragraphs items={c.paragraphs} testid="letter-product-p" strong={0} first={32} />
+          </Main>
+        </Grid>
       </Container>
 
       {/* Scene A: oversikten, kant til kant på en mørkere flate, vinduet klippes av flaten. */}
@@ -283,10 +280,10 @@ const Built = () => {
         </Container>
       </div>
       <Container>
-        <Rise delay={0.05}><p className="flex items-baseline justify-center gap-3 text-[13.5px] leading-snug text-center" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-stage-caption"><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>01</span><span><span className="font-medium" style={{ color: INK }}>{c.desktopCaption[0]}</span> · {c.desktopCaption[1]}</span></p></Rise>
+        <Rise delay={0.05}><p className="flex items-baseline gap-3 text-[13.5px] leading-snug" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-stage-caption"><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>01</span><span><span className="font-medium" style={{ color: INK }}>{c.desktopCaption[0]}</span> · {c.desktopCaption[1]}</span></p></Rise>
 
-        {/* Scene B: seks punkter og integrasjonsstatus til venstre, eierens og leietakerens app til høyre – som én midtstilt blokk. */}
-        <Wide className="mt-24 lg:mt-32 grid lg:grid-cols-12 gap-x-8 gap-y-14 items-start">
+        {/* Scene B: seks punkter og integrasjonsstatus til venstre, eierens og leietakerens app til høyre. */}
+        <div className="mt-24 lg:mt-32 grid lg:grid-cols-12 gap-x-8 gap-y-14 items-start">
           <div className="lg:col-span-5 lg:sticky lg:top-28">
             <Rise><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid="letter-product-list-h">{c.listH}</p></Rise>
             <div className="mt-5"><Liste items={c.list} testid="letter-product-list" cols="grid-cols-1" /></div>
@@ -311,7 +308,7 @@ const Built = () => {
               </Rise>
             ))}
           </div>
-        </Wide>
+        </div>
       </Container>
     </section>
   );
@@ -323,8 +320,13 @@ const Why = () => {
   const c = BREV.why;
   return (
     <Section id="hvorfor" testid="letter-why" tint>
-      <Head n="01" label={c.eyebrow} title={c.title} titleTestid="letter-why-head" />
-      <Col><Paragraphs items={c.paragraphs} testid="letter-why-p" strong={c.paragraphs.length - 1} /></Col>
+      <Grid>
+        <Aside n="01" label={c.eyebrow} />
+        <Main>
+          <Title title={c.title} testid="letter-why-head" />
+          <Paragraphs items={c.paragraphs} testid="letter-why-p" strong={c.paragraphs.length - 1} />
+        </Main>
+      </Grid>
     </Section>
   );
 };
@@ -362,14 +364,14 @@ const Tabell = ({ head, rows, cols, testid, cell = defaultCell, foot }) => (
   </div>
 );
 
-/** Store tall med etikett over og forklaring under – hårlinje i blekk øverst. `center` midtstiller (ett tall alene i lesekolonnen). */
-const Tall = ({ items, testid, cols = 'sm:grid-cols-3', size = 'clamp(30px, 2.6vw, 44px)', accentFirst = false, center = false }) => (
+/** Store tall med etikett over og forklaring under – hårlinje i blekk øverst. */
+const Tall = ({ items, testid, cols = 'sm:grid-cols-3', size = 'clamp(30px, 2.6vw, 44px)', accentFirst = false }) => (
   <div className={`grid ${cols} gap-x-8 gap-y-10`} data-testid={testid}>
     {items.map(([n, label, text], i) => (
-      <Rise key={label + i} delay={0.05 + i * 0.06}><div className={`pt-5 ${center ? 'text-center' : ''}`} style={{ borderTop: `1px solid ${INK}` }} data-testid={`${testid}-${i + 1}`}>
+      <Rise key={label + i} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`${testid}-${i + 1}`}>
         <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{label}</p>
         <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '16px 0 0', color: accentFirst && i === 0 ? ACCENT : INK, fontSize: size }}>{n}</p>
-        {text && <p className={`text-[15px] leading-[1.6] ${center ? 'max-w-[52ch] mx-auto' : 'max-w-[36ch]'}`} style={{ margin: '14px 0 0', color: MUTED }}>{text}</p>}
+        {text && <p className="text-[15px] leading-[1.6] max-w-[36ch]" style={{ margin: '14px 0 0', color: MUTED }}>{text}</p>}
       </div></Rise>
     ))}
   </div>
@@ -386,9 +388,9 @@ const Liste = ({ items, testid, cols = 'sm:grid-cols-2 lg:grid-cols-3' }) => (
   </ul>
 );
 
-/** Mellomtittel i et kapittel – midtstilt, som kickeren. Avstanden ligger på wrapperen – `.brev p` nullstiller margin på avsnitt. */
+/** Mellomtittel i et kapittel. Avstanden ligger på wrapperen – `.brev p` nullstiller margin på avsnitt. */
 const Sub = ({ children, testid, mt = 'mt-20 lg:mt-24' }) => (
-  <Rise className={`${mt} text-center`}><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid={testid}>{children}</p></Rise>
+  <Rise className={mt}><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid={testid}>{children}</p></Rise>
 );
 
 /* ─── 03 Målbildet: én setning om hva vi bygger, og prinsippet som bærer resten. ─── */
@@ -397,11 +399,14 @@ const Target = () => {
   const c = BREV.target;
   return (
     <Section id="maalbildet" testid="letter-target">
-      <Head n="03" label={c.eyebrow} title={c.title} titleTestid="letter-target-title" />
-      <Col>
-        <Paragraphs items={c.paragraphs} testid="letter-target-p" />
-        <Rise delay={0.1}><p className="font-medium leading-[1.3] tracking-[-0.02em] pt-8 text-center text-balance" style={{ margin: '44px 0 0', color: INK, borderTop: `1px solid ${INK}`, fontSize: 'clamp(22px, 2vw, 30px)' }} data-testid="letter-target-principle">{c.principle}</p></Rise>
-      </Col>
+      <Grid>
+        <Aside n="03" label={c.eyebrow} />
+        <Main>
+          <Title title={c.title} testid="letter-target-title" />
+          <Paragraphs items={c.paragraphs} testid="letter-target-p" />
+          <Rise delay={0.1}><p className="font-medium leading-[1.3] tracking-[-0.02em] max-w-[40ch] pt-8 text-balance" style={{ margin: '44px 0 0', color: INK, borderTop: `1px solid ${INK}`, fontSize: 'clamp(22px, 2vw, 30px)' }} data-testid="letter-target-principle">{c.principle}</p></Rise>
+        </Main>
+      </Grid>
     </Section>
   );
 };
@@ -413,35 +418,40 @@ const Naa = () => {
   const dot = (i) => (i === 0 ? { background: INK } : i === 1 ? { background: ACCENT, boxShadow: '0 0 0 4px rgba(127,63,191,0.18)' } : { background: TINT, border: `1.5px solid ${INK}` });
   return (
     <Section id="hvorfor-naa" testid="letter-naa" tint>
-      <Head n="05" label={c.eyebrow} lines={c.title} titleTestid="letter-naa-title" />
-      <Col><Paragraphs items={c.paragraphs} testid="letter-naa-p" strong={c.paragraphs.length - 1} first={32} /></Col>
+      <Grid>
+        <Aside n="05" label={c.eyebrow} />
+        <Main>
+          <Statement lines={c.title} testid="letter-naa-title" />
+          <Paragraphs items={c.paragraphs} testid="letter-naa-p" strong={c.paragraphs.length - 1} first={32} />
 
-      {/* Bygget → nå → neste runde: tre kolonner på én linje, prikken viser hvor vi står. */}
-      <Wide className="mt-16 lg:mt-20 grid sm:grid-cols-3 gap-x-8 gap-y-12" testid="letter-naa-steg">
-        {c.steg.map(([h, label, text], i) => (
-          <Rise key={h} delay={0.05 + i * 0.08}><div className="relative pt-7" style={{ borderTop: `1px solid ${i === 1 ? ACCENT : INK}` }} data-testid={`letter-naa-steg-${i + 1}`}>
-            <span aria-hidden className="absolute left-0 -top-[5px] w-[9px] h-[9px] rounded-full" style={dot(i)} />
-            <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: i === 1 ? ACCENT : MUTED }}>{label}</p>
-            <p className="font-medium tracking-[-0.03em] leading-none" style={{ margin: '14px 0 0', color: INK, fontSize: T.num }}>{h}</p>
-            <p className="text-[15px] leading-[1.6] max-w-[32ch]" style={{ margin: '14px 0 0', color: MUTED }}>{text}</p>
-          </div></Rise>
-        ))}
-      </Wide>
+          {/* Bygget → nå → neste runde: tre kolonner på én linje, prikken viser hvor vi står. */}
+          <div className="mt-16 lg:mt-20 grid sm:grid-cols-3 gap-x-8 gap-y-12" data-testid="letter-naa-steg">
+            {c.steg.map(([h, label, text], i) => (
+              <Rise key={h} delay={0.05 + i * 0.08}><div className="relative pt-7" style={{ borderTop: `1px solid ${i === 1 ? ACCENT : INK}` }} data-testid={`letter-naa-steg-${i + 1}`}>
+                <span aria-hidden className="absolute left-0 -top-[5px] w-[9px] h-[9px] rounded-full" style={dot(i)} />
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: i === 1 ? ACCENT : MUTED }}>{label}</p>
+                <p className="font-medium tracking-[-0.03em] leading-none" style={{ margin: '14px 0 0', color: INK, fontSize: T.num }}>{h}</p>
+                <p className="text-[15px] leading-[1.6] max-w-[32ch]" style={{ margin: '14px 0 0', color: MUTED }}>{text}</p>
+              </div></Rise>
+            ))}
+          </div>
 
-      {/* Fire typer risiko – de to første er tatt ned, de to siste er det kapitalen skal løse. */}
-      <Sub testid="letter-naa-risiko-h">{c.risikoH}</Sub>
-      <Wide className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10" testid="letter-naa-risiko">
-        {c.risiko.map(([type, status, text], i) => {
-          const aapen = i >= 2;
-          return (
-            <Rise key={type} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${aapen ? ACCENT : INK}` }} data-testid={`letter-naa-risiko-${i + 1}`}>
-              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{type}</p>
-              <p className="font-medium tracking-[-0.025em] leading-[1.1]" style={{ margin: '14px 0 0', color: aapen ? ACCENT : INK, fontSize: 'clamp(20px, 1.5vw, 24px)' }}>{status}</p>
-              <p className="text-[14.5px] leading-[1.6]" style={{ margin: '12px 0 0', color: MUTED }}>{text}</p>
-            </div></Rise>
-          );
-        })}
-      </Wide>
+          {/* Fire typer risiko – de to første er tatt ned, de to siste er det kapitalen skal løse. */}
+          <Sub testid="letter-naa-risiko-h">{c.risikoH}</Sub>
+          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10" data-testid="letter-naa-risiko">
+            {c.risiko.map(([type, status, text], i) => {
+              const aapen = i >= 2;
+              return (
+                <Rise key={type} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${aapen ? ACCENT : INK}` }} data-testid={`letter-naa-risiko-${i + 1}`}>
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{type}</p>
+                  <p className="font-medium tracking-[-0.025em] leading-[1.1]" style={{ margin: '14px 0 0', color: aapen ? ACCENT : INK, fontSize: 'clamp(20px, 1.5vw, 24px)' }}>{status}</p>
+                  <p className="text-[14.5px] leading-[1.6]" style={{ margin: '12px 0 0', color: MUTED }}>{text}</p>
+                </div></Rise>
+              );
+            })}
+          </div>
+        </Main>
+      </Grid>
     </Section>
   );
 };
@@ -452,13 +462,16 @@ const Loft = () => {
   const c = BREV.loft;
   return (
     <Section id="verdiloft" testid="letter-loft">
-      <Head n="06" label={c.eyebrow} lines={c.title} titleTestid="letter-loft-title" />
-      <Col>
-        <Paragraphs items={c.paragraphs} testid="letter-loft-p" strong={c.paragraphs.length - 1} first={32} />
-        <Sub testid="letter-loft-bevis-h">{c.bevisH}</Sub>
-        <div className="mt-6"><Liste items={c.bevis} testid="letter-loft-bevis" cols="grid-cols-1" /></div>
-        <Paragraphs items={c.verdi} testid="letter-loft-verdi" strong={0} first={56} />
-      </Col>
+      <Grid>
+        <Aside n="06" label={c.eyebrow} />
+        <Main>
+          <Statement lines={c.title} testid="letter-loft-title" />
+          <Paragraphs items={c.paragraphs} testid="letter-loft-p" strong={c.paragraphs.length - 1} first={32} />
+          <Sub testid="letter-loft-bevis-h">{c.bevisH}</Sub>
+          <div className="mt-6"><Liste items={c.bevis} testid="letter-loft-bevis" cols="grid-cols-1" /></div>
+          <Paragraphs items={c.verdi} testid="letter-loft-verdi" strong={0} first={56} />
+        </Main>
+      </Grid>
     </Section>
   );
 };
@@ -481,19 +494,24 @@ const Roadmap = () => {
   const c = BREV.roadmap;
   return (
     <Section id="roadmap" testid="letter-roadmap" tint>
-      <Head n="07" label={c.eyebrow} lines={c.title} titleTestid="letter-roadmap-title" />
-      <Col><Paragraphs items={c.paragraphs} testid="letter-roadmap-p" strong={0} first={32} /></Col>
-      <Wide className="mt-14 lg:mt-16"><Tabell head={c.head} rows={c.faser} cols="110px minmax(0,1fr) minmax(0,1.15fr)" cell={roadmapCell} testid="letter-roadmap-faser" /></Wide>
+      <Grid>
+        <Aside n="07" label={c.eyebrow} />
+        <Main>
+          <Statement lines={c.title} testid="letter-roadmap-title" />
+          <Paragraphs items={c.paragraphs} testid="letter-roadmap-p" strong={0} first={32} />
+          <div className="mt-14 lg:mt-16"><Tabell head={c.head} rows={c.faser} cols="110px minmax(0,1fr) minmax(0,1.15fr)" cell={roadmapCell} testid="letter-roadmap-faser" /></div>
 
-      <Wide className="mt-20 lg:mt-24 grid sm:grid-cols-2 gap-x-8 gap-y-12" testid="letter-roadmap-maal">
-        {c.maal.map(([h, t], i) => (
-          <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-roadmap-maal-${i + 1}`}>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }}>{h}</p>
-            <p className="font-medium tracking-[-0.025em] leading-[1.25]" style={{ margin: '16px 0 0', color: INK, fontSize: 'clamp(21px, 1.8vw, 27px)' }}>{t}</p>
-          </div></Rise>
-        ))}
-      </Wide>
-      <Wide><Rise delay={0.1}><p className="text-[18px] lg:text-[19px] font-medium leading-[1.5] tracking-[-0.01em] max-w-[52ch]" style={{ margin: '32px 0 0', color: MUTED }} data-testid="letter-roadmap-maal-note">{c.maalNote}</p></Rise></Wide>
+          <div className="mt-20 lg:mt-24 grid sm:grid-cols-2 gap-x-8 gap-y-12" data-testid="letter-roadmap-maal">
+            {c.maal.map(([h, t], i) => (
+              <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-roadmap-maal-${i + 1}`}>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }}>{h}</p>
+                <p className="font-medium tracking-[-0.025em] leading-[1.25]" style={{ margin: '16px 0 0', color: INK, fontSize: 'clamp(21px, 1.8vw, 27px)' }}>{t}</p>
+              </div></Rise>
+            ))}
+          </div>
+          <Rise delay={0.1}><p className="text-[18px] lg:text-[19px] font-medium leading-[1.5] tracking-[-0.01em] max-w-[52ch]" style={{ margin: '32px 0 0', color: MUTED }} data-testid="letter-roadmap-maal-note">{c.maalNote}</p></Rise>
+        </Main>
+      </Grid>
     </Section>
   );
 };
@@ -508,46 +526,49 @@ const Kapital = () => {
   const c = BREV.kapital;
   return (
     <Section id="kapital" testid="letter-kapital">
-      <Head n="09" label={c.eyebrow} title={c.title} titleTestid="letter-kapital-head" />
-      <Col><Paragraphs items={c.paragraphs} testid="letter-kapital-p" strong={0} /></Col>
-      <Wide className="mt-14 lg:mt-16 grid lg:grid-cols-[minmax(0,1fr)_240px] gap-x-12 gap-y-12 items-start">
-        <Tabell head={c.head} rows={c.budsjett} cols="minmax(0,1fr) 180px" cell={budsjettCell} foot={c.total} testid="letter-budsjett" />
-        <Rise delay={0.15}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-budsjett-basis">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{c.basis[1]}</p>
-          <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '16px 0 0', color: ACCENT, fontSize: 'clamp(36px, 3vw, 52px)' }}>{c.basis[0]}</p>
-          <p className="text-[15px] leading-[1.6]" style={{ margin: '14px 0 0', color: MUTED }}>{c.basis[2]}</p>
-        </div></Rise>
-      </Wide>
-      <Wide><Rise delay={0.1}><p className="text-[14.5px] leading-[1.6] max-w-[62ch]" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-budsjett-note">{c.budsjettNote}</p></Rise></Wide>
+      <Grid>
+        <Aside n="09" label={c.eyebrow} />
+        <Main>
+          <Title title={c.title} testid="letter-kapital-head" />
+          <Paragraphs items={c.paragraphs} testid="letter-kapital-p" strong={0} />
+          <div className="mt-14 lg:mt-16 grid lg:grid-cols-[minmax(0,1fr)_240px] gap-x-12 gap-y-12 items-start">
+            <Tabell head={c.head} rows={c.budsjett} cols="minmax(0,1fr) 180px" cell={budsjettCell} foot={c.total} testid="letter-budsjett" />
+            <Rise delay={0.15}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-budsjett-basis">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{c.basis[1]}</p>
+              <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '16px 0 0', color: ACCENT, fontSize: 'clamp(36px, 3vw, 52px)' }}>{c.basis[0]}</p>
+              <p className="text-[15px] leading-[1.6]" style={{ margin: '14px 0 0', color: MUTED }}>{c.basis[2]}</p>
+            </div></Rise>
+          </div>
+          <Rise delay={0.1}><p className="text-[14.5px] leading-[1.6] max-w-[62ch]" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-budsjett-note">{c.budsjettNote}</p></Rise>
 
-      {/* Hva emisjonen skal finansiere – boksen som kobler beløpet til milepælen. */}
-      <Mid>
-        <Rise delay={0.1}><div className="mt-16 lg:mt-20 rounded-[20px] px-6 py-7 lg:px-10 lg:py-9" style={{ background: INK, color: '#fff' }} data-testid="letter-kapital-brudd">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.accent }}>{c.bruddH}</p>
-          {c.brudd.map((p, i) => <p key={i} className="text-[17px] lg:text-[18px] leading-[1.6]" style={{ margin: i === 0 ? '16px 0 0' : '12px 0 0', color: i === 0 ? '#fff' : D.muted, fontWeight: i === 0 ? 500 : 400 }}>{p}</p>)}
-        </div></Rise>
-      </Mid>
-
-      <Wide className="mt-14 lg:mt-16 grid sm:grid-cols-2 gap-x-8 gap-y-12" testid="letter-kapital-kobling">
-        {c.kobling.map(([h, items], i) => (
-          <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-kapital-kobling-${i + 1}`}>
-            <p className="font-medium tracking-[-0.025em] leading-[1.15]" style={{ margin: 0, color: i === 0 ? ACCENT : INK, fontSize: 'clamp(22px, 1.9vw, 28px)' }}>{h}</p>
-            <ul className="list-none p-0 m-0 mt-6">
-              {items.map((t) => <li key={t} className="flex items-center gap-3 py-2.5 text-[16px]" style={{ color: INK }}><ArrowRight className="w-4 h-4 shrink-0" style={{ color: MUTED }} strokeWidth={1.75} />{t}</li>)}
-            </ul>
+          {/* Hva emisjonen skal finansiere – boksen som kobler beløpet til milepælen. */}
+          <Rise delay={0.1}><div className="mt-16 lg:mt-20 rounded-[20px] px-6 py-7 lg:px-8 lg:py-8" style={{ background: INK, color: '#fff' }} data-testid="letter-kapital-brudd">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.accent }}>{c.bruddH}</p>
+            {c.brudd.map((p, i) => <p key={i} className="text-[17px] lg:text-[18px] leading-[1.6] max-w-[62ch]" style={{ margin: i === 0 ? '16px 0 0' : '12px 0 0', color: i === 0 ? '#fff' : D.muted, fontWeight: i === 0 ? 500 : 400 }}>{p}</p>)}
           </div></Rise>
-        ))}
-      </Wide>
 
-      {/* Runway-regnestykket – som en oppstilling midt på siden, uten tall vi ikke har vist. */}
-      <Sub testid="letter-kapital-runway-h">{c.runwayH}</Sub>
-      <dl className="m-0 mt-6 max-w-[520px] mx-auto" style={{ borderBottom: `1px solid ${INK}` }} data-testid="letter-kapital-runway">
-        {c.runway.map((r, i) => {
-          const sum = i === c.runway.length - 1;
-          return <Rise key={r} delay={0.03 + i * 0.03}><div className="py-3 text-[16px] tabular-nums" style={{ borderTop: `1px solid ${sum ? INK : HAIR}`, color: sum ? INK : MUTED, fontWeight: sum ? 500 : 400 }} data-testid={`letter-kapital-runway-${i + 1}`}>{r}</div></Rise>;
-        })}
-      </dl>
-      <Rise delay={0.1}><p className="text-[14.5px] leading-[1.6] max-w-[520px] mx-auto" style={{ margin: '20px auto 0', color: MUTED }} data-testid="letter-kapital-runway-note">{c.runwayNote}</p></Rise>
+          <div className="mt-14 lg:mt-16 grid sm:grid-cols-2 gap-x-8 gap-y-12" data-testid="letter-kapital-kobling">
+            {c.kobling.map(([h, items], i) => (
+              <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-kapital-kobling-${i + 1}`}>
+                <p className="font-medium tracking-[-0.025em] leading-[1.15]" style={{ margin: 0, color: i === 0 ? ACCENT : INK, fontSize: 'clamp(22px, 1.9vw, 28px)' }}>{h}</p>
+                <ul className="list-none p-0 m-0 mt-6">
+                  {items.map((t) => <li key={t} className="flex items-center gap-3 py-2.5 text-[16px]" style={{ color: INK }}><ArrowRight className="w-4 h-4 shrink-0" style={{ color: MUTED }} strokeWidth={1.75} />{t}</li>)}
+                </ul>
+              </div></Rise>
+            ))}
+          </div>
+
+          {/* Runway-regnestykket – som en oppstilling, uten tall vi ikke har vist. */}
+          <Sub testid="letter-kapital-runway-h">{c.runwayH}</Sub>
+          <dl className="m-0 mt-6 max-w-[520px]" style={{ borderBottom: `1px solid ${INK}` }} data-testid="letter-kapital-runway">
+            {c.runway.map((r, i) => {
+              const sum = i === c.runway.length - 1;
+              return <Rise key={r} delay={0.03 + i * 0.03}><div className="py-3 text-[16px] tabular-nums" style={{ borderTop: `1px solid ${sum ? INK : HAIR}`, color: sum ? INK : MUTED, fontWeight: sum ? 500 : 400 }} data-testid={`letter-kapital-runway-${i + 1}`}>{r}</div></Rise>;
+            })}
+          </dl>
+          <Rise delay={0.1}><p className="text-[14.5px] leading-[1.6] max-w-[62ch]" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-kapital-runway-note">{c.runwayNote}</p></Rise>
+        </Main>
+      </Grid>
     </Section>
   );
 };
@@ -564,27 +585,28 @@ const Modell = () => {
   const c = BREV.modell;
   return (
     <Section id="modell" testid="letter-modell" tint>
-      <Head n="08" label={c.eyebrow} lines={c.title} titleTestid="letter-modell-title" />
-      <Col>
-        <Paragraphs items={c.paragraphs} testid="letter-modell-p" strong={0} first={32} />
-        <Rise delay={0.08}><p className="text-[15.5px] leading-[1.65] pt-5" style={{ margin: '28px 0 0', color: INK, borderTop: `1px solid ${HAIR}` }} data-testid="letter-modell-enhet">{c.enhet}</p></Rise>
-      </Col>
+      <Grid>
+        <Aside n="08" label={c.eyebrow} />
+        <Main>
+          <Statement lines={c.title} testid="letter-modell-title" />
+          <Paragraphs items={c.paragraphs} testid="letter-modell-p" strong={0} first={32} />
+          <Rise delay={0.08}><p className="text-[15.5px] leading-[1.65] max-w-[62ch] pt-5" style={{ margin: '28px 0 0', color: INK, borderTop: `1px solid ${HAIR}` }} data-testid="letter-modell-enhet">{c.enhet}</p></Rise>
 
-      {/* Regnestykket: 1 000 enheter → 130 000 kr/mnd → 1,56 MNOK ARR – og fem tilsvarende kunder */}
-      <Sub testid="letter-modell-eksempel-h" mt="mt-16 lg:mt-20">{c.eksempelH}</Sub>
-      <Mid>
-        <Rise delay={0.1}><div className="mt-6 grid sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-6 gap-y-3 rounded-[20px] px-6 py-6 lg:px-8" style={{ background: '#fbfaf8', border: `1px solid ${HAIR}` }} data-testid="letter-modell-eksempel">
-          <span className="text-[17px] font-medium" style={{ color: INK }}>{c.eksempel[0]}</span>
-          <span className="text-[15.5px] tabular-nums" style={{ color: MUTED }}>{c.eksempel[1]}</span>
-          <span className="inline-flex items-center gap-3 text-[17px] font-medium tabular-nums" style={{ color: INK }}><ArrowRight className="w-4 h-4 hidden sm:block" style={{ color: ACCENT }} strokeWidth={1.75} />{c.eksempel[2]}</span>
-          <span className="inline-flex items-center gap-3 text-[17px] font-medium tabular-nums" style={{ color: ACCENT }}><ArrowRight className="w-4 h-4 hidden sm:block" style={{ color: ACCENT }} strokeWidth={1.75} />{c.eksempel[3]}</span>
-        </div></Rise>
-      </Mid>
-      <Col className="mt-10"><Tall items={[c.skalering]} cols="grid-cols-1" center testid="letter-modell-skalering" /></Col>
+          {/* Regnestykket: 1 000 enheter → 130 000 kr/mnd → 1,56 MNOK ARR – og fem tilsvarende kunder */}
+          <Sub testid="letter-modell-eksempel-h" mt="mt-16 lg:mt-20">{c.eksempelH}</Sub>
+          <Rise delay={0.1}><div className="mt-6 grid sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-6 gap-y-3 rounded-[20px] px-6 py-6 lg:px-8" style={{ background: '#fbfaf8', border: `1px solid ${HAIR}` }} data-testid="letter-modell-eksempel">
+            <span className="text-[17px] font-medium" style={{ color: INK }}>{c.eksempel[0]}</span>
+            <span className="text-[15.5px] tabular-nums" style={{ color: MUTED }}>{c.eksempel[1]}</span>
+            <span className="inline-flex items-center gap-3 text-[17px] font-medium tabular-nums" style={{ color: INK }}><ArrowRight className="w-4 h-4 hidden sm:block" style={{ color: ACCENT }} strokeWidth={1.75} />{c.eksempel[2]}</span>
+            <span className="inline-flex items-center gap-3 text-[17px] font-medium tabular-nums" style={{ color: ACCENT }}><ArrowRight className="w-4 h-4 hidden sm:block" style={{ color: ACCENT }} strokeWidth={1.75} />{c.eksempel[3]}</span>
+          </div></Rise>
+          <div className="mt-10"><Tall items={[c.skalering]} cols="sm:grid-cols-[minmax(0,1fr)]" testid="letter-modell-skalering" /></div>
 
-      <Sub testid="letter-modell-base-h">{c.baseH}</Sub>
-      <Wide className="mt-8"><Tabell head={c.baseHead} rows={c.base} cols="120px minmax(0,1fr) 260px" cell={baseCell} testid="letter-modell-base" /></Wide>
-      <Col className="mt-12"><Tall items={[c.baseResult]} cols="grid-cols-1" center testid="letter-modell-baseresult" /></Col>
+          <Sub testid="letter-modell-base-h">{c.baseH}</Sub>
+          <div className="mt-8"><Tabell head={c.baseHead} rows={c.base} cols="120px minmax(0,1fr) 260px" cell={baseCell} testid="letter-modell-base" /></div>
+          <div className="mt-12"><Tall items={[c.baseResult]} cols="sm:grid-cols-[minmax(0,1fr)]" testid="letter-modell-baseresult" /></div>
+        </Main>
+      </Grid>
     </Section>
   );
 };
@@ -595,9 +617,14 @@ const Structure = () => {
   const c = BREV.structure;
   return (
     <Section id="struktur" testid="letter-structure" tint>
-      <Head n="04" label={c.eyebrow} title={c.title} titleTestid="letter-structure-head" />
-      <Col><Paragraphs items={c.paragraphs} testid="letter-structure-p" strong={c.paragraphs.length - 1} /></Col>
-      <Mid className="mt-14 lg:mt-16"><Rows rows={c.rows} testid="letter-structure-rows" /></Mid>
+      <Grid>
+        <Aside n="04" label={c.eyebrow} />
+        <Main>
+          <Title title={c.title} testid="letter-structure-head" />
+          <Paragraphs items={c.paragraphs} testid="letter-structure-p" strong={c.paragraphs.length - 1} />
+          <div className="mt-14 lg:mt-16"><Rows rows={c.rows} testid="letter-structure-rows" /></div>
+        </Main>
+      </Grid>
     </Section>
   );
 };
@@ -608,28 +635,35 @@ const Team = () => {
   const t = BREV.team;
   return (
     <Section id="teamet" testid="letter-team-section" tint>
-      <Head n="10" label={t.eyebrow} title={t.title} titleTestid="letter-team-head" />
-      <Col><Paragraphs items={t.paragraphs} testid="letter-team-p" strong={t.paragraphs.length - 1} /></Col>
-      <Wide className="mt-16 lg:mt-20 space-y-16 lg:space-y-20" testid="letter-team">
+      <Grid>
+        <Aside n="10" label={t.eyebrow} />
+        <Main>
+          <Title title={t.title} testid="letter-team-head" />
+          <Paragraphs items={t.paragraphs} testid="letter-team-p" strong={t.paragraphs.length - 1} />
+        </Main>
+      </Grid>
+      <div className="mt-16 lg:mt-20 space-y-16 lg:space-y-20" data-testid="letter-team">
         {TEAM_GRUPPER.map((g, gi) => {
           const invited = g.key === 'inviteres';
           return (
             <div key={g.key} data-testid={`letter-team-group-${g.key}`}>
-              <Rise><p className="pb-4 text-center text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: invited ? ACCENT : MUTED, borderBottom: `1px solid ${invited ? ACCENT : INK}` }} data-testid={`letter-team-group-${g.key}-label`}>{g.label}</p></Rise>
-              <div className="mt-10 flex flex-wrap justify-center gap-x-5 gap-y-12 lg:gap-x-8">
+              <Rise><p className="pb-4 text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: invited ? ACCENT : MUTED, borderBottom: `1px solid ${invited ? ACCENT : INK}` }} data-testid={`letter-team-group-${g.key}-label`}>{g.label}</p></Rise>
+              <div className="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-12 lg:gap-x-8">
                 {TEAM.filter((p) => p.gruppe === g.key).map((p, i) => (
-                  <Rise key={p.key} delay={0.06 + (gi + i) * 0.05} y={22} className="w-[calc(50%-10px)] lg:w-[236px]"><Person name={p.name} role={p.role} img={p.img} pos={p.pos} initials={p.initials} bio={p.bio} invited={!!p.invited} sizes="(max-width: 1024px) 42vw, 280px" testid={`letter-team-${p.key}`} /></Rise>
+                  <Rise key={p.key} delay={0.06 + (gi + i) * 0.05} y={22}><Person name={p.name} role={p.role} img={p.img} pos={p.pos} initials={p.initials} bio={p.bio} invited={!!p.invited} sizes="(max-width: 1024px) 42vw, 280px" testid={`letter-team-${p.key}`} /></Rise>
                 ))}
               </div>
             </div>
           );
         })}
-      </Wide>
-      <div className="mt-24 lg:mt-28">
-        <Kicker label={t.rolleH} testid="letter-owners-aside" />
-        <Col className="mt-8"><Rise><p className={BODY} style={{ margin: 0, color: INK }} data-testid="letter-owners-lead">{t.rolleLead}</p></Rise></Col>
-        <Mid className="mt-12"><Rows rows={t.rolle} testid="letter-owners-rows" /></Mid>
       </div>
+      <Grid className="mt-24 lg:mt-28">
+        <Aside label={t.rolleH} testid="letter-owners-aside" />
+        <Main>
+          <Rise><p className={BODY} style={{ margin: 0, color: INK }} data-testid="letter-owners-lead">{t.rolleLead}</p></Rise>
+          <div className="mt-12"><Rows rows={t.rolle} testid="letter-owners-rows" /></div>
+        </Main>
+      </Grid>
     </Section>
   );
 };
@@ -640,38 +674,43 @@ const Offer = () => {
   const c = BREV.offer;
   return (
     <Section id="tilbudet" testid="letter-offer" dark>
-      <Head n="11" label={c.eyebrow} title={c.title} titleTestid="letter-offer-head" dark />
-      <Col><Paragraphs items={c.paragraphs} testid="letter-offer-p" strong={0} dark /></Col>
-      <Wide>
-        <Rise delay={0.1} y={22}>
-          <div className="mt-14 lg:mt-20 grid sm:grid-cols-2 lg:grid-cols-4 rounded-[28px] overflow-hidden" style={{ border: `1px solid ${D.hair}`, background: D.fill }} data-testid="letter-offer-terms">
-            {c.terms.map(([n, label, l], i) => (
-              <div key={label} className={`p-7 lg:p-9 border-white/[0.12] ${['', 'max-sm:border-t sm:border-l', 'max-sm:border-t sm:border-t lg:border-t-0 lg:border-l', 'max-sm:border-t sm:border-l sm:border-t lg:border-t-0'][i]}`} data-testid={`letter-offer-term-${i + 1}`}>
-                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.muted }}>{label}</p>
-                <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '22px 0 0', color: i === 0 ? D.accent : D.ink, fontSize: 'clamp(28px, 2.1vw, 38px)' }}>{n}</p>
-                <p className="text-[14.5px] leading-snug" style={{ margin: '14px 0 0', color: D.muted }}>{l}</p>
-              </div>
-            ))}
-          </div>
-        </Rise>
-      </Wide>
-      <Col className="mt-10"><Rise delay={0.1}><p className="text-[15.5px] leading-[1.65] text-center" style={{ margin: 0, color: D.muted }} data-testid="letter-offer-aksjer">{c.aksjer}</p></Rise></Col>
+      <Grid>
+        <Aside n="11" label={c.eyebrow} dark />
+        <Main>
+          <Title title={c.title} testid="letter-offer-head" dark />
+          <Paragraphs items={c.paragraphs} testid="letter-offer-p" strong={0} dark />
+        </Main>
+      </Grid>
+      <Rise delay={0.1} y={22}>
+        <div className="mt-14 lg:mt-20 grid sm:grid-cols-2 lg:grid-cols-4 rounded-[28px] overflow-hidden" style={{ border: `1px solid ${D.hair}`, background: D.fill }} data-testid="letter-offer-terms">
+          {c.terms.map(([n, label, l], i) => (
+            <div key={label} className={`p-7 lg:p-9 border-white/[0.12] ${['', 'max-sm:border-t sm:border-l', 'max-sm:border-t sm:border-t lg:border-t-0 lg:border-l', 'max-sm:border-t sm:border-l sm:border-t lg:border-t-0'][i]}`} data-testid={`letter-offer-term-${i + 1}`}>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.muted }}>{label}</p>
+              <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '22px 0 0', color: i === 0 ? D.accent : D.ink, fontSize: 'clamp(28px, 2.1vw, 38px)' }}>{n}</p>
+              <p className="text-[14.5px] leading-snug" style={{ margin: '14px 0 0', color: D.muted }}>{l}</p>
+            </div>
+          ))}
+        </div>
+      </Rise>
+      <Grid className="mt-10">
+        <Main><Rise delay={0.1}><p className="text-[15.5px] leading-[1.65] max-w-[70ch]" style={{ margin: 0, color: D.muted }} data-testid="letter-offer-aksjer">{c.aksjer}</p></Rise></Main>
+      </Grid>
 
-      <div className="mt-24 lg:mt-28">
-        <Kicker label={c.formal.h} dark />
-        <Col className="mt-8"><Rise><p className={BODY} style={{ margin: 0, color: D.ink }} data-testid="letter-formal-text">{c.formal.text}</p></Rise></Col>
-        <Rise delay={0.06} className="mt-12 text-center"><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.accent }}>{c.formal.listH}</p></Rise>
-        <Mid>
-          <ul className="list-none p-0 m-0 mt-6 grid sm:grid-cols-2 gap-x-8" style={{ borderBottom: `1px solid ${D.hair}` }} data-testid="letter-formal-list">
+      <Grid className="mt-24 lg:mt-28">
+        <Aside label={c.formal.h} dark />
+        <Main>
+          <Rise><p className={BODY} style={{ margin: 0, color: D.ink }} data-testid="letter-formal-text">{c.formal.text}</p></Rise>
+          <Rise delay={0.06}><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: '40px 0 0', color: D.accent }}>{c.formal.listH}</p></Rise>
+          <ul className="list-none p-0 m-0 mt-5 grid sm:grid-cols-2 gap-x-8" style={{ borderBottom: `1px solid ${D.hair}` }} data-testid="letter-formal-list">
             {c.formal.list.map((e, i) => (
               <Rise key={e} delay={0.06 + i * 0.03}><li className="py-3.5 text-[15.5px] leading-[1.5] flex items-start gap-3" style={{ color: D.ink, borderTop: `1px solid ${D.hair}` }} data-testid={`letter-formal-item-${i + 1}`}>
                 <span className="mt-[9px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: D.accent }} />{e}
               </li></Rise>
             ))}
           </ul>
-        </Mid>
-        <Col><Rise delay={0.1}><p className="text-[15.5px] leading-[1.65]" style={{ margin: '24px 0 0', color: D.muted }} data-testid="letter-formal-closing">{c.formal.closing}</p></Rise></Col>
-      </div>
+          <Rise delay={0.1}><p className="text-[15.5px] leading-[1.65] max-w-[62ch]" style={{ margin: '24px 0 0', color: D.muted }} data-testid="letter-formal-closing">{c.formal.closing}</p></Rise>
+        </Main>
+      </Grid>
     </Section>
   );
 };
@@ -682,11 +721,14 @@ const Next = () => {
   const c = BREV.next;
   return (
     <Section id="videre" testid="letter-next">
-      <Head n="12" label={c.eyebrow} title={c.title} titleTestid="letter-next-head" />
-      <Col>
-        <Paragraphs items={c.paragraphs} testid="letter-next-p" strong={1} />
-        <Rise delay={0.1}><p className="text-[19px] lg:text-[21px] font-medium" style={{ margin: '36px 0 0', color: INK }} data-testid="letter-closing">{BREV.signature}</p></Rise>
-      </Col>
+      <Grid>
+        <Aside n="12" label={c.eyebrow} />
+        <Main>
+          <Title title={c.title} testid="letter-next-head" />
+          <Paragraphs items={c.paragraphs} testid="letter-next-p" strong={1} />
+          <Rise delay={0.1}><p className="text-[19px] lg:text-[21px] font-medium" style={{ margin: '36px 0 0', color: INK }} data-testid="letter-closing">{BREV.signature}</p></Rise>
+        </Main>
+      </Grid>
     </Section>
   );
 };
@@ -696,12 +738,16 @@ const Footer = () => {
   return (
     <footer className="pt-16 pb-10 lg:pt-20 lg:pb-12" style={{ borderTop: `1px solid ${HAIR}` }} data-testid="letter-footer">
       <Container>
-        <div className="flex flex-col items-center text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/digihome-wordmark-ink.svg" alt={BREV.brand} className="h-[30px] lg:h-[36px] w-auto" data-testid="letter-footer-logo" />
-          <p className="text-[15px] leading-[1.6] max-w-[44ch]" style={{ margin: '22px 0 0', color: MUTED }} data-testid="letter-noindex">{BREV.footer}</p>
-          <span className="mt-8 text-[15px]" style={{ color: INK }}>{BREV.footerFrom}</span>
-          <span className="mt-2 text-[13px]" style={{ color: MUTED }}>{INV.toLong} · {INV.date}</span>
+        <div className="grid lg:grid-cols-12 gap-x-8 gap-y-10 items-end">
+          <div className="lg:col-span-7">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/digihome-wordmark-ink.svg" alt={BREV.brand} className="h-[30px] lg:h-[36px] w-auto" data-testid="letter-footer-logo" />
+            <p className="text-[15px] leading-[1.6] max-w-[44ch]" style={{ margin: '22px 0 0', color: MUTED }} data-testid="letter-noindex">{BREV.footer}</p>
+          </div>
+          <div className="lg:col-span-5 lg:col-start-8 flex flex-col lg:items-end gap-4">
+            <span className="text-[15px]" style={{ color: INK }}>{BREV.footerFrom}</span>
+            <span className="text-[13px]" style={{ color: MUTED }}>{INV.toLong} · {INV.date}</span>
+          </div>
         </div>
         <div className="mt-12 pt-6 flex items-center justify-between text-[12.5px] brev-print-hide" style={{ borderTop: `1px solid ${HAIR}`, color: MUTED }}>
           <span className="inline-flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT }} />{BREV.eyebrow} · {BREV.confidential}</span>

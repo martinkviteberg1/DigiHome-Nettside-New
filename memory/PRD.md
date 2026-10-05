@@ -2028,3 +2028,4 @@ regnskapseksport-løfte (PowerOffice ikke koblet). Gjenstår: seksjoner under he
 
 ## 2026-10-05 – /samarbeid layout
 - Layout lagt om fra 12-kolonners rutenett med venstremarg til midtstilt boklayout: kapittelnummer + kicker over tittelen (midtstilt), brødtekst i 680 px lesekolonne, tabeller/rutenett i 880/1040 px midtstilte kolonner. Team-grupper sentreres. Deal: 10 MNOK pre, 1,11 MNOK for 10 % (DEAL i innhold.js).
+- 05.10 kl 14:40: Brukeren ba om å GÅ TILBAKE til venstremarg-layouten (12 kol, Aside/Main). Midtstilt variant parkert i components/samarbeid/brev/_Brev.sentrert.js.txt (ikke importert; titlene hadde en feil: inline margin overstyrte mx-auto – rettet i den parkerte filen). Brev.js er identisk med tilstanden før layoutendringen.
