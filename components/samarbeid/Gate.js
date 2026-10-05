@@ -1,40 +1,40 @@
 'use client';
-/* Passordgaten. Server-side sjekk mot /api/samarbeid/auth (httpOnly-cookie i 30 dager). Papir og blekk – som forslaget. Stiler i brev/brev.css (.brev-gate). */
-import React, { useEffect, useState } from 'react';
+/* Passordgaten til /samarbeid. Selve tilgangssjekken skjer server-side (app/samarbeid/page.js) – denne komponenten bare tar imot passordet,
+ *  poster det til /api/samarbeid/auth (httpOnly-cookie, 7 dager) og ber serveren rendre på nytt. Papir og blekk – stiler i brev/brev.css (.brev-gate). */
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default function Gate({ children }) {
-  const [state, setState] = useState('sjekker'); // sjekker | laast | aapen
+export default function Gate({ configured = true }) {
+  const router = useRouter();
   const [pw, setPw] = useState('');
   const [feil, setFeil] = useState('');
   const [sender, setSender] = useState(false);
-  useEffect(() => {
-    let aktiv = true;
-    fetch('/api/samarbeid/auth', { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (aktiv) setState(j?.authed ? 'aapen' : 'laast'); }).catch(() => { if (aktiv) setState('laast'); });
-    return () => { aktiv = false; };
-  }, []);
   const send = async (e) => {
     e.preventDefault();
     if (!pw || sender) return;
     setSender(true); setFeil('');
     try {
-      const r = await fetch('/api/samarbeid/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
-      if (r.ok) setState('aapen'); else setFeil('Feil passord.');
+      const r = await fetch('/api/samarbeid/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }), cache: 'no-store' });
+      if (r.ok) { router.refresh(); return; }
+      if (r.status === 429) setFeil('For mange forsøk. Vent noen minutter og prøv igjen.');
+      else setFeil('Feil passord.');
     } catch (err) { setFeil('Noe gikk galt. Prøv igjen.'); }
     setSender(false);
   };
-  if (state === 'aapen') return children;
   return (
     <div className="brev-gate" data-testid="samarbeid-gate">
-      <form onSubmit={send} style={{ opacity: state === 'sjekker' ? 0 : 1, transition: 'opacity 500ms' }}>
-        <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[15px] w-auto" />
+      <form onSubmit={send}>
+        <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
         <h1>Privat invitasjon.</h1>
-        <p className="mt-3 text-[14.5px] leading-relaxed" style={{ color: '#77777d' }}>Delt med navngitte mottakere. Skriv inn passordet du har fått.</p>
+        <p className="mt-3 text-[14.5px] leading-relaxed" style={{ color: '#77777d' }}>
+          {configured ? 'Delt med navngitte mottakere. Skriv inn passordet du har fått.' : 'Tilgangen er ikke konfigurert ennå.'}
+        </p>
         <label className="block mt-7">
           <span className="sr-only">Passord</span>
-          <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus autoComplete="current-password" placeholder="Passord" data-testid="samarbeid-gate-input" />
+          <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus autoComplete="current-password" placeholder="Passord" disabled={!configured} data-testid="samarbeid-gate-input" />
         </label>
         {feil && <p className="mt-3 text-[13px]" style={{ color: '#B3261E' }} data-testid="samarbeid-gate-error">{feil}</p>}
-        <button type="submit" disabled={!pw || sender} data-testid="samarbeid-gate-submit">{sender ? 'Åpner …' : 'Åpne brevet'}</button>
+        <button type="submit" disabled={!pw || sender || !configured} data-testid="samarbeid-gate-submit">{sender ? 'Åpner …' : 'Åpne invitasjonen'}</button>
       </form>
     </div>
   );

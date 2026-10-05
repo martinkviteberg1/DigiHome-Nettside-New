@@ -30,6 +30,7 @@ import { byggFaktura as prisByggFaktura } from '@/lib/faktura';
 import { fakturaPdf as prisFakturaPdf } from '@/lib/faktura-pdf';
 import { synkFraBrreg, hentOrganisasjon, lagrePerson, slettPerson, nyRolle, oppdaterRolle, slettRolle, oppdaterSelskap, hentEierbok, lagreEier, slettEier, lagreKlasse, slettKlasse, nyTransaksjon, slettTransaksjon, sokBrregEnheter, lagreStotte } from '@/lib/selskap';
 import { lagLeieforholdExcel, lagLeieforholdCsv } from '@/lib/leieforhold-excel';
+import { SAMARBEID_COOKIE, samarbeidAutentisert, samarbeidPassordRiktig, samarbeidToken, samarbeidCookieOptions } from '@/lib/samarbeid-auth';
 import {
   anvendScenario as lfScenario, filtrerRader as lfFiltrer, parseFilterParams as lfParseFilter,
   filterBeskrivelse as lfBeskrivelse, beregnTotals as lfTotals, harFilter as lfHarFilter,
@@ -2691,23 +2692,26 @@ async function handleRoute(request, { params }) {
       return cors(res);
     }
 
-    // --- Samarbeid-deck (tilbud til navngitte mottakere) passord-gate; eget passord, faller tilbake på DECK_PASSWORD ---
+    // --- Samarbeid (den private invitasjonen) passord-gate: eget hemmelig passord (SAMARBEID_PASSWORD), INGEN fallback til DECK_PASSWORD.
+    //     Samme sjekk som server-komponenten i app/samarbeid bruker (lib/samarbeid-auth.js). 7 dagers cookie, rate limit på feil passord, no-store.
     if (route === '/samarbeid/auth' && (method === 'GET' || method === 'POST')) {
-      const SAMARBEID_PASSWORD = process.env.SAMARBEID_PASSWORD || DECK_PASSWORD || '';
-      const samToken = () => crypto.createHash('sha256').update(`dh-samarbeid::${SAMARBEID_PASSWORD}`).digest('hex');
+      const noStore = (res) => { res.headers.set('Cache-Control', 'no-store'); return cors(res); };
       if (method === 'GET') {
-        const token = request.cookies.get('dh_samarbeid')?.value || '';
-        return cors(NextResponse.json({ authed: !!SAMARBEID_PASSWORD && token === samToken() }));
+        const token = request.cookies.get(SAMARBEID_COOKIE)?.value || '';
+        return noStore(NextResponse.json({ authed: samarbeidAutentisert(token) }));
+      }
+      if (!rateLimit(`samarbeid:${clientIp(request)}`, 8, 10 * 60 * 1000)) {
+        return noStore(NextResponse.json({ ok: false, error: 'For mange forsøk. Prøv igjen om noen minutter.' }, { status: 429 }));
       }
       let body = {};
       try { body = await request.json(); } catch (e) { body = {}; }
       const pw = (body.password || '').toString();
-      if (!SAMARBEID_PASSWORD || pw !== SAMARBEID_PASSWORD) {
-        return cors(NextResponse.json({ ok: false, error: 'Feil passord' }, { status: 401 }));
+      if (!samarbeidPassordRiktig(pw)) {
+        return noStore(NextResponse.json({ ok: false, error: 'Feil passord' }, { status: 401 }));
       }
       const res = NextResponse.json({ ok: true });
-      res.cookies.set('dh_samarbeid', samToken(), { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30, secure: process.env.NODE_ENV === 'production' });
-      return cors(res);
+      res.cookies.set(SAMARBEID_COOKIE, samarbeidToken(), samarbeidCookieOptions());
+      return noStore(res);
     }
 
     // --- STYRERAPPORT: ekstern delingslenke (offentlig, token-basert, les-only) ---

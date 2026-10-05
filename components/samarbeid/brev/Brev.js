@@ -1,14 +1,19 @@
 'use client';
 /** Privat invitasjon til Martin og Øyvind – et personlig brev fra Erik, Sarah og Martin, ikke en landingsside. /samarbeid, ikke søkbar.
- *  Layouten er tatt fra AFA-repoets InvitationPage: redaksjonelt rutenett (12 kolonner), smal klebrig venstremarg med kapittelnummer og
- *  kicker – innholdet i de ni til høyre. De store utsagnene fyller kolonnen (målt), tilbudet står som et term sheet på mørk flate.
- *  Rekkefølgen er investeringscasets: brevet rett under brevhodet → hvorfor dere → hva som er bygget → målbildet → Tech og forvaltning →
- *  hvorfor nå → roadmap → forretningsmodell → budsjett → laget → tilbudet → rollen → neste steg. Innholdet bor i ./innhold.js. */
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+ *  Layouten er bokens: alt står midt på siden. Kapittelnummer og kicker over tittelen (midtstilt), brødteksten i én lesekolonne (680 px,
+ *  venstrestilt), tabeller og rutenett i en bredere midtstilt kolonne (880/1040 px). Ingen venstremarg, ingen forskjøvet hovedkolonne.
+ *  De store utsagnene fyller kapittelhodet (målt), tilbudet står som et term sheet på mørk flate.
+ *  Rekkefølgen er investeringscasets: brevet rett under brevhodet → hvorfor dere → dette er bygget → målbildet → Tech og forvaltning →
+ *  hvorfor nå → neste verdiløft → roadmap → forretningsmodell → kapitalplan → laget og rollen → tilbudet → neste steg.
+ *  INNHOLDET KOMMER SOM PROPS fra server-komponenten (app/samarbeid/page.js) – teksten importeres ikke her, så den ligger ikke i JS-bundlen. */
+import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
 import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
-import { AVSENDERE, BREV, INV, TEAM, TEAM_GRUPPER } from './innhold';
 import { DASH_H, DASH_W, EierTelefon, LeietakerTelefon, Oversikt, Skaler } from './produkt';
+
+/* Innholdet (INV, AVSENDERE, TEAM, TEAM_GRUPPER, BREV, DEAL, PORTEFOLJE) deles via kontekst – satt én gang i <Brev>. */
+const InnholdCtx = createContext(null);
+const useInnhold = () => useContext(InnholdCtx);
 
 const EASE = [0.16, 1, 0.3, 1];
 const PAPER = '#fafaf9';
@@ -25,7 +30,7 @@ const tone = (dark) => (dark ? D : L);
 
 /* Typografisk skala – én for hele siden. Display-linjene (hero, utsagn) måles mot kolonnen i stedet. */
 const T = { h2: 'clamp(32px, 3.2vw, 52px)', num: 'clamp(32px, 2.6vw, 48px)', cell: 'clamp(24px, 2vw, 30px)' };
-const BODY = 'text-[18px] lg:text-[19px] leading-[1.65] max-w-[62ch] text-pretty';
+const BODY = 'text-[18px] lg:text-[19px] leading-[1.65] text-pretty';
 const PILL_DARK = 'inline-flex items-center justify-center gap-2 rounded-full font-medium transition-[background-color,box-shadow,transform,color] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7F3FBF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fafaf9] active:scale-[0.985] bg-[#0a0a0a] text-white hover:bg-[#27272a] shadow-[0_12px_28px_-18px_rgba(10,10,10,0.3)] hover:shadow-[0_22px_44px_-20px_rgba(10,10,10,0.5)]';
 
 const Container = ({ children, className = '' }) => <div className={`max-w-[1200px] mx-auto px-5 sm:px-6 lg:px-8 ${className}`}>{children}</div>;
@@ -40,27 +45,34 @@ const Rise = ({ children, delay = 0, y = 14, className, style, testid, once = tr
   );
 };
 
-/* ─── Rutenett og kapittelmarg ─── */
-const Grid = ({ children, className = '' }) => <div className={`grid lg:grid-cols-12 gap-x-8 ${className}`}>{children}</div>;
+/* ─── Kolonnene: alt står midt på siden, som i en bok. COL er lesekolonnen (brødtekst, venstrestilt), MID er kapittelhodet og hårlinjerader,
+ *     WIDE er tabeller og rutenett. Kapittelnummer og kicker står alltid over tittelen – aldri i en egen marg. ─── */
+const Col = ({ children, className = '', testid }) => <div className={`max-w-[680px] mx-auto ${className}`} data-testid={testid}>{children}</div>;
+const Mid = ({ children, className = '', testid }) => <div className={`max-w-[880px] mx-auto ${className}`} data-testid={testid}>{children}</div>;
+const Wide = ({ children, className = '', testid }) => <div className={`max-w-[1040px] mx-auto ${className}`} data-testid={testid}>{children}</div>;
 
-/** Venstremargen: kapittelnummer og kicker, klebrig på store skjermer. */
-const Aside = ({ n, label, dark, testid }) => {
+/** Kickeren: kapittelnummer og etikett – midtstilt, over tittelen. */
+const Kicker = ({ n, label, dark, testid, className = '' }) => {
   const c = tone(dark);
   return (
-    <div className="lg:col-span-3 mb-8 lg:mb-0">
-      <Rise><div className="lg:sticky lg:top-28 flex items-baseline gap-3" data-testid={testid}>
-        {n && <span className="text-[12px] font-semibold tabular-nums" style={{ color: c.accent }}>{n}</span>}
-        <span className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: c.accent }}>{label}</span>
-      </div></Rise>
-    </div>
+    <Rise className={`flex items-baseline justify-center gap-3 ${className}`} testid={testid}>
+      {n && <span className="text-[12px] font-semibold tabular-nums" style={{ color: c.accent }}>{n}</span>}
+      <span className="text-[12.5px] font-semibold uppercase tracking-[0.14em] text-center" style={{ color: c.accent }}>{label}</span>
+    </Rise>
   );
 };
 
-const Main = ({ children, className = '' }) => <div className={`lg:col-span-9 lg:col-start-4 min-w-0 ${className}`}>{children}</div>;
-
-/** Kapittelets tittel – i hovedkolonnen. */
+/** Kapittelets tittel – midtstilt under kickeren. */
 const Title = ({ title, dark, testid }) => (
-  <Rise><h2 className="font-medium tracking-[-0.03em] leading-[1.04] max-w-[24ch] text-balance whitespace-pre-line" style={{ margin: 0, color: tone(dark).ink, fontSize: T.h2 }} data-testid={testid}>{title}</h2></Rise>
+  <Rise><h2 className="font-medium tracking-[-0.03em] leading-[1.04] max-w-[22ch] mx-auto text-center text-balance whitespace-pre-line" style={{ margin: '24px 0 0', color: tone(dark).ink, fontSize: T.h2 }} data-testid={testid}>{title}</h2></Rise>
+);
+
+/** Kapittelhodet: kicker over tittel – eller over et stort utsagn på to linjer – midtstilt. */
+const Head = ({ n, label, title, lines, dark, testid, titleTestid }) => (
+  <Mid className="text-center">
+    <Kicker n={n} label={label} dark={dark} testid={testid} />
+    {lines ? <Statement lines={lines} testid={titleTestid} dark={dark} /> : <Title title={title} testid={titleTestid} dark={dark} />}
+  </Mid>
 );
 
 /** Brødtekst-avsnitt: siste (eller `strong`-indeks) i sort, resten dempet. */
@@ -102,18 +114,18 @@ const useFitLines = (lines, max, min) => {
   return { ref, ...fit };
 };
 
-/** Ett stort utsagn over to linjer – fyller hovedkolonnen. */
+/** Ett stort utsagn over to linjer – fyller kapittelhodet, midtstilt. */
 const Statement = ({ lines, testid, dark }) => {
   const { ref, size, wrap } = useFitLines(lines, 68, 34);
   return (
-    <h2 ref={ref} className="font-medium tracking-[-0.035em] leading-[1.0]" style={{ margin: 0, color: tone(dark).ink, fontSize: size, whiteSpace: wrap ? 'normal' : 'nowrap' }} data-testid={testid}>
+    <h2 ref={ref} className="font-medium tracking-[-0.035em] leading-[1.0] text-center" style={{ margin: '24px 0 0', color: tone(dark).ink, fontSize: size, whiteSpace: wrap ? 'normal' : 'nowrap' }} data-testid={testid}>
       {lines.map((l, i) => <Rise key={l} delay={i * 0.1} y={18}><span className="block">{l}</span></Rise>)}
     </h2>
   );
 };
 
 const Section = ({ children, testid, tint = false, dark = false, id }) => (
-  <section id={id} className="relative py-28 lg:py-40 scroll-mt-4" style={{ background: dark ? INK : tint ? TINT : undefined, borderTop: dark ? undefined : `1px solid ${HAIR}` }} data-testid={testid}>
+  <section id={id} className="relative py-24 lg:py-36 scroll-mt-4" style={{ background: dark ? INK : tint ? TINT : undefined, borderTop: dark ? undefined : `1px solid ${HAIR}` }} data-testid={testid}>
     <Container><div className="relative">{children}</div></Container>
   </section>
 );
@@ -165,96 +177,99 @@ const Progress = () => {
   return <motion.div aria-hidden className="fixed top-0 left-0 right-0 h-[2px] origin-left z-40 brev-print-hide" style={{ scaleX: x, background: ACCENT }} data-testid="letter-progressbar" />;
 };
 
-const Header = () => (
-  <header className="absolute inset-x-0 top-0 z-20 brev-print-hide" data-testid="letter-header">
-    <Container className="h-[84px] lg:h-[96px] flex items-center justify-between">
-      <span className="inline-flex items-center" style={{ color: INK }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/digihome-wordmark-ink.svg" alt={BREV.brand} className="h-[26px] lg:h-[32px] w-auto" data-testid="letter-logo" />
-      </span>
-      <span className="inline-flex items-center gap-2.5 h-9 pl-3.5 pr-4 rounded-full text-[12.5px] font-medium whitespace-nowrap" style={{ color: INK, border: `1px solid ${HAIR}`, background: 'rgba(255,255,255,0.55)' }} data-testid="letter-private">
-        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: ACCENT }} />{BREV.eyebrow}<span className="hidden sm:inline" style={{ color: MUTED }}>· {BREV.confidential}</span>
-      </span>
-    </Container>
-  </header>
-);
+const Header = () => {
+  const { BREV } = useInnhold();
+  return (
+    <header className="absolute inset-x-0 top-0 z-20 brev-print-hide" data-testid="letter-header">
+      <Container className="h-[84px] lg:h-[96px] flex items-center justify-between">
+        <span className="inline-flex items-center" style={{ color: INK }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt={BREV.brand} className="h-[26px] lg:h-[32px] w-auto" data-testid="letter-logo" />
+        </span>
+        <span className="inline-flex items-center gap-2.5 h-9 pl-3.5 pr-4 rounded-full text-[12.5px] font-medium whitespace-nowrap" style={{ color: INK, border: `1px solid ${HAIR}`, background: 'rgba(255,255,255,0.55)' }} data-testid="letter-private">
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: ACCENT }} />{BREV.eyebrow}<span className="hidden sm:inline" style={{ color: MUTED }}>· {BREV.confidential}</span>
+        </span>
+      </Container>
+    </header>
+  );
+};
 
-/* ─── Heroen: brevhodet i full bredde – og de tre som skriver, store. Brevet kommer rett under. ─── */
+/* ─── Heroen: brevhodet midtstilt – kicker, tittel, ingress og knapp – og de tre som skriver, store. Brevet kommer rett under. ─── */
 const Cover = () => {
+  const { BREV, INV, AVSENDERE } = useInnhold();
   const toLetter = () => { const el = document.getElementById('brevet'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const fade = (delay) => ({ initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 1, delay, ease: EASE } });
   const { ref, size, wrap } = useFitLines(BREV.h1, 124, 44);
   return (
     <section className="relative" data-testid="letter-cover">
-      <Container className="relative pt-[124px] lg:pt-[168px]">
+      <Container className="relative pt-[124px] lg:pt-[168px] text-center">
         <motion.p {...fade(0)} className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid="letter-role">
           {INV.toLong} <span style={{ color: MUTED }}>· {INV.date}</span>
         </motion.p>
-        <h1 ref={ref} className="font-medium tracking-[-0.04em] leading-[0.95]" style={{ margin: '26px 0 0', color: INK, fontSize: size, whiteSpace: wrap ? 'normal' : 'nowrap' }} data-testid="letter-title">
+        <h1 ref={ref} className="font-medium tracking-[-0.04em] leading-[0.95] text-center" style={{ margin: '26px 0 0', color: INK, fontSize: size, whiteSpace: wrap ? 'normal' : 'nowrap' }} data-testid="letter-title">
           {BREV.h1.map((line, i) => (
             <span key={line} className="block overflow-hidden pb-[0.06em] -mb-[0.06em]"><motion.span className="block" initial={{ y: '110%' }} animate={{ y: 0 }} transition={{ duration: 1.15, delay: 0.15 + i * 0.12, ease: EASE }}>{line}</motion.span></span>
           ))}
         </h1>
-        <div className="mt-10 lg:mt-14 grid lg:grid-cols-12 gap-x-8 gap-y-8 items-end">
-          <motion.p {...fade(0.5)} className="lg:col-span-7 text-[18px] lg:text-[21px] leading-[1.5] text-pretty max-w-[640px]" style={{ margin: 0, color: MUTED }} data-testid="letter-sub">{BREV.sub}</motion.p>
-          <motion.div {...fade(0.7)} className="lg:col-span-5 lg:col-start-8 flex flex-wrap items-center gap-x-6 gap-y-4 lg:justify-end">
-            <span className="text-[15px]" style={{ color: MUTED }} data-testid="letter-to">{INV.from}</span>
-            <button type="button" onClick={toLetter} className={`${PILL_DARK} h-12 pl-6 pr-5 text-[15px]`} data-testid="letter-cta-read">{BREV.cta}<ArrowDown className="w-4 h-4" strokeWidth={2.2} /></button>
-          </motion.div>
-        </div>
-
-        {/* De tre som skriver – i full bredde. På mobil en rad å dra i. */}
-        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.3, delay: 0.55, ease: EASE }} className="brev-strip mt-14 lg:mt-20 flex sm:grid sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 overflow-x-auto sm:overflow-visible snap-x snap-mandatory -mx-5 px-5 sm:mx-0 sm:px-0" data-testid="letter-founders">
-          {AVSENDERE.map((p) => (
-            <div key={p.key} className="w-[72vw] sm:w-auto shrink-0 snap-start">
-              <Person name={p.name} role={p.role} img={p.img} pos={p.pos} sizes="(max-width: 640px) 72vw, 400px" testid={`letter-founder-${p.key}`} />
-            </div>
-          ))}
+        <motion.p {...fade(0.5)} className="text-[18px] lg:text-[21px] leading-[1.5] text-pretty max-w-[640px]" style={{ margin: '36px auto 0', color: MUTED }} data-testid="letter-sub">{BREV.sub}</motion.p>
+        <motion.div {...fade(0.7)} className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-x-6 gap-y-4">
+          <button type="button" onClick={toLetter} className={`${PILL_DARK} h-12 pl-6 pr-5 text-[15px]`} data-testid="letter-cta-read">{BREV.cta}<ArrowDown className="w-4 h-4" strokeWidth={2.2} /></button>
+          <span className="text-[15px]" style={{ color: MUTED }} data-testid="letter-to">{INV.from}</span>
         </motion.div>
+
+        {/* De tre som skriver – midtstilt rad. På mobil en rad å dra i. */}
+        <Wide>
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.3, delay: 0.55, ease: EASE }} className="brev-strip mt-16 lg:mt-24 flex sm:grid sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 overflow-x-auto sm:overflow-visible snap-x snap-mandatory -mx-5 px-5 sm:mx-0 sm:px-0 text-left" data-testid="letter-founders">
+            {AVSENDERE.map((p) => (
+              <div key={p.key} className="w-[72vw] sm:w-auto shrink-0 snap-start">
+                <Person name={p.name} role={p.role} img={p.img} pos={p.pos} sizes="(max-width: 640px) 72vw, 400px" testid={`letter-founder-${p.key}`} />
+              </div>
+            ))}
+          </motion.div>
+        </Wide>
       </Container>
     </section>
   );
 };
 
-/* ─── Brevet: rett under brevhodet. Marginalia til venstre, teksten i sju kolonner. Signert bare «Erik, Sarah og Martin» – ingen miniatyrbilder. ─── */
-const Letter = () => (
-  <section id="brevet" className="pt-20 lg:pt-28 pb-28 lg:pb-40 scroll-mt-4" data-testid="letter-body">
-    <Container>
-      <div style={{ borderTop: `1px solid ${HAIR}` }} />
-      <Grid className="pt-16 lg:pt-24">
-        <div className="lg:col-span-3 mb-8 lg:mb-0">
-          <Rise><div className="lg:sticky lg:top-28 text-[12.5px] leading-[1.6] uppercase tracking-[0.12em]" style={{ color: MUTED }} data-testid="letter-marginalia">
-            <span className="block">{INV.date}</span>
-            <span className="block mt-2" style={{ color: ACCENT }}>{BREV.role}</span>
-            <span className="block mt-2">{BREV.confidential}</span>
-          </div></Rise>
+/* ─── Brevet: rett under brevhodet. Dato, rolle og «konfidensielt» midtstilt over – teksten i lesekolonnen. Signert bare «Erik, Sarah og Martin». ─── */
+const Letter = () => {
+  const { BREV, INV } = useInnhold();
+  return (
+    <section id="brevet" className="pt-20 lg:pt-28 pb-24 lg:pb-36 scroll-mt-4" data-testid="letter-body">
+      <Container>
+        <div style={{ borderTop: `1px solid ${HAIR}` }} />
+        <div className="pt-16 lg:pt-24">
+          <Rise className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1 text-[12.5px] font-semibold uppercase tracking-[0.14em] text-center" testid="letter-marginalia">
+            <span style={{ color: MUTED }}>{INV.date}</span>
+            <span aria-hidden style={{ color: MUTED }}>·</span>
+            <span style={{ color: ACCENT }}>{BREV.role}</span>
+            <span aria-hidden style={{ color: MUTED }}>·</span>
+            <span style={{ color: MUTED }}>{BREV.confidential}</span>
+          </Rise>
+          <Col className="mt-12 lg:mt-16">
+            <Rise><p className="font-medium tracking-[-0.02em]" style={{ margin: 0, color: INK, fontSize: 'clamp(28px, 2.6vw, 38px)' }} data-testid="letter-hi">{BREV.hi}</p></Rise>
+            {BREV.letter.map((p, i) => {
+              const strong = i === BREV.letterStrong;
+              return <Rise key={i} delay={0.04}><p className="text-[19px] lg:text-[21px] leading-[1.6] text-pretty" style={{ margin: i === 0 ? '32px 0 0' : '22px 0 0', color: i === BREV.letter.length - 1 ? MUTED : INK, fontWeight: strong ? 500 : 400 }} data-testid={`letter-p-${i + 1}`}>{p}</p></Rise>;
+            })}
+            <Rise delay={0.05}><p className="text-[19px] lg:text-[21px] font-medium" style={{ margin: '40px 0 0', color: INK }} data-testid="letter-signature">{BREV.signature}</p></Rise>
+          </Col>
         </div>
-        <div className="lg:col-span-7 lg:col-start-4 min-w-0">
-          <Rise><p className="font-medium tracking-[-0.02em]" style={{ margin: 0, color: INK, fontSize: 'clamp(28px, 2.6vw, 38px)' }} data-testid="letter-hi">{BREV.hi}</p></Rise>
-          {BREV.letter.map((p, i) => {
-            const strong = i === BREV.letterStrong;
-            return <Rise key={i} delay={0.04}><p className="text-[19px] lg:text-[21px] leading-[1.6] text-pretty" style={{ margin: i === 0 ? '32px 0 0' : '22px 0 0', color: i === BREV.letter.length - 1 ? MUTED : INK, fontWeight: strong ? 500 : 400 }} data-testid={`letter-p-${i + 1}`}>{p}</p></Rise>;
-          })}
-          <Rise delay={0.05}><p className="text-[19px] lg:text-[21px] font-medium" style={{ margin: '40px 0 0', color: INK }} data-testid="letter-signature">{BREV.signature}</p></Rise>
-        </div>
-      </Grid>
-    </Container>
-  </section>
-);
+      </Container>
+    </section>
+  );
+};
 
-/* ─── 02 Hva som er bygget: forvalterens oversikt i full bredde på en rolig flate; så de to telefonene ved siden av de tre flatene; til slutt det som finnes i dag. ─── */
+/* ─── 02 Dette er bygget – produktbeviset, kort: én desktopflate i full bredde, så seks punkter og integrasjonsstatus ved siden av de to appene. ─── */
 const Built = () => {
+  const { BREV } = useInnhold();
   const c = BREV.built;
   return (
-    <section id="produktet" className="relative pt-28 lg:pt-40 pb-28 lg:pb-40 scroll-mt-4" style={{ borderTop: `1px solid ${HAIR}` }} data-testid="letter-product">
+    <section id="produktet" className="relative pt-24 lg:pt-36 pb-24 lg:pb-36 scroll-mt-4" style={{ borderTop: `1px solid ${HAIR}` }} data-testid="letter-product">
       <Container>
-        <Grid>
-          <Aside n="02" label={c.eyebrow} testid="letter-product-aside" />
-          <Main>
-            <Statement lines={c.title} testid="letter-product-title" />
-            <Paragraphs items={c.paragraphs} testid="letter-product-p" strong={0} first={32} />
-          </Main>
-        </Grid>
+        <Head n="02" label={c.eyebrow} lines={c.title} testid="letter-product-aside" titleTestid="letter-product-title" />
+        <Col><Paragraphs items={c.paragraphs} testid="letter-product-p" strong={0} first={32} /></Col>
       </Container>
 
       {/* Scene A: oversikten, kant til kant på en mørkere flate, vinduet klippes av flaten. */}
@@ -268,14 +283,25 @@ const Built = () => {
         </Container>
       </div>
       <Container>
-        <Rise delay={0.05}><p className="flex items-baseline gap-3 text-[13.5px] leading-snug" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-stage-caption"><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>01</span><span><span className="font-medium" style={{ color: INK }}>{c.desktopCaption[0]}</span> · {c.desktopCaption[1]}</span></p></Rise>
+        <Rise delay={0.05}><p className="flex items-baseline justify-center gap-3 text-[13.5px] leading-snug text-center" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-stage-caption"><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>01</span><span><span className="font-medium" style={{ color: INK }}>{c.desktopCaption[0]}</span> · {c.desktopCaption[1]}</span></p></Rise>
 
-        {/* Scene B: de tre flatene til venstre, eierens og leietakerens telefon til høyre. */}
-        <div className="mt-24 lg:mt-32 grid lg:grid-cols-12 gap-x-8 gap-y-14 items-start">
-          <div className="lg:col-span-4 lg:sticky lg:top-28">
-            <Rows rows={c.flater} testid="letter-product-flater" numbered stacked />
+        {/* Scene B: seks punkter og integrasjonsstatus til venstre, eierens og leietakerens app til høyre – som én midtstilt blokk. */}
+        <Wide className="mt-24 lg:mt-32 grid lg:grid-cols-12 gap-x-8 gap-y-14 items-start">
+          <div className="lg:col-span-5 lg:sticky lg:top-28">
+            <Rise><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid="letter-product-list-h">{c.listH}</p></Rise>
+            <div className="mt-5"><Liste items={c.list} testid="letter-product-list" cols="grid-cols-1" /></div>
+            <Rise><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em] mt-12" style={{ margin: '48px 0 0', color: ACCENT }} data-testid="letter-product-integrasjoner-h">{c.integrasjonerH}</p></Rise>
+            <dl className="m-0 mt-5" style={{ borderBottom: `1px solid ${HAIR}` }} data-testid="letter-product-integrasjoner">
+              {c.integrasjoner.map(([status, hvem], i) => (
+                <Rise key={status} delay={0.04 + i * 0.04}><div className="grid grid-cols-[150px_minmax(0,1fr)] gap-x-6 py-3.5" style={{ borderTop: `1px solid ${HAIR}` }} data-testid={`letter-product-integrasjoner-${i + 1}`}>
+                  <dt className="text-[13px] font-medium" style={{ color: i === 0 ? INK : MUTED }}>{status}</dt>
+                  <dd className="m-0 text-[15px]" style={{ color: INK }}>{hvem}</dd>
+                </div></Rise>
+              ))}
+            </dl>
+            <Rise delay={0.1}><p className="text-[13.5px] leading-[1.6]" style={{ margin: '24px 0 0', color: MUTED }} data-testid="letter-product-note">{c.note}</p></Rise>
           </div>
-          <div className="lg:col-span-8 lg:col-start-5 grid sm:grid-cols-2 gap-x-8 gap-y-12 justify-items-center" data-testid="letter-stage-phones">
+          <div className="lg:col-span-7 lg:col-start-6 grid sm:grid-cols-2 gap-x-8 gap-y-12 justify-items-center" data-testid="letter-stage-phones">
             {[EierTelefon, LeietakerTelefon].map((Tlf, i) => (
               <Rise key={c.phoneCaptions[i]} delay={0.1 + i * 0.12} y={24} className="w-full max-w-[340px]">
                 <figure className="m-0">
@@ -285,16 +311,7 @@ const Built = () => {
               </Rise>
             ))}
           </div>
-        </div>
-
-        {/* Dette finnes i dag – kort, nummerert. */}
-        <Grid className="mt-24 lg:mt-32">
-          <Aside label={c.listH} testid="letter-product-list-aside" />
-          <Main>
-            <Liste items={c.list} testid="letter-product-list" cols="sm:grid-cols-2" />
-            <Rise delay={0.1}><p className="text-[13.5px] leading-[1.6]" style={{ margin: '24px 0 0', color: MUTED }} data-testid="letter-product-note">{c.note}</p></Rise>
-          </Main>
-        </Grid>
+        </Wide>
       </Container>
     </section>
   );
@@ -302,16 +319,12 @@ const Built = () => {
 
 /* ─── 01 Hvorfor dere ─── */
 const Why = () => {
+  const { BREV } = useInnhold();
   const c = BREV.why;
   return (
     <Section id="hvorfor" testid="letter-why" tint>
-      <Grid>
-        <Aside n="01" label={c.eyebrow} />
-        <Main>
-          <Title title={c.title} testid="letter-why-head" />
-          <Paragraphs items={c.paragraphs} testid="letter-why-p" strong={c.paragraphs.length - 1} />
-        </Main>
-      </Grid>
+      <Head n="01" label={c.eyebrow} title={c.title} titleTestid="letter-why-head" />
+      <Col><Paragraphs items={c.paragraphs} testid="letter-why-p" strong={c.paragraphs.length - 1} /></Col>
     </Section>
   );
 };
@@ -334,7 +347,7 @@ const Tabell = ({ head, rows, cols, testid, cell = defaultCell, foot }) => (
     {rows.map((r, i) => (
       <Rise key={i} delay={0.04 + i * 0.04}>
         <div className="grid gap-x-8 gap-y-1.5 py-5 sm:py-6 sm:items-baseline sm:[grid-template-columns:var(--cols)]" style={{ '--cols': cols, borderTop: `1px solid ${HAIR}` }} data-testid={`${testid}-${i + 1}`}>
-          {r.map((v, j) => <div key={j} className={j === r.length - 1 && foot ? 'sm:text-right' : ''}>{cell(j, v, r)}</div>)}
+          {r.map((v, j) => { const node = cell(j, v, r); return node == null ? null : <div key={j} className={j === r.length - 1 && foot ? 'sm:text-right' : ''}>{node}</div>; })}
         </div>
       </Rise>
     ))}
@@ -349,14 +362,14 @@ const Tabell = ({ head, rows, cols, testid, cell = defaultCell, foot }) => (
   </div>
 );
 
-/** Store tall med etikett over og forklaring under – hårlinje i blekk øverst. */
-const Tall = ({ items, testid, cols = 'sm:grid-cols-3', size = 'clamp(30px, 2.6vw, 44px)', accentFirst = false }) => (
+/** Store tall med etikett over og forklaring under – hårlinje i blekk øverst. `center` midtstiller (ett tall alene i lesekolonnen). */
+const Tall = ({ items, testid, cols = 'sm:grid-cols-3', size = 'clamp(30px, 2.6vw, 44px)', accentFirst = false, center = false }) => (
   <div className={`grid ${cols} gap-x-8 gap-y-10`} data-testid={testid}>
     {items.map(([n, label, text], i) => (
-      <Rise key={label + i} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`${testid}-${i + 1}`}>
+      <Rise key={label + i} delay={0.05 + i * 0.06}><div className={`pt-5 ${center ? 'text-center' : ''}`} style={{ borderTop: `1px solid ${INK}` }} data-testid={`${testid}-${i + 1}`}>
         <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{label}</p>
         <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '16px 0 0', color: accentFirst && i === 0 ? ACCENT : INK, fontSize: size }}>{n}</p>
-        {text && <p className="text-[15px] leading-[1.6] max-w-[36ch]" style={{ margin: '14px 0 0', color: MUTED }}>{text}</p>}
+        {text && <p className={`text-[15px] leading-[1.6] ${center ? 'max-w-[52ch] mx-auto' : 'max-w-[36ch]'}`} style={{ margin: '14px 0 0', color: MUTED }}>{text}</p>}
       </div></Rise>
     ))}
   </div>
@@ -373,144 +386,173 @@ const Liste = ({ items, testid, cols = 'sm:grid-cols-2 lg:grid-cols-3' }) => (
   </ul>
 );
 
-/** Mellomtittel i et kapittel. */
+/** Mellomtittel i et kapittel – midtstilt, som kickeren. Avstanden ligger på wrapperen – `.brev p` nullstiller margin på avsnitt. */
 const Sub = ({ children, testid, mt = 'mt-20 lg:mt-24' }) => (
-  <Rise><p className={`${mt} text-[12.5px] font-semibold uppercase tracking-[0.14em]`} style={{ margin: 0, color: ACCENT }} data-testid={testid}>{children}</p></Rise>
+  <Rise className={`${mt} text-center`}><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid={testid}>{children}</p></Rise>
 );
 
 /* ─── 03 Målbildet: én setning om hva vi bygger, og prinsippet som bærer resten. ─── */
 const Target = () => {
+  const { BREV } = useInnhold();
   const c = BREV.target;
   return (
     <Section id="maalbildet" testid="letter-target">
-      <Grid>
-        <Aside n="03" label={c.eyebrow} />
-        <Main>
-          <Title title={c.title} testid="letter-target-title" />
-          <Paragraphs items={c.paragraphs} testid="letter-target-p" />
-          <Rise delay={0.1}><p className="font-medium leading-[1.3] tracking-[-0.02em] max-w-[40ch] pt-8 text-balance" style={{ margin: '44px 0 0', color: INK, borderTop: `1px solid ${INK}`, fontSize: 'clamp(22px, 2vw, 30px)' }} data-testid="letter-target-principle">{c.principle}</p></Rise>
-        </Main>
-      </Grid>
+      <Head n="03" label={c.eyebrow} title={c.title} titleTestid="letter-target-title" />
+      <Col>
+        <Paragraphs items={c.paragraphs} testid="letter-target-p" />
+        <Rise delay={0.1}><p className="font-medium leading-[1.3] tracking-[-0.02em] pt-8 text-center text-balance" style={{ margin: '44px 0 0', color: INK, borderTop: `1px solid ${INK}`, fontSize: 'clamp(22px, 2vw, 30px)' }} data-testid="letter-target-principle">{c.principle}</p></Rise>
+      </Col>
     </Section>
   );
 };
 
-/* ─── 05 Hvorfor nå – et tydelig mellomsteg. Ryggraden i caset: bygget → nå → neste runde, tre typer risiko, og hva som står på spill. ─── */
+/* ─── 05 Hvorfor nå – investeringstesen: bygget → nå → neste runde, og fire typer risiko med status. ─── */
 const Naa = () => {
+  const { BREV } = useInnhold();
   const c = BREV.naa;
   const dot = (i) => (i === 0 ? { background: INK } : i === 1 ? { background: ACCENT, boxShadow: '0 0 0 4px rgba(127,63,191,0.18)' } : { background: TINT, border: `1.5px solid ${INK}` });
   return (
     <Section id="hvorfor-naa" testid="letter-naa" tint>
-      <Grid>
-        <Aside n="05" label={c.eyebrow} />
-        <Main>
-          <Statement lines={c.title} testid="letter-naa-title" />
-          <Paragraphs items={c.paragraphs} testid="letter-naa-p" strong={c.paragraphs.length - 1} first={32} />
+      <Head n="05" label={c.eyebrow} lines={c.title} titleTestid="letter-naa-title" />
+      <Col><Paragraphs items={c.paragraphs} testid="letter-naa-p" strong={c.paragraphs.length - 1} first={32} /></Col>
 
-          {/* Bygget → nå → neste runde: tre kolonner på én linje, prikken viser hvor vi står. */}
-          <div className="mt-16 lg:mt-20 grid sm:grid-cols-3 gap-x-8 gap-y-12" data-testid="letter-naa-steg">
-            {c.steg.map(([h, label, text], i) => (
-              <Rise key={h} delay={0.05 + i * 0.08}><div className="relative pt-7" style={{ borderTop: `1px solid ${i === 1 ? ACCENT : INK}` }} data-testid={`letter-naa-steg-${i + 1}`}>
-                <span aria-hidden className="absolute left-0 -top-[5px] w-[9px] h-[9px] rounded-full" style={dot(i)} />
-                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: i === 1 ? ACCENT : MUTED }}>{label}</p>
-                <p className="font-medium tracking-[-0.03em] leading-none" style={{ margin: '14px 0 0', color: INK, fontSize: T.num }}>{h}</p>
-                <p className="text-[15px] leading-[1.6] max-w-[32ch]" style={{ margin: '14px 0 0', color: MUTED }}>{text}</p>
-              </div></Rise>
-            ))}
-          </div>
+      {/* Bygget → nå → neste runde: tre kolonner på én linje, prikken viser hvor vi står. */}
+      <Wide className="mt-16 lg:mt-20 grid sm:grid-cols-3 gap-x-8 gap-y-12" testid="letter-naa-steg">
+        {c.steg.map(([h, label, text], i) => (
+          <Rise key={h} delay={0.05 + i * 0.08}><div className="relative pt-7" style={{ borderTop: `1px solid ${i === 1 ? ACCENT : INK}` }} data-testid={`letter-naa-steg-${i + 1}`}>
+            <span aria-hidden className="absolute left-0 -top-[5px] w-[9px] h-[9px] rounded-full" style={dot(i)} />
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: i === 1 ? ACCENT : MUTED }}>{label}</p>
+            <p className="font-medium tracking-[-0.03em] leading-none" style={{ margin: '14px 0 0', color: INK, fontSize: T.num }}>{h}</p>
+            <p className="text-[15px] leading-[1.6] max-w-[32ch]" style={{ margin: '14px 0 0', color: MUTED }}>{text}</p>
+          </div></Rise>
+        ))}
+      </Wide>
 
-          <Paragraphs items={c.mellom} testid="letter-naa-mellom" strong={c.mellom.length - 1} first={72} />
-
-          <Sub testid="letter-naa-risiko-h">{c.risikoH}</Sub>
-          <div className="mt-8 grid sm:grid-cols-3 gap-x-8 gap-y-10" data-testid="letter-naa-risiko">
-            {c.risiko.map(([type, status, text], i) => {
-              const last = i === c.risiko.length - 1;
-              return (
-                <Rise key={type} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-naa-risiko-${i + 1}`}>
-                  <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{type}</p>
-                  <p className="font-medium tracking-[-0.025em] leading-[1.1]" style={{ margin: '14px 0 0', color: last ? ACCENT : INK, fontSize: 'clamp(21px, 1.8vw, 27px)' }}>{status}</p>
-                  <p className="text-[15px] leading-[1.6] max-w-[30ch]" style={{ margin: '12px 0 0', color: MUTED }}>{text}</p>
-                </div></Rise>
-              );
-            })}
-          </div>
-
-          <Paragraphs items={c.verdi} testid="letter-naa-verdi" strong={c.verdi.length - 1} first={72} />
-        </Main>
-      </Grid>
+      {/* Fire typer risiko – de to første er tatt ned, de to siste er det kapitalen skal løse. */}
+      <Sub testid="letter-naa-risiko-h">{c.risikoH}</Sub>
+      <Wide className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10" testid="letter-naa-risiko">
+        {c.risiko.map(([type, status, text], i) => {
+          const aapen = i >= 2;
+          return (
+            <Rise key={type} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${aapen ? ACCENT : INK}` }} data-testid={`letter-naa-risiko-${i + 1}`}>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{type}</p>
+              <p className="font-medium tracking-[-0.025em] leading-[1.1]" style={{ margin: '14px 0 0', color: aapen ? ACCENT : INK, fontSize: 'clamp(20px, 1.5vw, 24px)' }}>{status}</p>
+              <p className="text-[14.5px] leading-[1.6]" style={{ margin: '12px 0 0', color: MUTED }}>{text}</p>
+            </div></Rise>
+          );
+        })}
+      </Wide>
     </Section>
   );
 };
 
-/* ─── 06 Roadmap: fire faser med ett etterprøvbart resultat hver, og to mål ─── */
+/* ─── 06 Neste verdiløft: én–to eksterne piloter – det emisjonen skal oppnå, beviset før neste runde, og hva det betyr ─── */
+const Loft = () => {
+  const { BREV } = useInnhold();
+  const c = BREV.loft;
+  return (
+    <Section id="verdiloft" testid="letter-loft">
+      <Head n="06" label={c.eyebrow} lines={c.title} titleTestid="letter-loft-title" />
+      <Col>
+        <Paragraphs items={c.paragraphs} testid="letter-loft-p" strong={c.paragraphs.length - 1} first={32} />
+        <Sub testid="letter-loft-bevis-h">{c.bevisH}</Sub>
+        <div className="mt-6"><Liste items={c.bevis} testid="letter-loft-bevis" cols="grid-cols-1" /></div>
+        <Paragraphs items={c.verdi} testid="letter-loft-verdi" strong={0} first={56} />
+      </Col>
+    </Section>
+  );
+};
+
+/* ─── 07 Roadmap: fire faser – periode, fokus (med hva som bygges) og resultatet som må være sant før vi går videre ─── */
+const roadmapCell = (i, v, r) => {
+  if (i === 0) return <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap" style={{ color: ACCENT }}>{v}</span>;
+  if (i === 1) return (
+    <span className="block">
+      <span className="block text-[17px] font-medium leading-snug" style={{ color: INK }}>{v}</span>
+      <span className="block text-[14px] leading-[1.55] max-w-[34ch]" style={{ margin: '8px 0 0', color: MUTED }}>{r[2]}</span>
+    </span>
+  );
+  if (i === 2) return null;
+  return <span className="text-[15.5px] leading-[1.6] max-w-[46ch]" style={{ color: INK }}>{v}</span>;
+};
+
 const Roadmap = () => {
+  const { BREV } = useInnhold();
   const c = BREV.roadmap;
   return (
-    <Section id="roadmap" testid="letter-roadmap">
-      <Grid>
-        <Aside n="06" label={c.eyebrow} />
-        <Main>
-          <Statement lines={c.title} testid="letter-roadmap-title" />
-          <Paragraphs items={c.paragraphs} testid="letter-roadmap-p" strong={0} first={32} />
-          <div className="mt-14 lg:mt-16"><Tabell head={c.head} rows={c.faser} cols="120px 200px minmax(0,1fr)" testid="letter-roadmap-faser" /></div>
+    <Section id="roadmap" testid="letter-roadmap" tint>
+      <Head n="07" label={c.eyebrow} lines={c.title} titleTestid="letter-roadmap-title" />
+      <Col><Paragraphs items={c.paragraphs} testid="letter-roadmap-p" strong={0} first={32} /></Col>
+      <Wide className="mt-14 lg:mt-16"><Tabell head={c.head} rows={c.faser} cols="110px minmax(0,1fr) minmax(0,1.15fr)" cell={roadmapCell} testid="letter-roadmap-faser" /></Wide>
 
-          <div className="mt-20 lg:mt-24 grid sm:grid-cols-2 gap-x-8 gap-y-12" data-testid="letter-roadmap-maal">
-            {c.maal.map(([h, t], i) => (
-              <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-roadmap-maal-${i + 1}`}>
-                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }}>{h}</p>
-                <p className="font-medium tracking-[-0.025em] leading-[1.25]" style={{ margin: '16px 0 0', color: INK, fontSize: 'clamp(21px, 1.8vw, 27px)' }}>{t}</p>
-              </div></Rise>
-            ))}
-          </div>
-          <Rise delay={0.1}><p className="text-[18px] lg:text-[19px] font-medium leading-[1.5] tracking-[-0.01em] max-w-[52ch]" style={{ margin: '32px 0 0', color: MUTED }} data-testid="letter-roadmap-maal-note">{c.maalNote}</p></Rise>
-        </Main>
-      </Grid>
+      <Wide className="mt-20 lg:mt-24 grid sm:grid-cols-2 gap-x-8 gap-y-12" testid="letter-roadmap-maal">
+        {c.maal.map(([h, t], i) => (
+          <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-roadmap-maal-${i + 1}`}>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }}>{h}</p>
+            <p className="font-medium tracking-[-0.025em] leading-[1.25]" style={{ margin: '16px 0 0', color: INK, fontSize: 'clamp(21px, 1.8vw, 27px)' }}>{t}</p>
+          </div></Rise>
+        ))}
+      </Wide>
+      <Wide><Rise delay={0.1}><p className="text-[18px] lg:text-[19px] font-medium leading-[1.5] tracking-[-0.01em] max-w-[52ch]" style={{ margin: '32px 0 0', color: MUTED }} data-testid="letter-roadmap-maal-note">{c.maalNote}</p></Rise></Wide>
     </Section>
   );
 };
 
-/* ─── 08 Budsjett og kapitalbruk: budsjettet, basisbehovet, forholdet til emisjonen, kapital koblet til milepæler ─── */
+/* ─── 09 Kapitalplan: budsjettet og basisbehovet, hva emisjonen skal finansiere, use of funds, og runway-regnestykket ─── */
 const budsjettCell = (i, v) => (i === 0
   ? <span className="text-[17px] font-medium leading-snug" style={{ color: INK }}>{v}</span>
   : <span className="text-[17px] tabular-nums whitespace-nowrap" style={{ color: MUTED }}>{v}</span>);
 
 const Kapital = () => {
+  const { BREV } = useInnhold();
   const c = BREV.kapital;
   return (
     <Section id="kapital" testid="letter-kapital">
-      <Grid>
-        <Aside n="08" label={c.eyebrow} />
-        <Main>
-          <Title title={c.title} testid="letter-kapital-head" />
-          <Paragraphs items={c.paragraphs} testid="letter-kapital-p" strong={0} />
-          <div className="mt-14 lg:mt-16 grid lg:grid-cols-[minmax(0,1fr)_240px] gap-x-12 gap-y-12 items-start">
-            <Tabell head={c.head} rows={c.budsjett} cols="minmax(0,1fr) 180px" cell={budsjettCell} foot={c.total} testid="letter-budsjett" />
-            <Rise delay={0.15}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-budsjett-basis">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{c.basis[1]}</p>
-              <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '16px 0 0', color: ACCENT, fontSize: 'clamp(36px, 3vw, 52px)' }}>{c.basis[0]}</p>
-              <p className="text-[15px] leading-[1.6]" style={{ margin: '14px 0 0', color: MUTED }}>{c.basis[2]}</p>
-            </div></Rise>
-          </div>
+      <Head n="09" label={c.eyebrow} title={c.title} titleTestid="letter-kapital-head" />
+      <Col><Paragraphs items={c.paragraphs} testid="letter-kapital-p" strong={0} /></Col>
+      <Wide className="mt-14 lg:mt-16 grid lg:grid-cols-[minmax(0,1fr)_240px] gap-x-12 gap-y-12 items-start">
+        <Tabell head={c.head} rows={c.budsjett} cols="minmax(0,1fr) 180px" cell={budsjettCell} foot={c.total} testid="letter-budsjett" />
+        <Rise delay={0.15}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-budsjett-basis">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{c.basis[1]}</p>
+          <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '16px 0 0', color: ACCENT, fontSize: 'clamp(36px, 3vw, 52px)' }}>{c.basis[0]}</p>
+          <p className="text-[15px] leading-[1.6]" style={{ margin: '14px 0 0', color: MUTED }}>{c.basis[2]}</p>
+        </div></Rise>
+      </Wide>
+      <Wide><Rise delay={0.1}><p className="text-[14.5px] leading-[1.6] max-w-[62ch]" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-budsjett-note">{c.budsjettNote}</p></Rise></Wide>
 
-          <Paragraphs items={c.forhold} testid="letter-kapital-forhold" strong={0} first={80} />
+      {/* Hva emisjonen skal finansiere – boksen som kobler beløpet til milepælen. */}
+      <Mid>
+        <Rise delay={0.1}><div className="mt-16 lg:mt-20 rounded-[20px] px-6 py-7 lg:px-10 lg:py-9" style={{ background: INK, color: '#fff' }} data-testid="letter-kapital-brudd">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.accent }}>{c.bruddH}</p>
+          {c.brudd.map((p, i) => <p key={i} className="text-[17px] lg:text-[18px] leading-[1.6]" style={{ margin: i === 0 ? '16px 0 0' : '12px 0 0', color: i === 0 ? '#fff' : D.muted, fontWeight: i === 0 ? 500 : 400 }}>{p}</p>)}
+        </div></Rise>
+      </Mid>
 
-          <div className="mt-14 lg:mt-16 grid sm:grid-cols-2 gap-x-8 gap-y-12" data-testid="letter-kapital-kobling">
-            {c.kobling.map(([h, items], i) => (
-              <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-kapital-kobling-${i + 1}`}>
-                <p className="font-medium tracking-[-0.025em] leading-[1.15]" style={{ margin: 0, color: i === 0 ? ACCENT : INK, fontSize: 'clamp(22px, 1.9vw, 28px)' }}>{h}</p>
-                <ul className="list-none p-0 m-0 mt-6">
-                  {items.map((t) => <li key={t} className="flex items-center gap-3 py-2.5 text-[16px]" style={{ color: INK }}><ArrowRight className="w-4 h-4 shrink-0" style={{ color: MUTED }} strokeWidth={1.75} />{t}</li>)}
-                </ul>
-              </div></Rise>
-            ))}
-          </div>
-        </Main>
-      </Grid>
+      <Wide className="mt-14 lg:mt-16 grid sm:grid-cols-2 gap-x-8 gap-y-12" testid="letter-kapital-kobling">
+        {c.kobling.map(([h, items], i) => (
+          <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-kapital-kobling-${i + 1}`}>
+            <p className="font-medium tracking-[-0.025em] leading-[1.15]" style={{ margin: 0, color: i === 0 ? ACCENT : INK, fontSize: 'clamp(22px, 1.9vw, 28px)' }}>{h}</p>
+            <ul className="list-none p-0 m-0 mt-6">
+              {items.map((t) => <li key={t} className="flex items-center gap-3 py-2.5 text-[16px]" style={{ color: INK }}><ArrowRight className="w-4 h-4 shrink-0" style={{ color: MUTED }} strokeWidth={1.75} />{t}</li>)}
+            </ul>
+          </div></Rise>
+        ))}
+      </Wide>
+
+      {/* Runway-regnestykket – som en oppstilling midt på siden, uten tall vi ikke har vist. */}
+      <Sub testid="letter-kapital-runway-h">{c.runwayH}</Sub>
+      <dl className="m-0 mt-6 max-w-[520px] mx-auto" style={{ borderBottom: `1px solid ${INK}` }} data-testid="letter-kapital-runway">
+        {c.runway.map((r, i) => {
+          const sum = i === c.runway.length - 1;
+          return <Rise key={r} delay={0.03 + i * 0.03}><div className="py-3 text-[16px] tabular-nums" style={{ borderTop: `1px solid ${sum ? INK : HAIR}`, color: sum ? INK : MUTED, fontWeight: sum ? 500 : 400 }} data-testid={`letter-kapital-runway-${i + 1}`}>{r}</div></Rise>;
+        })}
+      </dl>
+      <Rise delay={0.1}><p className="text-[14.5px] leading-[1.6] max-w-[520px] mx-auto" style={{ margin: '20px auto 0', color: MUTED }} data-testid="letter-kapital-runway-note">{c.runwayNote}</p></Rise>
     </Section>
   );
 };
 
-/* ─── 07 Forretningsmodell og økonomisk potensial: prising, regnestykket, base case, den større muligheten ─── */
+/* ─── 08 Forretningsmodell: prising, hva en enhet er, regnestykket, fem tilsvarende kunder, base case ─── */
 const baseCell = (i, v) => {
   if (i === 0) return <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap" style={{ color: ACCENT }}>{v}</span>;
   if (i === 1) return <span className="text-[16px] leading-snug" style={{ color: MUTED }}>{v}</span>;
@@ -518,168 +560,160 @@ const baseCell = (i, v) => {
 };
 
 const Modell = () => {
+  const { BREV } = useInnhold();
   const c = BREV.modell;
   return (
     <Section id="modell" testid="letter-modell" tint>
-      <Grid>
-        <Aside n="07" label={c.eyebrow} />
-        <Main>
-          <Statement lines={c.title} testid="letter-modell-title" />
-          <Paragraphs items={c.paragraphs} testid="letter-modell-p" strong={0} first={32} />
+      <Head n="08" label={c.eyebrow} lines={c.title} titleTestid="letter-modell-title" />
+      <Col>
+        <Paragraphs items={c.paragraphs} testid="letter-modell-p" strong={0} first={32} />
+        <Rise delay={0.08}><p className="text-[15.5px] leading-[1.65] pt-5" style={{ margin: '28px 0 0', color: INK, borderTop: `1px solid ${HAIR}` }} data-testid="letter-modell-enhet">{c.enhet}</p></Rise>
+      </Col>
 
-          {/* Regnestykket: 1 000 enheter → 130 000 kr/mnd → 1,56 MNOK ARR */}
-          <Sub testid="letter-modell-eksempel-h" mt="mt-16 lg:mt-20">{c.eksempelH}</Sub>
-          <Rise delay={0.1}><div className="mt-6 grid sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-6 gap-y-3 rounded-[20px] px-6 py-6 lg:px-8" style={{ background: '#fbfaf8', border: `1px solid ${HAIR}` }} data-testid="letter-modell-eksempel">
-            <span className="text-[17px] font-medium" style={{ color: INK }}>{c.eksempel[0]}</span>
-            <span className="text-[15.5px] tabular-nums" style={{ color: MUTED }}>{c.eksempel[1]}</span>
-            <span className="inline-flex items-center gap-3 text-[17px] font-medium tabular-nums" style={{ color: INK }}><ArrowRight className="w-4 h-4 hidden sm:block" style={{ color: ACCENT }} strokeWidth={1.75} />{c.eksempel[2]}</span>
-            <span className="inline-flex items-center gap-3 text-[17px] font-medium tabular-nums" style={{ color: ACCENT }}><ArrowRight className="w-4 h-4 hidden sm:block" style={{ color: ACCENT }} strokeWidth={1.75} />{c.eksempel[3]}</span>
-          </div></Rise>
+      {/* Regnestykket: 1 000 enheter → 130 000 kr/mnd → 1,56 MNOK ARR – og fem tilsvarende kunder */}
+      <Sub testid="letter-modell-eksempel-h" mt="mt-16 lg:mt-20">{c.eksempelH}</Sub>
+      <Mid>
+        <Rise delay={0.1}><div className="mt-6 grid sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-6 gap-y-3 rounded-[20px] px-6 py-6 lg:px-8" style={{ background: '#fbfaf8', border: `1px solid ${HAIR}` }} data-testid="letter-modell-eksempel">
+          <span className="text-[17px] font-medium" style={{ color: INK }}>{c.eksempel[0]}</span>
+          <span className="text-[15.5px] tabular-nums" style={{ color: MUTED }}>{c.eksempel[1]}</span>
+          <span className="inline-flex items-center gap-3 text-[17px] font-medium tabular-nums" style={{ color: INK }}><ArrowRight className="w-4 h-4 hidden sm:block" style={{ color: ACCENT }} strokeWidth={1.75} />{c.eksempel[2]}</span>
+          <span className="inline-flex items-center gap-3 text-[17px] font-medium tabular-nums" style={{ color: ACCENT }}><ArrowRight className="w-4 h-4 hidden sm:block" style={{ color: ACCENT }} strokeWidth={1.75} />{c.eksempel[3]}</span>
+        </div></Rise>
+      </Mid>
+      <Col className="mt-10"><Tall items={[c.skalering]} cols="grid-cols-1" center testid="letter-modell-skalering" /></Col>
 
-          <Sub testid="letter-modell-base-h">{c.baseH}</Sub>
-          <div className="mt-8"><Tabell head={c.baseHead} rows={c.base} cols="120px minmax(0,1fr) 260px" cell={baseCell} testid="letter-modell-base" /></div>
-          <div className="mt-12"><Tall items={[c.baseResult]} cols="sm:grid-cols-[minmax(0,1fr)]" testid="letter-modell-baseresult" /></div>
-
-          <Sub testid="letter-modell-skalering-h">{c.skaleringH}</Sub>
-          <div className="mt-8"><Tall items={c.skalering} testid="letter-modell-skalering" /></div>
-        </Main>
-      </Grid>
+      <Sub testid="letter-modell-base-h">{c.baseH}</Sub>
+      <Wide className="mt-8"><Tabell head={c.baseHead} rows={c.base} cols="120px minmax(0,1fr) 260px" cell={baseCell} testid="letter-modell-base" /></Wide>
+      <Col className="mt-12"><Tall items={[c.baseResult]} cols="grid-cols-1" center testid="letter-modell-baseresult" /></Col>
     </Section>
   );
 };
 
 /* ─── 04 Tech og forvaltning ─── */
 const Structure = () => {
+  const { BREV } = useInnhold();
   const c = BREV.structure;
   return (
     <Section id="struktur" testid="letter-structure" tint>
-      <Grid>
-        <Aside n="04" label={c.eyebrow} />
-        <Main>
-          <Title title={c.title} testid="letter-structure-head" />
-          <Paragraphs items={c.paragraphs} testid="letter-structure-p" strong={c.paragraphs.length - 1} />
-          <div className="mt-14 lg:mt-16"><Rows rows={c.rows} testid="letter-structure-rows" /></div>
-        </Main>
-      </Grid>
+      <Head n="04" label={c.eyebrow} title={c.title} titleTestid="letter-structure-head" />
+      <Col><Paragraphs items={c.paragraphs} testid="letter-structure-p" strong={c.paragraphs.length - 1} /></Col>
+      <Mid className="mt-14 lg:mt-16"><Rows rows={c.rows} testid="letter-structure-rows" /></Mid>
     </Section>
   );
 };
 
-/* ─── 09 Laget fremover: tre rader – de som leder i dag, de to vi inviterer inn, og ressursene rundt. Hver rad har sin kicker og hårlinje. ─── */
+/* ─── 10 Laget og rollen deres: tre rader med portretter – så hva vi ser for oss, som hårlinjerader ─── */
 const Team = () => {
+  const { BREV, TEAM, TEAM_GRUPPER } = useInnhold();
   const t = BREV.team;
   return (
     <Section id="teamet" testid="letter-team-section" tint>
-      <Grid>
-        <Aside n="09" label={t.eyebrow} />
-        <Main>
-          <Title title={t.title} testid="letter-team-head" />
-          <Paragraphs items={t.paragraphs} testid="letter-team-p" strong={t.paragraphs.length - 1} />
-        </Main>
-      </Grid>
-      <div className="mt-16 lg:mt-20 space-y-16 lg:space-y-20" data-testid="letter-team">
+      <Head n="10" label={t.eyebrow} title={t.title} titleTestid="letter-team-head" />
+      <Col><Paragraphs items={t.paragraphs} testid="letter-team-p" strong={t.paragraphs.length - 1} /></Col>
+      <Wide className="mt-16 lg:mt-20 space-y-16 lg:space-y-20" testid="letter-team">
         {TEAM_GRUPPER.map((g, gi) => {
           const invited = g.key === 'inviteres';
           return (
             <div key={g.key} data-testid={`letter-team-group-${g.key}`}>
-              <Rise><p className="pb-4 text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: invited ? ACCENT : MUTED, borderBottom: `1px solid ${invited ? ACCENT : INK}` }} data-testid={`letter-team-group-${g.key}-label`}>{g.label}</p></Rise>
-              <div className="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-12 lg:gap-x-8">
+              <Rise><p className="pb-4 text-center text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: invited ? ACCENT : MUTED, borderBottom: `1px solid ${invited ? ACCENT : INK}` }} data-testid={`letter-team-group-${g.key}-label`}>{g.label}</p></Rise>
+              <div className="mt-10 flex flex-wrap justify-center gap-x-5 gap-y-12 lg:gap-x-8">
                 {TEAM.filter((p) => p.gruppe === g.key).map((p, i) => (
-                  <Rise key={p.key} delay={0.06 + (gi + i) * 0.05} y={22}><Person name={p.name} role={p.role} img={p.img} pos={p.pos} initials={p.initials} bio={p.bio} invited={!!p.invited} sizes="(max-width: 1024px) 42vw, 280px" testid={`letter-team-${p.key}`} /></Rise>
+                  <Rise key={p.key} delay={0.06 + (gi + i) * 0.05} y={22} className="w-[calc(50%-10px)] lg:w-[236px]"><Person name={p.name} role={p.role} img={p.img} pos={p.pos} initials={p.initials} bio={p.bio} invited={!!p.invited} sizes="(max-width: 1024px) 42vw, 280px" testid={`letter-team-${p.key}`} /></Rise>
                 ))}
               </div>
             </div>
           );
         })}
+      </Wide>
+      <div className="mt-24 lg:mt-28">
+        <Kicker label={t.rolleH} testid="letter-owners-aside" />
+        <Col className="mt-8"><Rise><p className={BODY} style={{ margin: 0, color: INK }} data-testid="letter-owners-lead">{t.rolleLead}</p></Rise></Col>
+        <Mid className="mt-12"><Rows rows={t.rolle} testid="letter-owners-rows" /></Mid>
       </div>
     </Section>
   );
 };
 
-/* ─── 10 Tilbudet: term sheet på mørk flate – så eierskap uten vesting, og den formelle gjennomføringen ─── */
+/* ─── 11 Tilbudet: term sheet på mørk flate (investering · pre · post · eierandel), én linje om aksjene, så gjennomføringen ─── */
 const Offer = () => {
+  const { BREV } = useInnhold();
   const c = BREV.offer;
-  const v = c.noVesting;
   return (
     <Section id="tilbudet" testid="letter-offer" dark>
-      <Grid>
-        <Aside n="10" label={c.eyebrow} dark />
-        <Main>
-          <Title title={c.title} testid="letter-offer-head" dark />
-          <Paragraphs items={c.paragraphs} testid="letter-offer-p" strong={0} dark />
-        </Main>
-      </Grid>
-      <Rise delay={0.1} y={22}>
-        <div className="mt-14 lg:mt-20 grid sm:grid-cols-2 lg:grid-cols-4 rounded-[28px] overflow-hidden" style={{ border: `1px solid ${D.hair}`, background: D.fill }} data-testid="letter-offer-terms">
-          {c.terms.map(([n, label, l], i) => (
-            <div key={label} className={`p-7 lg:p-9 border-white/[0.12] ${['', 'max-sm:border-t sm:border-l', 'max-sm:border-t sm:border-t lg:border-t-0 lg:border-l', 'max-sm:border-t sm:border-l sm:border-t lg:border-t-0'][i]}`} data-testid={`letter-offer-term-${i + 1}`}>
-              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.muted }}>{label}</p>
-              <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '22px 0 0', color: i === 0 ? D.accent : D.ink, fontSize: 'clamp(30px, 2.3vw, 42px)' }}>{n}</p>
-              <p className="text-[14.5px] leading-snug" style={{ margin: '14px 0 0', color: D.muted }}>{l}</p>
-            </div>
-          ))}
-        </div>
-      </Rise>
+      <Head n="11" label={c.eyebrow} title={c.title} titleTestid="letter-offer-head" dark />
+      <Col><Paragraphs items={c.paragraphs} testid="letter-offer-p" strong={0} dark /></Col>
+      <Wide>
+        <Rise delay={0.1} y={22}>
+          <div className="mt-14 lg:mt-20 grid sm:grid-cols-2 lg:grid-cols-4 rounded-[28px] overflow-hidden" style={{ border: `1px solid ${D.hair}`, background: D.fill }} data-testid="letter-offer-terms">
+            {c.terms.map(([n, label, l], i) => (
+              <div key={label} className={`p-7 lg:p-9 border-white/[0.12] ${['', 'max-sm:border-t sm:border-l', 'max-sm:border-t sm:border-t lg:border-t-0 lg:border-l', 'max-sm:border-t sm:border-l sm:border-t lg:border-t-0'][i]}`} data-testid={`letter-offer-term-${i + 1}`}>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.muted }}>{label}</p>
+                <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '22px 0 0', color: i === 0 ? D.accent : D.ink, fontSize: 'clamp(28px, 2.1vw, 38px)' }}>{n}</p>
+                <p className="text-[14.5px] leading-snug" style={{ margin: '14px 0 0', color: D.muted }}>{l}</p>
+              </div>
+            ))}
+          </div>
+        </Rise>
+      </Wide>
+      <Col className="mt-10"><Rise delay={0.1}><p className="text-[15.5px] leading-[1.65] text-center" style={{ margin: 0, color: D.muted }} data-testid="letter-offer-aksjer">{c.aksjer}</p></Rise></Col>
 
-      <Grid className="mt-24 lg:mt-28">
-        <Aside label={v.h} dark />
-        <Main><Paragraphs items={v.paragraphs} testid="letter-novesting-p" strong={0} dark first={0} /></Main>
-      </Grid>
-
-      <Grid className="mt-24 lg:mt-28">
-        <Aside label={c.formal.h} dark />
-        <Main>
-          <Rise><p className={BODY} style={{ margin: 0, color: D.muted }} data-testid="letter-formal-text">{c.formal.text}</p></Rise>
-          <Rise delay={0.06}><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: '40px 0 0', color: D.accent }}>{c.formal.listH}</p></Rise>
-          <ul className="list-none p-0 m-0 mt-5 grid sm:grid-cols-2 gap-x-8" style={{ borderBottom: `1px solid ${D.hair}` }} data-testid="letter-formal-list">
+      <div className="mt-24 lg:mt-28">
+        <Kicker label={c.formal.h} dark />
+        <Col className="mt-8"><Rise><p className={BODY} style={{ margin: 0, color: D.ink }} data-testid="letter-formal-text">{c.formal.text}</p></Rise></Col>
+        <Rise delay={0.06} className="mt-12 text-center"><p className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: D.accent }}>{c.formal.listH}</p></Rise>
+        <Mid>
+          <ul className="list-none p-0 m-0 mt-6 grid sm:grid-cols-2 gap-x-8" style={{ borderBottom: `1px solid ${D.hair}` }} data-testid="letter-formal-list">
             {c.formal.list.map((e, i) => (
               <Rise key={e} delay={0.06 + i * 0.03}><li className="py-3.5 text-[15.5px] leading-[1.5] flex items-start gap-3" style={{ color: D.ink, borderTop: `1px solid ${D.hair}` }} data-testid={`letter-formal-item-${i + 1}`}>
                 <span className="mt-[9px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: D.accent }} />{e}
               </li></Rise>
             ))}
           </ul>
-          <Rise delay={0.1}><p className="text-[15.5px] leading-[1.65] max-w-[62ch]" style={{ margin: '24px 0 0', color: D.muted }} data-testid="letter-formal-closing">{c.formal.closing}</p></Rise>
-        </Main>
-      </Grid>
-    </Section>
-  );
-};
-
-/* ─── 11 Rollen deres ─── */
-const Owners = () => {
-  const c = BREV.owners;
-  return (
-    <Section id="medeiere" testid="letter-owners">
-      <Grid>
-        <Aside n="11" label={c.eyebrow} />
-        <Main>
-          <Title title={c.title} testid="letter-owners-head" />
-          <Paragraphs items={c.paragraphs} testid="letter-owners-p" strong={0} />
-          <div className="mt-14 lg:mt-16"><Rows rows={c.rows} testid="letter-owners-rows" /></div>
-        </Main>
-      </Grid>
+        </Mid>
+        <Col><Rise delay={0.1}><p className="text-[15.5px] leading-[1.65]" style={{ margin: '24px 0 0', color: D.muted }} data-testid="letter-formal-closing">{c.formal.closing}</p></Rise></Col>
+      </div>
     </Section>
   );
 };
 
 /* ─── 12 Hva skjer herfra? Personlig avslutning. Ingen skjema. ─── */
 const Next = () => {
+  const { BREV } = useInnhold();
   const c = BREV.next;
   return (
-    <Section id="videre" testid="letter-next" tint>
-      <Grid>
-        <Aside n="12" label={c.eyebrow} />
-        <Main>
-          <Title title={c.title} testid="letter-next-head" />
-          <Paragraphs items={c.paragraphs} testid="letter-next-p" strong={1} />
-          <Rise delay={0.1}><p className="text-[19px] lg:text-[21px] font-medium" style={{ margin: '36px 0 0', color: INK }} data-testid="letter-closing">{BREV.signature}</p></Rise>
-        </Main>
-      </Grid>
+    <Section id="videre" testid="letter-next">
+      <Head n="12" label={c.eyebrow} title={c.title} titleTestid="letter-next-head" />
+      <Col>
+        <Paragraphs items={c.paragraphs} testid="letter-next-p" strong={1} />
+        <Rise delay={0.1}><p className="text-[19px] lg:text-[21px] font-medium" style={{ margin: '36px 0 0', color: INK }} data-testid="letter-closing">{BREV.signature}</p></Rise>
+      </Col>
     </Section>
   );
 };
 
-export default function Brev({ start }) {
+const Footer = () => {
+  const { BREV, INV } = useInnhold();
+  return (
+    <footer className="pt-16 pb-10 lg:pt-20 lg:pb-12" style={{ borderTop: `1px solid ${HAIR}` }} data-testid="letter-footer">
+      <Container>
+        <div className="flex flex-col items-center text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt={BREV.brand} className="h-[30px] lg:h-[36px] w-auto" data-testid="letter-footer-logo" />
+          <p className="text-[15px] leading-[1.6] max-w-[44ch]" style={{ margin: '22px 0 0', color: MUTED }} data-testid="letter-noindex">{BREV.footer}</p>
+          <span className="mt-8 text-[15px]" style={{ color: INK }}>{BREV.footerFrom}</span>
+          <span className="mt-2 text-[13px]" style={{ color: MUTED }}>{INV.toLong} · {INV.date}</span>
+        </div>
+        <div className="mt-12 pt-6 flex items-center justify-between text-[12.5px] brev-print-hide" style={{ borderTop: `1px solid ${HAIR}`, color: MUTED }}>
+          <span className="inline-flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT }} />{BREV.eyebrow} · {BREV.confidential}</span>
+          <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="inline-flex items-center gap-1.5 font-medium transition-colors hover:text-[#0a0a0a]" style={{ color: MUTED }} data-testid="letter-footer-top">{BREV.footerTop}<ArrowUp className="w-3.5 h-3.5" strokeWidth={2} /></button>
+        </div>
+      </Container>
+    </footer>
+  );
+};
+
+/** Invitasjonen. `innhold` kommer fra server-komponenten (app/samarbeid/page.js) – kun når sesjonen er gyldig. */
+export default function Brev({ start, innhold }) {
   /* /samarbeid/<id> hopper til kapittelet. */
   useEffect(() => {
     if (!start) return undefined;
@@ -689,43 +723,28 @@ export default function Brev({ start }) {
     return () => window.clearTimeout(t);
   }, [start]);
 
+  if (!innhold) return null;
   return (
-    <div className="brev min-h-screen" style={{ background: PAPER, color: INK }} data-testid="invitation-page">
-      <Progress />
-      <Header />
-      <Cover />
-      <Letter />
-      <Why />
-      <Built />
-      <Target />
-      <Structure />
-      <Naa />
-      <Roadmap />
-      <Modell />
-      <Kapital />
-      <Team />
-      <Offer />
-      <Owners />
-      <Next />
-      <footer className="pt-16 pb-10 lg:pt-20 lg:pb-12" style={{ borderTop: `1px solid ${HAIR}` }} data-testid="letter-footer">
-        <Container>
-          <div className="grid lg:grid-cols-12 gap-x-8 gap-y-10 items-end">
-            <div className="lg:col-span-7">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/digihome-wordmark-ink.svg" alt={BREV.brand} className="h-[30px] lg:h-[36px] w-auto" data-testid="letter-footer-logo" />
-              <p className="text-[15px] leading-[1.6] max-w-[44ch]" style={{ margin: '22px 0 0', color: MUTED }} data-testid="letter-noindex">{BREV.footer}</p>
-            </div>
-            <div className="lg:col-span-5 lg:col-start-8 flex flex-col lg:items-end gap-4">
-              <span className="text-[15px]" style={{ color: INK }}>{BREV.footerFrom}</span>
-              <span className="text-[13px]" style={{ color: MUTED }}>{INV.toLong} · {INV.date}</span>
-            </div>
-          </div>
-          <div className="mt-12 pt-6 flex items-center justify-between text-[12.5px] brev-print-hide" style={{ borderTop: `1px solid ${HAIR}`, color: MUTED }}>
-            <span className="inline-flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT }} />{BREV.eyebrow} · {BREV.confidential}</span>
-            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="inline-flex items-center gap-1.5 font-medium transition-colors hover:text-[#0a0a0a]" style={{ color: MUTED }} data-testid="letter-footer-top">{BREV.footerTop}<ArrowUp className="w-3.5 h-3.5" strokeWidth={2} /></button>
-          </div>
-        </Container>
-      </footer>
-    </div>
+    <InnholdCtx.Provider value={innhold}>
+      <div className="brev min-h-screen" style={{ background: PAPER, color: INK }} data-testid="invitation-page">
+        <Progress />
+        <Header />
+        <Cover />
+        <Letter />
+        <Why />
+        <Built />
+        <Target />
+        <Structure />
+        <Naa />
+        <Loft />
+        <Roadmap />
+        <Modell />
+        <Kapital />
+        <Team />
+        <Offer />
+        <Next />
+        <Footer />
+      </div>
+    </InnholdCtx.Provider>
   );
 }

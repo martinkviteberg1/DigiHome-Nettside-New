@@ -20,13 +20,13 @@ from dotenv import load_dotenv
 load_dotenv('/app/.env')
 
 BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://saker-hub.preview.emergentagent.com')
-DECK_PASSWORD_RAW = os.getenv('DECK_PASSWORD', '')
+DECK_PASSWORD_RAW = os.getenv('SAMARBEID_PASSWORD', '')  # eget secret for /samarbeid – ingen fallback til DECK_PASSWORD
 # Strip quotes from password (as per test instructions)
 DECK_PASSWORD = DECK_PASSWORD_RAW.strip('"').strip("'")
 
 print(f"=== SAMARBEID-DECK PASSORDGATE TEST ===")
 print(f"Base URL: {BASE_URL}")
-print(f"Password (from DECK_PASSWORD): {DECK_PASSWORD}")
+print("Password configured:", "yes" if DECK_PASSWORD else "no")
 print()
 
 # Test results tracking
