@@ -10,7 +10,7 @@ import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
 import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
 import { DASH_H, DASH_W, EierTelefon, LeietakerTelefon, Oversikt, Skaler } from './produkt';
 
-/* Innholdet (INV, AVSENDERE, TEAM, TEAM_GRUPPER, BREV, DEAL, PORTEFOLJE) deles via kontekst – satt én gang i <Brev>. */
+/* Innholdet (INV, AVSENDERE, TEAM, BREV, DEAL, PORTEFOLJE) deles via kontekst – satt én gang i <Brev>. */
 const InnholdCtx = createContext(null);
 const useInnhold = () => useContext(InnholdCtx);
 
@@ -295,7 +295,6 @@ const Built = () => {
                 </div></Rise>
               ))}
             </dl>
-            <Rise delay={0.1}><p className="text-[13.5px] leading-[1.6]" style={{ margin: '24px 0 0', color: MUTED }} data-testid="letter-product-note">{c.note}</p></Rise>
           </div>
           <div className="lg:col-span-7 lg:col-start-6 grid sm:grid-cols-2 gap-x-8 gap-y-12 justify-items-center" data-testid="letter-stage-phones">
             {[EierTelefon, LeietakerTelefon].map((Tlf, i) => (
@@ -610,7 +609,7 @@ const Structure = () => {
 
 /* ─── 09 Laget – og rollen vi ser for oss: tre rader med portretter, så hva det innebærer i praksis (radene vises bare om de finnes) ─── */
 const Team = () => {
-  const { BREV, TEAM, TEAM_GRUPPER } = useInnhold();
+  const { BREV, TEAM } = useInnhold();
   const t = BREV.team;
   return (
     <Section id="teamet" testid="letter-team-section" tint>
@@ -621,20 +620,13 @@ const Team = () => {
           <Paragraphs items={t.paragraphs} testid="letter-team-p" strong={t.paragraphs.length - 1} />
         </Main>
       </Grid>
-      <div className="mt-16 lg:mt-20 space-y-16 lg:space-y-20" data-testid="letter-team">
-        {TEAM_GRUPPER.map((g, gi) => {
-          const invited = g.key === 'inviteres';
-          return (
-            <div key={g.key} data-testid={`letter-team-group-${g.key}`}>
-              <Rise><p className="pb-4 text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: invited ? ACCENT : MUTED, borderBottom: `1px solid ${invited ? ACCENT : INK}` }} data-testid={`letter-team-group-${g.key}-label`}>{g.label}</p></Rise>
-              <div className="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-12 lg:gap-x-8">
-                {TEAM.filter((p) => p.gruppe === g.key).map((p, i) => (
-                  <Rise key={p.key} delay={0.06 + (gi + i) * 0.05} y={22}><Person name={p.name} role={p.role} img={p.img} pos={p.pos} initials={p.initials} bio={p.bio} invited={!!p.invited} sizes="(max-width: 1024px) 42vw, 280px" testid={`letter-team-${p.key}`} /></Rise>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+      {/* Hele laget i ett rutenett – ingen grupper eller etiketter. De to vi inviterer inn er markert med lilla ring (invited). */}
+      <div className="mt-16 lg:mt-20 pt-10" style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-team">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-12 lg:gap-x-8">
+          {TEAM.map((p, i) => (
+            <Rise key={p.key} delay={0.06 + i * 0.05} y={22}><Person name={p.name} role={p.role} img={p.img} pos={p.pos} initials={p.initials} bio={p.bio} invited={!!p.invited} sizes="(max-width: 1024px) 42vw, 280px" testid={`letter-team-${p.key}`} /></Rise>
+          ))}
+        </div>
       </div>
       <Grid className="mt-24 lg:mt-28">
         <Aside label={t.rolleH} testid="letter-owners-aside" />

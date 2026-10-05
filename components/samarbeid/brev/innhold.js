@@ -49,27 +49,21 @@ export const INV = {
 };
 
 export const AVSENDERE = [
-  { key: 'erik', name: 'Erik Hoffmann-Dahl', role: 'Styreleder · advokat', img: '/team-erik.webp', pos: '50% 18%' },
+  { key: 'erik', name: 'Erik Hoffmann-Dahl', role: 'Styreleder · Chief Legal Officer', img: '/team-erik.webp', pos: '50% 18%' },
   { key: 'sarah', name: 'Sarah Sleeman', role: 'Daglig leder · styremedlem', img: '/brand/sarah-sleeman-1000.webp', pos: '50% 28%' },
   { key: 'martin', name: 'Martin C. Kviteberg', role: 'Produktsjef · styremedlem', img: '/v4/martin.webp', pos: '50% 22%' },
 ];
 
-/** Laget fremover – tre rader: de som leder i dag, de to vi inviterer inn, og ressursene rundt. Rekkefølgen i radene er rekkefølgen på siden. */
-export const TEAM_GRUPPER = [
-  { key: 'ledelse', label: 'Daglig ledelse og styreleder' },
-  { key: 'inviteres', label: 'Inviteres inn som medeiere' },
-  { key: 'rundt', label: 'Utvikling og styre' },
-];
-
-/** Ingen definerte roller på Martin og Øyvind før de har investert – bare hva vi særlig ser for oss at de kan være sparringspartnere på. */
+/** Hele laget i ett rutenett (rekkefølgen her er rekkefølgen på siden): daglig leder, produktsjef, styreleder/CLO, styremedlem – så de to vi inviterer inn – og utvikling.
+ *  Ingen definerte roller på Martin og Øyvind før de har investert – bare hva vi særlig ser for oss at de kan være sparringspartnere på. */
 export const TEAM = [
-  { key: 'sarah', gruppe: 'ledelse', name: 'Sarah Sleeman', role: 'Daglig leder', img: '/brand/sarah-sleeman-1000.webp', pos: '50% 28%', bio: 'Eiendomsmegler med seks år i DNB. Leder kundeakkvisisjon og forvaltning, og sitter tett på kundene og den operative driften.' },
-  { key: 'martin', gruppe: 'ledelse', name: 'Martin C. Kviteberg', role: 'Produktsjef', img: '/v4/martin.webp', pos: '50% 22%', bio: 'Grunnla BnbSpesialisten og jobbet ti år i Adonis frem mot exit. Leder produkt- og teknologiutviklingen i DigiHome.' },
-  { key: 'erik', gruppe: 'ledelse', name: 'Erik Hoffmann-Dahl', role: 'Styreleder', img: '/team-erik.webp', pos: '50% 18%', bio: 'Advokat og partner i Hoffmann Thinn. Har bistått med den selskapsmessige og juridiske strukturen rundt DigiHome.' },
-  { key: 'vikesland', gruppe: 'inviteres', name: 'Martin Vikesland', role: 'Inviteres som medeier', img: '/team/martin-vikesland.webp', pos: '50% 30%', invited: true, bio: 'Vi ser særlig for oss Martin som en viktig sparringspartner på økonomiske modeller, kapitalplan, finansiering og senere investordialog.' },
-  { key: 'hoel', gruppe: 'inviteres', name: 'Øyvind Storli Hoel', role: 'Inviteres som medeier', img: '/team/oyvind-storli-hoel.webp', pos: '50% 22%', invited: true, bio: 'Vi ser særlig for oss Øyvind som en viktig sparringspartner på marked, produkt og kommersialisering, med erfaring og relasjoner inn mot eiendomsaktørene vi ønsker å nå.' },
-  { key: 'kevin', gruppe: 'rundt', name: 'Kevin Ha', role: 'Utvikling', img: '/team/kevin-ai-v2.webp', pos: '50% 22%', bio: 'Bistår Martin i utviklingen av plattformen. Siviløkonom fra NHH med kompetanse innen KI-drevet utvikling og automatisering.' },
-  { key: 'jens', gruppe: 'rundt', name: 'Jens-Petter Glittenberg', role: 'Styremedlem', img: '/team/jens-petter-glittenberg.webp', pos: '50% 28%', bio: 'Medgründer av Meltwater og styreleder i CARN Capital. Erfaring med internasjonal skalering, kapitalmarked og selskapsbygging.' },
+  { key: 'sarah', name: 'Sarah Sleeman', role: 'Daglig leder', img: '/brand/sarah-sleeman-1000.webp', pos: '50% 28%', bio: 'Eiendomsmegler med seks år i DNB. Leder kundeakkvisisjon og forvaltning, og sitter tett på kundene og den operative driften.' },
+  { key: 'martin', name: 'Martin C. Kviteberg', role: 'Produktsjef', img: '/v4/martin.webp', pos: '50% 22%', bio: 'Grunnla BnbSpesialisten og jobbet ti år i Adonis frem mot exit. Leder produkt- og teknologiutviklingen i DigiHome.' },
+  { key: 'erik', name: 'Erik Hoffmann-Dahl', role: 'Styreleder · Chief Legal Officer', img: '/team-erik.webp', pos: '50% 18%', bio: 'Advokat og partner i Hoffmann Thinn. Har tegnet selskapsstrukturen.' },
+  { key: 'jens', name: 'Jens-Petter Glittenberg', role: 'Styremedlem', img: '/team/jens-petter-glittenberg.webp', pos: '50% 28%', bio: 'Medgründer av Meltwater og styreleder i CARN Capital. Erfaring med internasjonal skalering, kapitalmarked og selskapsbygging.' },
+  { key: 'vikesland', name: 'Martin Vikesland', role: 'Inviteres inn som medeier', img: '/team/martin-vikesland.webp', pos: '50% 30%', invited: true, bio: 'Vi ser særlig for oss Martin som en viktig sparringspartner på økonomiske modeller, kapitalplan, finansiering og senere investordialog.' },
+  { key: 'hoel', name: 'Øyvind Storli Hoel', role: 'Inviteres inn som medeier', img: '/team/oyvind-storli-hoel.webp', pos: '50% 22%', invited: true, bio: 'Vi ser særlig for oss Øyvind som en viktig sparringspartner på marked, produkt og kommersialisering, med erfaring og relasjoner inn mot eiendomsaktørene vi ønsker å nå.' },
+  { key: 'kevin', name: 'Kevin Ha', role: 'Utvikling', img: '/team/kevin-ai-v2.webp', pos: '50% 22%', bio: 'Bistår Martin i utviklingen av plattformen. Siviløkonom fra NHH med kompetanse innen KI-drevet utvikling og automatisering.' },
 ];
 
 export const BREV = {
@@ -109,7 +103,7 @@ export const BREV = {
     eyebrow: 'Laget – og rollen vi ser for oss',
     title: 'Vi mener dere vil styrke laget vesentlig.',
     paragraphs: [
-      'I dag har vi kompetanse innen produkt, teknologi, forvaltning, juss og selskapsbygging. Når DigiHome skal ut til større eksterne kunder og etter hvert hente mer kapital, vil vi styrke laget på to områder: finansiell sparring rundt økonomi, kapital og investorer – og kommersiell innsikt og relasjoner inn mot eiendomsselskapene vi ønsker som kunder.',
+      'I dag har vi produkt, teknologi, forvaltning, juss og selskapsbygging rundt bordet. Når DigiHome skal ut til større eksterne kunder og etter hvert hente mer kapital, vil vi styrke laget på to områder: finansiell sparring rundt økonomi, kapital og investorer – og kommersiell innsikt og relasjoner inn mot eiendomsselskapene vi ønsker som kunder.',
       'Det er her vi mener dere kan tilføre mye. Derfor ønsker vi dere ikke bare inn som investorer, men med rundt bordet i utviklingen av selskapet.',
     ],
     rolleH: 'Hva innebærer det i praksis?',
@@ -141,7 +135,6 @@ export const BREV = {
       ['I drift', 'FINN · BankID · Keyhole'],
       ['Under implementering', 'PowerOffice Go · Fiken'],
     ],
-    note: 'Skjermbildene er gjenskapt fra plattformen slik den står i dag og inneholder illustrative data.',
   },
 
   /* ── 03 Hvor vi skal ── */
@@ -323,4 +316,4 @@ export const BREV = {
 };
 
 /** Alt server-komponenten sender til brevet – i ett objekt. */
-export const INNHOLD = { INV, AVSENDERE, TEAM, TEAM_GRUPPER, BREV, DEAL, PORTEFOLJE };
+export const INNHOLD = { INV, AVSENDERE, TEAM, BREV, DEAL, PORTEFOLJE };
