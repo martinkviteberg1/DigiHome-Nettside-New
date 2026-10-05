@@ -280,7 +280,6 @@ const Built = () => {
         </Container>
       </div>
       <Container>
-        <Rise delay={0.05}><p className="flex items-baseline gap-3 text-[13.5px] leading-snug" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-stage-caption"><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>01</span><span><span className="font-medium" style={{ color: INK }}>{c.desktopCaption[0]}</span> · {c.desktopCaption[1]}</span></p></Rise>
 
         {/* Scene B: seks punkter og integrasjonsstatus til venstre, eierens og leietakerens app til høyre. */}
         <div className="mt-24 lg:mt-32 grid lg:grid-cols-12 gap-x-8 gap-y-14 items-start">
@@ -303,7 +302,7 @@ const Built = () => {
               <Rise key={c.phoneCaptions[i]} delay={0.1 + i * 0.12} y={24} className="w-full max-w-[340px]">
                 <figure className="m-0">
                   <Tlf testid={`letter-phone-${i + 1}`} />
-                  <figcaption className="mt-5 flex items-baseline justify-center gap-3 text-[13.5px]" style={{ color: MUTED }}><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>0{i + 2}</span><span className="font-medium" style={{ color: INK }}>{c.phoneCaptions[i]}</span></figcaption>
+                  <figcaption className="mt-5 flex items-baseline justify-center gap-3 text-[13.5px]" style={{ color: MUTED }}><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>0{i + 1}</span><span className="font-medium" style={{ color: INK }}>{c.phoneCaptions[i]}</span></figcaption>
                 </figure>
               </Rise>
             ))}
