@@ -2,19 +2,22 @@
 /** Privat invitasjon til Martin og Øyvind – et personlig brev fra Erik, Sarah og Martin, ikke en landingsside. /samarbeid, ikke søkbar.
  *  Layouten er tatt fra AFA-repoets InvitationPage: redaksjonelt rutenett (12 kolonner), smal klebrig venstremarg med kapittelnummer og
  *  kicker – innholdet i de ni til høyre. De store utsagnene fyller kolonnen (målt), tilbudet står som et term sheet på mørk flate.
- *  Ni kapitler, ingen skjema – bare «ring oss». Innholdet bor i ./innhold.js. */
+ *  Rekkefølgen er investeringscasets: brevet rett under brevhodet → hvorfor dere → hva som er bygget → målbildet → Tech og forvaltning →
+ *  hvorfor nå → roadmap → forretningsmodell → budsjett → laget → tilbudet → rollen → neste steg. Innholdet bor i ./innhold.js. */
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
-import { ArrowDown, ArrowUp } from 'lucide-react';
-import { AVSENDERE, BREV, INV, TEAM } from './innhold';
-import { DASH_H, DASH_W, EierTelefon, KpiStripe, LeietakerTelefon, Oversikt, SakerListe, Skaler, VenterKort } from './produkt';
+import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
+import { AVSENDERE, BREV, INV, TEAM, TEAM_GRUPPER } from './innhold';
+import { DASH_H, DASH_W, EierTelefon, LeietakerTelefon, Oversikt, Skaler } from './produkt';
 
 const EASE = [0.16, 1, 0.3, 1];
 const PAPER = '#fafaf9';
 const INK = '#0a0a0a';
 const MUTED = '#77777d';
 const ACCENT = '#7F3FBF';
-const FILL = '#f4f4f2';
+/* To flater i tillegg til papiret: FILL for små flater (plassholdere, bokser), TINT for hele seksjoner – tydelig nok til at kapitlene skiller seg fra hverandre. */
+const FILL = '#f1f0ed';
+const TINT = '#efede8';
 const HAIR = 'rgba(10,10,10,0.08)';
 const D = { ink: '#ffffff', muted: 'rgba(255,255,255,0.6)', accent: '#D496FF', hair: 'rgba(255,255,255,0.12)', fill: 'rgba(255,255,255,0.04)' };
 const L = { ink: INK, muted: MUTED, accent: ACCENT, hair: HAIR, fill: FILL };
@@ -110,15 +113,15 @@ const Statement = ({ lines, testid, dark }) => {
 };
 
 const Section = ({ children, testid, tint = false, dark = false, id }) => (
-  <section id={id} className="relative py-28 lg:py-40 scroll-mt-4" style={{ background: dark ? INK : tint ? FILL : undefined }} data-testid={testid}>
+  <section id={id} className="relative py-28 lg:py-40 scroll-mt-4" style={{ background: dark ? INK : tint ? TINT : undefined, borderTop: dark ? undefined : `1px solid ${HAIR}` }} data-testid={testid}>
     <Container><div className="relative">{children}</div></Container>
   </section>
 );
 
-/** Ett portrett med navn og rolle under. Sort-hvitt i ro; farge når du nærmer deg. Uten bilde: initialer på dempet flate. */
+/** Ett portrett med navn og rolle under. Sort-hvitt i ro; farge når du nærmer deg. De som inviteres inn får en lilla ramme og rollen i lilla. Uten bilde: initialer. */
 const Person = ({ name, role, img, pos, sizes, testid, initials, bio, invited }) => (
   <figure className="m-0 group" data-testid={testid}>
-    <div className="relative rounded-[24px] overflow-hidden" style={{ aspectRatio: '4 / 5', background: invited ? 'rgba(127,63,191,0.06)' : FILL, border: invited ? `1px dashed rgba(127,63,191,0.35)` : undefined }}>
+    <div className="relative rounded-[24px] overflow-hidden" style={{ aspectRatio: '4 / 5', background: invited ? 'rgba(127,63,191,0.06)' : FILL, boxShadow: invited ? `0 0 0 1.5px ${ACCENT}` : undefined }}>
       {img ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={img} sizes={sizes} alt={name} loading="eager" decoding="async" className="absolute inset-0 w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-[1.03] transition-[filter,transform] duration-700 ease-out" style={{ objectPosition: pos }} />
@@ -134,18 +137,6 @@ const Person = ({ name, role, img, pos, sizes, testid, initials, bio, invited })
       {bio && <span className="block text-[13px] leading-[1.5]" style={{ margin: '8px 0 0', color: MUTED }}>{bio}</span>}
     </figcaption>
   </figure>
-);
-
-/** Kolonner med hårlinje over: stort ord, kort forklaring. */
-const Cells = ({ items, testid, size = T.cell }) => (
-  <div className="grid sm:grid-cols-3 gap-x-8 gap-y-10" data-testid={testid}>
-    {items.map(([t, d], i) => (
-      <Rise key={t} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`${testid}-${i + 1}`}>
-        <p className="font-medium tracking-[-0.025em] leading-[1.05]" style={{ margin: 0, color: INK, fontSize: size }}>{t}</p>
-        <p className="text-[15px] leading-[1.6] max-w-[30ch]" style={{ margin: '12px 0 0', color: MUTED }}>{d}</p>
-      </div></Rise>
-    ))}
-  </div>
 );
 
 /** Hårlinjerader: tittel + tekst, valgfritt nummerert. `stacked` legger teksten under tittelen (smale kolonner). */
@@ -188,17 +179,7 @@ const Header = () => (
   </header>
 );
 
-/** De tre som skriver – små, overlappende portretter. */
-const Avatarer = ({ size = 36, testid }) => (
-  <span className="inline-flex items-center shrink-0" data-testid={testid}>
-    {AVSENDERE.map((p, i) => (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img key={p.key} src={p.img} alt={p.name} className="rounded-full object-cover" style={{ width: size, height: size, objectPosition: p.pos, marginLeft: i ? -size * 0.3 : 0, boxShadow: `0 0 0 2px ${PAPER}`, background: FILL }} />
-    ))}
-  </span>
-);
-
-/* ─── Heroen: brevhodet i full bredde – og de tre som skriver, store. Produktet kommer i seksjonen under. ─── */
+/* ─── Heroen: brevhodet i full bredde – og de tre som skriver, store. Brevet kommer rett under. ─── */
 const Cover = () => {
   const toLetter = () => { const el = document.getElementById('brevet'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const fade = (delay) => ({ initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 1, delay, ease: EASE } });
@@ -235,60 +216,9 @@ const Cover = () => {
   );
 };
 
-/* ─── Seksjon 2 – Produktet: forvalterens oversikt i full bredde på en rolig flate; så de to telefonene ved siden av de tre flatene. ─── */
-const Produkt = () => {
-  const c = BREV.produkt;
-  return (
-    <section id="produktet" className="relative mt-24 lg:mt-36 scroll-mt-4" data-testid="letter-product">
-      <Container>
-        <div style={{ borderTop: `1px solid ${HAIR}` }} />
-        <Grid className="pt-16 lg:pt-24">
-          <Aside label={c.eyebrow} testid="letter-product-aside" />
-          <Main>
-            <Statement lines={c.title} testid="letter-product-title" />
-            <Rise delay={0.1}><p className={BODY} style={{ margin: '28px 0 0', color: MUTED }} data-testid="letter-product-lede">{c.lede}</p></Rise>
-          </Main>
-        </Grid>
-      </Container>
-
-      {/* Scene A: oversikten, kant til kant på canvas-2, vinduet klippes av flaten. */}
-      <div className="mt-16 lg:mt-24 pt-10 sm:pt-14 lg:pt-20" style={{ background: FILL }} data-testid="letter-product-stage">
-        <Container>
-          <Rise y={28} className="rounded-t-[14px] lg:rounded-t-[18px] overflow-hidden h-[300px] sm:h-[480px] lg:h-[760px]" style={{ border: `1px solid ${HAIR}`, borderBottom: 0, boxShadow: '0 48px 96px -56px rgba(10,10,10,0.4)' }} testid="letter-stage-desktop">
-            {/* På mobil: zoomet inn på arbeidsflaten (railen skjult), så teksten er lesbar. */}
-            <div className="sm:hidden"><Skaler w={640} h={DASH_H}><div style={{ marginLeft: -236 }}><Oversikt /></div></Skaler></div>
-            <div className="hidden sm:block"><Skaler w={DASH_W} h={DASH_H}><Oversikt /></Skaler></div>
-          </Rise>
-        </Container>
-      </div>
-      <Container>
-        <Rise delay={0.05}><p className="mt-5 flex items-baseline gap-3 text-[13.5px] leading-snug" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-stage-caption"><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>01</span><span><span className="font-medium" style={{ color: INK }}>{c.desktopCaption[0]}</span> · {c.desktopCaption[1]}</span></p></Rise>
-
-        {/* Scene B: de tre flatene til venstre, eierens og leietakerens telefon til høyre. */}
-        <div className="mt-24 lg:mt-32 grid lg:grid-cols-12 gap-x-8 gap-y-14 items-start">
-          <div className="lg:col-span-4 lg:sticky lg:top-28">
-            <Rows rows={c.flater} testid="letter-product-flater" numbered stacked />
-            <Rise delay={0.1}><p className="text-[13.5px] leading-[1.6]" style={{ margin: '24px 0 0', color: MUTED }} data-testid="letter-product-note">{c.note}</p></Rise>
-          </div>
-          <div className="lg:col-span-8 lg:col-start-5 grid sm:grid-cols-2 gap-x-8 gap-y-12 justify-items-center" data-testid="letter-stage-phones">
-            {[EierTelefon, LeietakerTelefon].map((Tlf, i) => (
-              <Rise key={c.phoneCaptions[i]} delay={0.1 + i * 0.12} y={24} className="w-full max-w-[340px]">
-                <figure className="m-0">
-                  <Tlf testid={`letter-phone-${i + 1}`} />
-                  <figcaption className="mt-5 flex items-baseline justify-center gap-3 text-[13.5px]" style={{ color: MUTED }}><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>0{i + 2}</span><span className="font-medium" style={{ color: INK }}>{c.phoneCaptions[i]}</span></figcaption>
-                </figure>
-              </Rise>
-            ))}
-          </div>
-        </div>
-      </Container>
-    </section>
-  );
-};
-
-/* ─── Brevet: marginalia til venstre, teksten i sju kolonner. Signert bare «Erik, Sarah og Martin». ─── */
+/* ─── Brevet: rett under brevhodet. Marginalia til venstre, teksten i sju kolonner. Signert bare «Erik, Sarah og Martin» – ingen miniatyrbilder. ─── */
 const Letter = () => (
-  <section id="brevet" className="pt-20 lg:pt-28 scroll-mt-4" data-testid="letter-body">
+  <section id="brevet" className="pt-20 lg:pt-28 pb-28 lg:pb-40 scroll-mt-4" data-testid="letter-body">
     <Container>
       <div style={{ borderTop: `1px solid ${HAIR}` }} />
       <Grid className="pt-16 lg:pt-24">
@@ -305,73 +235,313 @@ const Letter = () => (
             const strong = i === BREV.letterStrong;
             return <Rise key={i} delay={0.04}><p className="text-[19px] lg:text-[21px] leading-[1.6] text-pretty" style={{ margin: i === 0 ? '32px 0 0' : '22px 0 0', color: i === BREV.letter.length - 1 ? MUTED : INK, fontWeight: strong ? 500 : 400 }} data-testid={`letter-p-${i + 1}`}>{p}</p></Rise>;
           })}
-          <Rise delay={0.05}><p className="text-[19px] lg:text-[21px] font-medium inline-flex items-center gap-4" style={{ margin: '40px 0 0', color: INK }} data-testid="letter-signature"><Avatarer size={40} />{BREV.signature}</p></Rise>
+          <Rise delay={0.05}><p className="text-[19px] lg:text-[21px] font-medium" style={{ margin: '40px 0 0', color: INK }} data-testid="letter-signature">{BREV.signature}</p></Rise>
         </div>
       </Grid>
     </Container>
   </section>
 );
 
+/* ─── 02 Hva som er bygget: forvalterens oversikt i full bredde på en rolig flate; så de to telefonene ved siden av de tre flatene; til slutt det som finnes i dag. ─── */
+const Built = () => {
+  const c = BREV.built;
+  return (
+    <section id="produktet" className="relative pt-28 lg:pt-40 pb-28 lg:pb-40 scroll-mt-4" style={{ borderTop: `1px solid ${HAIR}` }} data-testid="letter-product">
+      <Container>
+        <Grid>
+          <Aside n="02" label={c.eyebrow} testid="letter-product-aside" />
+          <Main>
+            <Statement lines={c.title} testid="letter-product-title" />
+            <Paragraphs items={c.paragraphs} testid="letter-product-p" strong={0} first={32} />
+          </Main>
+        </Grid>
+      </Container>
+
+      {/* Scene A: oversikten, kant til kant på en mørkere flate, vinduet klippes av flaten. */}
+      <div className="mt-16 lg:mt-24 pt-10 sm:pt-14 lg:pt-20" style={{ background: TINT }} data-testid="letter-product-stage">
+        <Container>
+          <Rise y={28} className="rounded-t-[14px] lg:rounded-t-[18px] overflow-hidden h-[300px] sm:h-[480px] lg:h-[760px]" style={{ border: `1px solid ${HAIR}`, borderBottom: 0, boxShadow: '0 48px 96px -56px rgba(10,10,10,0.4)' }} testid="letter-stage-desktop">
+            {/* På mobil: zoomet inn på arbeidsflaten (railen skjult), så teksten er lesbar. */}
+            <div className="sm:hidden"><Skaler w={640} h={DASH_H}><div style={{ marginLeft: -236 }}><Oversikt /></div></Skaler></div>
+            <div className="hidden sm:block"><Skaler w={DASH_W} h={DASH_H}><Oversikt /></Skaler></div>
+          </Rise>
+        </Container>
+      </div>
+      <Container>
+        <Rise delay={0.05}><p className="flex items-baseline gap-3 text-[13.5px] leading-snug" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-stage-caption"><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>01</span><span><span className="font-medium" style={{ color: INK }}>{c.desktopCaption[0]}</span> · {c.desktopCaption[1]}</span></p></Rise>
+
+        {/* Scene B: de tre flatene til venstre, eierens og leietakerens telefon til høyre. */}
+        <div className="mt-24 lg:mt-32 grid lg:grid-cols-12 gap-x-8 gap-y-14 items-start">
+          <div className="lg:col-span-4 lg:sticky lg:top-28">
+            <Rows rows={c.flater} testid="letter-product-flater" numbered stacked />
+          </div>
+          <div className="lg:col-span-8 lg:col-start-5 grid sm:grid-cols-2 gap-x-8 gap-y-12 justify-items-center" data-testid="letter-stage-phones">
+            {[EierTelefon, LeietakerTelefon].map((Tlf, i) => (
+              <Rise key={c.phoneCaptions[i]} delay={0.1 + i * 0.12} y={24} className="w-full max-w-[340px]">
+                <figure className="m-0">
+                  <Tlf testid={`letter-phone-${i + 1}`} />
+                  <figcaption className="mt-5 flex items-baseline justify-center gap-3 text-[13.5px]" style={{ color: MUTED }}><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>0{i + 2}</span><span className="font-medium" style={{ color: INK }}>{c.phoneCaptions[i]}</span></figcaption>
+                </figure>
+              </Rise>
+            ))}
+          </div>
+        </div>
+
+        {/* Dette finnes i dag – kort, nummerert. */}
+        <Grid className="mt-24 lg:mt-32">
+          <Aside label={c.listH} testid="letter-product-list-aside" />
+          <Main>
+            <Liste items={c.list} testid="letter-product-list" cols="sm:grid-cols-2" />
+            <Rise delay={0.1}><p className="text-[13.5px] leading-[1.6]" style={{ margin: '24px 0 0', color: MUTED }} data-testid="letter-product-note">{c.note}</p></Rise>
+          </Main>
+        </Grid>
+      </Container>
+    </section>
+  );
+};
+
 /* ─── 01 Hvorfor dere ─── */
 const Why = () => {
   const c = BREV.why;
   return (
-    <Section id="hvorfor" testid="letter-why">
+    <Section id="hvorfor" testid="letter-why" tint>
       <Grid>
         <Aside n="01" label={c.eyebrow} />
         <Main>
           <Title title={c.title} testid="letter-why-head" />
           <Paragraphs items={c.paragraphs} testid="letter-why-p" strong={c.paragraphs.length - 1} />
-          <div className="mt-16"><Cells items={c.points} testid="letter-why-points" size="clamp(20px, 1.6vw, 26px)" /></div>
         </Main>
       </Grid>
     </Section>
   );
 };
 
-/* ─── 02 Målbildet: utsagnet, så Bergen · Oslo · Utleiemegleren · internasjonalt ─── */
+/* ─── Byggeklosser for investeringscaset: tabell med hårlinjer, store tall, punktliste ─── */
+
+/** Hårlinjetabell. `cols` er grid-template-columns fra sm og opp; under stables cellene. `cell(i, v)` tegner cellen. */
+const defaultCell = (i, v) => {
+  if (i === 0) return <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap" style={{ color: ACCENT }}>{v}</span>;
+  if (i === 1) return <span className="text-[17px] font-medium leading-snug" style={{ color: INK }}>{v}</span>;
+  return <span className="text-[15.5px] leading-[1.6] max-w-[52ch]" style={{ color: MUTED }}>{v}</span>;
+};
+const Tabell = ({ head, rows, cols, testid, cell = defaultCell, foot }) => (
+  <div data-testid={testid} style={{ borderBottom: `1px solid ${HAIR}` }}>
+    {head && (
+      <div className="hidden sm:grid gap-x-8 pb-3 text-[11px] font-semibold uppercase tracking-[0.1em] sm:[grid-template-columns:var(--cols)]" style={{ '--cols': cols, color: MUTED }}>
+        {head.map((h, i) => <span key={h} className={i === head.length - 1 && foot ? 'text-right' : ''}>{h}</span>)}
+      </div>
+    )}
+    {rows.map((r, i) => (
+      <Rise key={i} delay={0.04 + i * 0.04}>
+        <div className="grid gap-x-8 gap-y-1.5 py-5 sm:py-6 sm:items-baseline sm:[grid-template-columns:var(--cols)]" style={{ '--cols': cols, borderTop: `1px solid ${HAIR}` }} data-testid={`${testid}-${i + 1}`}>
+          {r.map((v, j) => <div key={j} className={j === r.length - 1 && foot ? 'sm:text-right' : ''}>{cell(j, v, r)}</div>)}
+        </div>
+      </Rise>
+    ))}
+    {foot && (
+      <Rise delay={0.2}>
+        <div className="grid gap-x-8 py-5 sm:py-6 sm:items-baseline sm:[grid-template-columns:var(--cols)]" style={{ '--cols': cols, borderTop: `1px solid ${INK}` }} data-testid={`${testid}-total`}>
+          <span className="text-[17px] font-medium" style={{ color: INK }}>{foot[0]}</span>
+          <span className="text-[17px] font-medium tabular-nums sm:text-right" style={{ color: INK }}>{foot[1]}</span>
+        </div>
+      </Rise>
+    )}
+  </div>
+);
+
+/** Store tall med etikett over og forklaring under – hårlinje i blekk øverst. */
+const Tall = ({ items, testid, cols = 'sm:grid-cols-3', size = 'clamp(30px, 2.6vw, 44px)', accentFirst = false }) => (
+  <div className={`grid ${cols} gap-x-8 gap-y-10`} data-testid={testid}>
+    {items.map(([n, label, text], i) => (
+      <Rise key={label + i} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`${testid}-${i + 1}`}>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{label}</p>
+        <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '16px 0 0', color: accentFirst && i === 0 ? ACCENT : INK, fontSize: size }}>{n}</p>
+        {text && <p className="text-[15px] leading-[1.6] max-w-[36ch]" style={{ margin: '14px 0 0', color: MUTED }}>{text}</p>}
+      </div></Rise>
+    ))}
+  </div>
+);
+
+/** Kort punktliste i kolonner – nummerert, hårlinje over hvert punkt. */
+const Liste = ({ items, testid, cols = 'sm:grid-cols-2 lg:grid-cols-3' }) => (
+  <ul className={`list-none p-0 m-0 grid ${cols} gap-x-8`} data-testid={testid}>
+    {items.map((t, i) => (
+      <Rise key={t} delay={0.03 + i * 0.03}><li className="flex items-baseline gap-3 py-3.5 text-[15.5px] leading-[1.45]" style={{ borderTop: `1px solid ${HAIR}`, color: INK }} data-testid={`${testid}-${i + 1}`}>
+        <span className="text-[11px] font-semibold tabular-nums shrink-0" style={{ color: ACCENT }}>{String(i + 1).padStart(2, '0')}</span>{t}
+      </li></Rise>
+    ))}
+  </ul>
+);
+
+/** Mellomtittel i et kapittel. */
+const Sub = ({ children, testid, mt = 'mt-20 lg:mt-24' }) => (
+  <Rise><p className={`${mt} text-[12.5px] font-semibold uppercase tracking-[0.14em]`} style={{ margin: 0, color: ACCENT }} data-testid={testid}>{children}</p></Rise>
+);
+
+/* ─── 03 Målbildet: én setning om hva vi bygger, og prinsippet som bærer resten. ─── */
 const Target = () => {
   const c = BREV.target;
   return (
-    <Section id="malbildet" testid="letter-target" tint>
+    <Section id="maalbildet" testid="letter-target">
       <Grid>
-        <Aside n="02" label={c.eyebrow} />
+        <Aside n="03" label={c.eyebrow} />
         <Main>
-          <Statement lines={c.title} testid="letter-target-title" />
-          <Paragraphs items={c.paragraphs} testid="letter-target-p" first={32} />
-          <Rise delay={0.15}><p className="text-[20px] lg:text-[23px] font-medium leading-[1.4] tracking-[-0.015em] max-w-[44ch]" style={{ margin: '28px 0 0', color: INK }} data-testid="letter-target-principle">{c.principle}</p></Rise>
-          <div className="mt-16 lg:mt-20"><Rows rows={c.rows} testid="letter-target-rows" /></div>
+          <Title title={c.title} testid="letter-target-title" />
+          <Paragraphs items={c.paragraphs} testid="letter-target-p" />
+          <Rise delay={0.1}><p className="font-medium leading-[1.3] tracking-[-0.02em] max-w-[40ch] pt-8 text-balance" style={{ margin: '44px 0 0', color: INK, borderTop: `1px solid ${INK}`, fontSize: 'clamp(22px, 2vw, 30px)' }} data-testid="letter-target-principle">{c.principle}</p></Rise>
         </Main>
       </Grid>
     </Section>
   );
 };
 
-/* ─── 03 Hva vi bygger: utsagnet, fire steg ved siden av produktet ─── */
-const Build = () => {
-  const c = BREV.build;
+/* ─── 05 Hvorfor nå – et tydelig mellomsteg. Ryggraden i caset: bygget → nå → neste runde, tre typer risiko, og hva som står på spill. ─── */
+const Naa = () => {
+  const c = BREV.naa;
+  const dot = (i) => (i === 0 ? { background: INK } : i === 1 ? { background: ACCENT, boxShadow: '0 0 0 4px rgba(127,63,191,0.18)' } : { background: TINT, border: `1.5px solid ${INK}` });
   return (
-    <Section id="bygger" testid="letter-build">
+    <Section id="hvorfor-naa" testid="letter-naa" tint>
       <Grid>
-        <Aside n="03" label={c.eyebrow} />
+        <Aside n="05" label={c.eyebrow} />
         <Main>
-          <Statement lines={c.title} testid="letter-build-title" />
-          <Paragraphs items={c.paragraphs} testid="letter-build-p" first={32} />
-          <Rise delay={0.15}><p className="text-[20px] lg:text-[23px] font-medium leading-[1.4] tracking-[-0.015em] max-w-[44ch]" style={{ margin: '28px 0 0', color: INK }} data-testid="letter-build-principle">{c.principle}</p></Rise>
-          <div className="mt-14 lg:mt-16 max-w-[760px]">
-            <ol className="list-none p-0 m-0" style={{ borderBottom: `1px solid ${HAIR}` }} data-testid="letter-flow">
-              {c.flow.map(([t, d], i) => (
-                <Rise key={t} delay={0.05 + i * 0.07}><li className="grid grid-cols-[36px_minmax(0,1fr)] gap-x-4 py-6" style={{ borderTop: `1px solid ${HAIR}` }} data-testid={`letter-flow-${i + 1}`}>
-                  <span className="text-[12px] font-semibold tabular-nums pt-[6px]" style={{ color: ACCENT }}>{String(i + 1).padStart(2, '0')}</span>
-                  <div className="sm:grid sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-x-8">
-                    <p className="text-[18px] font-medium tracking-[-0.015em] leading-[1.3]" style={{ margin: 0, color: INK }}>{t}</p>
-                    <p className="text-[15.5px] leading-[1.6] max-w-[52ch]" style={{ margin: '6px 0 0', color: MUTED }}>{d}</p>
-                  </div>
-                </li></Rise>
-              ))}
-            </ol>
-            <Rise delay={0.1}><p className="text-[18px] lg:text-[19px] font-medium leading-[1.5] tracking-[-0.01em] max-w-[52ch]" style={{ margin: '32px 0 0', color: INK }} data-testid="letter-build-guarantee">{c.guarantee}</p></Rise>
+          <Statement lines={c.title} testid="letter-naa-title" />
+          <Paragraphs items={c.paragraphs} testid="letter-naa-p" strong={c.paragraphs.length - 1} first={32} />
+
+          {/* Bygget → nå → neste runde: tre kolonner på én linje, prikken viser hvor vi står. */}
+          <div className="mt-16 lg:mt-20 grid sm:grid-cols-3 gap-x-8 gap-y-12" data-testid="letter-naa-steg">
+            {c.steg.map(([h, label, text], i) => (
+              <Rise key={h} delay={0.05 + i * 0.08}><div className="relative pt-7" style={{ borderTop: `1px solid ${i === 1 ? ACCENT : INK}` }} data-testid={`letter-naa-steg-${i + 1}`}>
+                <span aria-hidden className="absolute left-0 -top-[5px] w-[9px] h-[9px] rounded-full" style={dot(i)} />
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: i === 1 ? ACCENT : MUTED }}>{label}</p>
+                <p className="font-medium tracking-[-0.03em] leading-none" style={{ margin: '14px 0 0', color: INK, fontSize: T.num }}>{h}</p>
+                <p className="text-[15px] leading-[1.6] max-w-[32ch]" style={{ margin: '14px 0 0', color: MUTED }}>{text}</p>
+              </div></Rise>
+            ))}
           </div>
+
+          <Paragraphs items={c.mellom} testid="letter-naa-mellom" strong={c.mellom.length - 1} first={72} />
+
+          <Sub testid="letter-naa-risiko-h">{c.risikoH}</Sub>
+          <div className="mt-8 grid sm:grid-cols-3 gap-x-8 gap-y-10" data-testid="letter-naa-risiko">
+            {c.risiko.map(([type, status, text], i) => {
+              const last = i === c.risiko.length - 1;
+              return (
+                <Rise key={type} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-naa-risiko-${i + 1}`}>
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{type}</p>
+                  <p className="font-medium tracking-[-0.025em] leading-[1.1]" style={{ margin: '14px 0 0', color: last ? ACCENT : INK, fontSize: 'clamp(21px, 1.8vw, 27px)' }}>{status}</p>
+                  <p className="text-[15px] leading-[1.6] max-w-[30ch]" style={{ margin: '12px 0 0', color: MUTED }}>{text}</p>
+                </div></Rise>
+              );
+            })}
+          </div>
+
+          <Paragraphs items={c.verdi} testid="letter-naa-verdi" strong={c.verdi.length - 1} first={72} />
+        </Main>
+      </Grid>
+    </Section>
+  );
+};
+
+/* ─── 06 Roadmap: fire faser med ett etterprøvbart resultat hver, og to mål ─── */
+const Roadmap = () => {
+  const c = BREV.roadmap;
+  return (
+    <Section id="roadmap" testid="letter-roadmap">
+      <Grid>
+        <Aside n="06" label={c.eyebrow} />
+        <Main>
+          <Statement lines={c.title} testid="letter-roadmap-title" />
+          <Paragraphs items={c.paragraphs} testid="letter-roadmap-p" strong={0} first={32} />
+          <div className="mt-14 lg:mt-16"><Tabell head={c.head} rows={c.faser} cols="120px 200px minmax(0,1fr)" testid="letter-roadmap-faser" /></div>
+
+          <div className="mt-20 lg:mt-24 grid sm:grid-cols-2 gap-x-8 gap-y-12" data-testid="letter-roadmap-maal">
+            {c.maal.map(([h, t], i) => (
+              <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-roadmap-maal-${i + 1}`}>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }}>{h}</p>
+                <p className="font-medium tracking-[-0.025em] leading-[1.25]" style={{ margin: '16px 0 0', color: INK, fontSize: 'clamp(21px, 1.8vw, 27px)' }}>{t}</p>
+              </div></Rise>
+            ))}
+          </div>
+          <Rise delay={0.1}><p className="text-[18px] lg:text-[19px] font-medium leading-[1.5] tracking-[-0.01em] max-w-[52ch]" style={{ margin: '32px 0 0', color: MUTED }} data-testid="letter-roadmap-maal-note">{c.maalNote}</p></Rise>
+        </Main>
+      </Grid>
+    </Section>
+  );
+};
+
+/* ─── 08 Budsjett og kapitalbruk: budsjettet, basisbehovet, forholdet til emisjonen, kapital koblet til milepæler ─── */
+const budsjettCell = (i, v) => (i === 0
+  ? <span className="text-[17px] font-medium leading-snug" style={{ color: INK }}>{v}</span>
+  : <span className="text-[17px] tabular-nums whitespace-nowrap" style={{ color: MUTED }}>{v}</span>);
+
+const Kapital = () => {
+  const c = BREV.kapital;
+  return (
+    <Section id="kapital" testid="letter-kapital">
+      <Grid>
+        <Aside n="08" label={c.eyebrow} />
+        <Main>
+          <Title title={c.title} testid="letter-kapital-head" />
+          <Paragraphs items={c.paragraphs} testid="letter-kapital-p" strong={0} />
+          <div className="mt-14 lg:mt-16 grid lg:grid-cols-[minmax(0,1fr)_240px] gap-x-12 gap-y-12 items-start">
+            <Tabell head={c.head} rows={c.budsjett} cols="minmax(0,1fr) 180px" cell={budsjettCell} foot={c.total} testid="letter-budsjett" />
+            <Rise delay={0.15}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid="letter-budsjett-basis">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: MUTED }}>{c.basis[1]}</p>
+              <p className="font-medium tracking-[-0.035em] leading-none whitespace-nowrap" style={{ margin: '16px 0 0', color: ACCENT, fontSize: 'clamp(36px, 3vw, 52px)' }}>{c.basis[0]}</p>
+              <p className="text-[15px] leading-[1.6]" style={{ margin: '14px 0 0', color: MUTED }}>{c.basis[2]}</p>
+            </div></Rise>
+          </div>
+
+          <Paragraphs items={c.forhold} testid="letter-kapital-forhold" strong={0} first={80} />
+
+          <div className="mt-14 lg:mt-16 grid sm:grid-cols-2 gap-x-8 gap-y-12" data-testid="letter-kapital-kobling">
+            {c.kobling.map(([h, items], i) => (
+              <Rise key={h} delay={0.05 + i * 0.08}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-kapital-kobling-${i + 1}`}>
+                <p className="font-medium tracking-[-0.025em] leading-[1.15]" style={{ margin: 0, color: i === 0 ? ACCENT : INK, fontSize: 'clamp(22px, 1.9vw, 28px)' }}>{h}</p>
+                <ul className="list-none p-0 m-0 mt-6">
+                  {items.map((t) => <li key={t} className="flex items-center gap-3 py-2.5 text-[16px]" style={{ color: INK }}><ArrowRight className="w-4 h-4 shrink-0" style={{ color: MUTED }} strokeWidth={1.75} />{t}</li>)}
+                </ul>
+              </div></Rise>
+            ))}
+          </div>
+        </Main>
+      </Grid>
+    </Section>
+  );
+};
+
+/* ─── 07 Forretningsmodell og økonomisk potensial: prising, regnestykket, base case, den større muligheten ─── */
+const baseCell = (i, v) => {
+  if (i === 0) return <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap" style={{ color: ACCENT }}>{v}</span>;
+  if (i === 1) return <span className="text-[16px] leading-snug" style={{ color: MUTED }}>{v}</span>;
+  return <span className="text-[16px] font-medium leading-snug" style={{ color: INK }}>{v}</span>;
+};
+
+const Modell = () => {
+  const c = BREV.modell;
+  return (
+    <Section id="modell" testid="letter-modell" tint>
+      <Grid>
+        <Aside n="07" label={c.eyebrow} />
+        <Main>
+          <Statement lines={c.title} testid="letter-modell-title" />
+          <Paragraphs items={c.paragraphs} testid="letter-modell-p" strong={0} first={32} />
+
+          {/* Regnestykket: 1 000 enheter → 130 000 kr/mnd → 1,56 MNOK ARR */}
+          <Sub testid="letter-modell-eksempel-h" mt="mt-16 lg:mt-20">{c.eksempelH}</Sub>
+          <Rise delay={0.1}><div className="mt-6 grid sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-6 gap-y-3 rounded-[20px] px-6 py-6 lg:px-8" style={{ background: '#fbfaf8', border: `1px solid ${HAIR}` }} data-testid="letter-modell-eksempel">
+            <span className="text-[17px] font-medium" style={{ color: INK }}>{c.eksempel[0]}</span>
+            <span className="text-[15.5px] tabular-nums" style={{ color: MUTED }}>{c.eksempel[1]}</span>
+            <span className="inline-flex items-center gap-3 text-[17px] font-medium tabular-nums" style={{ color: INK }}><ArrowRight className="w-4 h-4 hidden sm:block" style={{ color: ACCENT }} strokeWidth={1.75} />{c.eksempel[2]}</span>
+            <span className="inline-flex items-center gap-3 text-[17px] font-medium tabular-nums" style={{ color: ACCENT }}><ArrowRight className="w-4 h-4 hidden sm:block" style={{ color: ACCENT }} strokeWidth={1.75} />{c.eksempel[3]}</span>
+          </div></Rise>
+
+          <Sub testid="letter-modell-base-h">{c.baseH}</Sub>
+          <div className="mt-8"><Tabell head={c.baseHead} rows={c.base} cols="120px minmax(0,1fr) 260px" cell={baseCell} testid="letter-modell-base" /></div>
+          <div className="mt-12"><Tall items={[c.baseResult]} cols="sm:grid-cols-[minmax(0,1fr)]" testid="letter-modell-baseresult" /></div>
+
+          <Sub testid="letter-modell-skalering-h">{c.skaleringH}</Sub>
+          <div className="mt-8"><Tall items={c.skalering} testid="letter-modell-skalering" /></div>
         </Main>
       </Grid>
     </Section>
@@ -382,7 +552,7 @@ const Build = () => {
 const Structure = () => {
   const c = BREV.structure;
   return (
-    <Section id="struktur" testid="letter-structure">
+    <Section id="struktur" testid="letter-structure" tint>
       <Grid>
         <Aside n="04" label={c.eyebrow} />
         <Main>
@@ -395,75 +565,45 @@ const Structure = () => {
   );
 };
 
-/* ─── 05 Teamet – laget fremover: de som bygger, styret, og de to vi inviterer inn ─── */
+/* ─── 09 Laget fremover: tre rader – de som leder i dag, de to vi inviterer inn, og ressursene rundt. Hver rad har sin kicker og hårlinje. ─── */
 const Team = () => {
   const t = BREV.team;
   return (
     <Section id="teamet" testid="letter-team-section" tint>
       <Grid>
-        <Aside n="05" label={t.eyebrow} />
+        <Aside n="09" label={t.eyebrow} />
         <Main>
           <Title title={t.title} testid="letter-team-head" />
           <Paragraphs items={t.paragraphs} testid="letter-team-p" strong={t.paragraphs.length - 1} />
         </Main>
       </Grid>
-      <div className="mt-16 lg:mt-20 grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-12 lg:gap-x-8" data-testid="letter-team">
-        {TEAM.map((p, i) => <Rise key={p.key} delay={0.06 + i * 0.05} y={22}><Person name={p.name} role={p.role} img={p.img} pos={p.pos} initials={p.initials} bio={p.bio} invited={!p.img} sizes="(max-width: 1024px) 42vw, 280px" testid={`letter-team-${p.key}`} /></Rise>)}
+      <div className="mt-16 lg:mt-20 space-y-16 lg:space-y-20" data-testid="letter-team">
+        {TEAM_GRUPPER.map((g, gi) => {
+          const invited = g.key === 'inviteres';
+          return (
+            <div key={g.key} data-testid={`letter-team-group-${g.key}`}>
+              <Rise><p className="pb-4 text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: invited ? ACCENT : MUTED, borderBottom: `1px solid ${invited ? ACCENT : INK}` }} data-testid={`letter-team-group-${g.key}-label`}>{g.label}</p></Rise>
+              <div className="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-12 lg:gap-x-8">
+                {TEAM.filter((p) => p.gruppe === g.key).map((p, i) => (
+                  <Rise key={p.key} delay={0.06 + (gi + i) * 0.05} y={22}><Person name={p.name} role={p.role} img={p.img} pos={p.pos} initials={p.initials} bio={p.bio} invited={!!p.invited} sizes="(max-width: 1024px) 42vw, 280px" testid={`letter-team-${p.key}`} /></Rise>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </Section>
   );
 };
 
-/* ─── 06 Hvor vi står: dette starter ikke fra null ─── */
-const Built = () => {
-  const c = BREV.built;
-  return (
-    <Section id="status" testid="letter-built">
-      <Grid>
-        <Aside n="06" label={c.eyebrow} />
-        <Main>
-          <Title title={c.title} testid="letter-built-head" />
-          <Paragraphs items={c.paragraphs} testid="letter-built-p" strong={c.paragraphs.length - 1} />
-          <div className="mt-16 grid sm:grid-cols-2 gap-x-8 gap-y-12" data-testid="letter-built-points">
-            {c.points.map(([h, d], i) => (
-              <Rise key={h} delay={0.05 + i * 0.06}><div className="pt-5" style={{ borderTop: `1px solid ${INK}` }} data-testid={`letter-built-point-${i + 1}`}>
-                <p className="text-[12px] font-semibold tabular-nums" style={{ margin: 0, color: ACCENT }}>{String(i + 1).padStart(2, '0')}</p>
-                <p className="text-[21px] font-medium tracking-[-0.02em] leading-[1.2]" style={{ margin: '10px 0 0', color: INK }}>{h}</p>
-                <p className="text-[15.5px] leading-[1.6] max-w-[40ch]" style={{ margin: '10px 0 0', color: MUTED }}>{d}</p>
-              </div></Rise>
-            ))}
-          </div>
-
-          {/* Komponentene slik de står i appen – i naturlig størrelse, ikke skalert. */}
-          <div className="mt-20 lg:mt-24 space-y-14" data-testid="letter-built-figures">
-            <Rise delay={0.1} y={20}>
-              <figure className="m-0">
-                <div className="rounded-[20px] p-6 lg:p-8" style={{ background: '#fbfaf8', border: `1px solid ${HAIR}` }} data-testid="letter-figure-kpi"><KpiStripe /></div>
-                <figcaption className="mt-4 flex items-baseline gap-3 text-[13.5px] leading-snug" style={{ color: MUTED }}><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>01</span><span><span className="font-medium" style={{ color: INK }}>{c.figures[0][0]}</span> · {c.figures[0][1]}</span></figcaption>
-              </figure>
-            </Rise>
-            <Rise delay={0.1} y={20}>
-              <figure className="m-0">
-                <div className="rounded-[20px] p-6 lg:p-8 grid lg:grid-cols-[minmax(0,1fr)_300px] gap-x-10 gap-y-10" style={{ background: '#fbfaf8', border: `1px solid ${HAIR}` }} data-testid="letter-figure-saker"><SakerListe /><VenterKort /></div>
-                <figcaption className="mt-4 flex items-baseline gap-3 text-[13.5px] leading-snug" style={{ color: MUTED }}><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>02</span><span><span className="font-medium" style={{ color: INK }}>{c.figures[1][0]}</span> · {c.figures[1][1]}</span></figcaption>
-              </figure>
-            </Rise>
-          </div>
-          <Rise delay={0.1}><p className="text-[15.5px] leading-[1.65] max-w-[62ch]" style={{ margin: '40px 0 0', color: MUTED }} data-testid="letter-built-note">{c.note}</p></Rise>
-        </Main>
-      </Grid>
-    </Section>
-  );
-};
-
-/* ─── 07 Tilbudet: term sheet på mørk flate – så hvorfor ingen vesting, og den formelle gjennomføringen ─── */
+/* ─── 10 Tilbudet: term sheet på mørk flate – så eierskap uten vesting, og den formelle gjennomføringen ─── */
 const Offer = () => {
   const c = BREV.offer;
   const v = c.noVesting;
   return (
     <Section id="tilbudet" testid="letter-offer" dark>
       <Grid>
-        <Aside n="07" label={c.eyebrow} dark />
+        <Aside n="10" label={c.eyebrow} dark />
         <Main>
           <Title title={c.title} testid="letter-offer-head" dark />
           <Paragraphs items={c.paragraphs} testid="letter-offer-p" strong={0} dark />
@@ -505,13 +645,13 @@ const Offer = () => {
   );
 };
 
-/* ─── 08 Som medeiere ─── */
+/* ─── 11 Rollen deres ─── */
 const Owners = () => {
   const c = BREV.owners;
   return (
     <Section id="medeiere" testid="letter-owners">
       <Grid>
-        <Aside n="08" label={c.eyebrow} />
+        <Aside n="11" label={c.eyebrow} />
         <Main>
           <Title title={c.title} testid="letter-owners-head" />
           <Paragraphs items={c.paragraphs} testid="letter-owners-p" strong={0} />
@@ -522,13 +662,13 @@ const Owners = () => {
   );
 };
 
-/* ─── 09 Hva skjer herfra? Personlig avslutning. Ingen skjema. ─── */
+/* ─── 12 Hva skjer herfra? Personlig avslutning. Ingen skjema. ─── */
 const Next = () => {
   const c = BREV.next;
   return (
     <Section id="videre" testid="letter-next" tint>
       <Grid>
-        <Aside n="09" label={c.eyebrow} />
+        <Aside n="12" label={c.eyebrow} />
         <Main>
           <Title title={c.title} testid="letter-next-head" />
           <Paragraphs items={c.paragraphs} testid="letter-next-p" strong={1} />
@@ -554,14 +694,16 @@ export default function Brev({ start }) {
       <Progress />
       <Header />
       <Cover />
-      <Produkt />
       <Letter />
       <Why />
-      <Target />
-      <Build />
-      <Structure />
-      <Team />
       <Built />
+      <Target />
+      <Structure />
+      <Naa />
+      <Roadmap />
+      <Modell />
+      <Kapital />
+      <Team />
       <Offer />
       <Owners />
       <Next />
@@ -574,7 +716,7 @@ export default function Brev({ start }) {
               <p className="text-[15px] leading-[1.6] max-w-[44ch]" style={{ margin: '22px 0 0', color: MUTED }} data-testid="letter-noindex">{BREV.footer}</p>
             </div>
             <div className="lg:col-span-5 lg:col-start-8 flex flex-col lg:items-end gap-4">
-              <span className="inline-flex items-center gap-3 text-[15px]" style={{ color: INK }}><Avatarer size={34} />{INV.from}</span>
+              <span className="text-[15px]" style={{ color: INK }}>{BREV.footerFrom}</span>
               <span className="text-[13px]" style={{ color: MUTED }}>{INV.toLong} · {INV.date}</span>
             </div>
           </div>

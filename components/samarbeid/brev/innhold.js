@@ -2,10 +2,11 @@
  *  En personlig invitasjon fra Erik, Sarah og Martin – ikke en landingsside. Rød tråd: vi liker dere → dette er målbildet → dette bygger vi →
  *  slik henger Tech og forvaltning sammen → dette tilbyr vi → dette bygger vi sammen → ring oss når dere har tenkt.
  *  Gjelder KUN DigiHome Tech AS. Forvaltningsselskapet (ca. 35 enheter) er eget selskap, pilotkunde og stresstest for plattformen.
- *  Neste steg: én–to større eiendomsselskaper som eksterne pilotkunder → større kapitalrunde med mål tidlig Q1 2027. */
+ *  Neste steg: én–to større eiendomsselskaper som eksterne pilotkunder → større kapitalrunde med mål tidlig Q1 2027.
+ *  v6 (05.10.2026): investeringscase – brevet før produktet, hvert poeng eies av én seksjon, «Hvorfor nå» som ryggrad, presist tilbud. */
 
 export const INV = {
-  date: '4. oktober 2026',
+  date: '5. oktober 2026',
   to: 'Til Martin og Øyvind',
   toLong: 'Til Martin Vikesland og Øyvind Storli Hoel',
   from: 'Fra Erik, Sarah og Martin',
@@ -19,15 +20,21 @@ export const AVSENDERE = [
   { key: 'martin', name: 'Martin C. Kviteberg', role: 'Produktsjef · styremedlem', img: '/v4/martin.webp', pos: '50% 22%' },
 ];
 
-/** Laget fremover – de som bygger i dag, styret, og de to vi inviterer inn. Rekkefølgen er rekkefølgen i rutenettet (4 + 3). */
+/** Laget fremover – tre rader: de som leder i dag, de to vi inviterer inn, og ressursene rundt. Rekkefølgen i radene er rekkefølgen på siden. */
+export const TEAM_GRUPPER = [
+  { key: 'ledelse', label: 'Daglig ledelse og styreleder' },
+  { key: 'inviteres', label: 'Inviteres inn som medeiere' },
+  { key: 'rundt', label: 'Utvikling og styre' },
+];
+
 export const TEAM = [
-  { key: 'sarah', name: 'Sarah Sleeman', role: 'Daglig leder', img: '/brand/sarah-sleeman-1000.webp', pos: '50% 28%', bio: 'Eiendomsmegler med seks år i DNB. Leder kundeakkvisisjon og forvaltning.' },
-  { key: 'martin', name: 'Martin C. Kviteberg', role: 'Produktsjef', img: '/v4/martin.webp', pos: '50% 22%', bio: 'Grunnla BnbSpesialisten, ti år i Adonis frem mot exit. Eier produktet.' },
-  { key: 'erik', name: 'Erik Hoffmann-Dahl', role: 'Styreleder', img: '/team-erik.webp', pos: '50% 18%', bio: 'Advokat og partner i Hoffmann Thinn. Har tegnet selskapsstrukturen.' },
-  { key: 'jens', name: 'Jens-Petter Glittenberg', role: 'Styremedlem', img: '/team/jens-petter-glittenberg.webp', pos: '50% 30%', bio: 'Medgründer av Meltwater (2001–2021). Styreleder i CARN Capital.' },
-  { key: 'kevin', name: 'Kevin Ha', role: 'AI-rådgiver', img: '/team/kevin-ai-v2.webp', pos: '50% 22%', bio: 'Siviløkonom fra NHH, analytiker i DNB. Bygger og automatiserer plattformen med AI-drevet utvikling.' },
-  { key: 'vikesland', name: 'Martin Vikesland', role: 'Inviteres inn som medeier', initials: 'MV', bio: 'Markedet fra innsiden, driften i praksis – og blikk for selskapet.' },
-  { key: 'hoel', name: 'Øyvind Storli Hoel', role: 'Inviteres inn som medeier', initials: 'ØH', bio: 'Markedet fra innsiden, driften i praksis – og blikk for selskapet.' },
+  { key: 'sarah', gruppe: 'ledelse', name: 'Sarah Sleeman', role: 'Daglig leder', img: '/brand/sarah-sleeman-1000.webp', pos: '50% 28%', bio: 'Eiendomsmegler med seks år i DNB. Leder kundeakkvisisjon og forvaltning.' },
+  { key: 'martin', gruppe: 'ledelse', name: 'Martin C. Kviteberg', role: 'Produktsjef', img: '/v4/martin.webp', pos: '50% 22%', bio: 'Grunnla BnbSpesialisten, ti år i Adonis frem mot exit. Eier produktet.' },
+  { key: 'erik', gruppe: 'ledelse', name: 'Erik Hoffmann-Dahl', role: 'Styreleder', img: '/team-erik.webp', pos: '50% 18%', bio: 'Advokat og partner i Hoffmann Thinn. Har tegnet selskapsstrukturen.' },
+  { key: 'vikesland', gruppe: 'inviteres', name: 'Martin Vikesland', role: 'Medeier · CFO-rolle på deltid', img: '/team/martin-vikesland.webp', pos: '50% 30%', invited: true, bio: 'Økonomiske analyser og modeller – inn i strategi, kapitalplan og investordialoger.' },
+  { key: 'hoel', gruppe: 'inviteres', name: 'Øyvind Storli Hoel', role: 'Medeier · marked og strategi', img: '/team/oyvind-storli-hoel.webp', pos: '50% 22%', invited: true, bio: 'Produkt og strategi – og nettverket inn mot eiendomsselskapene som kan bli de første kundene.' },
+  { key: 'kevin', gruppe: 'rundt', name: 'Kevin Ha', role: 'Teknisk ressurs · utvikling', img: '/team/kevin-ai-v2.webp', pos: '50% 22%', bio: 'Bistår Martin i utviklingen av plattformen. Siviløkonom fra NHH, AI-drevet utvikling og automatisering.' },
+  { key: 'jens', gruppe: 'rundt', name: 'Jens-Petter Glittenberg', role: 'Styremedlem', img: '/team/jens-petter-glittenberg.webp', pos: '50% 28%', bio: 'Medgründer av Meltwater, styreleder i CARN Capital. Stort nettverk, kapital og relasjoner.' },
 ];
 
 export const BREV = {
@@ -35,17 +42,51 @@ export const BREV = {
   role: 'Medeier i DigiHome Tech',
   brand: 'DigiHome',
   confidential: 'Konfidensielt',
-  h1: ['Vi vil bygge dette', 'sammen med dere.'],
-  sub: 'Etter samtalene våre er vi blitt enda sikrere på at dere er folk vi ønsker rundt bordet når DigiHome Tech skal ut til de første eksterne kundene – og videre mot neste kapitalrunde.',
+  h1: ['Vi ønsker dere', 'med på eiersiden.'],
+  sub: 'Etter samtalene våre er vi blitt sikre på at dere er folk vi ønsker rundt bordet når DigiHome går fra egen drift til de første store eksterne kundene.',
+  sub2: 'Derfor ønsker vi å invitere dere inn som medeiere i DigiHome Tech.',
   cta: 'Les brevet',
   hi: 'Hei Martin og Øyvind,',
   signature: 'Erik, Sarah og Martin',
 
-  /** Seksjon 2 – produktet, slik det står i dag. Ekte komponenter fra appen, ikke illustrasjon. */
-  produkt: {
-    eyebrow: 'Produktet',
-    title: ['Én plattform.', 'Tre flater.'],
-    lede: 'Forvalteren jobber i én arbeidsflate. Eieren følger alt i appen. Leietakeren får svar der han er. Alt under er bygget og i bruk i dag – gjenskapt komponent for komponent.',
+  /* Brevet – fire avsnitt. */
+  letter: [
+    'Takk for gode samtaler den siste tiden. Vi sitter igjen med et veldig godt inntrykk – ikke bare av erfaringen deres fra utleie, men av hvordan dere har gått inn i DigiHome, utfordret modellen og sett mulighetene i teknologiselskapet.',
+    'Vi er nå på vei inn i en ny fase. Plattformen brukes i egen drift i dag. Neste steg er å gjøre den klar for større eiendomsselskaper og få de første eksterne pilotkundene på.',
+    'I den fasen ønsker vi dere ikke bare som samarbeidspartnere. Vi ønsker dere inn som medeiere i DigiHome Tech.',
+    'På de neste sidene har vi forsøkt å være konkrete om hvorfor, hva vi allerede har bygget, planen videre, kapitalbehovet og tilbudet vi ønsker å gi dere.',
+  ],
+  letterStrong: 2,
+
+  /* ── 01 Hvorfor dere ── */
+  why: {
+    eyebrow: 'Hvorfor dere',
+    title: 'Det er måten dere har gått inn i DigiHome på.',
+    paragraphs: [
+      'Det som har gjort oss mest sikre etter samtalene våre, er ikke bare erfaringen deres fra Bergen Beds. Det er måten dere har gått inn i DigiHome på.',
+      'Dere har vært opptatt av driften, økonomien og skalerbarheten – ikke bare hva plattformen kan gjøre for egne boliger. Dere har utfordret antakelser, gått inn i tallene og sett potensialet i Tech-selskapet.',
+      'Det er nettopp den typen medeiere vi ønsker rundt bordet nå.',
+    ],
+  },
+
+  /* ── 02 Laget ── */
+  team: {
+    eyebrow: 'Laget',
+    title: 'Produkt, forvaltning, teknologi og juss rundt bordet.',
+    paragraphs: [
+      'Vi har produkt, forvaltning, teknologi, juss og erfaring med å bygge selskaper rundt bordet. Det vi ønsker å tilføre nå, er økonomisk styring og analyse inn mot strategi og investorer – og operativ eiendomskompetanse og nettverk inn mot de første større kundene.',
+      'Det er der dere kommer inn.',
+    ],
+  },
+
+  /* ── 03 Hva som allerede er bygget – produktet, slik det står i dag ── */
+  built: {
+    eyebrow: 'Hva som er bygget',
+    title: ['Ikke en idé.', 'En plattform i drift.'],
+    paragraphs: [
+      'Dere investerer ikke i at vi skal begynne å bygge DigiHome. Plattformen finnes, og den er i reell drift: forvaltningsselskapet driftes på den – rundt 35 enheter, med ekte leietakere, innbetalinger og saker.',
+      'De viktigste arbeidsflytene i den løpende forvaltningen samles i én plattform – og bygges videre direkte fra erfaringene i faktisk drift. Under er forvalterens oversikt og de to appene, gjenskapt komponent for komponent slik de står i dag.',
+    ],
     desktopCaption: ['Forvalterens oversikt', 'Det som venter, det som skjedde siden sist, og porteføljens helse – i én flate.'],
     flater: [
       ['Forvalteren', 'Én arbeidsflate for saker, leieforhold, innbetalinger, annonsering og regnskap. Det som venter på en beslutning, ligger øverst.'],
@@ -53,178 +94,212 @@ export const BREV = {
       ['Leietakeren', 'Har leieforholdet, husleien, depositumet og kontakten med forvalteren på ett sted. Melder saker i appen.'],
     ],
     phoneCaptions: ['Eierens hjem', 'Leietakerens hjem'],
-    note: 'Tallene i skjermbildene er illustrative.',
+    listH: 'Dette finnes i dag',
+    list: [
+      'Eierapp, leietakerapp og forvalterens arbeidsflate – i daglig drift',
+      'Leadmotor, markedsføring og attribusjon fra interessent til kontrakt',
+      'Økonomikontroll: KID-matching, purring, oppgjør til eier og bokføring',
+      'AI-funksjoner i driften – saker, svar og rutineoppgaver',
+      'Integrasjoner: FINN, BankID, Keyhole, PowerOffice Go og Fiken',
+      'Stresstestet på egen portefølje, hver dag',
+    ],
+    note: 'Skjermbildene er gjenskapt fra plattformen slik den står i dag. Tallene i dem er illustrative.',
   },
 
-  letter: [
-    'Takk for gode samtaler den siste tiden.',
-    'Vi har fått et veldig godt inntrykk av dere – av hvordan dere tenker om markedet, om driften og om hva som faktisk skal til for å bygge noe forvaltere og eiendomsselskaper vil jobbe i. Dere har utfordret oss på de riktige tingene, og samtidig sett det samme målbildet som oss: én plattform for lange leieforhold i Norge, vunnet med høyere effektivitet, bedre kundeopplevelse og et mer moderne produkt enn det som finnes i dag.',
-    'Vi ønsker derfor ikke bare å samarbeide med dere.',
-    'Vi ønsker å invitere dere inn som medeiere i DigiHome Tech AS – teknologiselskapet bak plattformen.',
-    'Det betyr å være med og forme produktet, modellen og selskapet fra en tidlig fase – mens plattformen går fra pilot på egen portefølje til de første eksterne kundene, og videre mot en større kapitalrunde.',
-    'Under har vi forsøkt å gjøre invitasjonen så konkret som mulig: hvorfor vi ønsker akkurat dere med, hvordan vi ser målbildet, hva vi bygger, hvor vi står, og hvilke vilkår vi ønsker å tilby.',
-  ],
-  letterStrong: 3,
-
-  why: {
-    eyebrow: 'Hvorfor dere',
-    title: 'Vi tror dere tilfører noe vi trenger rundt bordet.',
-    paragraphs: [
-      'Dere kjenner utleiemarkedet fra innsiden – eierne, byggene og den daglige driften. Det er kunnskap vi ikke kan lese oss til, og den blir avgjørende når plattformen nå skal ut til eiendomsselskaper som driver dette i stor skala.',
-      'Gjennom Bergen Beds har dere bygget og drevet utleie med egne folk. Dere vet hva det koster å levere kvalitet, hvor tiden går, og hva et system faktisk må løse for at det skal gå rundt.',
-      'Men bakgrunnen deres er bare en del av grunnen.',
-      'I samtalene våre har vi særlig merket oss hvordan dere tenker. Dere har gått inn i tallene, stilt spørsmål ved modellen, og sett på selskapet som mer enn en ny kanal for egen portefølje.',
-      'Det er nettopp den typen medeiere vi ønsker.',
-    ],
-    points: [
-      ['Markedet fra innsiden', 'Eierne, byggene og driften – det eiendomsselskapene skal kjenne igjen i produktet.'],
-      ['Drift i praksis', 'Erfaring med å drive utleie med egne folk – ikke bare på papiret.'],
-      ['Blikk for selskapet', 'Interesse for plattformen og modellen – ikke bare for egne enheter.'],
-    ],
-  },
-
+  /* ── 04 Målbildet ── */
   target: {
     eyebrow: 'Målbildet',
-    title: ['Først bevist på egen portefølje.', 'Så ut til eiendomsselskapene.'],
+    title: 'Plattformen for lange leieforhold i Norge.',
     paragraphs: [
-      'Vi leser målbildet likt.',
-      'Plattformen for lange leieforhold i Norge – den eieren, leietakeren og forvalteren faktisk jobber i. Vunnet med høyere effektivitet, bedre kundeopplevelse og et mer moderne produkt enn systemene som finnes i dag. Ikke ved å gjøre det samme litt billigere, men ved å bygge det på nytt rundt hvordan forvaltere jobber.',
+      'Det eieren, leietakeren og forvalteren faktisk jobber i – vunnet med høyere effektivitet, bedre kundeopplevelse og et mer moderne produkt enn systemene som finnes i dag. Ikke ved å gjøre det samme litt billigere, men ved å bygge det på nytt rundt hvordan forvaltere jobber.',
     ],
-    principle: 'Forvaltningsselskapet beviser plattformen. De første eksterne pilotkundene beviser at den kan selges. Så henter vi kapital til å skalere.',
-    rows: [
-      ['Nå · pilot og stresstest', 'Rundt 35 enheter i forvaltningsselskapet driftes på plattformen i dag. Det er her vi stresstester produktet – hver dag, med ekte leietakere, ekte innbetalinger og ekte saker.'],
-      ['Neste · én–to eksterne pilotkunder', 'Vi retter oss nå mot større eiendomsselskaper, og vil ha med én eller to som eksterne pilotkunder. De beviser at plattformen fungerer utenfor vår egen drift – og gir oss referansene vi trenger.'],
-      ['Tidlig Q1 2027 · neste kapitalrunde', 'Med pilotene på plass går vi ganske raskt mot en større kapitalrunde. Målet er tidlig første kvartal 2027. Denne emisjonen skal ta oss dit.'],
-      ['Deretter · skalering', 'Flere forvaltere og eiendomsselskaper i Norge på samme plattform. Internasjonalt er et eget spor – det er der den langsiktige oppsiden i Tech ligger.'],
-    ],
+    principle: 'Forvaltningsselskapet beviser plattformen. De første eksterne pilotkundene beviser at den kan selges. Derfra skalerer vi.',
   },
 
-  build: {
-    eyebrow: 'Hva vi bygger',
-    title: ['Ikke et nytt forvaltningsselskap.', 'Systemet forvaltere vokser på.'],
-    paragraphs: [
-      'DigiHome Tech skal ikke drive forvaltning.',
-      'Vi bygger systemet eieren, leietakeren og forvalteren deler: leieforhold, innbetalinger, fakturering, saker og eierrapport – samlet på ett sted, slik at én ansatt kan håndtere langt flere enheter enn i dag, og eieren ser alt uten å måtte ringe.',
-    ],
-    principle: 'Eieren følger alt live. Leietakeren får svar i appen. Forvalteren jobber i én arbeidsflate.',
-    flow: [
-      ['Boligen legges ut', 'Annonsen publiseres på FINN, visninger bookes, og leietakeren identifiseres og kredittsjekkes med BankID.'],
-      ['Kontrakten signeres', 'Leiekontrakt med BankID, depositumskonto og innflyttingsprotokoll rom for rom.'],
-      ['Husleien kommer inn', 'Innbetalinger matches automatisk, purring går av seg selv, og oppgjøret til eieren bokføres i regnskapet.'],
-      ['Saker løses', 'Leietakeren melder fra i appen, forvalteren får saken med kategori og frist, og eieren godkjenner med ett trykk.'],
-    ],
-    guarantee: 'Alt forvalteren gjør i dag, finnes i systemet – men gjøres én gang, og deles med eieren og leietakeren.',
-    phoneCaption: 'Eierens hjem i mobilappen – slik skjermen står i dag.',
-  },
-
+  /* ── 05 Tech og forvaltning ── */
   structure: {
     eyebrow: 'Tech og forvaltning',
     title: 'To selskaper, med hver sin jobb.',
     paragraphs: [
-      'DigiHome er rigget som to selskaper.',
-      'DigiHome Tech AS eier og utvikler plattformen, og skal selge den til forvaltere og eiendomsselskaper. Forvaltningen ligger i et eget selskap med rundt 35 enheter, som er kunde av Tech – og som vi bruker som pilot og stresstest for produktet.',
-      'I starten utnytter vi synergiene: de samme folkene rundt bordet, felles kundeinnsikt og kort vei fra drift til produkt. Men selskapene holdes adskilt, slik at Tech kan selge til hele markedet – også til forvaltere som konkurrerer med vår egen.',
+      'DigiHome Tech AS eier og utvikler plattformen, og skal selge den til forvaltere og eiendomsselskaper. Forvaltningen ligger i et eget selskap, som er kunde av Tech.',
+      'I starten utnytter vi synergiene – de samme folkene, felles kundeinnsikt og kort vei fra drift til produkt. Men selskapene skilles, teknisk og selskapsmessig, slik at Tech kan selge til hele markedet. Også til forvaltere som konkurrerer med vår egen.',
       'Denne invitasjonen gjelder DigiHome Tech AS.',
     ],
     rows: [
       ['DigiHome Tech AS', 'Eier og utvikler plattformen. Selger den til forvaltere og eiendomsselskaper. Det er dette selskapet vi inviterer dere inn i.'],
-      ['Forvaltningsselskapet', 'Eget selskap med rundt 35 enheter i dag. Første kunde på plattformen – og stedet vi stresstester den, hver dag.'],
-      ['Pilotavtalen', 'Forvaltningsselskapet er pilotkunde på gunstige vilkår. Innsikten fra driften går rett inn i produktet – men Tech bygges for hele markedet, ikke for én kunde.'],
+      ['Forvaltningsselskapet', 'Eget selskap. Første kunde på plattformen, på pilotvilkår – og første referanse.'],
     ],
   },
 
-  team: {
-    eyebrow: 'Teamet',
-    title: 'Dette er laget vi vil bygge selskapet med.',
+  /* ── 06 Hvorfor nå – et tydelig mellomsteg. Ryggraden i caset. ── */
+  naa: {
+    eyebrow: 'Hvorfor nå',
+    title: ['Dere kommer ikke inn', 'på idéstadiet.'],
     paragraphs: [
-      'DigiHome Tech bygges i dag av et lite team med ganske forskjellig bakgrunn – og et styre som har bygget selskaper før.',
-      'Sarah er eiendomsmegler med seks år i rådgivende roller i DNB, og leder kundeakkvisisjon og forvaltning. Martin grunnla BnbSpesialisten – en av Norges første profesjonelle utleieforvaltere – og hadde ti år i Adonis AS frem mot exit; han eier produktet. Kevin er siviløkonom fra NHH og analytiker i DNB, og bygger og automatiserer plattformen med AI-drevet utvikling. Erik er advokat og partner i Hoffmann Thinn, og har tegnet selskapsstrukturen som skal bære vekst og emisjon. Jens-Petter var med og grunnla Meltwater og bygget selskapet globalt gjennom tjue år; i dag er han styreleder i CARN Capital og sitter i styret vårt.',
-      'Med dere to rundt bordet får vi det vi mangler: markedet fra innsiden og driften i praksis. Slik ser vi laget for oss fremover.',
+      'DigiHome Tech starter ikke fra null.',
+      'Siden starten har vi brukt betydelig tid og kapital på å bygge både merkevaren, konseptet og teknologien. Plattformen er utviklet gjennom anslagsvis 1\u00a0000–1\u00a0500 timer produktarbeid, i tillegg til rundt 500\u00a0000 kroner i utviklingskostnader.',
+      'Den viktigste investeringen er likevel det vi har lært underveis. Plattformen er bygget mens den har vært i reell utleiedrift – rundt faktiske boliger, eiere, leietakere, innbetalinger og saker – og videreutvikles hver uke.',
+      'Det betyr at mye av den tidligste risikoen allerede er tatt.',
     ],
-    inviteLabel: 'Inviteres inn',
+    steg: [
+      ['Bygget', 'Fase 1 · gjennomført', 'Merkevare, konsept, produkt og IP. 1\u00a0000–1\u00a0500 timer og rundt 500\u00a0000 kr i utvikling. Brukt i egen drift.'],
+      ['Nå', 'Fase 2 · dere kommer inn', 'Produktisering – og én–to større eiendomsselskaper som eksterne pilotkunder.'],
+      ['Neste runde', 'Fase 3 · ekstern validering', 'Dokumentert etterspørsel. Større kapitalrunde for å skalere salg, produkt og organisasjon.'],
+    ],
+    mellom: [
+      'Den neste milepælen er ikke å bevise at vi kan bygge en plattform. Det har vi gjort. Nå skal vi bevise at den kan brukes og kjøpes av andre.',
+      'De kommende månedene gjør vi derfor én målrettet produktiserings- og kommersialiseringsjobb med ett mål: én–to større eiendomsselskaper som eksterne pilotkunder. Fungerer plattformen i skala også utenfor egen forvaltning, har DigiHome bevist noe vesentlig mer enn i dag – at dette er et produkt andre profesjonelle aktører er villige til å bygge driften sin rundt.',
+      'Det er på dette tidspunktet vi inviterer dere inn: etter at merkevaren, produktet og grunnplattformen er bygget – men før den eksterne kommersielle valideringen er på plass.',
+    ],
+    risikoH: 'Tre typer risiko',
+    risiko: [
+      ['Teknologirisiko', 'Kraftig redusert', 'Plattformen eksisterer og er i drift.'],
+      ['Produktrisiko', 'Redusert', 'Utviklet og iterert gjennom egen forvaltning.'],
+      ['Kommersiell risiko', 'Det vi nå skal bevise', 'Eksterne eiendomsselskaper som kjøper og bruker plattformen.'],
+    ],
+    verdi: [
+      'Lykkes vi med de første større pilotkundene, møter vi neste kapitalrunde med et ferdig produkt, dokumentert bruk i egen drift, ekstern validering og de første større kundereferansene. Planen er da å hente en større runde for å skalere salg, produkt og organisasjon.',
+      'Dersom vi lykkes, mener vi selskapet vil stå i en vesentlig sterkere posisjon ved neste kapitalrunde enn det gjør i dag. Hva det betyr for verdsettelsen, kan ingen garantere – men det er nettopp denne verdiskapingen vi skal forsøke å utløse sammen de neste månedene.',
+    ],
   },
 
-  built: {
-    eyebrow: 'Hvor vi står',
-    title: 'Dette starter ikke fra null.',
+  /* ── 07 Roadmap ── */
+  roadmap: {
+    eyebrow: 'Roadmap',
+    title: ['Fra egen drift', 'til et produkt andre kan kjøpe.'],
     paragraphs: [
-      'Plattformen er i drift i dag. Forvaltningsselskapet driftes på den – rundt 35 enheter, med ekte leietakere, ekte innbetalinger og ekte saker. Det er slik produktet er blitt til, og det er slik vi stresstester det.',
-      'Det siste året har vi bygget eierappen, leietakerappen og forvalterens arbeidsflate ende til ende: annonsering, BankID, depositum, fakturering, saker og regnskap. Mye av grunnarbeidet er gjort.',
-      'Nå går vi inn i fasen der plattformen skal ut til de første eksterne kundene – større eiendomsselskaper som forvalter i et helt annet volum enn oss.',
+      'Kapitalen skal ikke brukes på å finne ut om DigiHome fungerer.',
+      'Den skal ta plattformen fra et system bygget for egen drift til et produkt som kan implementeres hos profesjonelle eiendomsselskaper – i fire faser, der hver fase har ett resultat som kan etterprøves.',
     ],
-    points: [
-      ['Produkt i drift', 'Eierapp, leietakerapp og forvalterens arbeidsflate – bygget ende til ende og i daglig bruk.'],
-      ['Integrasjoner', 'FINN, BankID, Keyhole (depositum), PowerOffice Go og Fiken.'],
-      ['Pilot på egen portefølje', 'Rundt 35 enheter driftes på plattformen i dag. Det som ikke fungerer, merker vi før kundene gjør det.'],
-      ['Neste steg', 'Én–to større eiendomsselskaper som eksterne pilotkunder – og en større kapitalrunde tidlig Q1 2027.'],
+    head: ['Periode', 'Fokus', 'Hva som skjer'],
+    faser: [
+      ['Nå → 3 mnd', 'Produktisering', 'Multi-tenant, roller, onboarding, datamodell, integrasjonslag, enterprise-sikkerhet og separasjon fra egen forvaltning.'],
+      ['3 → 6 mnd', 'Eksterne piloter', 'Én–to eksterne pilotkunder. Plattformen brukes i faktisk drift utenfor DigiHome.'],
+      ['6 → 12 mnd', 'Kommersiell V1', 'Standardisert onboarding, kontraktsmodell, support, prising og flere betalende kunder.'],
+      ['12 → 24 mnd', 'Skalering', 'Flere eiendomsselskaper, større porteføljer, nye integrasjoner og mer automatisering og KI.'],
     ],
-    figures: [
-      ['Porteføljehelse', 'Forvalterens nøkkeltall – komponenten slik den står i appen.'],
-      ['Aktive saker og det som venter', 'Saker gruppert etter hvem som må handle, og den ene mørke flaten: det forvalteren må beslutte.'],
+    maal: [
+      ['Hovedmål første 6 måneder', 'DigiHome i produksjon hos minst én ekstern, profesjonell eiendomsaktør.'],
+      ['Mål innen 12 måneder', '2–5 betalende selskaper – og dokumentert at DigiHome kan implementeres hos en ny kunde uten å bygges om fra bunnen.'],
     ],
-    note: 'Skjermbildene i brevet er gjenskapt fra plattformen slik den står i dag. Tallene i dem er illustrative.',
+    maalNote: 'Det siste er nøkkelen til at dette kan bli et programvareselskap.',
   },
 
+  /* ── 08 Forretningsmodell ── */
+  modell: {
+    eyebrow: 'Forretningsmodell',
+    title: ['Programvare –', 'ikke en andel av leien.'],
+    paragraphs: [
+      'DigiHome prises som programvare, ikke som en prosentandel av kundens leieinntekter.',
+      'Modellen består av en fast plattformavgift kombinert med pris per aktiv enhet, med volumprising for større porteføljer. For store kunder regner vi med 100–150 kroner per enhet i måneden, blandet – ikke 490–990. Man trenger ikke presse prisen per bolig høyt dersom man kan vinne større porteføljer.',
+    ],
+    eksempelH: 'Illustrativt – én kunde med 1 000 enheter',
+    eksempel: ['1 000 enheter', '30 000 kr plattform + 1 000 × 100 kr', '130 000 kr/mnd', '1,56 MNOK ARR'],
+    baseH: 'Base case – første 12 måneder',
+    baseHead: ['Periode', 'Hva skjer', 'Inntekt'],
+    base: [
+      ['Måned 1–3', 'Produktisering.', 'Ingen ekstern inntekt'],
+      ['Måned 4–6', 'Første pilotkunde i drift.', 'Begrenset eller betalt pilot'],
+      ['Måned 7–9', 'Pilot går over i kontrakt. Kunde nummer to.', '1–2 betalende kunder'],
+      ['Måned 10–12', 'Standardisert onboarding av neste kunder.', '2–3 betalende · 1 500–3 000 enheter'],
+    ],
+    baseResult: ['1,5–3 MNOK', 'ARR ved utgangen av år 1', 'avhengig av kontraktsstørrelser. Har én pilot 5 000 boliger, ligger oppsiden utenfor base case.'],
+    skaleringH: 'Den større muligheten – ikke budsjettert',
+    skalering: [
+      ['12 MNOK', 'ARR', '10 000 enheter × 100 kr/mnd'],
+      ['30 MNOK', 'ARR', '25 000 enheter × 100 kr/mnd'],
+      ['60 MNOK', 'ARR', '50 000 enheter × 100 kr/mnd'],
+    ],
+  },
+
+  /* ── 09 Budsjett og kapitalbruk ── */
+  kapital: {
+    eyebrow: 'Budsjett og kapitalbruk',
+    title: 'Hva krever de neste 12 månedene?',
+    paragraphs: [
+      'Med om lag 150 000 kroner i måneden i produkt- og utviklingskapasitet, gründerlønn og øvrige kostnader er et realistisk basisbudsjett rundt 3–4 MNOK. Vi vil heller vise det enn å late som 1 MNOK finansierer hele reisen.',
+    ],
+    head: ['Kostnad', '12 mnd, indikativt'],
+    budsjett: [
+      ['Produkt- og softwareutvikling', '1,35–1,80 MNOK'],
+      ['Gründer/CEO – total selskapskostnad', '1,0–1,2 MNOK'],
+      ['Hosting, AI, API-er, data og sikkerhet', '0,25–0,40 MNOK'],
+      ['Pilotimplementering og integrasjoner', '0,20–0,40 MNOK'],
+      ['Juridisk, regnskap, forsikring mv.', '0,10–0,20 MNOK'],
+      ['Salg, reise og marked', '0,15–0,30 MNOK'],
+    ],
+    total: ['Totalt', 'ca. 3,1–4,3 MNOK'],
+    basis: ['3,5 MNOK', 'Planlagt basisbudsjett', 'første 12 måneder'],
+    forhold: [
+      'Den foreslåtte emisjonen er ikke ment å finansiere hele skaleringsfasen.',
+      'Den skal finansiere den viktigste neste milepælen: å gjøre DigiHome pilotklart for eksterne eiendomsselskaper og få de første kundene på plattformen. Resten dekkes av kundeinntekter og en større kapitalrunde, med mål tidlig i første kvartal 2027 – fra en langt sterkere posisjon.',
+    ],
+    kobling: [
+      ['Denne emisjonen', ['Produktisering', 'Grunnleggende enterprise-arkitektur', 'Pilotklar løsning', 'Første eksterne pilotkunde']],
+      ['Neste runde og kundeinntekter', ['Pilotimplementering', 'Kommersiell V1', 'Flere integrasjoner', 'Salg og skalering']],
+    ],
+  },
+
+  /* ── 10 Tilbudet ── */
   offer: {
     eyebrow: 'Tilbudet',
     title: 'Vi ønsker dere med som medeiere.',
     paragraphs: [
-      'Vi ønsker å invitere dere inn som medeiere med 10 % av DigiHome Tech AS.',
-      'Vilkårene reflekterer to ting: at dere kommer inn tidlig, og at rollen er ment å være mer enn en finansiell investering. Vi ønsker medeiere som er med og bygger selskapet sammen med oss frem mot neste kapitalrunde – og som hjelper oss å åpne dørene til de første eksterne pilotkundene.',
+      'Martin Vikesland og Øyvind Storli Hoel tegner nye aksjer for samlet 1 000 000 kroner, og eier samlet 10 % av DigiHome Tech AS etter emisjonen – 5 % hver.',
+      'Det tilsvarer en verdsettelse på 10 MNOK etter emisjonen – prisingen før den neste store risikoreduksjonen, ikke etter. Dere kjøper dere ikke inn i dagens inntekter eller i forvaltningsvirksomheten, men i en eksisterende teknologi som skal skilles ut og produktiseres, med en konkret plan for å bevise markedet.',
     ],
     terms: [
-      ['10\u00a0%', 'Eierskap', 'av aksjene i DigiHome Tech AS – nye aksjer i en rettet emisjon'],
-      ['10\u00a0MNOK', 'Verdsettelse', 'av selskapet – grunnlaget for emisjonen'],
-      ['Ingen', 'Vesting', 'aksjene er deres fra dag én, i samme aksjeklasse som gründerne'],
-      ['Q1\u00a02027', 'Neste runde', 'mål for en større kapitalrunde – når de første eksterne pilotene er på plass'],
+      ['1\u00a0000\u00a0000\u00a0kr', 'Investering', 'nye aksjer i en rettet emisjon – samlet for dere to'],
+      ['10\u00a0%', 'Eierandel', 'samlet etter emisjonen · 5 % + 5 %'],
+      ['10\u00a0MNOK', 'Verdsettelse', 'etter emisjonen (post-money)'],
+      ['Ordinære', 'Aksjer', 'tegnes ved emisjonen, samme aksjeklasse som dagens eiere'],
     ],
     noVesting: {
-      h: 'Hvorfor ingen vesting',
+      h: 'Eierskap, ikke ansettelse',
       paragraphs: [
-        'Vi har valgt å ikke knytte eierskapet til opptjening over tid.',
-        'Dere kommer inn med kapital og et marked – ikke med en arbeidsplikt i Tech. Da mener vi eierskapet bør være enkelt og likt fra første dag: ordinære aksjer, samme klasse som gründerne, uten opptjening eller tilbakekjøp knyttet til rolle.',
+        'Dette er ikke en ansettelse eller en operativ fulltidsrolle, og eierskapet knyttes derfor ikke til en tradisjonell vestingmodell.',
+        'Aksjene er deres fra tegning, i samme klasse og med samme rettigheter som dagens eiere.',
       ],
     },
     formal: {
-      h: 'Den formelle gjennomføringen',
-      text: 'Emisjonen gjennomføres som en rettet emisjon mot dere. Detaljene – antall aksjer, om verdsettelsen regnes før eller etter emisjonen, og tidsplanen – fastsettes i et term sheet når vi er enige om retningen.',
-      listH: 'Aksjonæravtalen vil også regulere blant annet',
+      h: 'Gjennomføringen',
+      text: 'Emisjonen gjennomføres som en rettet emisjon mot dere, med term sheet og aksjonæravtale før tegning.',
+      listH: 'Aksjonæravtalen regulerer blant annet',
       list: [
-        'fremtidige emisjoner og utvanning',
+        'neste kapitalrunde og utvanning',
         'forkjøpsrett og aksjeoverdragelser',
         'stemmerett og styresammensetning',
         'pilotavtalen mellom Tech og forvaltningsselskapet',
-        'hva som skjer dersom en av partene senere ønsker å selge seg ut',
+        'hva som skjer dersom en part senere ønsker å selge seg ut',
       ],
-      closing: 'De konkrete mekanismene utarbeides i neste fase, slik at de blir ryddige og balanserte for alle eierne og for selskapet.',
+      closing: 'Mekanismene utarbeides sammen med dere, slik at de blir ryddige og balanserte for alle eierne og for selskapet.',
     },
   },
 
+  /* ── 11 Rollen deres ── */
   owners: {
-    eyebrow: 'Som medeiere',
-    title: 'Vi vil bygge verdiene sammen.',
+    eyebrow: 'Rollen deres',
+    title: 'Hva vi faktisk forventer.',
     paragraphs: [
-      'Eierskapet er reelt – ikke en samarbeidsavtale med en aksjepost på toppen.',
-      'Vi ønsker at dere er med på å forme produktet, modellen og selskapets retning, og samtidig tar del i verdiene som skapes dersom vi lykkes.',
+      'Eierskapet er reelt – ikke en samarbeidsavtale med en aksjepost på toppen. Men det er heller ikke en jobb.',
     ],
     rows: [
-      ['Reell påvirkning', 'Dere involveres i sentrale produkt- og strategivalg – særlig hva eiendomsselskaper og forvaltere faktisk trenger for å vokse.'],
-      ['Verdiene ligger i selskapet', 'Programvare, data, merkevare og øvrig plattform-IP bygges i DigiHome Tech AS.'],
-      ['Kapitalen går til produkt og salg', 'Emisjonen går inn i selskapet – til produkt, de første eksterne pilotene og salg mot eiendomsselskapene. Ikke til dagens eiere.'],
-      ['Ryddige spilleregler', 'Aksjonæravtalen skal ha tydelige mekanismer for neste kapitalrunde, vekst og dersom noen senere ønsker å tre ut.'],
+      ['Rundt bordet', 'Dere involveres i sentrale produkt- og strategivalg – særlig hva eiendomsselskaper faktisk trenger for å ta plattformen i bruk.'],
+      ['Økonomi og investordialog', 'Martin bidrar med økonomiske analyser og modeller – inn i strategi, kapitalplan og dialogen med fremtidige investorer. En CFO-rolle på deltid, ikke en stilling.'],
+      ['Marked, produkt og nettverk', 'Øyvind bidrar i produkt og strategi, og åpner dører inn mot eiendomsselskapene som kan bli de første pilotkundene.'],
+      ['Ingen arbeidsplikt', 'Innsatsen er eierens, ikke den ansattes. Omfanget avtaler vi sammen.'],
+      ['Ryddige spilleregler', 'Aksjonæravtale med tydelige mekanismer for neste kapitalrunde, vekst og dersom noen senere vil ut.'],
     ],
   },
 
+  /* ── 12 Neste steg ── */
   next: {
-    eyebrow: 'Hva skjer herfra?',
+    eyebrow: 'Neste steg',
     title: 'Vi håper dere har lyst til å være med.',
     paragraphs: [
-      'Dette handler for oss om mer enn kapital.',
-      'Vi ønsker dere med som medeiere og rundt bordet når DigiHome Tech skal ut til de første eksterne kundene – og videre mot neste kapitalrunde tidlig 2027.',
-      'Ta gjerne litt tid til å tenke gjennom invitasjonen. Dersom dette fortsatt føles interessant, tar vi en ny samtale og går gjennom tallene, planen frem mot pilotene og det praktiske rundt emisjonen.',
-      'Før vi ferdigstiller avtalene, vil vi gjerne gå gjennom business caset sammen – åpne regneark, ikke konklusjoner – og bli enige om modellen.',
-      'Det er ingen grunn til å gi noe formelt svar her.',
-      'Ring eller skriv når dere har fått tenkt litt på det, så tar vi det videre derfra.',
+      'Ta gjerne litt tid til å tenke gjennom dette.',
+      'Dersom det fortsatt føles interessant, tar vi en ny samtale og går gjennom tallene, planen frem mot pilotene og det praktiske rundt emisjonen – åpne regneark, ikke konklusjoner.',
+      'Det er ingen grunn til å gi noe formelt svar her. Ring eller skriv når dere har fått tenkt litt på det, så tar vi det videre derfra.',
     ],
   },
 

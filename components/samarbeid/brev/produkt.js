@@ -116,7 +116,7 @@ const Rail = ({ user }) => (
 /* ── Innholdet i oversikten – i samme rekkefølge som i appen ── */
 const DATA = {
   user: { name: 'Sarah Sleeman', first: 'Sarah', email: 'sarah@digihome.no', img: '/brand/sarah-sleeman-360.webp', pos: '50% 28%' },
-  date: 'lørdag 4. oktober 2026',
+  date: 'mandag 5. oktober 2026',
   brief: '3 ting venter på deg. 12 hendelser er håndtert siden i går, og husleien for oktober er 94 % inne.',
   prioritert: [
     ['danger', 2, 'husleier forfalt', 'Nygårdsgaten 5 · Kong Oscars gate 12 · purring sendt automatisk'],
@@ -387,7 +387,7 @@ export const Telefon = ({ children, kl = '09:41' }) => (
 );
 
 const EIER = {
-  first: 'Jonas', img: '/v4/jonas.webp', eyebrow: 'Lørdag 4. oktober',
+  first: 'Jonas', img: '/v4/jonas.webp', eyebrow: 'Mandag 5. oktober',
   summary: '27 400 kr/mnd i leieinntekt · 2 av 2 boliger utleid · 1 sak venter.',
   monthly: '27 400', annual: '328 800',
   facts: [['2 av 2', 'Utleid'], ['100 %', 'Belegg', A.ok], ['2', 'Kontrakter'], ['1', 'Åpne saker', A.danger]],
@@ -488,7 +488,7 @@ export const EierTelefon = ({ className = '', style, testid }) => (
 
 /* ─── Leietakerens hjem – mobile/app/tenant/index.tsx: hilsen og status, boligen (16:9 m/ adresse), nøkkeltall, leieforholdet, forvalteren ─── */
 const LEIE = {
-  first: 'Emma', img: '/v4/annonse/leietaker-emma.webp', eyebrow: 'Lørdag 4. oktober',
+  first: 'Emma', img: '/v4/annonse/leietaker-emma.webp', eyebrow: 'Mandag 5. oktober',
   status: 'Husleien for oktober er betalt. Leieforholdet løper til 31. august 2029.',
   cover: '/v4/annonse/stue-moblert-700.webp', adresse: 'Nygårdsgaten 5, H0201', bilder: 12,
   stats: [['14 500', 'Leie/mnd'], ['43 500', 'Depositum'], ['64 m²', 'Areal'], ['2', 'Soverom']],
