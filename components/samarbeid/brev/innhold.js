@@ -141,16 +141,17 @@ export const AVSENDERE = [
   { key: 'martin', name: 'Martin C. Kviteberg', role: 'Produktsjef · styremedlem', img: '/v4/martin.webp', pos: '50% 22%' },
 ];
 
-/** Hele laget i ett rutenett (rekkefølgen her er rekkefølgen på siden): daglig leder, produktsjef, styreleder/CLO, styremedlem – så de to vi inviterer inn – og utvikling.
- *  Ingen definerte roller på Martin og Øyvind før de har investert – bare hva vi særlig ser for oss at de kan være sparringspartnere på. */
+/** Hele laget i ett rutenett (rekkefølgen her er rekkefølgen på siden): daglig leder, produktsjef, styreleder/CLO, styremedlem, utvikling – så de to vi inviterer inn.
+ *  Ingen definerte roller på Martin og Øyvind før de har investert. Bioene er korte og ulikt bygget opp – kapittel 01 sier allerede «vi ser for oss …», så det gjentas ikke her.
+ *  Jens-Petters bilde har ?v=2 fordi den gamle filen (13 KB) lå igjen i Cloudflare-cachen med immutable-header etter at filen ble byttet 05.10. */
 export const TEAM = [
   { key: 'sarah', name: 'Sarah Sleeman', role: 'Daglig leder', img: '/brand/sarah-sleeman-1000.webp', pos: '50% 28%', bio: 'Eiendomsmegler med seks år i DNB. Leder kundeakkvisisjon og forvaltning og sitter tett på den operative driften og kundene.' },
   { key: 'martin', name: 'Martin C. Kviteberg', role: 'Produktsjef', img: '/v4/martin.webp', pos: '50% 22%', bio: 'Grunnla BnbSpesialisten og jobbet ti år i Adonis frem mot exit. Leder produkt- og teknologiutviklingen i DigiHome.' },
   { key: 'erik', name: 'Erik Hoffmann-Dahl', role: 'Styreleder · Chief Legal Officer', img: '/team-erik.webp', pos: '50% 18%', bio: 'Advokat og partner i Hoffmann Thinn. Har jobbet med selskapsstruktur og juridiske rammer rundt DigiHome.' },
-  { key: 'jens', name: 'Jens-Petter Glittenberg', role: 'Styremedlem', img: '/team/jens-petter-glittenberg.webp', pos: '50% 28%', bio: 'Medgründer av Meltwater og styreleder i CARN Capital. Har erfaring med internasjonal skalering, kapitalmarked og selskapsbygging.' },
+  { key: 'jens', name: 'Jens-Petter Glittenberg', role: 'Styremedlem', img: '/team/jens-petter-glittenberg.webp?v=2', pos: '50% 28%', bio: 'Medgründer av Meltwater og styreleder i CARN Capital. Har erfaring med internasjonal skalering, kapitalmarked og selskapsbygging.' },
   { key: 'kevin', name: 'Kevin Ha', role: 'Utvikling', img: '/team/kevin-ai-v2.webp', pos: '50% 22%', bio: 'Bistår Martin i utviklingen av plattformen. Siviløkonom fra NHH med kompetanse innen KI-drevet utvikling og automatisering.' },
-  { key: 'vikesland', name: 'Martin Vikesland', role: 'Inviteres inn som medeier', img: '/team/martin-vikesland.webp', pos: '50% 30%', invited: true, bio: 'Vi ser særlig for oss Martin som sparringspartner på økonomiske modeller, kapitalplan, finansiering og senere investordialog.' },
-  { key: 'hoel', name: 'Øyvind Storli Hoel', role: 'Inviteres inn som medeier', img: '/team/oyvind-storli-hoel.webp', pos: '50% 22%', invited: true, bio: 'Vi ser særlig for oss Øyvind som sparringspartner på marked, produkt og kommersialisering, med erfaring og relasjoner inn mot eiendomsmarkedet.' },
+  { key: 'vikesland', name: 'Martin Vikesland', role: 'Inviteres inn som medeier', img: '/team/martin-vikesland.webp', pos: '50% 30%', invited: true, bio: 'Økonomi og finans. Den vi vil diskutere tallene, kapitalplanen og finansieringen med – og ha med oss i investordialogen når neste runde kommer.' },
+  { key: 'hoel', name: 'Øyvind Storli Hoel', role: 'Inviteres inn som medeier', img: '/team/oyvind-storli-hoel.webp', pos: '50% 22%', invited: true, bio: 'Kjenner eiendomsmarkedet, kundene og den kommersielle siden. Viktig for oss på marked, produkt og veien inn mot større eiendomsaktører.' },
 ];
 
 export const BREV = {
