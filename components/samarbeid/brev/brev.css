@@ -2,6 +2,9 @@
 
 .brev { font-family: var(--font-body), 'ABC Diatype', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
 .brev p { margin: 0; }
+/* Portrettraden i heroen på mobil – dra sidelengs, uten synlig rullefelt */
+.brev-strip { scrollbar-width: none; -ms-overflow-style: none; }
+.brev-strip::-webkit-scrollbar { display: none; }
 
 /* Gaten – samme papir og blekk som brevet */
 .brev-gate { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: #fafaf9; color: #0a0a0a; font-family: var(--font-body), system-ui, sans-serif; -webkit-font-smoothing: antialiased; padding: 24px; }

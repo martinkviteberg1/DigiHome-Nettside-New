@@ -38,9 +38,23 @@ export const BREV = {
   h1: ['Vi vil bygge dette', 'sammen med dere.'],
   sub: 'Etter samtalene våre er vi blitt enda sikrere på at dere er folk vi ønsker rundt bordet når DigiHome Tech skal ut til de første eksterne kundene – og videre mot neste kapitalrunde.',
   cta: 'Les brevet',
-  stage: ['Forvalterens oversikt', 'Eierens hjem i appen'],
   hi: 'Hei Martin og Øyvind,',
   signature: 'Erik, Sarah og Martin',
+
+  /** Seksjon 2 – produktet, slik det står i dag. Ekte komponenter fra appen, ikke illustrasjon. */
+  produkt: {
+    eyebrow: 'Produktet',
+    title: ['Én plattform.', 'Tre flater.'],
+    lede: 'Forvalteren jobber i én arbeidsflate. Eieren følger alt i appen. Leietakeren får svar der han er. Alt under er bygget og i bruk i dag – gjenskapt komponent for komponent.',
+    desktopCaption: ['Forvalterens oversikt', 'Det som venter, det som skjedde siden sist, og porteføljens helse – i én flate.'],
+    flater: [
+      ['Forvalteren', 'Én arbeidsflate for saker, leieforhold, innbetalinger, annonsering og regnskap. Det som venter på en beslutning, ligger øverst.'],
+      ['Eieren', 'Ser inntekt, belegg og boligene sine live. Godkjenner tilbud og svarer forvalteren – uten å ringe.'],
+      ['Leietakeren', 'Har leieforholdet, husleien, depositumet og kontakten med forvalteren på ett sted. Melder saker i appen.'],
+    ],
+    phoneCaptions: ['Eierens hjem', 'Leietakerens hjem'],
+    note: 'Tallene i skjermbildene er illustrative.',
+  },
 
   letter: [
     'Takk for gode samtaler den siste tiden.',

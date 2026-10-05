@@ -7,7 +7,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { AVSENDERE, BREV, INV, TEAM } from './innhold';
-import { DASH_H, DASH_W, EierTelefon, KpiStripe, Oversikt, SakerListe, Skaler, VenterKort } from './produkt';
+import { DASH_H, DASH_W, EierTelefon, KpiStripe, LeietakerTelefon, Oversikt, SakerListe, Skaler, VenterKort } from './produkt';
 
 const EASE = [0.16, 1, 0.3, 1];
 const PAPER = '#fafaf9';
@@ -148,18 +148,18 @@ const Cells = ({ items, testid, size = T.cell }) => (
   </div>
 );
 
-/** Hårlinjerader: tittel + tekst, valgfritt nummerert. */
-const Rows = ({ rows, testid, numbered = false, dark = false }) => {
+/** Hårlinjerader: tittel + tekst, valgfritt nummerert. `stacked` legger teksten under tittelen (smale kolonner). */
+const Rows = ({ rows, testid, numbered = false, dark = false, stacked = false }) => {
   const c = tone(dark);
   return (
     <dl style={{ margin: 0, borderBottom: `1px solid ${c.hair}` }} data-testid={testid}>
       {rows.map((r, i) => (
         <Rise key={r[0]} delay={0.05 + i * 0.05}>
-          <div className="group grid gap-x-10 gap-y-2 py-7 sm:grid-cols-[minmax(0,320px)_minmax(0,1fr)]" style={{ borderTop: `1px solid ${c.hair}` }} data-testid={`${testid}-${i + 1}`}>
+          <div className={`group py-7 ${stacked ? '' : 'grid gap-x-10 gap-y-2 sm:grid-cols-[minmax(0,320px)_minmax(0,1fr)]'}`} style={{ borderTop: `1px solid ${c.hair}` }} data-testid={`${testid}-${i + 1}`}>
             <dt className="text-[18px] font-medium leading-snug flex items-baseline gap-3" style={{ color: c.ink }}>
               {numbered && <span className="text-[12px] font-semibold tabular-nums shrink-0 transition-transform duration-500 group-hover:translate-x-1" style={{ color: c.accent }}>{String(i + 1).padStart(2, '0')}</span>}{r[0]}
             </dt>
-            <dd className="text-[16px] leading-[1.65] max-w-[58ch]" style={{ margin: 0, color: c.muted }}>{r[1]}</dd>
+            <dd className="text-[16px] leading-[1.65] max-w-[58ch]" style={{ margin: stacked ? '10px 0 0' : 0, color: c.muted }}>{r[1]}</dd>
           </div>
         </Rise>
       ))}
@@ -198,45 +198,89 @@ const Avatarer = ({ size = 36, testid }) => (
   </span>
 );
 
-/* ─── Heroen: brevhodet i full bredde – så produktet, slik det står i dag: forvalterens oversikt og eierens hjem i appen. ─── */
+/* ─── Heroen: brevhodet i full bredde – og de tre som skriver, store. Produktet kommer i seksjonen under. ─── */
 const Cover = () => {
   const toLetter = () => { const el = document.getElementById('brevet'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const fade = (delay) => ({ initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 1, delay, ease: EASE } });
-  const { ref, size, wrap } = useFitLines(BREV.h1, 116, 44);
+  const { ref, size, wrap } = useFitLines(BREV.h1, 124, 44);
   return (
     <section className="relative" data-testid="letter-cover">
-      <Container className="relative pt-[132px] lg:pt-[176px]">
+      <Container className="relative pt-[124px] lg:pt-[168px]">
         <motion.p {...fade(0)} className="text-[12.5px] font-semibold uppercase tracking-[0.14em]" style={{ margin: 0, color: ACCENT }} data-testid="letter-role">
           {INV.toLong} <span style={{ color: MUTED }}>· {INV.date}</span>
         </motion.p>
-        <h1 ref={ref} className="font-medium tracking-[-0.04em] leading-[0.96]" style={{ margin: '26px 0 0', color: INK, fontSize: size, whiteSpace: wrap ? 'normal' : 'nowrap' }} data-testid="letter-title">
+        <h1 ref={ref} className="font-medium tracking-[-0.04em] leading-[0.95]" style={{ margin: '26px 0 0', color: INK, fontSize: size, whiteSpace: wrap ? 'normal' : 'nowrap' }} data-testid="letter-title">
           {BREV.h1.map((line, i) => (
             <span key={line} className="block overflow-hidden pb-[0.06em] -mb-[0.06em]"><motion.span className="block" initial={{ y: '110%' }} animate={{ y: 0 }} transition={{ duration: 1.15, delay: 0.15 + i * 0.12, ease: EASE }}>{line}</motion.span></span>
           ))}
         </h1>
-        <div className="mt-10 lg:mt-12 grid lg:grid-cols-12 gap-x-8 gap-y-8 items-end">
+        <div className="mt-10 lg:mt-14 grid lg:grid-cols-12 gap-x-8 gap-y-8 items-end">
           <motion.p {...fade(0.5)} className="lg:col-span-7 text-[18px] lg:text-[21px] leading-[1.5] text-pretty max-w-[640px]" style={{ margin: 0, color: MUTED }} data-testid="letter-sub">{BREV.sub}</motion.p>
-          <motion.div {...fade(0.7)} className="lg:col-span-5 lg:col-start-8 flex flex-wrap items-center gap-x-5 gap-y-4 lg:justify-end">
-            <span className="inline-flex items-center gap-3 text-[15px]" style={{ color: MUTED }} data-testid="letter-to"><Avatarer size={38} testid="letter-founders" />{INV.from}</span>
+          <motion.div {...fade(0.7)} className="lg:col-span-5 lg:col-start-8 flex flex-wrap items-center gap-x-6 gap-y-4 lg:justify-end">
+            <span className="text-[15px]" style={{ color: MUTED }} data-testid="letter-to">{INV.from}</span>
             <button type="button" onClick={toLetter} className={`${PILL_DARK} h-12 pl-6 pr-5 text-[15px]`} data-testid="letter-cta-read">{BREV.cta}<ArrowDown className="w-4 h-4" strokeWidth={2.2} /></button>
           </motion.div>
         </div>
+
+        {/* De tre som skriver – i full bredde. På mobil en rad å dra i. */}
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.3, delay: 0.55, ease: EASE }} className="brev-strip mt-14 lg:mt-20 flex sm:grid sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 overflow-x-auto sm:overflow-visible snap-x snap-mandatory -mx-5 px-5 sm:mx-0 sm:px-0" data-testid="letter-founders">
+          {AVSENDERE.map((p) => (
+            <div key={p.key} className="w-[72vw] sm:w-auto shrink-0 snap-start">
+              <Person name={p.name} role={p.role} img={p.img} pos={p.pos} sizes="(max-width: 640px) 72vw, 400px" testid={`letter-founder-${p.key}`} />
+            </div>
+          ))}
+        </motion.div>
+      </Container>
+    </section>
+  );
+};
+
+/* ─── Seksjon 2 – Produktet: forvalterens oversikt i full bredde på en rolig flate; så de to telefonene ved siden av de tre flatene. ─── */
+const Produkt = () => {
+  const c = BREV.produkt;
+  return (
+    <section id="produktet" className="relative mt-24 lg:mt-36 scroll-mt-4" data-testid="letter-product">
+      <Container>
+        <div style={{ borderTop: `1px solid ${HAIR}` }} />
+        <Grid className="pt-16 lg:pt-24">
+          <Aside label={c.eyebrow} testid="letter-product-aside" />
+          <Main>
+            <Statement lines={c.title} testid="letter-product-title" />
+            <Rise delay={0.1}><p className={BODY} style={{ margin: '28px 0 0', color: MUTED }} data-testid="letter-product-lede">{c.lede}</p></Rise>
+          </Main>
+        </Grid>
       </Container>
 
-      {/* Scenen: forvalterens oversikt på en rolig flate, telefonen med eierens hjem foran. Ekte komponenter, ingen illustrasjon. */}
-      <Container className="relative mt-14 lg:mt-20">
-        <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.3, delay: 0.5, ease: EASE }} className="relative" data-testid="letter-stage">
-          <div className="rounded-[24px] lg:rounded-[32px] overflow-hidden pt-7 px-5 sm:pt-10 sm:px-10 lg:pt-14 lg:px-14" style={{ background: FILL }}>
-            <div className="lg:mr-[220px] rounded-t-[12px] lg:rounded-t-[16px] overflow-hidden h-[260px] sm:h-[420px] lg:h-[600px]" style={{ border: `1px solid ${HAIR}`, borderBottom: 0, boxShadow: '0 40px 80px -48px rgba(10,10,10,0.35)' }} data-testid="letter-stage-desktop">
-              <Skaler w={DASH_W} h={DASH_H}><Oversikt /></Skaler>
-            </div>
+      {/* Scene A: oversikten, kant til kant på canvas-2, vinduet klippes av flaten. */}
+      <div className="mt-16 lg:mt-24 pt-10 sm:pt-14 lg:pt-20" style={{ background: FILL }} data-testid="letter-product-stage">
+        <Container>
+          <Rise y={28} className="rounded-t-[14px] lg:rounded-t-[18px] overflow-hidden h-[300px] sm:h-[480px] lg:h-[760px]" style={{ border: `1px solid ${HAIR}`, borderBottom: 0, boxShadow: '0 48px 96px -56px rgba(10,10,10,0.4)' }} testid="letter-stage-desktop">
+            {/* På mobil: zoomet inn på arbeidsflaten (railen skjult), så teksten er lesbar. */}
+            <div className="sm:hidden"><Skaler w={640} h={DASH_H}><div style={{ marginLeft: -236 }}><Oversikt /></div></Skaler></div>
+            <div className="hidden sm:block"><Skaler w={DASH_W} h={DASH_H}><Oversikt /></Skaler></div>
+          </Rise>
+        </Container>
+      </div>
+      <Container>
+        <Rise delay={0.05}><p className="mt-5 flex items-baseline gap-3 text-[13.5px] leading-snug" style={{ margin: '20px 0 0', color: MUTED }} data-testid="letter-stage-caption"><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>01</span><span><span className="font-medium" style={{ color: INK }}>{c.desktopCaption[0]}</span> · {c.desktopCaption[1]}</span></p></Rise>
+
+        {/* Scene B: de tre flatene til venstre, eierens og leietakerens telefon til høyre. */}
+        <div className="mt-24 lg:mt-32 grid lg:grid-cols-12 gap-x-8 gap-y-14 items-start">
+          <div className="lg:col-span-4 lg:sticky lg:top-28">
+            <Rows rows={c.flater} testid="letter-product-flater" numbered stacked />
+            <Rise delay={0.1}><p className="text-[13.5px] leading-[1.6]" style={{ margin: '24px 0 0', color: MUTED }} data-testid="letter-product-note">{c.note}</p></Rise>
           </div>
-          <div className="hidden lg:block absolute right-6 -bottom-20 w-[280px]" data-testid="letter-stage-phone"><EierTelefon /></div>
-          <div className="lg:hidden relative mx-auto -mt-14 sm:-mt-24 w-[220px] sm:w-[260px]" data-testid="letter-stage-phone-m"><EierTelefon /></div>
-        </motion.div>
-        <motion.div {...fade(1.1)} className="mt-8 lg:mt-28 flex flex-wrap gap-x-10 gap-y-2 text-[13px]" style={{ color: MUTED }} data-testid="letter-stage-captions">
-          {BREV.stage.map((s, i) => <span key={s} className="inline-flex items-baseline gap-2.5"><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>0{i + 1}</span>{s}</span>)}
-        </motion.div>
+          <div className="lg:col-span-8 lg:col-start-5 grid sm:grid-cols-2 gap-x-8 gap-y-12 justify-items-center" data-testid="letter-stage-phones">
+            {[EierTelefon, LeietakerTelefon].map((Tlf, i) => (
+              <Rise key={c.phoneCaptions[i]} delay={0.1 + i * 0.12} y={24} className="w-full max-w-[340px]">
+                <figure className="m-0">
+                  <Tlf testid={`letter-phone-${i + 1}`} />
+                  <figcaption className="mt-5 flex items-baseline justify-center gap-3 text-[13.5px]" style={{ color: MUTED }}><span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>0{i + 2}</span><span className="font-medium" style={{ color: INK }}>{c.phoneCaptions[i]}</span></figcaption>
+                </figure>
+              </Rise>
+            ))}
+          </div>
+        </div>
       </Container>
     </section>
   );
@@ -314,27 +358,19 @@ const Build = () => {
           <Statement lines={c.title} testid="letter-build-title" />
           <Paragraphs items={c.paragraphs} testid="letter-build-p" first={32} />
           <Rise delay={0.15}><p className="text-[20px] lg:text-[23px] font-medium leading-[1.4] tracking-[-0.015em] max-w-[44ch]" style={{ margin: '28px 0 0', color: INK }} data-testid="letter-build-principle">{c.principle}</p></Rise>
-          <div className="mt-14 lg:mt-16 grid lg:grid-cols-[minmax(0,1fr)_264px] gap-x-16 gap-y-14 items-start">
-            <div className="min-w-0">
-              <ol className="list-none p-0 m-0" style={{ borderBottom: `1px solid ${HAIR}` }} data-testid="letter-flow">
-                {c.flow.map(([t, d], i) => (
-                  <Rise key={t} delay={0.05 + i * 0.07}><li className="grid grid-cols-[36px_minmax(0,1fr)] gap-x-4 py-5" style={{ borderTop: `1px solid ${HAIR}` }} data-testid={`letter-flow-${i + 1}`}>
-                    <span className="text-[12px] font-semibold tabular-nums pt-[6px]" style={{ color: ACCENT }}>{String(i + 1).padStart(2, '0')}</span>
-                    <div>
-                      <p className="text-[18px] font-medium tracking-[-0.015em] leading-[1.3]" style={{ margin: 0, color: INK }}>{t}</p>
-                      <p className="text-[15.5px] leading-[1.6] max-w-[52ch]" style={{ margin: '6px 0 0', color: MUTED }}>{d}</p>
-                    </div>
-                  </li></Rise>
-                ))}
-              </ol>
-              <Rise delay={0.1}><p className="text-[18px] lg:text-[19px] font-medium leading-[1.5] tracking-[-0.01em] max-w-[52ch]" style={{ margin: '32px 0 0', color: INK }} data-testid="letter-build-guarantee">{c.guarantee}</p></Rise>
-            </div>
-            <Rise delay={0.2} className="justify-self-center lg:justify-self-end lg:sticky lg:top-28 w-[264px]">
-              <figure className="m-0" data-testid="letter-phone">
-                <EierTelefon />
-                <figcaption className="text-[13px] leading-snug text-center" style={{ margin: '18px 0 0', color: MUTED }}>{c.phoneCaption}</figcaption>
-              </figure>
-            </Rise>
+          <div className="mt-14 lg:mt-16 max-w-[760px]">
+            <ol className="list-none p-0 m-0" style={{ borderBottom: `1px solid ${HAIR}` }} data-testid="letter-flow">
+              {c.flow.map(([t, d], i) => (
+                <Rise key={t} delay={0.05 + i * 0.07}><li className="grid grid-cols-[36px_minmax(0,1fr)] gap-x-4 py-6" style={{ borderTop: `1px solid ${HAIR}` }} data-testid={`letter-flow-${i + 1}`}>
+                  <span className="text-[12px] font-semibold tabular-nums pt-[6px]" style={{ color: ACCENT }}>{String(i + 1).padStart(2, '0')}</span>
+                  <div className="sm:grid sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-x-8">
+                    <p className="text-[18px] font-medium tracking-[-0.015em] leading-[1.3]" style={{ margin: 0, color: INK }}>{t}</p>
+                    <p className="text-[15.5px] leading-[1.6] max-w-[52ch]" style={{ margin: '6px 0 0', color: MUTED }}>{d}</p>
+                  </div>
+                </li></Rise>
+              ))}
+            </ol>
+            <Rise delay={0.1}><p className="text-[18px] lg:text-[19px] font-medium leading-[1.5] tracking-[-0.01em] max-w-[52ch]" style={{ margin: '32px 0 0', color: INK }} data-testid="letter-build-guarantee">{c.guarantee}</p></Rise>
           </div>
         </Main>
       </Grid>
@@ -518,6 +554,7 @@ export default function Brev({ start }) {
       <Progress />
       <Header />
       <Cover />
+      <Produkt />
       <Letter />
       <Why />
       <Target />

@@ -485,3 +485,80 @@ export const EierHjem = () => (
 export const EierTelefon = ({ className = '', style, testid }) => (
   <Skaler w={RAMME_W} h={RAMME_H} className={className} style={style} testid={testid}><Telefon><EierHjem /></Telefon></Skaler>
 );
+
+/* ─── Leietakerens hjem – mobile/app/tenant/index.tsx: hilsen og status, boligen (16:9 m/ adresse), nøkkeltall, leieforholdet, forvalteren ─── */
+const LEIE = {
+  first: 'Emma', img: '/v4/annonse/leietaker-emma.webp', eyebrow: 'Lørdag 4. oktober',
+  status: 'Husleien for oktober er betalt. Leieforholdet løper til 31. august 2029.',
+  cover: '/v4/annonse/stue-moblert-700.webp', adresse: 'Nygårdsgaten 5, H0201', bilder: 12,
+  stats: [['14 500', 'Leie/mnd'], ['43 500', 'Depositum'], ['64 m²', 'Areal'], ['2', 'Soverom']],
+  rows: [
+    ['Leieperiode', '1. sep 2026 – 31. aug 2029', null],
+    ['Husleie', 'Forfall den 1. · KID', null],
+    ['Depositum', 'Depositumskonto · Keyhole', 'Sikret'],
+    ['Dokumenter', 'Leiekontrakt · Innflyttingsprotokoll', null],
+  ],
+  forvalter: { name: 'Sarah Sleeman', role: 'Din forvalter · DigiHome', img: '/brand/sarah-sleeman-360.webp', pos: '50% 28%' },
+  tabs: [[Home, 'Hjem', true], [ClipboardList, 'Saker'], [Receipt, 'Husleie'], [MessageSquare, 'Meldinger'], [User, 'Profil']],
+};
+
+export const LeietakerHjem = () => (
+  <>
+    <div className="flex-1 min-h-0 overflow-hidden px-5 pt-3.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="mb-2"><Label>{LEIE.eyebrow}</Label></div>
+          <p className={`${H} text-[30px] font-bold leading-[34px]`} style={{ letterSpacing: -0.8, color: A.ink, margin: 0 }}>God morgen, {LEIE.first}.</p>
+        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={LEIE.img} alt="" className="w-[38px] h-[38px] rounded-full object-cover shrink-0 mt-[22px]" style={{ background: A.canvas2 }} />
+      </div>
+      <p className="text-[15.5px] leading-[23px] mt-2.5" style={{ color: A.ink2, margin: '10px 0 0' }}>{LEIE.status}</p>
+
+      <div className="mt-6 rounded-[16px] overflow-hidden" style={{ background: A.field, border: `1px solid ${A.hair}` }}>
+        <div className="relative w-full" style={{ aspectRatio: '16 / 9', background: A.canvas2 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={LEIE.cover} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <span className="absolute left-3 bottom-3 inline-flex items-center gap-1.5 h-7 pl-2.5 pr-3 rounded-full text-[12px] font-medium" style={{ background: 'rgba(250,249,246,0.92)', color: A.ink }}><MapPin className="w-3 h-3" strokeWidth={1.8} />{LEIE.adresse}</span>
+          <span className="absolute right-3 bottom-3 inline-flex items-center h-7 px-2.5 rounded-full text-[12px] font-medium tabular-nums" style={{ background: 'rgba(26,26,26,0.72)', color: A.onInk }}>{LEIE.bilder} bilder</span>
+        </div>
+        <div className="flex py-3.5 px-2">
+          {LEIE.stats.map(([v, l], i) => (
+            <div key={l} className="flex-1 px-2" style={{ borderLeft: i ? `1px solid ${A.hair}` : undefined }}>
+              <p className={`${H} text-[17px] font-bold leading-[22px] tabular-nums whitespace-nowrap`} style={{ letterSpacing: -0.5, color: A.ink, margin: 0 }}>{N(v)}</p>
+              <p className="text-[11px] mt-0.5 whitespace-nowrap" style={{ color: A.ink3, margin: '2px 0 0' }}>{l}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-7">
+        <p className={`${H} text-[17px] font-bold leading-[22px] mb-1`} style={{ letterSpacing: -0.3, color: A.ink, margin: '0 0 4px' }}>Leieforholdet</p>
+        {LEIE.rows.map(([t, s, pill], i) => (
+          <div key={t} className="flex items-center gap-3 py-3" style={{ borderBottom: i < LEIE.rows.length - 1 ? `1px solid ${A.hair}` : undefined }}>
+            <span className="flex-1 min-w-0"><span className="block text-[14.5px] font-medium" style={{ color: A.ink }}>{t}</span><span className="block text-[12.5px] truncate" style={{ color: A.ink3 }}>{s}</span></span>
+            {pill ? <span className="text-[11.5px] font-medium px-2.5 h-6 inline-flex items-center rounded-full" style={{ background: A.okBg, color: A.ok }}>{pill}</span> : <ChevronRight className="w-[17px] h-[17px]" style={{ color: A.ink3 }} />}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 rounded-[16px] p-4 flex items-center gap-3" style={{ background: A.field, border: `1px solid ${A.hair}` }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={LEIE.forvalter.img} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" style={{ objectPosition: LEIE.forvalter.pos }} />
+        <span className="flex-1 min-w-0"><span className={`${H} block text-[15px] font-bold leading-[20px] truncate`} style={{ color: A.ink }}>{LEIE.forvalter.name}</span><span className="block text-[12.5px] truncate" style={{ color: A.ink3 }}>{LEIE.forvalter.role}</span></span>
+        <span className="inline-flex items-center h-9 px-4 rounded-full text-[13px] font-medium shrink-0" style={{ background: A.ink, color: A.onInk }}>Ta kontakt</span>
+      </div>
+    </div>
+    <div className="shrink-0 flex items-start justify-around px-2 pt-2" style={{ height: 84, background: A.field, borderTop: `1px solid ${A.hair}` }}>
+      {LEIE.tabs.map(([Icon, l, on]) => (
+        <span key={l} className="relative inline-flex flex-col items-center gap-1 py-1 w-16 text-[10.5px] font-medium" style={{ color: on ? A.ink : A.ink3, letterSpacing: 0.3 }}>
+          <Icon className="w-[22px] h-[22px]" strokeWidth={on ? 2 : 1.75} />{l}
+        </span>
+      ))}
+    </div>
+  </>
+);
+
+export const LeietakerTelefon = ({ className = '', style, testid }) => (
+  <Skaler w={RAMME_W} h={RAMME_H} className={className} style={style} testid={testid}><Telefon kl="09:41"><LeietakerHjem /></Telefon></Skaler>
+);
