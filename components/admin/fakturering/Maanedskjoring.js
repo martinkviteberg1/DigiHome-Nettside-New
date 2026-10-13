@@ -5,7 +5,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Lock, Unlock, Loader2, ReceiptText, ArrowUpRight, CheckCircle2, AlertTriangle, Landmark, TrendingUp, Boxes, Users, ListChecks, Star, ExternalLink, RefreshCw } from 'lucide-react';
-import { LILLA, BLEKK, GRONN, AMBER, fmt, fmtV, kr, mndLabel, datoNb, tidNb, skiftMnd, forrigeMnd, naaMnd, maanedValg, Kort, Pille, StatusPille, MiljøPille, Nedtrekk, Tomt, th, thR, td, tdR, knappPrimær, knappSekundær, knappLiten } from './felles';
+import { LILLA, BLEKK, GRONN, AMBER, fmt, fmtV, kr, mndLabel, datoNb, tidNb, skiftMnd, forrigeMnd, naaMnd, maanedValg, Kort, Pille, StatusPille, MiljøPille, Nedtrekk, Tomt, th, thR, td, tdR, knappPrimær, knappSekundær, knappLiten, lesJson, ventPaaJobb, jobbFeilTekst } from './felles';
 import { FakturaSkuff } from './FakturaPanel';
 
 function Kpi({ l, v, sub, ikon: Ikon, tone }) {
@@ -36,6 +36,7 @@ export default function Maanedskjoring({ q, data, maaned, setMaaned, onGaaTil, t
   const [ov, setOv] = useState(null);
   const [laster, setLaster] = useState(true);
   const [kjorer, setKjorer] = useState(''); // 'frys' | 'utkast'
+  const [kjorerSteg, setKjorerSteg] = useState(''); // framdrift fra bakgrunnsjobben
   const [resultat, setResultat] = useState(null);
   const [valgt, setValgt] = useState(null); // kundeId for skuff
 
@@ -61,14 +62,20 @@ export default function Maanedskjoring({ q, data, maaned, setMaaned, onGaaTil, t
       ? `Fryse grunnlaget for ${n} kunde${n === 1 ? '' : 'r'} · ${mndLabel(maaned)}?\n\nEnhetsliste og pris lagres slik de er nå.`
       : `Opprette PowerOffice-utkast for ${n} kunde${n === 1 ? '' : 'r'} · ${mndLabel(maaned)}?\n\nGrunnlaget fryses først. Utkastene er usendte — du kontrollerer og sender i Go${po?.env === 'demo' ? ' (DEMO-miljø)' : ''}.`;
     if (!window.confirm(tekst)) return;
-    setKjorer(type); setResultat(null);
+    setKjorer(type); setResultat(null); setKjorerSteg('Starter …');
     try {
+      // Serveren starter en bakgrunnsjobb (202 + jobb) og vi poller til den er ferdig —
+      // kjøringen tåler da at plattform + PowerOffice bruker minutter, uten tidsavbrudd.
       const r = await fetch(`/api/admin/fakturering/${type === 'frys' ? 'frys-alle' : 'utkast-alle'}?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maaned }) });
-      const d = await r.json();
-      setResultat({ type, ...d });
-      await last(); if (onEndret) onEndret();
-    } catch (e) { window.alert('Kjøringen feilet — prøv igjen.'); }
-    setKjorer('');
+      const d = await lesJson(r);
+      if (!d.ok) { window.alert(jobbFeilTekst(d, 'Kjøringen kunne ikke startes')); }
+      else if (d.jobb) {
+        const j = await ventPaaJobb(q, d.jobb.id, setKjorerSteg);
+        if (j.status === 'ferdig' && j.resultat) setResultat({ type, ...j.resultat });
+        else window.alert(jobbFeilTekst(j, 'Kjøringen feilet'));
+      } else setResultat({ type, ...d });
+    } catch (e) { window.alert(`Kjøringen ble avbrutt.\n\n${e?.message || e}\n\nListen oppdateres — det som rakk å bli gjort, vises.`); }
+    finally { try { await last(); if (onEndret) onEndret(); } catch (e) { /* neste last */ } setKjorer(''); setKjorerSteg(''); }
   };
 
   const planFor = (id) => (data?.planer || []).find((p) => p.id === id) || (data?.planer || []).find((p) => p.standard) || (data?.planer || [])[0];
@@ -114,6 +121,15 @@ export default function Maanedskjoring({ q, data, maaned, setMaaned, onGaaTil, t
         <Steg nr={4} tittel="Send i PowerOffice Go" tekst="Fakturanummer, bokføring og utsending (EHF/e-post) gjøres i Go — der kontrollen skal ligge." status={fakturerbare.length && uUtkast.length === 0 ? 'delvis' : 'venter'}
           handling={<a href="https://go.poweroffice.net" target="_blank" rel="noreferrer" className={knappLiten}>Åpne Go <ExternalLink className="h-3.5 w-3.5" /></a>} />
       </div>
+
+      {/* Framdrift fra pågående kjøring (bakgrunnsjobb) */}
+      {kjorer ? (
+        <div className="flex items-center gap-2.5 rounded-xl border border-black/[0.06] bg-white px-3.5 py-3 text-[12.5px] text-black/60" data-testid="kjoring-steg" aria-live="polite">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" style={{ color: LILLA }} />
+          <span className="min-w-0 flex-1 truncate">{kjorer === 'frys' ? 'Fryser grunnlag' : 'Oppretter utkast i PowerOffice'} — {kjorerSteg || 'arbeider …'}</span>
+          <span className="hidden text-[11px] text-black/35 sm:inline">Kjører på serveren — fortsetter selv om du venter lenge.</span>
+        </div>
+      ) : null}
 
       {/* Resultat fra siste kjøring */}
       {resultat ? (

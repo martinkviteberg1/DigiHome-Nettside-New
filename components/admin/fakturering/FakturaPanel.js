@@ -220,10 +220,17 @@ export default function FakturaPanel({ q, kunde, plan, maaned, onEndret, kompakt
               ) : (
                 <>
                   <span className="hidden text-[12px] text-black/45 sm:inline">Fryser grunnlaget og lager et usendt utkast i regnskapet — du kontrollerer og sender det i Go.</span>
-                  <button onClick={f.opprettUtkast} disabled={tom || f.poLaster || !lagret || !f.maanedAvsluttet} title={!lagret ? 'Lagre kunden først' : (!f.maanedAvsluttet ? 'Måneden er ikke avsluttet' : '')} className="ml-auto flex h-9 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-semibold text-white transition-all disabled:opacity-40" style={{ background: BLEKK }}>{f.poLaster ? <Loader2 className="h-4 w-4 animate-spin" /> : <ReceiptText className="h-4 w-4" />} Opprett utkast</button>
+                  <button onClick={f.opprettUtkast} disabled={tom || f.poLaster || !lagret || !f.maanedAvsluttet} title={!lagret ? 'Lagre kunden først' : (!f.maanedAvsluttet ? 'Måneden er ikke avsluttet' : '')} className="ml-auto flex h-9 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-semibold text-white transition-all disabled:opacity-40" style={{ background: BLEKK }} data-testid="po-opprett-utkast">{f.poLaster ? <Loader2 className="h-4 w-4 animate-spin" /> : <ReceiptText className="h-4 w-4" />} {f.poLaster ? 'Arbeider …' : 'Opprett utkast'}</button>
                 </>
               )}
             </div>
+            {f.poLaster && f.poSteg ? (
+              <div className="mt-2 flex items-center gap-2 border-t border-black/[0.06] pt-2 text-[12px] text-black/55" data-testid="po-jobb-steg" aria-live="polite">
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" style={{ color: LILLA }} />
+                <span className="min-w-0 flex-1 truncate">{f.poSteg}</span>
+                <span className="hidden text-[11px] text-black/35 sm:inline">Kjører i bakgrunnen — du kan vente her.</span>
+              </div>
+            ) : null}
             {f.utkastAvvik ? (
               <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-amber-200/70 pt-2 text-[12px] text-amber-900">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />

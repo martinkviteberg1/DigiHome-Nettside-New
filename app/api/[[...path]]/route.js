@@ -2476,12 +2476,91 @@ async function poFakturaCtx(db, settings = {}) {
   return { clientKey: s.clientKey, env: s.env || PO_DEFAULT_ENV, selskapNavn: s.navn };
 }
 
+// ── Bakgrunnsjobber for fakturering (po_jobber) ─────────────────────────────
+// «Opprett utkast» kjørte før synkront i selve API-kallet: plattform-API (5–25 s) +
+// innlogging/produkt/kunde/ordre mot PowerOffice. På prod ble forespørselen kuttet av
+// kant-/lastbalansereren før serveren svarte (HTML-feilside → «Kunne ikke kontakte
+// PowerOffice» i admin), uten at noe ble logget i poden. Nå starter POST en jobb,
+// svarer 202 med jobb-id med en gang, og arbeidet fortsetter i bakgrunnen mens admin
+// poller GET /admin/pris/poweroffice/jobb?id=. Tilstanden ligger i MongoDB, så
+// polling kan treffe en annen replika enn den som kjører jobben.
+const PO_JOBB_STALE_MS = 3 * 60 * 1000; // ingen framdrift på 3 min → jobben regnes som død
+const poJobbRen = (d) => { if (!d) return null; const { _id, ...ren } = d; return ren; };
+
+// Unik indeks blant jobber som KJØRER (type+kundeId+maaned): to samtidige POST-er
+// (f.eks. dobbeltklikk eller nytt forsøk etter tidsavbrudd) kan ikke begge opprette en
+// jobb — den andre får duplikatfeil og gjenbruker den første. En ren findOne-sjekk
+// før insert var ikke nok (begge passerte sjekken før noen hadde satt inn).
+let _poJobbIndeksKlar = false;
+async function poJobbIndeks(db) {
+  if (_poJobbIndeksKlar) return;
+  try {
+    await db.collection('po_jobber').createIndex({ type: 1, kundeId: 1, maaned: 1 }, { name: 'po_jobber_uniq_kjorer', unique: true, partialFilterExpression: { status: 'kjorer' } });
+    _poJobbIndeksKlar = true;
+  } catch (e) { console.error('[po_jobber] klarte ikke å opprette indeks', e?.message || e); }
+}
+
+async function poJobbStart(db, { type, kundeId = null, maaned, tvang = false }, kjor) {
+  const koll = db.collection('po_jobber');
+  await poJobbIndeks(db);
+  // Pågående jobb for samme kunde+måned (eller samme månedskjøring) → gjenbruk den.
+  // Hindrer to samtidige kjøringer som begge passerer «finnes utkast?»-sjekken og
+  // lager dobbelt utkast i Go når noen klikker igjen etter et tidsavbrudd.
+  const paagaar = await koll.findOne({ type, maaned, kundeId, status: 'kjorer' });
+  if (paagaar) {
+    if (Date.now() - new Date(paagaar.oppdatert).getTime() < PO_JOBB_STALE_MS) return { jobb: poJobbRen(paagaar), gjenbrukt: true };
+    await koll.updateOne({ id: paagaar.id }, { $set: { status: 'feil', steg: 'Avbrutt', feil: 'Jobben stoppet uten å bli ferdig (serveren startet trolig på nytt). Prøv igjen.', ferdig: new Date().toISOString() } });
+  }
+  const naa = new Date().toISOString();
+  const jobb = { id: uuidv4(), type, kundeId, maaned, tvang: !!tvang, status: 'kjorer', steg: 'Starter …', startet: naa, oppdatert: naa, ferdig: null, httpStatus: null, resultat: null, feil: null, hint: null };
+  try {
+    await koll.insertOne({ ...jobb });
+  } catch (e) {
+    if (e?.code !== 11000) throw e;
+    // Kappløp: en annen forespørsel satte inn jobben et øyeblikk før oss → gjenbruk den.
+    const annen = await koll.findOne({ type, maaned, kundeId, status: 'kjorer' });
+    if (annen) return { jobb: poJobbRen(annen), gjenbrukt: true };
+    await koll.insertOne({ ...jobb }); // den andre rakk å bli ferdig — prøv én gang til
+  }
+  const framdrift = async (steg) => { try { await koll.updateOne({ id: jobb.id }, { $set: { steg: String(steg).slice(0, 160), oppdatert: new Date().toISOString() } }); } catch (e) { /* framdrift skal aldri velte jobben */ } };
+  // Fyr og glem: svaret går tilbake til klienten nå, arbeidet fortsetter i prosessen.
+  (async () => {
+    try {
+      const r = await kjor(framdrift);
+      const ok = !!(r && r.body && r.body.ok);
+      await koll.updateOne({ id: jobb.id }, { $set: {
+        status: ok ? 'ferdig' : 'feil', steg: ok ? 'Ferdig' : 'Feilet', httpStatus: r?.status ?? null, resultat: r?.body ?? null,
+        feil: ok ? null : String(r?.body?.feil || 'Ukjent feil').slice(0, 300), hint: r?.body?.hint || null,
+        ferdig: new Date().toISOString(), oppdatert: new Date().toISOString(),
+      } });
+    } catch (e) {
+      console.error('[po_jobber] jobb feilet', jobb.type, jobb.id, e);
+      await koll.updateOne({ id: jobb.id }, { $set: { status: 'feil', steg: 'Feilet', httpStatus: 500, feil: String(e?.message || e).slice(0, 300), ferdig: new Date().toISOString(), oppdatert: new Date().toISOString() } }).catch(() => {});
+    }
+  })();
+  return { jobb, gjenbrukt: false };
+}
+
+async function poJobbHent(db, id) {
+  const koll = db.collection('po_jobber');
+  const d = await koll.findOne({ id: String(id || '') });
+  if (!d) return null;
+  if (d.status === 'kjorer' && Date.now() - new Date(d.oppdatert).getTime() > PO_JOBB_STALE_MS) {
+    const feil = 'Jobben stoppet uten å bli ferdig (serveren startet trolig på nytt). Sjekk om utkastet likevel finnes, og prøv ellers igjen.';
+    await koll.updateOne({ id: d.id }, { $set: { status: 'feil', steg: 'Avbrutt', feil, ferdig: new Date().toISOString() } });
+    return { ...poJobbRen(d), status: 'feil', steg: 'Avbrutt', feil };
+  }
+  return poJobbRen(d);
+}
+
 // ── Lisensfaktura: frys grunnlag + opprett USENDT utkast (SalesOrder Draft) i PowerOffice ──
 // Brukes av både enkelt-kunde-ruten og «opprett alle». Returnerer { status, body }.
 // Idempotent per kunde+måned+miljø: finnes utkastet, returneres det uendret (uten å
 // fryse noe — et eldre utkast kan være laget med en annen modell).
-async function opprettLisensUtkast(db, alt, kunde, maaned, { tvang = false } = {}) {
+// framdrift(tekst) rapporterer delsteg til jobben (valgfri).
+async function opprettLisensUtkast(db, alt, kunde, maaned, { tvang = false, framdrift = null } = {}) {
   const svar = (status, body) => ({ status, body });
+  const steg = async (t) => { if (typeof framdrift === 'function') await framdrift(t); };
   if (!poFellesKonfigurert()) return svar(400, { ok: false, feil: 'PowerOffice er ikke konfigurert (mangler app-/abonnementsnøkkel)' });
   if (maaned >= new Date().toISOString().slice(0, 7)) return svar(400, { ok: false, feil: 'Måneden er ikke avsluttet — utkast kan først lages fra den 1. i måneden etter.' });
   if (kunde.status === 'inaktiv') return svar(400, { ok: false, feil: 'Kunden er inaktiv' });
@@ -2495,6 +2574,7 @@ async function opprettLisensUtkast(db, alt, kunde, maaned, { tvang = false } = {
   // Feiler slettingen, lages det ikke noe nytt — aldri to fakturaer for samme måned.
   let erstattet = null;
   if (eksisterende && tvang && eksisterende.poOrderId) {
+    await steg('Sletter det gamle utkastet i Go …');
     try { const s = await poSlettUtkast(ctx, eksisterende.poOrderId); erstattet = { poOrderId: eksisterende.poOrderId, poOrderNo: eksisterende.poOrderNo ?? null, slettet: s.slettet, fantesIkke: s.fantesIkke }; }
     catch (e) { return svar(409, { ok: false, feil: `Det gamle utkastet (ordre ${eksisterende.poOrderNo || eksisterende.poOrderId}) kunne ikke slettes i Go — det er trolig allerede overført til faktura. Ingen nytt utkast ble laget.`, hint: String(e.message || e).slice(0, 200) }); }
   }
@@ -2506,9 +2586,11 @@ async function opprettLisensUtkast(db, alt, kunde, maaned, { tvang = false } = {
   if (!laast) {
     let rows = []; let antallRader = null;
     if (kunde.enhetskilde === 'plattform') {
+      await steg('Henter leieforhold fra plattformen …');
       try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; antallRader = rows.length; }
       catch (e) { return svar(502, { ok: false, feil: 'Fikk ikke hentet leieforhold fra plattformen — prøv igjen.' }); }
     }
+    await steg('Beregner og fryser grunnlaget …');
     const g = await prisBeregnGrunnlagDb(db, rows, plan, kunde, alt.settings, maaned);
     if (!g.linjer.length) return svar(400, { ok: false, feil: 'Ingen fakturerbare enheter for denne måneden' });
     laast = (await prisLaasGrunnlag(db, { kunde, plan, settings: alt.settings, grunnlag: g, maaned, av: 'poweroffice', antallRader })).laast;
@@ -2517,7 +2599,7 @@ async function opprettLisensUtkast(db, alt, kunde, maaned, { tvang = false } = {
   if (laast.plan) plan = laast.plan;
   if (!grunnlag.linjer.length) return svar(400, { ok: false, feil: 'Ingen fakturerbare enheter for denne måneden' });
   try {
-    const res = await poFakturaUtkast(ctx, { kunde, grunnlag, settings: alt.settings, maaned });
+    const res = await poFakturaUtkast(ctx, { kunde, grunnlag, settings: alt.settings, maaned, onSteg: steg });
     const doc = {
       id: (eksisterende && eksisterende.id) || uuidv4(),
       kundeId: kunde.id, kundeNavn: kunde.navn, maaned, env: ctx.env, selskap: ctx.selskapNavn || null,
@@ -2531,8 +2613,9 @@ async function opprettLisensUtkast(db, alt, kunde, maaned, { tvang = false } = {
     await koll.updateOne({ kundeId: kunde.id, maaned, env: ctx.env }, { $set: doc }, { upsert: true });
     return svar(200, { ok: true, utkast: doc, erstattet: Boolean(erstattet) });
   } catch (e) {
-    const status = e.status === 403 ? 403 : 502;
-    const hint = e.status === 403 ? 'PowerOffice mangler skrivetilgang (SalesOrders_Full). Be PowerOffice aktivere det på integrasjonsnøkkelen.' : '';
+    const status = e.status === 403 ? 403 : (e.status === 504 ? 504 : 502);
+    const hint = e.status === 403 ? 'PowerOffice mangler skrivetilgang (SalesOrders_Full). Be PowerOffice aktivere det på integrasjonsnøkkelen.'
+      : (e.status === 504 ? 'PowerOffice Go svarte ikke i tide. Sjekk i Go om utkastet likevel ble laget før du prøver igjen om et par minutter.' : '');
     return svar(status, { ok: false, feil: String(e.message || e).slice(0, 300), hint });
   }
 }
@@ -5212,44 +5295,57 @@ async function handleRoute(request, { params }) {
       const maaned = (String(m || '').match(/^\d{4}-\d{2}$/) ? m : prisForrigeMaaned());
       return cors(NextResponse.json(await faktureringOversikt(db, maaned)));
     }
-    // Frys grunnlaget for alle fakturerbare kunder (idempotent — låste hoppes over)
+    // Frys grunnlaget for alle fakturerbare kunder (idempotent — låste hoppes over).
+    // Kjører som bakgrunnsjobb (202 + jobb): plattform-API-et kan bruke 5–25 s.
     if (route === '/admin/fakturering/frys-alle' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const body = await request.json().catch(() => ({}));
       const maaned = (String(body.maaned || '').match(/^\d{4}-\d{2}$/) ? body.maaned : prisForrigeMaaned());
       if (maaned >= new Date().toISOString().slice(0, 7)) return cors(NextResponse.json({ ok: false, feil: 'Måneden er ikke avsluttet ennå.' }, { status: 400 }));
-      const alt = await prisHentAlt(db);
-      const planFor = (id) => alt.planer.find((p) => p.id === id) || alt.planer.find((p) => p.standard) || alt.planer[0];
-      let rows = null;
-      const resultat = [];
-      for (const kunde of alt.kunder.filter((k) => k.status !== 'inaktiv')) {
-        const finnes = await prisHentLaast(db, kunde.id, maaned);
-        if (finnes) { resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: true, alleredeLaast: true }); continue; }
-        let r = []; let antallRader = null;
-        if (kunde.enhetskilde === 'plattform') {
-          if (rows === null) { try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { rows = false; } }
-          if (rows === false) { resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: false, feil: 'Plattformen svarte ikke' }); continue; }
-          r = rows; antallRader = rows.length;
+      const { jobb, gjenbrukt } = await poJobbStart(db, { type: 'frys-alle', maaned }, async (framdrift) => {
+        const alt = await prisHentAlt(db);
+        const planFor = (id) => alt.planer.find((p) => p.id === id) || alt.planer.find((p) => p.standard) || alt.planer[0];
+        let rows = null;
+        const resultat = [];
+        const kunder = alt.kunder.filter((k) => k.status !== 'inaktiv');
+        for (const [i, kunde] of kunder.entries()) {
+          await framdrift(`Kunde ${i + 1} av ${kunder.length}: ${kunde.navn} …`);
+          const finnes = await prisHentLaast(db, kunde.id, maaned);
+          if (finnes) { resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: true, alleredeLaast: true }); continue; }
+          let r = []; let antallRader = null;
+          if (kunde.enhetskilde === 'plattform') {
+            if (rows === null) { await framdrift('Henter leieforhold fra plattformen …'); try { const lf = await hentLeieforhold(leieforholdTarget(), { db }); rows = lf.rows || []; } catch (e) { rows = false; } }
+            if (rows === false) { resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: false, feil: 'Plattformen svarte ikke' }); continue; }
+            r = rows; antallRader = rows.length;
+          }
+          const g = await prisBeregnGrunnlagDb(db, r, planFor(kunde.planId), kunde, alt.settings, maaned);
+          if (!g.linjer.length) { resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: false, feil: 'Ingen fakturerbare enheter' }); continue; }
+          const l = await prisLaasGrunnlag(db, { kunde, plan: planFor(kunde.planId), settings: alt.settings, grunnlag: g, maaned, av: 'manuell', antallRader });
+          resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: true, alleredeLaast: l.alleredeLaast, sumEksMva: g.sumEksMva });
         }
-        const g = await prisBeregnGrunnlagDb(db, r, planFor(kunde.planId), kunde, alt.settings, maaned);
-        if (!g.linjer.length) { resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: false, feil: 'Ingen fakturerbare enheter' }); continue; }
-        const l = await prisLaasGrunnlag(db, { kunde, plan: planFor(kunde.planId), settings: alt.settings, grunnlag: g, maaned, av: 'manuell', antallRader });
-        resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: true, alleredeLaast: l.alleredeLaast, sumEksMva: g.sumEksMva });
-      }
-      return cors(NextResponse.json({ ok: true, maaned, resultat, frosset: resultat.filter((x) => x.ok && !x.alleredeLaast).length }));
+        return { status: 200, body: { ok: true, maaned, resultat, frosset: resultat.filter((x) => x.ok && !x.alleredeLaast).length } };
+      });
+      return cors(NextResponse.json({ ok: true, jobb, gjenbrukt }, { status: 202 }));
     }
-    // Opprett PowerOffice-utkast for alle fakturerbare kunder (sekvensielt, idempotent)
+    // Opprett PowerOffice-utkast for alle fakturerbare kunder (sekvensielt, idempotent).
+    // Kjører som bakgrunnsjobb (202 + jobb) — én kunde kan ta 10–30 s mot plattform + Go.
     if (route === '/admin/fakturering/utkast-alle' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const body = await request.json().catch(() => ({}));
       const maaned = (String(body.maaned || '').match(/^\d{4}-\d{2}$/) ? body.maaned : prisForrigeMaaned());
-      const alt = await prisHentAlt(db);
-      const resultat = [];
-      for (const kunde of alt.kunder.filter((k) => k.status === 'aktiv')) {
-        const r = await opprettLisensUtkast(db, alt, kunde, maaned, {});
-        resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: !!r.body.ok, alleredeOpprettet: !!r.body.alleredeOpprettet, feil: r.body.feil || null, hint: r.body.hint || null, utkast: r.body.utkast || null });
-      }
-      return cors(NextResponse.json({ ok: true, maaned, resultat, opprettet: resultat.filter((x) => x.ok && !x.alleredeOpprettet).length, feilet: resultat.filter((x) => !x.ok).length }));
+      const { jobb, gjenbrukt } = await poJobbStart(db, { type: 'utkast-alle', maaned }, async (framdrift) => {
+        const alt = await prisHentAlt(db);
+        const resultat = [];
+        const kunder = alt.kunder.filter((k) => k.status === 'aktiv');
+        for (const [i, kunde] of kunder.entries()) {
+          const prefiks = `Kunde ${i + 1} av ${kunder.length}: ${kunde.navn}`;
+          await framdrift(`${prefiks} …`);
+          const r = await opprettLisensUtkast(db, alt, kunde, maaned, { framdrift: (t) => framdrift(`${prefiks} — ${t}`) });
+          resultat.push({ kundeId: kunde.id, navn: kunde.navn, ok: !!r.body.ok, alleredeOpprettet: !!r.body.alleredeOpprettet, feil: r.body.feil || null, hint: r.body.hint || null, utkast: r.body.utkast || null });
+        }
+        return { status: 200, body: { ok: true, maaned, resultat, opprettet: resultat.filter((x) => x.ok && !x.alleredeOpprettet).length, feilet: resultat.filter((x) => !x.ok).length } };
+      });
+      return cors(NextResponse.json({ ok: true, jobb, gjenbrukt }, { status: 202 }));
     }
     // Historikk: alle frosne måneder + utkast, nyeste først. ?aar=YYYY filtrerer.
     if (route === '/admin/fakturering/fakturaer' && method === 'GET') {
@@ -5284,8 +5380,10 @@ async function handleRoute(request, { params }) {
     }
 
     // ── PowerOffice: opprett fakturautkast (SalesOrder Draft) for lisensen ──
-    // POST { kundeId, maaned, tvang? } → finn/opprett produkt + kunde i Go, lag et
-    // USENDT Draft-utkast. Idempotent per kunde+måned+miljø (lagres i po_faktura_utkast).
+    // POST { kundeId, maaned, tvang? } → starter en BAKGRUNNSJOBB (202 + jobb) som finner/
+    // oppretter produkt + kunde i Go og lager et USENDT Draft-utkast. Admin poller
+    // GET /admin/pris/poweroffice/jobb?id=. Idempotent per kunde+måned+miljø (po_faktura_utkast);
+    // en pågående jobb for samme kunde+måned gjenbrukes (ingen dobbeltutkast).
     if (route === '/admin/pris/poweroffice/utkast' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const body = await request.json().catch(() => ({}));
@@ -5293,8 +5391,17 @@ async function handleRoute(request, { params }) {
       const alt = await prisHentAlt(db);
       const kunde = (alt.kunder || []).find((k) => k.id === body.kundeId);
       if (!kunde) return cors(NextResponse.json({ ok: false, feil: 'Ukjent kunde — lagre kunden først' }, { status: 404 }));
-      const r = await opprettLisensUtkast(db, alt, kunde, maaned, { tvang: body.tvang === true });
-      return cors(NextResponse.json(r.body, { status: r.status }));
+      const tvang = body.tvang === true;
+      const { jobb, gjenbrukt } = await poJobbStart(db, { type: 'utkast', kundeId: kunde.id, maaned, tvang }, (framdrift) => opprettLisensUtkast(db, alt, kunde, maaned, { tvang, framdrift }));
+      return cors(NextResponse.json({ ok: true, jobb, gjenbrukt }, { status: 202 }));
+    }
+    // GET ?id= → status for en bakgrunnsjobb (utkast / utkast-alle / frys-alle)
+    if (route === '/admin/pris/poweroffice/jobb' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const id = new URL(request.url).searchParams.get('id') || '';
+      const jobb = await poJobbHent(db, id);
+      if (!jobb) return cors(NextResponse.json({ ok: false, feil: 'Fant ikke jobben' }, { status: 404 }));
+      return cors(NextResponse.json({ ok: true, jobb }));
     }
     // GET ?maaned= → status for opprettede utkast (så UI kan vise «allerede opprettet»)
     if (route === '/admin/pris/poweroffice/utkast' && method === 'GET') {

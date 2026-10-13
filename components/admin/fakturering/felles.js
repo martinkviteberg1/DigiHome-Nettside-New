@@ -28,6 +28,35 @@ export const naaMnd = () => new Date().toISOString().slice(0, 7);
 export const forrigeMnd = () => { const d = new Date(); const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)); return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, '0')}`; };
 export const skiftMnd = (ym, delta) => { const [y, m] = String(ym).split('-').map(Number); const x = new Date(Date.UTC(y, m - 1 + delta, 1)); return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, '0')}`; };
 export const maanedValg = (antall = 18) => { const out = []; const d = new Date(); for (let i = 1; i <= antall; i += 1) { const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - i, 1)); const ym = `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, '0')}`; out.push({ v: ym, l: mndLabel(ym) }); } return out; };
+
+// ── Nettverk: les JSON trygt + vent på bakgrunnsjobb ────────────────────────
+// Svar som ikke er JSON (f.eks. HTML-feilside fra kant/lastbalanserer ved tidsavbrudd)
+// ga før den intetsigende «Kunne ikke kontakte PowerOffice». Nå får brukeren status.
+export async function lesJson(r) {
+  const txt = await r.text();
+  try { return JSON.parse(txt); } catch (e) {
+    const err = new Error(r.ok ? 'Uventet svar fra serveren (ikke JSON).' : `Serveren svarte ikke som forventet (HTTP ${r.status}).`);
+    err.status = r.status; throw err;
+  }
+}
+// Poller GET /api/admin/pris/poweroffice/jobb?id= til jobben er ferdig/feilet.
+// onSteg(tekst) får framdriften underveis. Tåler enkeltstående nettverksglipp.
+export async function ventPaaJobb(q, jobbId, onSteg, { intervallMs = 1200, maksMs = 8 * 60 * 1000 } = {}) {
+  const start = Date.now();
+  let glipp = 0;
+  for (;;) {
+    await new Promise((res) => setTimeout(res, intervallMs));
+    let d;
+    try { const r = await fetch(`/api/admin/pris/poweroffice/jobb?${q}&id=${encodeURIComponent(jobbId)}`, { cache: 'no-store' }); d = await lesJson(r); glipp = 0; }
+    catch (e) { glipp += 1; if (glipp >= 5) throw new Error('Mistet kontakten med serveren mens jobben kjørte. Oppdater siden — jobben fortsetter i bakgrunnen.'); continue; }
+    if (!d.ok || !d.jobb) throw new Error(d.feil || 'Fant ikke jobben');
+    if (typeof onSteg === 'function' && d.jobb.steg) onSteg(d.jobb.steg);
+    if (d.jobb.status !== 'kjorer') return d.jobb;
+    if (Date.now() - start > maksMs) throw new Error('Jobben tar uvanlig lang tid. Den fortsetter i bakgrunnen — oppdater siden om litt.');
+  }
+}
+export const jobbFeilTekst = (j, standard) => `${j?.feil || standard}${j?.hint ? `\n\n${j.hint}` : ''}`;
+
 export const datoNb = (iso) => { const s = String(iso || '').slice(0, 10); const [y, m, d] = s.split('-'); return (y && m && d) ? `${d}.${m}.${y}` : s; };
 export const perNb = (iso) => { const s = String(iso || '').slice(0, 10); const [y, m, d] = s.split('-'); return (y && m && d) ? `${d}.${m}.${y.slice(2)}` : ''; };
 export const tidNb = (iso) => { if (!iso) return ''; const d = new Date(iso); if (Number.isNaN(d.getTime())) return datoNb(iso); return `${datoNb(iso)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
@@ -197,6 +226,7 @@ export function useFaktura({ q, kunde, plan, maaned, onEndret }) {
   const [pdfLaster, setPdfLaster] = useState(false);
   const [poUtkast, setPoUtkast] = useState(null);
   const [poLaster, setPoLaster] = useState(false);
+  const [poSteg, setPoSteg] = useState('');
   const [laasLaster, setLaasLaster] = useState(false);
   const kjorRef = useRef(0);
   const kundeId = kunde?.id || null;
@@ -235,17 +265,34 @@ export function useFaktura({ q, kunde, plan, maaned, onEndret }) {
 
   const etterEndring = useCallback(async () => { await hentPo(); await hent(); if (onEndret) onEndret(); }, [hentPo, hent, onEndret]);
 
+  // Opprett/erstatt utkast: serveren starter en bakgrunnsjobb (202 + jobb) og vi poller
+  // til den er ferdig — så tåler flyten at plattform + PowerOffice bruker lang tid, uten
+  // at kant/lastbalanserer kutter forespørselen. Listen oppdateres ALLTID etterpå, også
+  // ved feil, så et utkast som likevel ble laget blir synlig.
+  const kjorUtkastJobb = useCallback(async ({ tvang = false } = {}) => {
+    setPoLaster(true); setPoSteg('Starter …');
+    try {
+      const r = await fetch(`/api/admin/pris/poweroffice/utkast?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kundeId, maaned, tvang }) });
+      const d = await lesJson(r);
+      if (!d.ok) { window.alert(jobbFeilTekst(d, tvang ? 'Kunne ikke erstatte utkastet' : 'Kunne ikke opprette utkast')); return; }
+      if (d.jobb) {
+        const j = await ventPaaJobb(q, d.jobb.id, setPoSteg);
+        if (j.status !== 'ferdig') window.alert(jobbFeilTekst(j, tvang ? 'Kunne ikke erstatte utkastet' : 'Kunne ikke opprette utkast'));
+      } else if (d.ok === false) {
+        window.alert(jobbFeilTekst(d, 'Kunne ikke opprette utkast'));
+      }
+    } catch (e) {
+      window.alert(`Fikk ikke fullført mot PowerOffice akkurat nå.\n\n${e?.message || e}\n\nListen oppdateres — sjekk om utkastet likevel ble laget før du prøver igjen.`);
+    } finally {
+      try { await etterEndring(); } catch (e) { /* visning oppdateres ved neste last */ }
+      setPoLaster(false); setPoSteg('');
+    }
+  }, [q, kundeId, maaned, etterEndring]);
+
   const opprettUtkast = useCallback(async () => {
     if (!kundeId) { window.alert('Lagre kunden først.'); return; }
-    setPoLaster(true);
-    try {
-      const r = await fetch(`/api/admin/pris/poweroffice/utkast?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kundeId, maaned }) });
-      const d = await r.json();
-      if (!d.ok) window.alert(`${d.feil || 'Kunne ikke opprette utkast'}${d.hint ? `\n\n${d.hint}` : ''}`);
-      await etterEndring();
-    } catch (e) { window.alert('Kunne ikke kontakte PowerOffice akkurat nå.'); }
-    setPoLaster(false);
-  }, [q, kundeId, maaned, etterEndring]);
+    await kjorUtkastJobb({ tvang: false });
+  }, [kundeId, kjorUtkastJobb]);
   const frys = useCallback(async () => {
     if (!kundeId) return;
     if (!window.confirm(`Fryse grunnlaget for ${kunde.navn} · ${mndLabel(maaned)}?\n\nEnhetslisten og prisen lagres slik de er nå. Senere endringer i plattformen, kunden eller planen påvirker ikke denne måneden.`)) return;
@@ -269,27 +316,19 @@ export function useFaktura({ q, kunde, plan, maaned, onEndret }) {
   const erstattUtkast = useCallback(async () => {
     if (!kundeId || !poUtkast) return;
     if (!window.confirm(`Erstatte PowerOffice-utkastet for ${kunde.navn} · ${mndLabel(maaned)}?\n\nDet gamle utkastet${poUtkast.poOrderNo ? ` (ordre ${poUtkast.poOrderNo})` : ''} slettes i Go og et nytt lages fra ${faktura?.grunnlagLaast ? 'det frosne' : 'dagens'} grunnlag. Er ordren allerede sendt, avbrytes alt.`)) return;
-    setPoLaster(true);
-    try {
-      const r = await fetch(`/api/admin/pris/poweroffice/utkast?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kundeId, maaned, tvang: true }) });
-      const d = await r.json();
-      if (!d.ok) window.alert(`${d.feil || 'Kunne ikke erstatte utkastet'}${d.hint ? `\n\n${d.hint}` : ''}`);
-      await etterEndring();
-    } catch (e) { window.alert('Kunne ikke kontakte PowerOffice akkurat nå.'); }
-    setPoLaster(false);
-  }, [q, kundeId, kunde, maaned, poUtkast, faktura, etterEndring]);
+    await kjorUtkastJobb({ tvang: true });
+  }, [kundeId, kunde, maaned, poUtkast, faktura, kjorUtkastJobb]);
   const slettUtkast = useCallback(async () => {
     if (!kundeId || !poUtkast) return;
     if (!window.confirm(`Slette PowerOffice-utkastet for ${kunde.navn} · ${mndLabel(maaned)}?\n\nUtkastet${poUtkast.poOrderNo ? ` (ordre ${poUtkast.poOrderNo})` : ''} slettes i Go. Er det allerede sendt, nektes slettingen og ingenting endres.`)) return;
-    setPoLaster(true);
+    setPoLaster(true); setPoSteg('Sletter utkastet i Go …');
     try {
       const r = await fetch(`/api/admin/pris/poweroffice/utkast?${q}&kundeId=${encodeURIComponent(kundeId)}&maaned=${maaned}`, { method: 'DELETE' });
-      const d = await r.json();
-      if (!d.ok) window.alert(`${d.feil || 'Kunne ikke slette utkastet'}${d.hint ? `\n\n${d.hint}` : ''}`);
-      await etterEndring();
-    } catch (e) { window.alert('Kunne ikke kontakte PowerOffice akkurat nå.'); }
-    setPoLaster(false);
+      const d = await lesJson(r);
+      if (!d.ok) window.alert(jobbFeilTekst(d, 'Kunne ikke slette utkastet'));
+    } catch (e) { window.alert(`Fikk ikke fullført mot PowerOffice akkurat nå.\n\n${e?.message || e}`); }
+    finally { try { await etterEndring(); } catch (e) { /* neste last */ } setPoLaster(false); setPoSteg(''); }
   }, [q, kundeId, kunde, maaned, poUtkast, etterEndring]);
 
-  return { faktura, laster, spesifiser, setSpesifiser, pdfUrl, pdfLaster, forhaandsvisPdf, lastNedPdf, lukkPdf, poUtkast, poLaster, opprettUtkast, erstattUtkast, slettUtkast, utkastAvvik, laasLaster, frys, laasOpp, oppdater: etterEndring, maanedAvsluttet: maaned < naaMnd() };
+  return { faktura, laster, spesifiser, setSpesifiser, pdfUrl, pdfLaster, forhaandsvisPdf, lastNedPdf, lukkPdf, poUtkast, poLaster, poSteg, opprettUtkast, erstattUtkast, slettUtkast, utkastAvvik, laasLaster, frys, laasOpp, oppdater: etterEndring, maanedAvsluttet: maaned < naaMnd() };
 }
