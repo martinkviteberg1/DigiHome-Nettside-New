@@ -10,7 +10,7 @@ import {
 import { promises as fsp } from 'fs';
 import nodePath from 'path';
 import { getDb, clean } from '@/lib/mongodb';
-import { poFellesKonfigurert, poKlientInfo, poResultat, poSaldobalanse, poFakturaUtkast, poSlettUtkast, PO_DEFAULT_ENV, PO_BOOTSTRAP_CLIENT_KEY } from '@/lib/poweroffice';
+import { poFellesKonfigurert, poKlientInfo, poKlientInfoCached, poManglerForUtkast, poResultat, poSaldobalanse, poFakturaUtkast, poSlettUtkast, PO_DEFAULT_ENV, PO_BOOTSTRAP_CLIENT_KEY } from '@/lib/poweroffice';
 import { getObject, putObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
 import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels, computeLandingPages, buildPaidFunnel, computeVelocity, computeMarketingTrends } from '@/lib/analytics-server';
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
@@ -2528,6 +2528,7 @@ async function poJobbStart(db, { type, kundeId = null, maaned, tvang = false }, 
     try {
       const r = await kjor(framdrift);
       const ok = !!(r && r.body && r.body.ok);
+      if (!ok) console.warn('[po_jobber] jobb endte med feil', { type: jobb.type, kundeId: jobb.kundeId, maaned: jobb.maaned, httpStatus: r?.status, feil: r?.body?.feil, hint: r?.body?.hint });
       await koll.updateOne({ id: jobb.id }, { $set: {
         status: ok ? 'ferdig' : 'feil', steg: ok ? 'Ferdig' : 'Feilet', httpStatus: r?.status ?? null, resultat: r?.body ?? null,
         feil: ok ? null : String(r?.body?.feil || 'Ukjent feil').slice(0, 300), hint: r?.body?.hint || null,
@@ -2553,6 +2554,26 @@ async function poJobbHent(db, id) {
   return poJobbRen(d);
 }
 
+// Status for selskapet fakturaer opprettes i: hvilke rettigheter integrasjonen har i Go, og
+// om fakturautkast i det hele tatt kan lages. Brukes av admin som forhåndssjekk (vises før
+// man klikker) og av opprettLisensUtkast (stopper med klar melding i stedet for 403 fra Go).
+async function poFaktureringStatus(db, settings = {}, { fresh = false } = {}) {
+  const ctx = await poFakturaCtx(db, settings).catch(() => null);
+  if (!ctx || !ctx.clientKey) return { konfigurert: poFellesKonfigurert(), env: PO_DEFAULT_ENV, selskap: null, klientNavn: null, rettigheter: null, mangler: [], klarForUtkast: false, feil: 'Mangler regnskaps-selskap (klientnøkkel) for fakturering — legg til selskapet under Regnskap.' };
+  try {
+    const info = await poKlientInfoCached(ctx, { fresh });
+    const mangler = poManglerForUtkast(info.rettigheter);
+    return { konfigurert: true, env: ctx.env, selskap: ctx.selskapNavn || null, klientNavn: info.klientNavn || null, rettigheter: info.rettigheter, privilegier: info.privilegier, mangler, klarForUtkast: mangler.length === 0, feil: null };
+  } catch (e) {
+    return { konfigurert: true, env: ctx.env, selskap: ctx.selskapNavn || null, klientNavn: null, rettigheter: null, mangler: [], klarForUtkast: false, feil: `Fikk ikke kontakt med PowerOffice for ${ctx.selskapNavn || 'selskapet'}: ${String(e?.message || e).slice(0, 200)}` };
+  }
+}
+const poRettighetsFeil = (st) => ({
+  ok: false,
+  feil: `PowerOffice-integrasjonen for ${st.selskap || 'selskapet'}${st.klientNavn ? ` (klient «${st.klientNavn}»)` : ''} mangler rettigheter til å lage fakturautkast: ${st.mangler.join(', ')}.`,
+  hint: 'Gi appen disse rettighetene i PowerOffice Go (utvidelsens tilganger i utviklerportalen) og godkjenn utvidelsen på nytt i klienten. Deretter: prøv igjen her.',
+});
+
 // ── Lisensfaktura: frys grunnlag + opprett USENDT utkast (SalesOrder Draft) i PowerOffice ──
 // Brukes av både enkelt-kunde-ruten og «opprett alle». Returnerer { status, body }.
 // Idempotent per kunde+måned+miljø: finnes utkastet, returneres det uendret (uten å
@@ -2570,6 +2591,12 @@ async function opprettLisensUtkast(db, alt, kunde, maaned, { tvang = false, fram
   const koll = db.collection('po_faktura_utkast');
   const eksisterende = await koll.findOne({ kundeId: kunde.id, maaned, env: ctx.env });
   if (eksisterende && !tvang) { const { _id, ...ren } = eksisterende; return svar(200, { ok: true, alleredeOpprettet: true, utkast: ren }); }
+  // Forhåndssjekk: har integrasjonen rettighetene som trengs i Go? Stopper FØR noe fryses eller
+  // opprettes — ellers ville Go svart 403 først på selve ordren (etter plattform + kunde + produkt).
+  await steg('Sjekker rettighetene i PowerOffice Go …');
+  const status = await poFaktureringStatus(db, alt.settings, { fresh: true });
+  if (status.feil && !status.rettigheter) return svar(502, { ok: false, feil: status.feil });
+  if (!status.klarForUtkast) return svar(403, poRettighetsFeil(status));
   // Erstatt: det gamle utkastet slettes i Go FØRST (kun usendte utkast kan slettes).
   // Feiler slettingen, lages det ikke noe nytt — aldri to fakturaer for samme måned.
   let erstattet = null;
@@ -2652,12 +2679,14 @@ async function faktureringOversikt(db, maaned) {
   const selskaper = await db.collection('regnskap_selskaper').find({}).sort({ opprettet: 1 }).toArray();
   const ctx = await poFakturaCtx(db, alt.settings).catch(() => null);
   const valgt = ctx ? selskaper.find((x) => x.navn === ctx.selskapNavn) : null;
+  // Rettighetssjekk mot Go (cachet 5 min) — så månedskjøringen kan varsle FØR noen klikker «Opprett alle».
+  const status = await poFaktureringStatus(db, alt.settings);
   return {
     ok: true, maaned, maanedAvsluttet: maaned < new Date().toISOString().slice(0, 7), per, sum,
     antallKunder: alt.kunder.length, aktive: alt.kunder.filter((k) => k.status === 'aktiv').length,
     laaste: fakturerbare.filter((p) => p.laast).length, utkast: fakturerbare.filter((p) => p.utkast).length, fakturerbare: fakturerbare.filter((p) => p.linjer > 0).length,
     plattformFeil,
-    po: { konfigurert: poFellesKonfigurert(), env: ctx?.env || PO_DEFAULT_ENV, selskapNavn: ctx?.selskapNavn || null, selskapId: valgt?.id || null, valgtEksplisitt: Boolean(alt.settings?.poSelskapId), selskaper: selskaper.map((x) => ({ id: x.id, navn: x.navn, env: x.env || PO_DEFAULT_ENV, klientNavn: x.klientNavn || null, sistTestet: x.sistTestet || null })) },
+    po: { konfigurert: poFellesKonfigurert(), env: ctx?.env || PO_DEFAULT_ENV, selskapNavn: ctx?.selskapNavn || null, selskapId: valgt?.id || null, valgtEksplisitt: Boolean(alt.settings?.poSelskapId), selskaper: selskaper.map((x) => ({ id: x.id, navn: x.navn, env: x.env || PO_DEFAULT_ENV, klientNavn: x.klientNavn || null, sistTestet: x.sistTestet || null })), klientNavn: status.klientNavn, rettigheter: status.rettigheter, mangler: status.mangler, klarForUtkast: status.klarForUtkast, statusFeil: status.feil },
     settings: { fakturadag: alt.settings?.fakturadag, betalingsfristDager: alt.settings?.betalingsfristDager, levering: alt.settings?.levering, produktnavn: alt.settings?.produktnavn, selgerNavn: alt.settings?.selgerNavn, selgerOrgnr: alt.settings?.selgerOrgnr || '', bankkonto: alt.settings?.bankkonto || '' },
   };
 }
@@ -5395,12 +5424,25 @@ async function handleRoute(request, { params }) {
       const { jobb, gjenbrukt } = await poJobbStart(db, { type: 'utkast', kundeId: kunde.id, maaned, tvang }, (framdrift) => opprettLisensUtkast(db, alt, kunde, maaned, { tvang, framdrift }));
       return cors(NextResponse.json({ ok: true, jobb, gjenbrukt }, { status: 202 }));
     }
-    // GET ?id= → status for en bakgrunnsjobb (utkast / utkast-alle / frys-alle)
+    // GET ?id= → status for en bakgrunnsjobb (utkast / utkast-alle / frys-alle).
+    // GET ?kundeId=&maaned= (eller ?type=utkast-alle|frys-alle&maaned=) → SISTE jobb for
+    // nøkkelen uansett status, så admin kan vise «siste forsøk feilet: …» uten window.alert
+    // (nettleseren kan ha blokkert dialoger) og gjenoppta visning av en jobb som fortsatt kjører.
     if (route === '/admin/pris/poweroffice/jobb' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      const id = new URL(request.url).searchParams.get('id') || '';
-      const jobb = await poJobbHent(db, id);
-      if (!jobb) return cors(NextResponse.json({ ok: false, feil: 'Fant ikke jobben' }, { status: 404 }));
+      const url = new URL(request.url);
+      const id = url.searchParams.get('id') || '';
+      if (id) {
+        const jobb = await poJobbHent(db, id);
+        if (!jobb) return cors(NextResponse.json({ ok: false, feil: 'Fant ikke jobben' }, { status: 404 }));
+        return cors(NextResponse.json({ ok: true, jobb }));
+      }
+      const maaned = (String(url.searchParams.get('maaned') || '').match(/^\d{4}-\d{2}$/) ? url.searchParams.get('maaned') : prisForrigeMaaned());
+      const type = ['utkast', 'utkast-alle', 'frys-alle'].includes(url.searchParams.get('type')) ? url.searchParams.get('type') : 'utkast';
+      const kundeId = type === 'utkast' ? (url.searchParams.get('kundeId') || '') : null;
+      if (type === 'utkast' && !kundeId) return cors(NextResponse.json({ ok: false, feil: 'Mangler id eller kundeId' }, { status: 400 }));
+      const siste = await db.collection('po_jobber').find({ type, kundeId, maaned }).sort({ startet: -1 }).limit(1).toArray();
+      const jobb = siste[0] ? await poJobbHent(db, siste[0].id) : null;
       return cors(NextResponse.json({ ok: true, jobb }));
     }
     // GET ?maaned= → status for opprettede utkast (så UI kan vise «allerede opprettet»)
@@ -5409,7 +5451,9 @@ async function handleRoute(request, { params }) {
       const url = new URL(request.url);
       const maaned = (String(url.searchParams.get('maaned') || '').match(/^\d{4}-\d{2}$/) ? url.searchParams.get('maaned') : prisForrigeMaaned());
       const liste = await db.collection('po_faktura_utkast').find({ maaned }).toArray();
-      return cors(NextResponse.json({ ok: true, maaned, konfigurert: poFellesKonfigurert(), env: PO_DEFAULT_ENV, utkast: liste.map((d) => { const { _id, ...ren } = d; return ren; }) }));
+      const alt = await prisHentAlt(db);
+      const po = await poFaktureringStatus(db, alt.settings, { fresh: url.searchParams.get('fresh') === '1' });
+      return cors(NextResponse.json({ ok: true, maaned, konfigurert: poFellesKonfigurert(), env: PO_DEFAULT_ENV, po, utkast: liste.map((d) => { const { _id, ...ren } = d; return ren; }) }));
     }
     // DELETE ?kundeId=&maaned= → slett utkastet i Go (kun usendte) og fjern sporet lokalt.
     // Er ordren allerede overført til faktura, nektes slettingen (409) — bilaget står.

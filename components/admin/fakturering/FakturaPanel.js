@@ -6,7 +6,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ReceiptText, Loader2, Lock, Unlock, MapPin, ChevronRight, Download, Eye, Landmark, CheckCircle2, ArrowUpRight, FileText, X, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
-import { LILLA, BLEKK, GRONN, AMBER, fmt, fmtV, kr, mndLabel, datoNb, perNb, adresseKort, Pille, useFaktura } from './felles';
+import { LILLA, BLEKK, GRONN, AMBER, fmt, fmtV, kr, mndLabel, datoNb, tidNb, perNb, adresseKort, Pille, useFaktura } from './felles';
 
 export function PdfModal({ url, tittel, onLukk }) {
   useEffect(() => { const h = (e) => { if (e.key === 'Escape') onLukk(); }; window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h); }, [onLukk]);
@@ -224,6 +224,33 @@ export default function FakturaPanel({ q, kunde, plan, maaned, onEndret, kompakt
                 </>
               )}
             </div>
+            {/* Forhåndssjekk: integrasjonen mangler rettigheter i Go → ingen utkast kan lages. Vises før man klikker. */}
+            {!poUtkast && f.poStatus && f.poStatus.klarForUtkast === false && !f.poLaster ? (
+              <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-[12.5px] text-red-900" data-testid="po-rettigheter" role="alert">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600" />
+                <p className="min-w-0 flex-1 leading-snug">
+                  {f.poStatus.mangler?.length
+                    ? <>Integrasjonen for <b>{f.poStatus.selskap}</b>{f.poStatus.klientNavn ? <> («{f.poStatus.klientNavn}»)</> : null} mangler rettigheter i PowerOffice Go: <b>{f.poStatus.mangler.join(', ')}</b>. Gi appen rettighetene og godkjenn utvidelsen på nytt i klienten — så virker «Opprett utkast».</>
+                    : (f.poStatus.statusFeil || 'Får ikke kontakt med PowerOffice for faktureringsselskapet.')}
+                </p>
+              </div>
+            ) : null}
+            {/* Inline-melding fra siste handling (feil/info) — erstatter window.alert, som nettleseren kan ha blokkert */}
+            {f.poMelding ? (
+              <div className={`mt-2 flex items-start gap-2 rounded-lg border px-2.5 py-2 text-[12.5px] ${f.poMelding.tone === 'feil' ? 'border-red-200 bg-red-50 text-red-900' : 'border-black/[0.08] bg-white text-black/70'}`} data-testid="po-melding" role={f.poMelding.tone === 'feil' ? 'alert' : 'status'}>
+                {f.poMelding.tone === 'feil' ? <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600" /> : <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: GRONN }} />}
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium leading-snug">{f.poMelding.tekst}{f.poMelding.httpStatus ? <span className="ml-1.5 font-normal opacity-60">(HTTP {f.poMelding.httpStatus})</span> : null}</p>
+                  {f.poMelding.hint ? <p className="mt-0.5 leading-snug opacity-80">{f.poMelding.hint}</p> : null}
+                </div>
+                <button onClick={f.lukkMelding} className="shrink-0 rounded-md px-1.5 text-[11.5px] font-medium opacity-60 hover:opacity-100" aria-label="Lukk melding">Lukk</button>
+              </div>
+            ) : (f.poSisteJobb?.status === 'feil' && !poUtkast && !f.poLaster ? (
+              <div className="mt-2 flex items-start gap-2 border-t border-black/[0.06] pt-2 text-[12px] text-black/55" data-testid="po-siste-forsok">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+                <span className="min-w-0 flex-1 leading-snug">Siste forsøk {f.poSisteJobb.ferdig ? tidNb(f.poSisteJobb.ferdig) : ''} feilet: {f.poSisteJobb.feil}{f.poSisteJobb.hint ? ` — ${f.poSisteJobb.hint}` : ''}</span>
+              </div>
+            ) : null)}
             {f.poLaster && f.poSteg ? (
               <div className="mt-2 flex items-center gap-2 border-t border-black/[0.06] pt-2 text-[12px] text-black/55" data-testid="po-jobb-steg" aria-live="polite">
                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" style={{ color: LILLA }} />

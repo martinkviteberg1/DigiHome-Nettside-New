@@ -227,14 +227,21 @@ export function useFaktura({ q, kunde, plan, maaned, onEndret }) {
   const [poUtkast, setPoUtkast] = useState(null);
   const [poLaster, setPoLaster] = useState(false);
   const [poSteg, setPoSteg] = useState('');
+  const [poSisteJobb, setPoSisteJobb] = useState(null); // siste bakgrunnsjobb for kunde+måned (ferdig/feil/kjorer)
+  const [poStatus, setPoStatus] = useState(null); // forhåndssjekk: selskap/rettigheter i Go ({ klarForUtkast, mangler, selskap, klientNavn, statusFeil })
+  const [poMelding, setPoMelding] = useState(null); // { tone: 'feil'|'info', tekst, hint } — vises i panelet (ikke window.alert)
   const [laasLaster, setLaasLaster] = useState(false);
   const kjorRef = useRef(0);
   const kundeId = kunde?.id || null;
 
   const hentPo = useCallback(async () => {
-    if (!kundeId) { setPoUtkast(null); return; }
-    try { const r = await fetch(`/api/admin/pris/poweroffice/utkast?${q}&maaned=${maaned}`, { cache: 'no-store' }); const d = await r.json(); setPoUtkast((d.utkast || []).find((u) => u.kundeId === kundeId) || null); } catch (e) {}
+    if (!kundeId) { setPoUtkast(null); setPoSisteJobb(null); return; }
+    try { const r = await fetch(`/api/admin/pris/poweroffice/utkast?${q}&maaned=${maaned}`, { cache: 'no-store' }); const d = await r.json(); setPoUtkast((d.utkast || []).find((u) => u.kundeId === kundeId) || null); if (d.po) setPoStatus(d.po); } catch (e) {}
+    // Siste jobb for kunde+måned: viser «siste forsøk feilet: …» også etter sideoppdatering,
+    // og gjenopptar visningen hvis en jobb fortsatt kjører (startet i en annen fane/replika).
+    try { const r = await fetch(`/api/admin/pris/poweroffice/jobb?${q}&kundeId=${encodeURIComponent(kundeId)}&maaned=${maaned}`, { cache: 'no-store' }); const d = await r.json(); setPoSisteJobb(d.ok ? (d.jobb || null) : null); } catch (e) {}
   }, [q, maaned, kundeId]);
+  useEffect(() => { setPoMelding(null); }, [kundeId, maaned]);
 
   const hent = useCallback(async () => {
     if (!kunde) { setFaktura(null); return; }
@@ -248,6 +255,25 @@ export function useFaktura({ q, kunde, plan, maaned, onEndret }) {
 
   useEffect(() => { const t = setTimeout(hent, 220); return () => clearTimeout(t); }, [hent]);
   useEffect(() => { hentPo(); }, [hentPo]);
+
+  const etterEndring = useCallback(async () => { await hentPo(); await hent(); if (onEndret) onEndret(); }, [hentPo, hent, onEndret]);
+
+  // Kjører en jobb for denne kunden+måneden allerede (startet i en annen fane, eller siden ble
+  // lastet på nytt midt i)? Da gjenopptar vi framdriftsvisningen og venter på resultatet.
+  useEffect(() => {
+    if (!poSisteJobb || poSisteJobb.status !== 'kjorer' || poLaster) return undefined;
+    let aktiv = true;
+    (async () => {
+      setPoLaster(true); setPoSteg(poSisteJobb.steg || 'Arbeider …');
+      try {
+        const j = await ventPaaJobb(q, poSisteJobb.id, (t) => { if (aktiv) setPoSteg(t); });
+        if (aktiv) { setPoSisteJobb(j); if (j.status !== 'ferdig') setPoMelding({ tone: 'feil', tekst: j.feil || 'Kunne ikke opprette utkast', hint: j.hint || '', httpStatus: j.httpStatus }); }
+      } catch (e) { if (aktiv) setPoMelding({ tone: 'feil', tekst: String(e?.message || e) }); }
+      finally { if (aktiv) { try { await etterEndring(); } catch (e) { /* neste last */ } setPoLaster(false); setPoSteg(''); } }
+    })();
+    return () => { aktiv = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [poSisteJobb?.id, poSisteJobb?.status]);
 
   const hentPdfBlob = useCallback(async () => {
     const r = await fetch(`/api/admin/pris/faktura/pdf?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maaned, kunde, plan, spesifiser }) });
@@ -263,26 +289,28 @@ export function useFaktura({ q, kunde, plan, maaned, onEndret }) {
   }, [hentPdfBlob, kunde, maaned]);
   const lukkPdf = useCallback(() => setPdfUrl((u) => { if (u) setTimeout(() => URL.revokeObjectURL(u), 500); return ''; }), []);
 
-  const etterEndring = useCallback(async () => { await hentPo(); await hent(); if (onEndret) onEndret(); }, [hentPo, hent, onEndret]);
 
   // Opprett/erstatt utkast: serveren starter en bakgrunnsjobb (202 + jobb) og vi poller
   // til den er ferdig — så tåler flyten at plattform + PowerOffice bruker lang tid, uten
   // at kant/lastbalanserer kutter forespørselen. Listen oppdateres ALLTID etterpå, også
   // ved feil, så et utkast som likevel ble laget blir synlig.
+  // Feil vises INLINE i panelet (poMelding) — ikke window.alert: nettleseren kan ha blokkert
+  // dialoger («ikke vis flere») etter tidligere feil, og da så det ut som «ingenting skjer».
   const kjorUtkastJobb = useCallback(async ({ tvang = false } = {}) => {
-    setPoLaster(true); setPoSteg('Starter …');
+    setPoLaster(true); setPoSteg('Starter …'); setPoMelding(null);
+    const standard = tvang ? 'Kunne ikke erstatte utkastet' : 'Kunne ikke opprette utkast';
     try {
       const r = await fetch(`/api/admin/pris/poweroffice/utkast?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kundeId, maaned, tvang }) });
       const d = await lesJson(r);
-      if (!d.ok) { window.alert(jobbFeilTekst(d, tvang ? 'Kunne ikke erstatte utkastet' : 'Kunne ikke opprette utkast')); return; }
+      if (!d.ok) { setPoMelding({ tone: 'feil', tekst: d.feil || standard, hint: d.hint || '' }); return; }
       if (d.jobb) {
         const j = await ventPaaJobb(q, d.jobb.id, setPoSteg);
-        if (j.status !== 'ferdig') window.alert(jobbFeilTekst(j, tvang ? 'Kunne ikke erstatte utkastet' : 'Kunne ikke opprette utkast'));
-      } else if (d.ok === false) {
-        window.alert(jobbFeilTekst(d, 'Kunne ikke opprette utkast'));
+        setPoSisteJobb(j);
+        if (j.status !== 'ferdig') setPoMelding({ tone: 'feil', tekst: j.feil || standard, hint: j.hint || '', httpStatus: j.httpStatus });
+        else if (j.resultat?.alleredeOpprettet) setPoMelding({ tone: 'info', tekst: 'Utkastet fantes allerede i Go — ingenting nytt ble laget.' });
       }
     } catch (e) {
-      window.alert(`Fikk ikke fullført mot PowerOffice akkurat nå.\n\n${e?.message || e}\n\nListen oppdateres — sjekk om utkastet likevel ble laget før du prøver igjen.`);
+      setPoMelding({ tone: 'feil', tekst: `Fikk ikke fullført mot PowerOffice akkurat nå: ${e?.message || e}`, hint: 'Listen er oppdatert — sjekk om utkastet likevel ble laget før du prøver igjen.' });
     } finally {
       try { await etterEndring(); } catch (e) { /* visning oppdateres ved neste last */ }
       setPoLaster(false); setPoSteg('');
@@ -321,14 +349,14 @@ export function useFaktura({ q, kunde, plan, maaned, onEndret }) {
   const slettUtkast = useCallback(async () => {
     if (!kundeId || !poUtkast) return;
     if (!window.confirm(`Slette PowerOffice-utkastet for ${kunde.navn} · ${mndLabel(maaned)}?\n\nUtkastet${poUtkast.poOrderNo ? ` (ordre ${poUtkast.poOrderNo})` : ''} slettes i Go. Er det allerede sendt, nektes slettingen og ingenting endres.`)) return;
-    setPoLaster(true); setPoSteg('Sletter utkastet i Go …');
+    setPoLaster(true); setPoSteg('Sletter utkastet i Go …'); setPoMelding(null);
     try {
       const r = await fetch(`/api/admin/pris/poweroffice/utkast?${q}&kundeId=${encodeURIComponent(kundeId)}&maaned=${maaned}`, { method: 'DELETE' });
       const d = await lesJson(r);
-      if (!d.ok) window.alert(jobbFeilTekst(d, 'Kunne ikke slette utkastet'));
-    } catch (e) { window.alert(`Fikk ikke fullført mot PowerOffice akkurat nå.\n\n${e?.message || e}`); }
+      if (!d.ok) setPoMelding({ tone: 'feil', tekst: d.feil || 'Kunne ikke slette utkastet', hint: d.hint || '' });
+    } catch (e) { setPoMelding({ tone: 'feil', tekst: `Fikk ikke fullført mot PowerOffice akkurat nå: ${e?.message || e}` }); }
     finally { try { await etterEndring(); } catch (e) { /* neste last */ } setPoLaster(false); setPoSteg(''); }
   }, [q, kundeId, kunde, maaned, poUtkast, etterEndring]);
 
-  return { faktura, laster, spesifiser, setSpesifiser, pdfUrl, pdfLaster, forhaandsvisPdf, lastNedPdf, lukkPdf, poUtkast, poLaster, poSteg, opprettUtkast, erstattUtkast, slettUtkast, utkastAvvik, laasLaster, frys, laasOpp, oppdater: etterEndring, maanedAvsluttet: maaned < naaMnd() };
+  return { faktura, laster, spesifiser, setSpesifiser, pdfUrl, pdfLaster, forhaandsvisPdf, lastNedPdf, lukkPdf, poUtkast, poLaster, poSteg, poSisteJobb, poStatus, poMelding, lukkMelding: () => setPoMelding(null), opprettUtkast, erstattUtkast, slettUtkast, utkastAvvik, laasLaster, frys, laasOpp, oppdater: etterEndring, maanedAvsluttet: maaned < naaMnd() };
 }

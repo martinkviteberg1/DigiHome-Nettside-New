@@ -5,7 +5,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Lock, Unlock, Loader2, ReceiptText, ArrowUpRight, CheckCircle2, AlertTriangle, Landmark, TrendingUp, Boxes, Users, ListChecks, Star, ExternalLink, RefreshCw } from 'lucide-react';
-import { LILLA, BLEKK, GRONN, AMBER, fmt, fmtV, kr, mndLabel, datoNb, tidNb, skiftMnd, forrigeMnd, naaMnd, maanedValg, Kort, Pille, StatusPille, MiljøPille, Nedtrekk, Tomt, th, thR, td, tdR, knappPrimær, knappSekundær, knappLiten, lesJson, ventPaaJobb, jobbFeilTekst } from './felles';
+import { LILLA, BLEKK, GRONN, AMBER, fmt, fmtV, kr, mndLabel, datoNb, tidNb, skiftMnd, forrigeMnd, naaMnd, maanedValg, Kort, Pille, StatusPille, MiljøPille, Nedtrekk, Tomt, th, thR, td, tdR, knappPrimær, knappSekundær, knappLiten, lesJson, ventPaaJobb } from './felles';
 import { FakturaSkuff } from './FakturaPanel';
 
 function Kpi({ l, v, sub, ikon: Ikon, tone }) {
@@ -37,6 +37,7 @@ export default function Maanedskjoring({ q, data, maaned, setMaaned, onGaaTil, t
   const [laster, setLaster] = useState(true);
   const [kjorer, setKjorer] = useState(''); // 'frys' | 'utkast'
   const [kjorerSteg, setKjorerSteg] = useState(''); // framdrift fra bakgrunnsjobben
+  const [melding, setMelding] = useState(null); // feil fra siste kjøring — inline, ikke window.alert
   const [resultat, setResultat] = useState(null);
   const [valgt, setValgt] = useState(null); // kundeId for skuff
 
@@ -62,19 +63,19 @@ export default function Maanedskjoring({ q, data, maaned, setMaaned, onGaaTil, t
       ? `Fryse grunnlaget for ${n} kunde${n === 1 ? '' : 'r'} · ${mndLabel(maaned)}?\n\nEnhetsliste og pris lagres slik de er nå.`
       : `Opprette PowerOffice-utkast for ${n} kunde${n === 1 ? '' : 'r'} · ${mndLabel(maaned)}?\n\nGrunnlaget fryses først. Utkastene er usendte — du kontrollerer og sender i Go${po?.env === 'demo' ? ' (DEMO-miljø)' : ''}.`;
     if (!window.confirm(tekst)) return;
-    setKjorer(type); setResultat(null); setKjorerSteg('Starter …');
+    setKjorer(type); setResultat(null); setMelding(null); setKjorerSteg('Starter …');
     try {
       // Serveren starter en bakgrunnsjobb (202 + jobb) og vi poller til den er ferdig —
       // kjøringen tåler da at plattform + PowerOffice bruker minutter, uten tidsavbrudd.
       const r = await fetch(`/api/admin/fakturering/${type === 'frys' ? 'frys-alle' : 'utkast-alle'}?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maaned }) });
       const d = await lesJson(r);
-      if (!d.ok) { window.alert(jobbFeilTekst(d, 'Kjøringen kunne ikke startes')); }
+      if (!d.ok) { setMelding({ tekst: d.feil || 'Kjøringen kunne ikke startes', hint: d.hint || '' }); }
       else if (d.jobb) {
         const j = await ventPaaJobb(q, d.jobb.id, setKjorerSteg);
         if (j.status === 'ferdig' && j.resultat) setResultat({ type, ...j.resultat });
-        else window.alert(jobbFeilTekst(j, 'Kjøringen feilet'));
+        else setMelding({ tekst: j.feil || 'Kjøringen feilet', hint: j.hint || '', httpStatus: j.httpStatus });
       } else setResultat({ type, ...d });
-    } catch (e) { window.alert(`Kjøringen ble avbrutt.\n\n${e?.message || e}\n\nListen oppdateres — det som rakk å bli gjort, vises.`); }
+    } catch (e) { setMelding({ tekst: `Kjøringen ble avbrutt: ${e?.message || e}`, hint: 'Listen er oppdatert — det som rakk å bli gjort, vises.' }); }
     finally { try { await last(); if (onEndret) onEndret(); } catch (e) { /* neste last */ } setKjorer(''); setKjorerSteg(''); }
   };
 
@@ -101,6 +102,15 @@ export default function Maanedskjoring({ q, data, maaned, setMaaned, onGaaTil, t
 
       {ov?.plattformFeil ? <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12.5px] leading-[1.5] text-amber-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{ov.plattformFeil}</span></div> : null}
       {po && po.env === 'demo' && avsluttet ? <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12.5px] leading-[1.5] text-amber-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>Utkast går til PowerOffice sin <b>demo</b>-klient («{po.selskapNavn}»). Legg til DigiHome Tech AS som produksjonsselskap under Regnskap og velg det i Innstillinger før ekte fakturering.</span></div> : null}
+      {/* Forhåndssjekk: mangler integrasjonen rettigheter i Go, kan ingen utkast lages — si det før noen klikker */}
+      {po && po.klarForUtkast === false ? (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[12.5px] leading-[1.5] text-red-900" data-testid="po-rettigheter-varsel" role="alert">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+          <span>
+            {po.mangler?.length ? <>PowerOffice-integrasjonen for <b>{po.selskapNavn}</b>{po.klientNavn ? <> (klient «{po.klientNavn}»)</> : null} mangler rettigheter til å lage fakturautkast: <b>{po.mangler.join(', ')}</b>. Gi appen rettighetene i PowerOffice Go og godkjenn utvidelsen på nytt i klienten — så virker «Opprett utkast».</> : (po.statusFeil || 'Får ikke kontakt med PowerOffice for faktureringsselskapet.')}
+          </span>
+        </div>
+      ) : null}
 
       {/* KPI */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -128,6 +138,18 @@ export default function Maanedskjoring({ q, data, maaned, setMaaned, onGaaTil, t
           <Loader2 className="h-4 w-4 shrink-0 animate-spin" style={{ color: LILLA }} />
           <span className="min-w-0 flex-1 truncate">{kjorer === 'frys' ? 'Fryser grunnlag' : 'Oppretter utkast i PowerOffice'} — {kjorerSteg || 'arbeider …'}</span>
           <span className="hidden text-[11px] text-black/35 sm:inline">Kjører på serveren — fortsetter selv om du venter lenge.</span>
+        </div>
+      ) : null}
+
+      {/* Feil fra siste kjøring (inline — nettleseren kan ha blokkert dialoger) */}
+      {melding ? (
+        <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-[12.5px] text-red-900" data-testid="kjoring-melding" role="alert">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium leading-snug">{melding.tekst}{melding.httpStatus ? <span className="ml-1.5 font-normal opacity-60">(HTTP {melding.httpStatus})</span> : null}</p>
+            {melding.hint ? <p className="mt-0.5 leading-snug opacity-80">{melding.hint}</p> : null}
+          </div>
+          <button onClick={() => setMelding(null)} className="shrink-0 rounded-md px-1.5 text-[11.5px] font-medium opacity-60 hover:opacity-100" aria-label="Lukk melding">Lukk</button>
         </div>
       ) : null}
 
